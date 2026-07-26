@@ -17,8 +17,14 @@ public sealed record StoryLayoutPlan(string StoryId, LayoutRequest Request, IRea
 /// </summary>
 public static class DocumentLayoutAdapter
 {
-    /// <summary>Builds one plan per story chain head, in page-then-z document order.</summary>
-    public static IReadOnlyList<StoryLayoutPlan> BuildPlans(Document document)
+    /// <summary>
+    /// Builds one plan per story chain head, in page-then-z document order.
+    /// <paramref name="rectOverrides"/> substitutes frame/exclusion rects without touching the
+    /// document — the live-drag preview path (docs/M5-spec.md §4.1).
+    /// </summary>
+    public static IReadOnlyList<StoryLayoutPlan> BuildPlans(
+        Document document,
+        IReadOnlyDictionary<string, RectPt>? rectOverrides = null)
     {
         ArgumentNullException.ThrowIfNull(document);
 
@@ -41,7 +47,7 @@ public static class DocumentLayoutAdapter
             {
                 if (block is TextBlock head && !linkedIds.Contains(head.Id))
                 {
-                    plans.Add(BuildPlan(document, page, head));
+                    plans.Add(BuildPlan(document, page, head, rectOverrides));
                 }
             }
         }
@@ -49,7 +55,11 @@ public static class DocumentLayoutAdapter
         return plans;
     }
 
-    private static StoryLayoutPlan BuildPlan(Document document, Page headPage, TextBlock head)
+    private static StoryLayoutPlan BuildPlan(
+        Document document,
+        Page headPage,
+        TextBlock head,
+        IReadOnlyDictionary<string, RectPt>? rectOverrides)
     {
         var frames = new List<LayoutFrame>();
         var placements = new List<FramePlacement>();
@@ -64,7 +74,10 @@ public static class DocumentLayoutAdapter
                 throw new InvalidOperationException($"TextBlock chain contains a cycle at {current.Id}.");
             }
 
-            frames.Add(new LayoutFrame(ToFrameRect(current.FrameRect), BuildExclusions(page, current), current.ColumnCount));
+            frames.Add(new LayoutFrame(
+                ToFrameRect(EffectiveRect(current, rectOverrides)),
+                BuildExclusions(page, current, rectOverrides),
+                current.ColumnCount));
             placements.Add(new FramePlacement(page.Id, current.Id));
 
             if (current.LinkNext is not { } nextId)
@@ -87,7 +100,10 @@ public static class DocumentLayoutAdapter
     }
 
     /// <summary>Blocks with wrapMode=Rectangle and higher z than the text frame push text aside (PLAN.md §2).</summary>
-    private static List<ExclusionRect> BuildExclusions(Page page, TextBlock textBlock)
+    private static List<ExclusionRect> BuildExclusions(
+        Page page,
+        TextBlock textBlock,
+        IReadOnlyDictionary<string, RectPt>? rectOverrides)
     {
         var exclusions = new List<ExclusionRect>();
         foreach (Block block in page.Blocks)
@@ -96,11 +112,23 @@ public static class DocumentLayoutAdapter
                 && block.WrapMode == WrapMode.Rectangle
                 && block.ZOrder > textBlock.ZOrder)
             {
-                exclusions.Add(new ExclusionRect(ToFrameRect(block.FrameRect), block.WrapMarginPt, block.ZOrder));
+                exclusions.Add(new ExclusionRect(
+                    ToFrameRect(EffectiveRect(block, rectOverrides)),
+                    block.WrapMarginPt,
+                    block.ZOrder));
             }
         }
 
         return exclusions;
+    }
+
+    /// <summary>The block's rect, or the drag preview standing in for it.</summary>
+    public static RectPt EffectiveRect(Block block, IReadOnlyDictionary<string, RectPt>? rectOverrides)
+    {
+        ArgumentNullException.ThrowIfNull(block);
+        return rectOverrides is not null && rectOverrides.TryGetValue(block.Id, out RectPt preview)
+            ? preview
+            : block.FrameRect;
     }
 
     private static LayoutStory BuildStory(Document document, Story story)

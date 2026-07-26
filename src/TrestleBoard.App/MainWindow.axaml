@@ -53,6 +53,40 @@
         <MenuItem x:Name="ItalicMenuItem" Header="_Italic" InputGesture="Ctrl+I" IsEnabled="False"
                   Click="OnItalicClicked" AutomationProperties.Name="Italic" />
       </MenuItem>
+      <!-- Object menu: every direct-manipulation gesture also lives here with a shortcut,
+           so nothing on the canvas is mouse-only (PLAN.md §6, docs/M5-spec.md §9). -->
+      <MenuItem Header="Ob_ject" AutomationProperties.Name="Object menu">
+        <MenuItem x:Name="AddTextFrameMenuItem" Header="_Add a text frame" InputGesture="Ctrl+Shift+T"
+                  IsEnabled="False" Click="OnAddTextFrameClicked"
+                  AutomationProperties.Name="Add a text frame" />
+        <MenuItem x:Name="DeleteFrameMenuItem" Header="_Delete this frame" InputGesture="Delete"
+                  IsEnabled="False" Click="OnDeleteFrameClicked"
+                  AutomationProperties.Name="Delete this frame" />
+        <Separator />
+        <MenuItem x:Name="WrapMenuItem" Header="_Wrap text around this" InputGesture="Ctrl+Shift+W"
+                  IsEnabled="False" Click="OnToggleWrapClicked"
+                  AutomationProperties.Name="Wrap text around this frame" />
+        <Separator />
+        <MenuItem x:Name="BringForwardMenuItem" Header="Bring _forward" InputGesture="Ctrl+OemCloseBrackets"
+                  IsEnabled="False" Click="OnBringForwardClicked"
+                  AutomationProperties.Name="Bring forward" />
+        <MenuItem x:Name="SendBackwardMenuItem" Header="Send _backward" InputGesture="Ctrl+OemOpenBrackets"
+                  IsEnabled="False" Click="OnSendBackwardClicked"
+                  AutomationProperties.Name="Send backward" />
+        <MenuItem x:Name="BringToFrontMenuItem" Header="Bring to f_ront" InputGesture="Ctrl+Shift+OemCloseBrackets"
+                  IsEnabled="False" Click="OnBringToFrontClicked"
+                  AutomationProperties.Name="Bring to front" />
+        <MenuItem x:Name="SendToBackMenuItem" Header="Send to bac_k" InputGesture="Ctrl+Shift+OemOpenBrackets"
+                  IsEnabled="False" Click="OnSendToBackClicked"
+                  AutomationProperties.Name="Send to back" />
+        <Separator />
+        <MenuItem x:Name="LinkFramesMenuItem" Header="_Continue this text in another frame…" InputGesture="Ctrl+Shift+L"
+                  IsEnabled="False" Click="OnLinkFramesClicked"
+                  AutomationProperties.Name="Continue this text in another frame" />
+        <MenuItem x:Name="UnlinkFramesMenuItem" Header="_Stop continuing into the next frame" InputGesture="Ctrl+Shift+K"
+                  IsEnabled="False" Click="OnUnlinkFramesClicked"
+                  AutomationProperties.Name="Stop continuing into the next frame" />
+      </MenuItem>
       <MenuItem Header="_View" AutomationProperties.Name="View menu">
         <MenuItem Header="Zoom _in" InputGesture="Ctrl+OemPlus" Click="OnZoomInClicked" AutomationProperties.Name="Zoom in" />
         <MenuItem Header="Zoom _out" InputGesture="Ctrl+OemMinus" Click="OnZoomOutClicked" AutomationProperties.Name="Zoom out" />
@@ -98,7 +132,23 @@
                 AutomationProperties.Name="Zoom in">+ Bigger</Button>
         <Button x:Name="FitButton" FontSize="16" MinHeight="44" IsEnabled="False" Click="OnFitPageClicked"
                 AutomationProperties.Name="Fit the whole page in the window">Fit page</Button>
+        <Separator Width="12" Background="Transparent" />
+        <Button x:Name="AddTextFrameButton" FontSize="16" MinHeight="44" IsEnabled="False" Click="OnAddTextFrameClicked"
+                AutomationProperties.Name="Add a text frame">+ Text frame</Button>
+        <Button x:Name="WrapButton" FontSize="16" MinHeight="44" IsEnabled="False" Click="OnToggleWrapClicked"
+                AutomationProperties.Name="Wrap text around this frame">Wrap text</Button>
+        <Button x:Name="BringForwardButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False"
+                Click="OnBringForwardClicked" AutomationProperties.Name="Bring forward">Forward</Button>
+        <Button x:Name="SendBackwardButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False"
+                Click="OnSendBackwardClicked" AutomationProperties.Name="Send backward">Backward</Button>
       </StackPanel>
+    </Border>
+
+    <!-- Plain-language status line: overset warnings and link prompts land here, never colour
+         alone (PLAN.md §6, docs/M5-spec.md §8.4). -->
+    <Border DockPanel.Dock="Bottom" Padding="12,8" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+      <TextBlock x:Name="StatusLabel" FontSize="16" TextWrapping="Wrap" Text=""
+                 AutomationProperties.Name="Status" AutomationProperties.LiveSetting="Polite" />
     </Border>
 
     <ScrollViewer x:Name="CanvasScroller"

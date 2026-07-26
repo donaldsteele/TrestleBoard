@@ -52,6 +52,10 @@ public sealed class CommandTests
                 new DeleteTextCommand("story-1", 1, 0, 6),
                 new InsertTextCommand("story-1", 1, 0, "Supper"),
             ]),
+        ["SetZOrder"] = _ => new SetZOrderCommand("img-1", 0),
+        ["SetLinkNext.Clear"] = _ => new SetLinkNextCommand("text-1", null),
+        ["SetLinkNext.Set"] = _ => new SetLinkNextCommand("text-2", "text-1"),
+        ["SetStoryRef"] = _ => new SetStoryRefCommand("text-2", "story-detached"),
         ["EnsureCharacterStyle"] = _ => new EnsureCharacterStyleCommand(new CharacterStyleDef
         {
             Name = "caption",

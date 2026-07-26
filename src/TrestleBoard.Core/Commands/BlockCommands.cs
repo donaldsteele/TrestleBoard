@@ -46,12 +46,12 @@ public abstract class BlockRectCommand(string blockId, RectPt newRect) : IDocume
 
 public sealed class MoveBlockCommand(string blockId, RectPt newRect) : BlockRectCommand(blockId, newRect)
 {
-    public override string Description => "Move block";
+    public override string Description => "Move frame";
 }
 
 public sealed class ResizeBlockCommand(string blockId, RectPt newRect) : BlockRectCommand(blockId, newRect)
 {
-    public override string Description => "Resize block";
+    public override string Description => "Resize frame";
 }
 
 public sealed class SetWrapModeCommand(string blockId, WrapMode wrapMode, float wrapMarginPt) : IDocumentCommand

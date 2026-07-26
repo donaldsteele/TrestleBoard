@@ -150,8 +150,8 @@ public sealed class SessionTests
         (DocumentSession session, _) = NewSession();
         Assert.Null(session.UndoDescription);
         session.Execute(new MoveBlockCommand("img-1", new RectPt(1f, 2f, 180f, 120f)));
-        Assert.Equal("Move block", session.UndoDescription);
+        Assert.Equal("Move frame", session.UndoDescription);
         session.Undo();
-        Assert.Equal("Move block", session.RedoDescription);
+        Assert.Equal("Move frame", session.RedoDescription);
     }
 }

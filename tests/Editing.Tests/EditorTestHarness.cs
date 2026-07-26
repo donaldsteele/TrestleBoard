@@ -108,6 +108,7 @@ internal sealed class EditorTestHarness : IDisposable
         Source = DocumentRenderSource.CreateEditable(doc, new Dictionary<string, byte[]>(), Fonts.Value, Session);
         Clipboard = new FakeClipboard();
         Controller = new TextEditorController(Session, Source, Clipboard);
+        Frames = new FrameEditorController(Session, Source);
     }
 
     public DocumentSession Session { get; }
@@ -115,6 +116,9 @@ internal sealed class EditorTestHarness : IDisposable
     public DocumentRenderSource Source { get; }
 
     public TextEditorController Controller { get; }
+
+    /// <summary>M5 direct manipulation over the same document/session/render source.</summary>
+    public FrameEditorController Frames { get; }
 
     public FakeClipboard Clipboard { get; }
 

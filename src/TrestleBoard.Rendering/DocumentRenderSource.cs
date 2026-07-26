@@ -29,9 +29,13 @@ public sealed class DocumentRenderSource : IDisposable
     private readonly Dictionary<string, StoryTextGeometry> _geometriesByStory = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FrameLayout> _frameLayoutsByBlockId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (string StoryId, int FrameIndex)> _framesByBlockId = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, HashSet<string>> _storiesByPageId = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, RectPt> _previewRects = new(StringComparer.Ordinal);
+    private readonly List<string> _oversetTailBlockIds = [];
     private List<StoryLayoutPlan> _plans = [];
     private readonly HashSet<string> _dirtyStories = new(StringComparer.Ordinal);
     private bool _allDirty = true;
+    private bool _isOverset;
     private bool _disposed;
 
     private DocumentRenderSource(Document document, Dictionary<string, byte[]> assets, TextLayoutEngine engine)
@@ -43,11 +47,24 @@ public sealed class DocumentRenderSource : IDisposable
 
     public int PageCount => _document.Pages.Count;
 
-    /// <summary>True when any story ran out of room in its frame chain (overset indicator).</summary>
-    public bool IsOverset { get; private set; }
+    /// <summary>True when any story ran out of room in its frame chain (overset indicator).
+    /// Lays out first if needed — callers must not have to paint to get a truthful answer.</summary>
+    public bool IsOverset
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            EnsureLayout();
+            return _isOverset;
+        }
+    }
 
     /// <summary>Times the full relayout path ran; the M4 laziness tests assert on this.</summary>
     public int RelayoutCount { get; private set; }
+
+    /// <summary>Times a story was actually handed to the layout engine. The M5 drag tests assert
+    /// that a page-local drag only re-lays-out that page's stories (docs/M5-spec.md §4.2).</summary>
+    public int StoryLayoutCount { get; private set; }
 
     /// <summary>Raised by <see cref="Invalidate"/>. Handlers must NOT lay out — geometry is
     /// recomputed lazily on the next paint or query.</summary>
@@ -91,13 +108,115 @@ public sealed class DocumentRenderSource : IDisposable
         {
             _dirtyStories.Add(storyId);
         }
+        else if (scope.Kind is ChangeKind.BlockGeometry && scope.BlockId is { } blockId)
+        {
+            MarkBlockGeometryDirty(blockId);
+        }
         else
         {
-            // Block geometry/content moves exclusions; page structure changes frames; play safe.
+            // Page structure changes the frame set; content may change intrinsic size; play safe.
             _allDirty = true;
         }
 
         LayoutInvalidated?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Installs (or clears, with null) a drag preview rect for one block — layout and painting
+    /// both honour it without the document being touched (docs/M5-spec.md §4.1). Only the stories
+    /// with a frame on that block's page relayout, which is what keeps a drag at 60fps (§4.2).
+    /// </summary>
+    public void SetGeometryPreview(string blockId, RectPt? rect)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(blockId);
+        if (rect is { } value)
+        {
+            if (_previewRects.TryGetValue(blockId, out RectPt existing) && existing == value)
+            {
+                return;
+            }
+
+            _previewRects[blockId] = value;
+        }
+        else if (!_previewRects.Remove(blockId))
+        {
+            return;
+        }
+
+        MarkBlockGeometryDirty(blockId);
+        LayoutInvalidated?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>True while any drag preview is installed.</summary>
+    public bool HasGeometryPreview => _previewRects.Count > 0;
+
+    /// <summary>The rect a block is currently drawn at: its preview while dragging, else its own.</summary>
+    public RectPt GetEffectiveRect(string blockId)
+    {
+        (_, Block block) = _document.FindBlock(blockId);
+        return DocumentLayoutAdapter.EffectiveRect(block, _previewRects);
+    }
+
+    /// <summary>
+    /// Last frame of every chain whose text ran out of room — where the overset badge hangs
+    /// (docs/M5-spec.md §8.4).
+    /// </summary>
+    public IReadOnlyList<string> GetOversetTailBlockIds()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        EnsureLayout();
+        return _oversetTailBlockIds;
+    }
+
+    /// <summary>True when the block is a text frame (the canvas needs it for mode arbitration).</summary>
+    public bool IsTextBlock(string blockId) => _document.FindBlock(blockId).Block is TextBlock;
+
+    /// <summary>Topmost block containing the point, or null (docs/M5-spec.md §1.1).</summary>
+    public string? HitTestBlock(int pageIndex, float xPt, float yPt)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        foreach (Block block in _document.Pages[pageIndex].Blocks.OrderByDescending(b => b.ZOrder))
+        {
+            RectPt rect = DocumentLayoutAdapter.EffectiveRect(block, _previewRects);
+            if (xPt >= rect.X && xPt <= rect.Right && yPt >= rect.Y && yPt <= rect.Bottom)
+            {
+                return block.Id;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Geometry changes are page-local: <c>BuildExclusions</c> only ever looks at blocks on the
+    /// same page, so only stories with a frame there can be affected — plus the moved block's own
+    /// chain, which may continue onto other pages.
+    /// </summary>
+    private void MarkBlockGeometryDirty(string blockId)
+    {
+        if (_plans.Count == 0 || _storiesByPageId.Count == 0)
+        {
+            _allDirty = true;
+            return;
+        }
+
+        Page? page = _document.Pages.FirstOrDefault(p => p.Blocks.Any(b => b.Id == blockId));
+        if (page is null || !_storiesByPageId.TryGetValue(page.Id, out HashSet<string>? stories))
+        {
+            _allDirty = true;
+            return;
+        }
+
+        foreach (string storyId in stories)
+        {
+            _dirtyStories.Add(storyId);
+        }
+
+        if (_framesByBlockId.TryGetValue(blockId, out (string StoryId, int FrameIndex) owner))
+        {
+            _dirtyStories.Add(owner.StoryId);
+        }
     }
 
     public Core.Model.SizePt GetPageSize(int pageIndex)
@@ -155,7 +274,7 @@ public sealed class DocumentRenderSource : IDisposable
                 continue;
             }
 
-            RectPt r = text.FrameRect;
+            RectPt r = DocumentLayoutAdapter.EffectiveRect(text, _previewRects);
             bool contains = xPt >= r.X && xPt <= r.Right && yPt >= r.Y && yPt <= r.Bottom;
             if (contains)
             {
@@ -230,7 +349,7 @@ public sealed class DocumentRenderSource : IDisposable
         RelayoutCount++;
         // Plan rebuild is cheap (style resolution + text concat); the engine is the cost, so
         // clean stories reuse their cached LayoutResult.
-        _plans = [.. DocumentLayoutAdapter.BuildPlans(_document)];
+        _plans = [.. DocumentLayoutAdapter.BuildPlans(_document, _previewRects)];
         var liveStories = new HashSet<string>(_plans.Select(p => p.StoryId), StringComparer.Ordinal);
         _layoutsByStory.Keys.Where(k => !liveStories.Contains(k)).ToList().ForEach(k =>
         {
@@ -238,9 +357,11 @@ public sealed class DocumentRenderSource : IDisposable
             _geometriesByStory.Remove(k);
         });
 
-        IsOverset = false;
+        _isOverset = false;
         _frameLayoutsByBlockId.Clear();
         _framesByBlockId.Clear();
+        _storiesByPageId.Clear();
+        _oversetTailBlockIds.Clear();
         foreach (StoryLayoutPlan plan in _plans)
         {
             bool dirty = _allDirty
@@ -248,17 +369,34 @@ public sealed class DocumentRenderSource : IDisposable
                 || !_layoutsByStory.ContainsKey(plan.StoryId);
             if (dirty)
             {
+                StoryLayoutCount++;
                 LayoutResult result = _engine.Layout(plan.Request);
                 _layoutsByStory[plan.StoryId] = result;
                 _geometriesByStory[plan.StoryId] = new StoryTextGeometry(plan, result);
             }
 
             LayoutResult layout = _layoutsByStory[plan.StoryId];
-            IsOverset |= layout.IsOverset;
+            _isOverset |= layout.IsOverset;
+            if (layout.IsOverset && plan.Placements.Count > 0)
+            {
+                _oversetTailBlockIds.Add(plan.Placements[^1].BlockId);
+            }
+
             for (int i = 0; i < layout.Frames.Count; i++)
             {
                 _frameLayoutsByBlockId[plan.Placements[i].BlockId] = layout.Frames[i];
                 _framesByBlockId[plan.Placements[i].BlockId] = (plan.StoryId, i);
+            }
+
+            foreach (FramePlacement placement in plan.Placements)
+            {
+                if (!_storiesByPageId.TryGetValue(placement.PageId, out HashSet<string>? stories))
+                {
+                    stories = new HashSet<string>(StringComparer.Ordinal);
+                    _storiesByPageId[placement.PageId] = stories;
+                }
+
+                stories.Add(plan.StoryId);
             }
         }
 
@@ -270,6 +408,8 @@ public sealed class DocumentRenderSource : IDisposable
 
     private void RenderBlock(SKCanvas canvas, Block block)
     {
+        // Drag previews move the painted block too, not just the text flowing around it.
+        RectPt rect = DocumentLayoutAdapter.EffectiveRect(block, _previewRects);
         switch (block)
         {
             case TextBlock text:
@@ -280,27 +420,27 @@ public sealed class DocumentRenderSource : IDisposable
 
                 break;
             case ImageFrame image:
-                RenderImage(canvas, image);
+                RenderImage(canvas, image, rect);
                 break;
             case ShapeBlock shape:
-                RenderShape(canvas, shape);
+                RenderShape(canvas, shape, rect);
                 break;
             case WidgetBlock:
                 // Widgets render for real in M7; a neutral placeholder keeps layout honest.
-                RenderPlaceholder(canvas, block.FrameRect);
+                RenderPlaceholder(canvas, rect);
                 break;
             default:
                 throw new NotSupportedException($"Unknown block type: {block.GetType().Name}");
         }
     }
 
-    private void RenderImage(SKCanvas canvas, ImageFrame image)
+    private void RenderImage(SKCanvas canvas, ImageFrame image, RectPt frameRect)
     {
-        SKRect dest = ToRect(image.FrameRect);
+        SKRect dest = ToRect(frameRect);
         SKImage? decoded = ResolveImage(image.AssetRef);
         if (decoded is null)
         {
-            RenderPlaceholder(canvas, image.FrameRect);
+            RenderPlaceholder(canvas, frameRect);
             return;
         }
 
@@ -322,9 +462,9 @@ public sealed class DocumentRenderSource : IDisposable
         canvas.RestoreToCount(save);
     }
 
-    private static void RenderShape(SKCanvas canvas, ShapeBlock shape)
+    private static void RenderShape(SKCanvas canvas, ShapeBlock shape, RectPt frameRect)
     {
-        SKRect rect = ToRect(shape.FrameRect);
+        SKRect rect = ToRect(frameRect);
         if (shape.FillArgb is { } fill)
         {
             using var fillPaint = new SKPaint { Color = new SKColor(fill), IsAntialias = true, Style = SKPaintStyle.Fill };

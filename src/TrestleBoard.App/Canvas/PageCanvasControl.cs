@@ -41,7 +41,9 @@ public sealed class PageCanvasControl : Control
     private readonly DispatcherTimer _caretBlink;
     private DocumentRenderSource? _source;
     private TextEditorController? _editor;
+    private FrameEditorController? _frames;
     private bool _caretVisible = true;
+    private bool _draggingFrame;
 
     static PageCanvasControl()
     {
@@ -114,6 +116,30 @@ public sealed class PageCanvasControl : Control
         }
     }
 
+    /// <summary>Frame selection and drag/resize (docs/M5-spec.md §1); wired by the shell.</summary>
+    public FrameEditorController? FrameEditor
+    {
+        get => _frames;
+        set
+        {
+            if (_frames is not null)
+            {
+                _frames.Changed -= OnFrameEditorChanged;
+            }
+
+            _frames = value;
+            if (_frames is not null)
+            {
+                _frames.Changed += OnFrameEditorChanged;
+            }
+
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>Overlay chrome is sized in screen points, so it divides out the zoom.</summary>
+    private float OverlayScale => (float)(1d / Math.Max(Zoom, 0.01));
+
     /// <summary>Inverse of the padding+zoom transform: control point → page point.</summary>
     public bool TryToPagePoint(Point controlPoint, out float xPt, out float yPt)
     {
@@ -169,8 +195,10 @@ public sealed class PageCanvasControl : Control
             caret = null;
         }
 
+        FrameOverlay frameOverlay = _frames?.BuildOverlay(currentPage) ?? FrameOverlay.Empty;
+
         context.Custom(new PageDrawOperation(
-            new Rect(Bounds.Size), _source, PageIndex, Zoom, PagePaddingPx, selection, caret));
+            new Rect(Bounds.Size), _source, PageIndex, Zoom, PagePaddingPx, selection, caret, frameOverlay));
     }
 
     private bool BlockIsOnPage(string blockId, int pageIndex) =>
@@ -187,12 +215,26 @@ public sealed class PageCanvasControl : Control
         if (_editor is null || !TryToPagePoint(e.GetPosition(this), out float x, out float y))
         {
             _editor?.End();
+            _frames?.ClearSelection();
             return;
         }
 
         PointerPointProperties props = e.GetCurrentPoint(this).Properties;
         if (!props.IsLeftButtonPressed)
         {
+            // A right-click during a drag cancels it (docs/M5-spec.md §4.3).
+            if (_draggingFrame)
+            {
+                EndFrameDrag(commit: false, e.Pointer);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (TryHandleFramePress(x, y, e))
+        {
+            e.Handled = true;
             return;
         }
 
@@ -206,6 +248,7 @@ public sealed class PageCanvasControl : Control
         };
         if (handled)
         {
+            _frames?.ClearSelection();
             ResetCaretBlink();
             e.Pointer.Capture(this);
             e.Handled = true;
@@ -218,12 +261,103 @@ public sealed class PageCanvasControl : Control
         }
     }
 
+    /// <summary>
+    /// Frame-mode arbitration (docs/M5-spec.md §1.1): handles win, then link mode, then the
+    /// topmost block — a text frame keeps the M4 behaviour (click in the body types) unless the
+    /// press lands on its edge band or it is already the frame selection.
+    /// </summary>
+    private bool TryHandleFramePress(float x, float y, PointerPressedEventArgs e)
+    {
+        if (_frames is null || _source is null)
+        {
+            return false;
+        }
+
+        float scale = OverlayScale;
+        if (_frames.SelectedPageIndex == PageIndex
+            && _frames.HitHandle(x, y, scale) is not FrameHandle.None
+            && _frames.TryBeginDrag(x, y, scale))
+        {
+            BeginFrameDrag(e.Pointer);
+            return true;
+        }
+
+        string? hit = _source.HitTestBlock(PageIndex, x, y);
+        if (_frames.IsLinkModeActive)
+        {
+            if (hit is not null)
+            {
+                _frames.CompleteLink(hit);
+            }
+            else
+            {
+                _frames.CancelLink();
+            }
+
+            return true;
+        }
+
+        if (hit is null)
+        {
+            _frames.ClearSelection();
+            _editor?.End();
+            return false;
+        }
+
+        bool isText = _source.IsTextBlock(hit);
+        bool alreadySelected = string.Equals(_frames.SelectedBlockId, hit, StringComparison.Ordinal);
+        bool onEdge = FrameGeometry.IsOnEdgeBand(_source.GetEffectiveRect(hit), x, y, scale);
+        if (isText && !alreadySelected && !onEdge)
+        {
+            return false; // fall through to the text path
+        }
+
+        _editor?.End();
+        _frames.Select(hit);
+        if (_frames.TryBeginDrag(x, y, scale))
+        {
+            BeginFrameDrag(e.Pointer);
+        }
+
+        return true;
+    }
+
+    private void BeginFrameDrag(IPointer pointer)
+    {
+        _draggingFrame = true;
+        pointer.Capture(this);
+        InvalidateVisual();
+    }
+
+    private void EndFrameDrag(bool commit, IPointer pointer)
+    {
+        _draggingFrame = false;
+        _frames?.EndDrag(commit);
+        if (ReferenceEquals(pointer.Captured, this))
+        {
+            pointer.Capture(null);
+        }
+
+        InvalidateVisual();
+    }
+
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
-        if (_editor is { IsActive: true }
-            && ReferenceEquals(e.Pointer.Captured, this)
-            && TryToPagePoint(e.GetPosition(this), out float x, out float y))
+        if (!TryToPagePoint(e.GetPosition(this), out float x, out float y))
+        {
+            return;
+        }
+
+        if (_draggingFrame && _frames is not null)
+        {
+            // Alt suppresses snapping for a free drag (docs/M5-spec.md §3.2).
+            _frames.DragTo(x, y, snap: !e.KeyModifiers.HasFlag(KeyModifiers.Alt), OverlayScale);
+            return;
+        }
+
+        UpdateCursor(x, y);
+        if (_editor is { IsActive: true } && ReferenceEquals(e.Pointer.Captured, this))
         {
             _editor.ExtendTo(PageIndex, x, y);
         }
@@ -232,10 +366,51 @@ public sealed class PageCanvasControl : Control
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
+        if (_draggingFrame)
+        {
+            EndFrameDrag(commit: true, e.Pointer);
+            e.Handled = true;
+            return;
+        }
+
         if (ReferenceEquals(e.Pointer.Captured, this))
         {
             e.Pointer.Capture(null);
         }
+    }
+
+    /// <summary>Pointer feedback: resize arrows over a handle, the move cursor over a grabbable
+    /// frame edge, the I-beam over text.</summary>
+    private void UpdateCursor(float x, float y)
+    {
+        if (_frames is null || _source is null)
+        {
+            return;
+        }
+
+        StandardCursorType type = StandardCursorType.Ibeam;
+        if (_frames.SelectedPageIndex == PageIndex)
+        {
+            type = _frames.HitHandle(x, y, OverlayScale) switch
+            {
+                FrameHandle.TopLeft or FrameHandle.BottomRight => StandardCursorType.TopLeftCorner,
+                FrameHandle.TopRight or FrameHandle.BottomLeft => StandardCursorType.TopRightCorner,
+                FrameHandle.Left or FrameHandle.Right => StandardCursorType.SizeWestEast,
+                FrameHandle.Top or FrameHandle.Bottom => StandardCursorType.SizeNorthSouth,
+                _ => StandardCursorType.Ibeam,
+            };
+        }
+
+        if (type is StandardCursorType.Ibeam && _source.HitTestBlock(PageIndex, x, y) is { } hit)
+        {
+            if (!_source.IsTextBlock(hit)
+                || FrameGeometry.IsOnEdgeBand(_source.GetEffectiveRect(hit), x, y, OverlayScale))
+            {
+                type = StandardCursorType.SizeAll;
+            }
+        }
+
+        Cursor = new Cursor(type);
     }
 
     protected override void OnTextInput(TextInputEventArgs e)
@@ -254,6 +429,11 @@ public sealed class PageCanvasControl : Control
         base.OnKeyDown(e);
         if (_editor is not { IsActive: true })
         {
+            if (HandleFrameModeKey(e))
+            {
+                e.Handled = true;
+            }
+
             return;
         }
 
@@ -272,9 +452,9 @@ public sealed class PageCanvasControl : Control
             Key.Back => DoEdit(_editor.Backspace),
             Key.Delete => DoEdit(_editor.DeleteForward),
             Key.Enter => DoEdit(_editor.InsertParagraphBreak),
-            Key.Escape => DoEdit(_editor.End),
+            Key.Escape => DoEdit(ExitTextEditingToFrameSelection),
             Key.A when ctrl => DoEdit(_editor.SelectAll),
-            Key.Tab => true, // swallowed inside a session; block cycling is M5
+            Key.Tab => true, // swallowed inside a session; Tab cycles frames in frame mode
             _ => false,
         };
         if (handled)
@@ -290,6 +470,97 @@ public sealed class PageCanvasControl : Control
         }
     }
 
+    /// <summary>Escape is the discoverable route from typing to frame manipulation: it ends the
+    /// session and leaves the frame you were editing selected (docs/M5-spec.md §1.2).</summary>
+    private void ExitTextEditingToFrameSelection()
+    {
+        string? blockId = _editor?.BlockId;
+        _editor?.End();
+        if (blockId is not null)
+        {
+            _frames?.Select(blockId);
+        }
+    }
+
+    /// <summary>The keyboard half of direct manipulation (docs/M5-spec.md §9). Menu-level
+    /// shortcuts (add frame, wrap, z-order, link) live on the window; these are the ones that
+    /// only make sense with canvas focus.</summary>
+    private bool HandleFrameModeKey(KeyEventArgs e)
+    {
+        if (_frames is null)
+        {
+            return false;
+        }
+
+        bool ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        bool shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+
+        // Link mode owns Tab and Enter while it is armed: Tab moves the link cursor (NOT the
+        // selection, which must stay on the source frame) and Enter confirms (docs/M5-spec.md §9).
+        if (_frames.IsLinkModeActive)
+        {
+            switch (e.Key)
+            {
+                case Key.Tab:
+                    return _frames.CycleLinkTarget(PageIndex, forward: !shift);
+                case Key.Enter:
+                    return _frames.CompleteLinkAtTarget();
+                case Key.Escape:
+                    _frames.CancelLink();
+                    return true;
+                default:
+                    break;
+            }
+        }
+
+        switch (e.Key)
+        {
+            case Key.Tab:
+                return _frames.CycleSelection(PageIndex, forward: !shift);
+            case Key.Escape when _frames.IsDragging:
+                _frames.EndDrag(commit: false);
+                _draggingFrame = false;
+                return true;
+            case Key.Escape:
+                _frames.ClearSelection();
+                return true;
+            case Key.Delete or Key.Back:
+                return _frames.DeleteSelected();
+            case Key.Enter or Key.F2:
+                return EnterTextEditingOnSelection();
+            case Key.Left or Key.Right or Key.Up or Key.Down when _frames.HasSelection:
+                float dx = e.Key == Key.Left ? -1f : e.Key == Key.Right ? 1f : 0f;
+                float dy = e.Key == Key.Up ? -1f : e.Key == Key.Down ? 1f : 0f;
+                return ctrl
+                    ? _frames.NudgeResize(dx, dy, shift)
+                    : _frames.Nudge(dx, dy, shift);
+            default:
+                return false;
+        }
+    }
+
+    private bool EnterTextEditingOnSelection()
+    {
+        if (_editor is null
+            || _frames is not { SelectedBlockId: { } blockId }
+            || _frames.SelectedRect is not { } rect
+            || _source is null
+            || !_source.IsTextBlock(blockId))
+        {
+            return false;
+        }
+
+        int page = _frames.SelectedPageIndex;
+        if (page < 0 || !_editor.TryBeginAt(page, rect.X + 2f, rect.Y + 2f))
+        {
+            return false;
+        }
+
+        _frames.ClearSelection();
+        ResetCaretBlink();
+        return true;
+    }
+
     protected override void OnLostFocus(RoutedEventArgs e)
     {
         base.OnLostFocus(e);
@@ -302,6 +573,9 @@ public sealed class PageCanvasControl : Control
         base.OnDetachedFromVisualTree(e);
         _caretBlink.Stop();
     }
+
+    private void OnFrameEditorChanged(object? sender, EventArgs e) =>
+        Dispatcher.UIThread.Post(InvalidateVisual);
 
     private void OnEditorChanged(object? sender, EventArgs e)
     {
@@ -339,7 +613,8 @@ public sealed class PageCanvasControl : Control
         double zoom,
         double padding,
         IReadOnlyList<SelectionRect> selection,
-        CaretGeometry? caret) : ICustomDrawOperation
+        CaretGeometry? caret,
+        FrameOverlay frameOverlay) : ICustomDrawOperation
     {
         public Rect Bounds => bounds;
 
@@ -391,6 +666,9 @@ public sealed class PageCanvasControl : Control
                 {
                     TextOverlayRenderer.DrawCaret(canvas, c);
                 }
+
+                // Frame chrome on top of everything, sized in screen points.
+                FrameOverlayRenderer.Draw(canvas, frameOverlay, (float)(1d / Math.Max(zoom, 0.01)));
             }
             finally
             {

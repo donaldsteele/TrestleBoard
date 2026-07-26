@@ -27,6 +27,7 @@ public partial class MainWindow : Window
     private DocumentRenderSource? _source;
     private DocumentSession? _session;
     private TextEditorController? _editor;
+    private FrameEditorController? _frames;
     private int _pageIndex;
     private bool _fitToWindow = true;
 
@@ -81,6 +82,10 @@ public partial class MainWindow : Window
     internal string? ZoomLabelTextForTest => ZoomLabel.Text;
 
     internal TextEditorController? EditorForTest => _editor;
+
+    internal FrameEditorController? FramesForTest => _frames;
+
+    internal string? StatusLabelTextForTest => StatusLabel.Text;
 
     internal DocumentSession? SessionForTest => _session;
 
@@ -180,6 +185,57 @@ public partial class MainWindow : Window
         }
     }
 
+    // ---- Object (frames, docs/M5-spec.md §9) ------------------------------------------------
+
+    private void OnAddTextFrameClicked(object? sender, RoutedEventArgs e)
+    {
+        _editor?.End();
+        _frames?.AddTextFrame(_pageIndex);
+        UpdateEditChrome();
+    }
+
+    private void OnDeleteFrameClicked(object? sender, RoutedEventArgs e)
+    {
+        _frames?.DeleteSelected();
+        UpdateEditChrome();
+    }
+
+    private void OnToggleWrapClicked(object? sender, RoutedEventArgs e)
+    {
+        _frames?.ToggleWrap();
+        UpdateEditChrome();
+    }
+
+    private void OnBringForwardClicked(object? sender, RoutedEventArgs e) => Restack(f => f.BringForward());
+
+    private void OnSendBackwardClicked(object? sender, RoutedEventArgs e) => Restack(f => f.SendBackward());
+
+    private void OnBringToFrontClicked(object? sender, RoutedEventArgs e) => Restack(f => f.BringToFront());
+
+    private void OnSendToBackClicked(object? sender, RoutedEventArgs e) => Restack(f => f.SendToBack());
+
+    private void Restack(Func<FrameEditorController, bool> action)
+    {
+        if (_frames is not null)
+        {
+            action(_frames);
+            UpdateEditChrome();
+        }
+    }
+
+    private void OnLinkFramesClicked(object? sender, RoutedEventArgs e)
+    {
+        _frames?.BeginLink();
+        PageCanvas.Focus();
+        UpdateEditChrome();
+    }
+
+    private void OnUnlinkFramesClicked(object? sender, RoutedEventArgs e)
+    {
+        _frames?.Unlink();
+        UpdateEditChrome();
+    }
+
     // ---- Navigation / zoom ------------------------------------------------------------------
 
     private void OnNextPageClicked(object? sender, RoutedEventArgs e) => GoToPage(_pageIndex + 1);
@@ -274,6 +330,30 @@ public partial class MainWindow : Window
                 ApplyFitZoom();
                 e.Handled = true;
                 break;
+            case Key.T when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
+                OnAddTextFrameClicked(sender, e);
+                e.Handled = true;
+                break;
+            case Key.W when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
+                OnToggleWrapClicked(sender, e);
+                e.Handled = true;
+                break;
+            case Key.L when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
+                OnLinkFramesClicked(sender, e);
+                e.Handled = true;
+                break;
+            case Key.K when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
+                OnUnlinkFramesClicked(sender, e);
+                e.Handled = true;
+                break;
+            case Key.OemCloseBrackets when ctrl:
+                Restack(f => e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? f.BringToFront() : f.BringForward());
+                e.Handled = true;
+                break;
+            case Key.OemOpenBrackets when ctrl:
+                Restack(f => e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? f.SendToBack() : f.SendBackward());
+                e.Handled = true;
+                break;
             case Key.O when ctrl:
                 OnOpenClicked(sender, e);
                 e.Handled = true;
@@ -293,20 +373,24 @@ public partial class MainWindow : Window
         DocumentRenderSource source = DocumentRenderSource.CreateEditable(
             package.Document, package.Assets, _fonts, session);
         var editor = new TextEditorController(session, source, new AvaloniaTextClipboard(this));
+        var frames = new FrameEditorController(session, source);
 
         _source?.Dispose();
         _source = source;
         _session = session;
         _editor = editor;
+        _frames = frames;
         _package = package;
         _pageIndex = 0;
         PageCanvas.Source = source;
         PageCanvas.Editor = editor;
+        PageCanvas.FrameEditor = frames;
         PageCanvas.PageIndex = 0;
         Title = $"TrestleBoard — {package.Document.Metadata.Title}";
 
         session.Changed += (_, _) => UpdateEditChrome();
         editor.Changed += (_, _) => UpdateEditChrome();
+        frames.Changed += (_, _) => UpdateEditChrome();
         editor.RevealRequested += OnCaretReveal;
 
         bool hasDoc = source.PageCount > 0;
@@ -347,6 +431,9 @@ public partial class MainWindow : Window
 
         _pageIndex = index;
         PageCanvas.PageIndex = index;
+        // Selection is per page; carrying it to another page would make the Object menu act on
+        // something the user cannot see.
+        _frames?.ClearSelection();
         if (_fitToWindow)
         {
             ApplyFitZoom();
@@ -432,6 +519,36 @@ public partial class MainWindow : Window
         ParagraphStyleCombo.IsEnabled = editing;
         BoldButton.IsChecked = editing && _editor!.IsBoldActive;
         ItalicButton.IsChecked = editing && _editor!.IsItalicActive;
+
+        UpdateFrameChrome();
+    }
+
+    private void UpdateFrameChrome()
+    {
+        bool hasDocument = _source is { PageCount: > 0 };
+        bool hasFrame = _frames is { HasSelection: true };
+        bool isTextFrame = hasFrame
+            && _source is not null
+            && _source.IsTextBlock(_frames!.SelectedBlockId!);
+
+        AddTextFrameMenuItem.IsEnabled = hasDocument;
+        AddTextFrameButton.IsEnabled = hasDocument;
+        DeleteFrameMenuItem.IsEnabled = hasFrame;
+        WrapMenuItem.IsEnabled = hasFrame;
+        WrapButton.IsEnabled = hasFrame;
+        BringForwardMenuItem.IsEnabled = hasFrame;
+        SendBackwardMenuItem.IsEnabled = hasFrame;
+        BringToFrontMenuItem.IsEnabled = hasFrame;
+        SendToBackMenuItem.IsEnabled = hasFrame;
+        BringForwardButton.IsEnabled = hasFrame;
+        SendBackwardButton.IsEnabled = hasFrame;
+        LinkFramesMenuItem.IsEnabled = isTextFrame;
+        UnlinkFramesMenuItem.IsEnabled = isTextFrame;
+
+        StatusLabel.Text = _frames?.StatusMessage
+            ?? (_source is { IsOverset: true }
+                ? "Some text does not fit in its frame. Select that frame to see what to do."
+                : "");
     }
 
     private async Task ShowErrorAsync(string title, string message)
