@@ -13,6 +13,11 @@
     <PackageReference Include="Avalonia.Fonts.Inter" />
     <PackageReference Include="Avalonia.Diagnostics" Condition="'$(Configuration)' == 'Debug'" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <!-- Direct refs override Avalonia.Skia's transitive 2.88/7.x Linux natives, keeping the
+         native libraries in lockstep with the managed SkiaSharp 3.119.4 / HarfBuzzSharp 8.3.1.5
+         pins. Without these, ubuntu loads libSkiaSharp 88.1 and every Skia call throws. -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
   </ItemGroup>
 
   <ItemGroup>

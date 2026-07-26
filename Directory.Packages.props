@@ -24,6 +24,9 @@
   <ItemGroup>
     <PackageVersion Include="SkiaSharp" Version="3.119.4" />
     <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.4" />
+    <!-- Avalonia.Skia transitively requests the 2.88 Linux natives; a direct reference in App
+         forces 3.119.4 so the managed/native pair matches (M3 ubuntu CI finding). -->
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux" Version="3.119.4" />
     <PackageVersion Include="HarfBuzzSharp" Version="8.3.1.5" />
     <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="8.3.1.5" />
   </ItemGroup>
