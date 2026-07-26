@@ -1,0 +1,30 @@
+# ── Privacy (PLAN.md §0 — HARD RULE) ─────────────────────────────
+# Real lodge data (names, phones, emails) must never reach git history.
+Examples/
+wiki/
+raw/
+graphify-out/
+
+# ── Build output ─────────────────────────────────────────────────
+bin/
+obj/
+artifacts/
+publish/
+*.binlog
+
+# ── IDE ──────────────────────────────────────────────────────────
+.idea/
+.vs/
+.vscode/
+*.user
+*.suo
+
+# ── Test / tooling output ────────────────────────────────────────
+TestResults/
+coverage/
+*.received.png
+*.actual.png
+
+# ── OS noise ─────────────────────────────────────────────────────
+Thumbs.db
+.DS_Store
