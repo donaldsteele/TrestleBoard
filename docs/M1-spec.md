@@ -419,6 +419,17 @@ Goal: **byte-identical rendered pixels across the 3-OS CI matrix**, reconciled w
 
 **Tolerance policy:** compare **decoded pixel buffers**, not PNG file bytes (encoders may differ in chunks/metadata). Default gate = strict `0/0` (true pixel identity). The comparer reports `maxAbsChannelDiff`/`diffPixelCount` and accepts optional tolerances as a documented-fallback mechanism only; on failure it writes actual/expected/diff PNGs for CI artifact upload.
 
+**Empirical amendment (M1 CI, 2026-07-26):** cross-OS byte-identity of rendered pixels is
+**not achievable** with SkiaSharp text blobs: Skia rasterizes glyphs through the platform
+scaler backend (DirectWrite on Windows, CoreText on macOS, FreeType on Linux), so antialiased
+glyph coverage differs on ~1–6% of pixels (max channel diff ≤139) even with identical font
+bytes, layout, and surface settings. Layout itself IS cross-OS deterministic — all golden
+LineBox tests pass identically on the 3-OS matrix. Resolution: **per-OS baselines**
+(`Baselines/windows|linux|macos/`), each gated strictly at 0 differing pixels; the
+determinism proof is per-OS pixel identity + cross-OS golden-test identity. The PDF parity
+test compares 4×-box-downsampled images (AA noise averages out; measured correct-render max
+block diff ≈35, gate at 64 with ≤0.2% blocks over) because poppler's rasterizer is not Skia's.
+
 ---
 
 ## 6. Test plan

@@ -32,12 +32,17 @@ public sealed class PdfParityTests
         Run("pdftoppm", $"-r 72 -png -f 1 -l 1 -singlefile \"{pdfPath}\" \"{Path.Combine(dir, "page")}\"");
         byte[] pdfPng = File.ReadAllBytes(Path.Combine(dir, "page.png"));
 
-        SnapshotInfra.ComparisonResult diff = SnapshotInfra.ComparePixels(pdfPng, screenPng);
-        double fraction = (double)diff.DiffPixelCount / diff.TotalPixels;
+        // Poppler's rasterizer is not Skia's: per-pixel glyph antialiasing differs on ~6% of
+        // pixels even when layout is identical (measured at M1). Box-downsampling 4x averages
+        // the AA noise away — measured max block diff for a correct render is ~35, while a
+        // layout shift moves whole glyph rows across blocks and trips hundreds of them.
+        SnapshotInfra.BlockComparisonResult diff =
+            SnapshotInfra.CompareDownsampled(pdfPng, screenPng, factor: 4, channelThreshold: 64);
+        double fraction = (double)diff.BlocksOverThreshold / diff.TotalBlocks;
         Assert.True(
-            diff.MaxChannelDiff <= 96 && fraction <= 0.02,
-            $"PDF render diverges from screen render: {diff.DiffPixelCount}/{diff.TotalPixels} pixels "
-            + $"({fraction:P2}), max channel diff {diff.MaxChannelDiff}");
+            fraction <= 0.002,
+            $"PDF render diverges from screen render: {diff.BlocksOverThreshold}/{diff.TotalBlocks} "
+            + $"downsampled blocks over threshold ({fraction:P2}), max block diff {diff.MaxBlockDiff:F1}");
     }
 
     [Fact]

@@ -78,6 +78,12 @@ internal static class SnapshotInfra
     public static byte[] RenderFixturePng(LayoutResult result) =>
         PngRenderer.RenderToPng(result, PageWidthPt, PageHeightPt, scale: 1f);
 
+    /// <summary>
+    /// Baselines are PER-OS (windows/linux/macos): Skia rasterizes glyphs through the platform
+    /// scaler backend (DirectWrite / FreeType / CoreText), so antialiased glyph coverage differs
+    /// slightly per OS even with identical font bytes and layout. Cross-OS LAYOUT determinism is
+    /// proven by the golden LineBox tests; within each OS the pixel gate stays strict (0 diff).
+    /// </summary>
     public static string BaselineDir
     {
         get
@@ -93,7 +99,11 @@ internal static class SnapshotInfra
                 throw new InvalidOperationException("Could not locate the repository root from " + AppContext.BaseDirectory);
             }
 
-            return Path.Combine(dir.FullName, "tests", "Rendering.SnapshotTests", "Baselines");
+            string os = OperatingSystem.IsWindows() ? "windows"
+                : OperatingSystem.IsMacOS() ? "macos"
+                : OperatingSystem.IsLinux() ? "linux"
+                : throw new PlatformNotSupportedException("No snapshot baselines for this OS.");
+            return Path.Combine(dir.FullName, "tests", "Rendering.SnapshotTests", "Baselines", os);
         }
     }
 
@@ -133,6 +143,62 @@ internal static class SnapshotInfra
         }
 
         return new ComparisonResult(diffPixels, maxChannel, actual.Width * actual.Height);
+    }
+
+    public sealed record BlockComparisonResult(int BlocksOverThreshold, int TotalBlocks, double MaxBlockDiff);
+
+    /// <summary>
+    /// Compares after box-downsampling both images by <paramref name="factor"/>. Averaging
+    /// washes out antialiasing differences between rasterizers (Skia vs poppler) while a real
+    /// layout shift — a glyph or line in the wrong place — survives and trips many blocks.
+    /// </summary>
+    public static BlockComparisonResult CompareDownsampled(byte[] actualPng, byte[] expectedPng, int factor, int channelThreshold)
+    {
+        using SKBitmap actual = SKBitmap.Decode(actualPng) ?? throw new InvalidOperationException("actual PNG failed to decode");
+        using SKBitmap expected = SKBitmap.Decode(expectedPng) ?? throw new InvalidOperationException("expected PNG failed to decode");
+        if (actual.Width != expected.Width || actual.Height != expected.Height)
+        {
+            throw new InvalidOperationException(
+                $"Size mismatch: actual {actual.Width}x{actual.Height} vs expected {expected.Width}x{expected.Height}");
+        }
+
+        int blocksX = actual.Width / factor;
+        int blocksY = actual.Height / factor;
+        int over = 0;
+        double maxDiff = 0;
+        for (int by = 0; by < blocksY; by++)
+        {
+            for (int bx = 0; bx < blocksX; bx++)
+            {
+                double sumAr = 0, sumAg = 0, sumAb = 0, sumEr = 0, sumEg = 0, sumEb = 0;
+                for (int y = 0; y < factor; y++)
+                {
+                    for (int x = 0; x < factor; x++)
+                    {
+                        SKColor a = actual.GetPixel(bx * factor + x, by * factor + y);
+                        SKColor e = expected.GetPixel(bx * factor + x, by * factor + y);
+                        sumAr += a.Red;
+                        sumAg += a.Green;
+                        sumAb += a.Blue;
+                        sumEr += e.Red;
+                        sumEg += e.Green;
+                        sumEb += e.Blue;
+                    }
+                }
+
+                double n = factor * factor;
+                double d = Math.Max(
+                    Math.Abs(sumAr - sumEr) / n,
+                    Math.Max(Math.Abs(sumAg - sumEg) / n, Math.Abs(sumAb - sumEb) / n));
+                maxDiff = Math.Max(maxDiff, d);
+                if (d > channelThreshold)
+                {
+                    over++;
+                }
+            }
+        }
+
+        return new BlockComparisonResult(over, blocksX * blocksY, maxDiff);
     }
 
     /// <summary>Writes the failing actual image where CI's snapshot-diff artifact glob finds it.</summary>
