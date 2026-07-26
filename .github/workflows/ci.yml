@@ -21,6 +21,10 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Install poppler-utils (PDF parity test)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
       - name: Restore
         run: dotnet restore TrestleBoard.slnx
 

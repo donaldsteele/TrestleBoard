@@ -16,6 +16,17 @@
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
 
+  <!-- Pinned at M1. SkiaSharp stays on the 3.x line (4.x exists but is untested against the
+       Avalonia 11.3.x lock); HarfBuzzSharp 8.3.1.5 is the exact pair SkiaSharp.HarfBuzz 3.119.4
+       depends on. NativeAssets packages are required for the ubuntu CI leg; the NoDependencies
+       Skia variant avoids the fontconfig chain — we never touch system fonts. -->
+  <ItemGroup>
+    <PackageVersion Include="SkiaSharp" Version="3.119.4" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.4" />
+    <PackageVersion Include="HarfBuzzSharp" Version="8.3.1.5" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="8.3.1.5" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />

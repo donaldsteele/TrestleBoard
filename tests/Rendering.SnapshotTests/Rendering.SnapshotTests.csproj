@@ -11,5 +11,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\TrestleBoard.Rendering\TrestleBoard.Rendering.csproj" />
+    <ProjectReference Include="..\..\src\TrestleBoard.Export.Pdf\TrestleBoard.Export.Pdf.csproj" />
   </ItemGroup>
 </Project>

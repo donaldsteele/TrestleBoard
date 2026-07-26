@@ -1,7 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Shaping, line breaking, exclusion segments, pagination → LayoutResult.
-       SkiaSharp/HarfBuzzSharp references land in the M1 spike. -->
+       Owns the bundled font store: the OFL font bytes are embedded here (not in Rendering)
+       because shaping needs them and Rendering references Layout — see docs/M1-spec.md §0. -->
   <ItemGroup>
     <ProjectReference Include="..\TrestleBoard.Core\TrestleBoard.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="HarfBuzzSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\assets-src\fonts\source-serif-4\SourceSerif4-Regular.ttf" Link="Assets\Fonts\SourceSerif4-Regular.ttf" LogicalName="TrestleBoard.Layout.Fonts.SourceSerif4-Regular.ttf" />
+    <EmbeddedResource Include="..\..\assets-src\fonts\source-serif-4\SourceSerif4-Bold.ttf" Link="Assets\Fonts\SourceSerif4-Bold.ttf" LogicalName="TrestleBoard.Layout.Fonts.SourceSerif4-Bold.ttf" />
+    <EmbeddedResource Include="..\..\assets-src\fonts\source-serif-4\SourceSerif4-It.ttf" Link="Assets\Fonts\SourceSerif4-It.ttf" LogicalName="TrestleBoard.Layout.Fonts.SourceSerif4-It.ttf" />
+    <EmbeddedResource Include="..\..\assets-src\fonts\source-serif-4\SourceSerif4-BoldIt.ttf" Link="Assets\Fonts\SourceSerif4-BoldIt.ttf" LogicalName="TrestleBoard.Layout.Fonts.SourceSerif4-BoldIt.ttf" />
+    <EmbeddedResource Include="..\..\assets-src\fonts\source-sans-3\SourceSans3-Regular.ttf" Link="Assets\Fonts\SourceSans3-Regular.ttf" LogicalName="TrestleBoard.Layout.Fonts.SourceSans3-Regular.ttf" />
+    <EmbeddedResource Include="..\..\assets-src\fonts\source-sans-3\SourceSans3-Bold.ttf" Link="Assets\Fonts\SourceSans3-Bold.ttf" LogicalName="TrestleBoard.Layout.Fonts.SourceSans3-Bold.ttf" />
+    <EmbeddedResource Include="..\..\assets-src\fonts\cinzel\Cinzel-Regular.ttf" Link="Assets\Fonts\Cinzel-Regular.ttf" LogicalName="TrestleBoard.Layout.Fonts.Cinzel-Regular.ttf" />
   </ItemGroup>
 </Project>
