@@ -31,6 +31,7 @@ public sealed class PositionedGlyphRun
         IReadOnlyList<ushort> glyphs,
         IReadOnlyList<SKPoint> glyphOffsets,
         IReadOnlyList<int> clusters,
+        IReadOnlyList<float> glyphPenXPt,
         SourceSpan source,
         float advanceWidthPt)
     {
@@ -42,6 +43,7 @@ public sealed class PositionedGlyphRun
         Glyphs = glyphs;
         GlyphOffsets = glyphOffsets;
         Clusters = clusters;
+        GlyphPenXPt = glyphPenXPt;
         Source = source;
         AdvanceWidthPt = advanceWidthPt;
     }
@@ -61,6 +63,10 @@ public sealed class PositionedGlyphRun
     public IReadOnlyList<SKPoint> GlyphOffsets { get; }
 
     public IReadOnlyList<int> Clusters { get; }
+
+    /// <summary>Pen x of each glyph relative to OriginX, ascending; excludes XOffsetPt.
+    /// The caret/hit-test x-grid (docs/M4-spec.md §1.2).</summary>
+    public IReadOnlyList<float> GlyphPenXPt { get; }
 
     public SourceSpan Source { get; }
 

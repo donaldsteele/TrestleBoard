@@ -104,6 +104,126 @@ public static class StoryText
         throw new ArgumentOutOfRangeException(nameof(offset), $"Offset {offset} outside paragraph of length {consumed}.");
     }
 
+    /// <summary>
+    /// Splits at a paragraph-relative offset into (head, tail). Run styles are preserved on
+    /// both sides; both halves are canonical. The input paragraph is not mutated.
+    /// </summary>
+    public static (StoryParagraph Head, StoryParagraph Tail) SplitAt(StoryParagraph paragraph, int offset)
+    {
+        ArgumentNullException.ThrowIfNull(paragraph);
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(offset, paragraph.Length);
+
+        StoryParagraph head = paragraph.Clone();
+        head.Runs.Clear();
+        StoryParagraph tail = paragraph.Clone();
+        tail.Runs.Clear();
+
+        int consumed = 0;
+        foreach (StoryRun run in paragraph.Runs)
+        {
+            int runStart = consumed;
+            int runEnd = consumed + run.Text.Length;
+            if (runEnd <= offset)
+            {
+                head.Runs.Add(run.Clone());
+            }
+            else if (runStart >= offset)
+            {
+                tail.Runs.Add(run.Clone());
+            }
+            else
+            {
+                StoryRun left = run.Clone();
+                left.Text = run.Text[..(offset - runStart)];
+                head.Runs.Add(left);
+                StoryRun right = run.Clone();
+                right.Text = run.Text[(offset - runStart)..];
+                tail.Runs.Add(right);
+            }
+
+            consumed = runEnd;
+        }
+
+        return (head, tail);
+    }
+
+    /// <summary>Restores the canonical form: drops empty runs, merges same-style neighbours.</summary>
+    public static void Canonicalize(StoryParagraph paragraph)
+    {
+        ArgumentNullException.ThrowIfNull(paragraph);
+        paragraph.Runs.RemoveAll(r => r.Text.Length == 0);
+        MergeAdjacent(paragraph, 1);
+    }
+
+    /// <summary>
+    /// Ensures a run boundary exists exactly at <paramref name="offset"/> and returns the index
+    /// of the run starting there (Runs.Count when offset == paragraph length).
+    /// </summary>
+    public static int SplitRunAt(StoryParagraph paragraph, int offset)
+    {
+        ArgumentNullException.ThrowIfNull(paragraph);
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(offset, paragraph.Length);
+        if (offset == paragraph.Length)
+        {
+            return paragraph.Runs.Count;
+        }
+
+        (int runIndex, int local) = Locate(paragraph, offset, preferRight: true);
+        if (local == 0)
+        {
+            return runIndex;
+        }
+
+        StoryRun run = paragraph.Runs[runIndex];
+        StoryRun right = run.Clone();
+        right.Text = run.Text[local..];
+        run.Text = run.Text[..local];
+        paragraph.Runs.Insert(runIndex + 1, right);
+        return runIndex + 1;
+    }
+
+    /// <summary>
+    /// Applies (or clears, with null) a named character style over [offset, offset+length):
+    /// split runs at both boundaries, assign, re-canonicalize (docs/M4-spec.md §5.2).
+    /// </summary>
+    public static void SetCharacterStyle(StoryParagraph paragraph, int offset, int length, string? styleRef)
+    {
+        ArgumentNullException.ThrowIfNull(paragraph);
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        ArgumentOutOfRangeException.ThrowIfNegative(length);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(offset + length, paragraph.Length);
+        if (length == 0)
+        {
+            return;
+        }
+
+        int first = SplitRunAt(paragraph, offset);
+        int afterLast = SplitRunAt(paragraph, offset + length);
+        for (int i = first; i < afterLast; i++)
+        {
+            paragraph.Runs[i].CharacterStyleRef = styleRef;
+        }
+
+        Canonicalize(paragraph);
+    }
+
+    /// <summary>Effective style ref at an offset (left-neighbour rule, as Insert uses).
+    /// Null = paragraph default.</summary>
+    public static string? StyleRefAt(StoryParagraph paragraph, int offset)
+    {
+        ArgumentNullException.ThrowIfNull(paragraph);
+        if (paragraph.Runs.Count == 0)
+        {
+            return null;
+        }
+
+        offset = Math.Clamp(offset, 0, paragraph.Length);
+        (int runIndex, _) = Locate(paragraph, offset);
+        return paragraph.Runs[runIndex].CharacterStyleRef;
+    }
+
     private static void MergeAdjacent(StoryParagraph paragraph, int startIndex)
     {
         for (int i = Math.Max(1, startIndex); i < paragraph.Runs.Count;)

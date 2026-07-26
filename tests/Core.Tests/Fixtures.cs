@@ -52,6 +52,12 @@ internal static class Fixtures
             CharacterStyleRef = "body",
             LineSpacing = 1.2f,
         });
+        doc.StyleSheet.ParagraphStyles.Add(new ParagraphStyleDef
+        {
+            Name = "body-tight",
+            CharacterStyleRef = "body",
+            LineSpacing = 1.0f,
+        });
         doc.StyleSheet.FrameStyles.Add(new FrameStyleDef { Name = "plain", StrokeArgb = 0xFF000000, StrokeWidthPt = 0.5f });
         doc.StyleSheet.TableStyles.Add(new TableStyleDef { Name = "roster" });
 

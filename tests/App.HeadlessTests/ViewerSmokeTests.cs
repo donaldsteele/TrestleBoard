@@ -5,18 +5,9 @@ using Xunit;
 
 namespace TrestleBoard.App.HeadlessTests;
 
-/// <summary>Headless AppBuilder: no compositor drawing (the snapshot suite proves pixels);
-/// these tests exercise the viewer's open/navigate/zoom state machine.</summary>
-public static class TestAppBuilder
-{
-    public static AppBuilder BuildAvaloniaApp() =>
-        AppBuilder.Configure<App>()
-            .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = true });
-}
-
 public sealed class ViewerSmokeTests
 {
-    private static HeadlessUnitTestSession Session { get; } = HeadlessUnitTestSession.StartNew(typeof(TestAppBuilder));
+    private static HeadlessUnitTestSession Session => HeadlessSession.Instance;
 
     [Fact]
     public async Task OpenSampleShowsPageOneOfTwo()

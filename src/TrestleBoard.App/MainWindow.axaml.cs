@@ -3,8 +3,10 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using TrestleBoard.App.Canvas;
+using TrestleBoard.Core.Commands;
 using TrestleBoard.Core.Container;
 using TrestleBoard.Core.Samples;
+using TrestleBoard.Editing;
 using TrestleBoard.Export.Pdf;
 using TrestleBoard.Layout.Fonts;
 using TrestleBoard.Rendering;
@@ -12,8 +14,9 @@ using TrestleBoard.Rendering;
 namespace TrestleBoard.App;
 
 /// <summary>
-/// M3 read-only viewer shell: open a .tboard (or the built-in sample), page through it,
-/// zoom/fit, export the PDF. Every mouse action has a keyboard path (PLAN.md §6).
+/// M3 viewer shell + M4 text editing: open a .tboard (or the built-in sample), click into a
+/// text frame, type with full undo/redo, page through, zoom/fit, export the PDF. Every mouse
+/// action has a keyboard path (PLAN.md §6).
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -22,6 +25,8 @@ public partial class MainWindow : Window
     private readonly FontStore _fonts = BundledFonts.CreateDefaultStore();
     private TboardPackage? _package;
     private DocumentRenderSource? _source;
+    private DocumentSession? _session;
+    private TextEditorController? _editor;
     private int _pageIndex;
     private bool _fitToWindow = true;
 
@@ -75,6 +80,12 @@ public partial class MainWindow : Window
 
     internal string? ZoomLabelTextForTest => ZoomLabel.Text;
 
+    internal TextEditorController? EditorForTest => _editor;
+
+    internal DocumentSession? SessionForTest => _session;
+
+    internal PageCanvasControl CanvasForTest => PageCanvas;
+
     internal void GoToNextPageForTest() => GoToPage(_pageIndex + 1);
 
     private async void OnExportPdfClicked(object? sender, RoutedEventArgs e)
@@ -116,6 +127,61 @@ public partial class MainWindow : Window
 
     private void OnExitClicked(object? sender, RoutedEventArgs e) => Close();
 
+    // ---- Edit / Format ----------------------------------------------------------------------
+
+    private void OnUndoClicked(object? sender, RoutedEventArgs e) => _session?.Undo();
+
+    private void OnRedoClicked(object? sender, RoutedEventArgs e) => _session?.Redo();
+
+    private async void OnCutClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_editor is not null)
+        {
+            await _editor.CutAsync();
+        }
+    }
+
+    private async void OnCopyClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_editor is not null)
+        {
+            await _editor.CopyAsync();
+        }
+    }
+
+    private async void OnPasteClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_editor is not null)
+        {
+            await _editor.PasteAsync();
+        }
+    }
+
+    private void OnSelectAllClicked(object? sender, RoutedEventArgs e) => _editor?.SelectAll();
+
+    private void OnBoldClicked(object? sender, RoutedEventArgs e)
+    {
+        _editor?.ToggleBold();
+        UpdateEditChrome();
+    }
+
+    private void OnItalicClicked(object? sender, RoutedEventArgs e)
+    {
+        _editor?.ToggleItalic();
+        UpdateEditChrome();
+    }
+
+    private void OnParagraphStyleChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_editor is { IsActive: true } && ParagraphStyleCombo.SelectedItem is string styleRef)
+        {
+            _editor.ApplyParagraphStyle(styleRef);
+            UpdateEditChrome();
+        }
+    }
+
+    // ---- Navigation / zoom ------------------------------------------------------------------
+
     private void OnNextPageClicked(object? sender, RoutedEventArgs e) => GoToPage(_pageIndex + 1);
 
     private void OnPreviousPageClicked(object? sender, RoutedEventArgs e) => GoToPage(_pageIndex - 1);
@@ -138,67 +204,138 @@ public partial class MainWindow : Window
         {
             ApplyFitZoom();
         }
+
+        if (_editor is not null)
+        {
+            _editor.ViewportHeightPt = (float)(CanvasScroller.Bounds.Height / Math.Max(PageCanvas.Zoom, 0.1));
+        }
     }
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
+        bool ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        bool editing = _editor is { IsActive: true };
         switch (e.Key)
         {
-            case Key.PageDown:
+            // Bare PageUp/Down belongs to the caret while editing; page navigation keeps the
+            // bare gesture only when no session is active (docs/M4-spec.md §4.3).
+            case Key.PageDown when ctrl || !editing:
                 GoToPage(_pageIndex + 1);
                 e.Handled = true;
                 break;
-            case Key.PageUp:
+            case Key.PageUp when ctrl || !editing:
                 GoToPage(_pageIndex - 1);
                 e.Handled = true;
                 break;
-            case Key.OemPlus when e.KeyModifiers.HasFlag(KeyModifiers.Control):
+            case Key.Z when ctrl:
+                _session?.Undo();
+                e.Handled = true;
+                break;
+            case Key.Y when ctrl:
+                _session?.Redo();
+                e.Handled = true;
+                break;
+            case Key.B when ctrl && editing:
+                _editor!.ToggleBold();
+                UpdateEditChrome();
+                e.Handled = true;
+                break;
+            case Key.I when ctrl && editing:
+                _editor!.ToggleItalic();
+                UpdateEditChrome();
+                e.Handled = true;
+                break;
+            case Key.X when ctrl && editing:
+                OnCutClicked(sender, e);
+                e.Handled = true;
+                break;
+            case Key.C when ctrl && editing:
+                OnCopyClicked(sender, e);
+                e.Handled = true;
+                break;
+            case Key.V when ctrl && editing:
+                OnPasteClicked(sender, e);
+                e.Handled = true;
+                break;
+            case Key.OemPlus when ctrl:
                 StepZoom(+1);
                 e.Handled = true;
                 break;
-            case Key.OemMinus when e.KeyModifiers.HasFlag(KeyModifiers.Control):
+            case Key.OemMinus when ctrl:
                 StepZoom(-1);
                 e.Handled = true;
                 break;
-            case Key.D0 when e.KeyModifiers.HasFlag(KeyModifiers.Control):
+            case Key.D0 when ctrl:
                 SetZoom(1d, fit: false);
                 e.Handled = true;
                 break;
-            case Key.D1 when e.KeyModifiers.HasFlag(KeyModifiers.Control):
+            case Key.D1 when ctrl:
                 _fitToWindow = true;
                 ApplyFitZoom();
                 e.Handled = true;
                 break;
-            case Key.O when e.KeyModifiers.HasFlag(KeyModifiers.Control):
+            case Key.O when ctrl:
                 OnOpenClicked(sender, e);
                 e.Handled = true;
                 break;
-            case Key.E when e.KeyModifiers.HasFlag(KeyModifiers.Control):
+            case Key.E when ctrl:
                 OnExportPdfClicked(sender, e);
                 e.Handled = true;
                 break;
         }
     }
 
+    // ---- Document lifecycle -----------------------------------------------------------------
+
     private void ShowPackage(TboardPackage package)
     {
-        DocumentRenderSource source = DocumentRenderSource.Create(package.Document, package.Assets, _fonts);
+        var session = new DocumentSession(package.Document);
+        DocumentRenderSource source = DocumentRenderSource.CreateEditable(
+            package.Document, package.Assets, _fonts, session);
+        var editor = new TextEditorController(session, source, new AvaloniaTextClipboard(this));
+
         _source?.Dispose();
         _source = source;
+        _session = session;
+        _editor = editor;
         _package = package;
         _pageIndex = 0;
         PageCanvas.Source = source;
+        PageCanvas.Editor = editor;
         PageCanvas.PageIndex = 0;
         Title = $"TrestleBoard — {package.Document.Metadata.Title}";
+
+        session.Changed += (_, _) => UpdateEditChrome();
+        editor.Changed += (_, _) => UpdateEditChrome();
+        editor.RevealRequested += OnCaretReveal;
 
         bool hasDoc = source.PageCount > 0;
         ExportPdfMenuItem.IsEnabled = hasDoc;
         ZoomInButton.IsEnabled = hasDoc;
         ZoomOutButton.IsEnabled = hasDoc;
         FitButton.IsEnabled = hasDoc;
+        ParagraphStyleCombo.ItemsSource = editor.AvailableParagraphStyles;
         _fitToWindow = true;
         ApplyFitZoom();
         UpdatePageChrome();
+        UpdateEditChrome();
+    }
+
+    private void OnCaretReveal(object? sender, CaretRevealEventArgs e)
+    {
+        if (e.PageIndex != _pageIndex)
+        {
+            GoToPage(e.PageIndex);
+        }
+
+        // Scroll the caret rect (page points → control pixels) into the viewport.
+        double zoom = PageCanvas.Zoom;
+        var target = new Avalonia.Rect(
+            (e.LeftPt * zoom) + 24 - 40,
+            (e.TopPt * zoom) + 24 - 40,
+            ((e.RightPt - e.LeftPt) * zoom) + 80,
+            ((e.BottomPt - e.TopPt) * zoom) + 80);
+        PageCanvas.BringIntoView(target);
     }
 
     private void GoToPage(int index)
@@ -268,6 +405,33 @@ public partial class MainWindow : Window
         PageLabel.Text = $"Page {_pageIndex + 1} of {_source.PageCount}";
         PrevPageButton.IsEnabled = _pageIndex > 0;
         NextPageButton.IsEnabled = _pageIndex < _source.PageCount - 1;
+    }
+
+    private void UpdateEditChrome()
+    {
+        bool canUndo = _session?.CanUndo == true;
+        bool canRedo = _session?.CanRedo == true;
+        UndoMenuItem.IsEnabled = canUndo;
+        RedoMenuItem.IsEnabled = canRedo;
+        UndoButton.IsEnabled = canUndo;
+        RedoButton.IsEnabled = canRedo;
+        // Plain-language labels straight from the command descriptions (PLAN.md §4).
+        UndoMenuItem.Header = canUndo ? $"_Undo {_session!.UndoDescription}" : "_Undo";
+        RedoMenuItem.Header = canRedo ? $"_Redo {_session!.RedoDescription}" : "_Redo";
+
+        bool editing = _editor is { IsActive: true };
+        bool hasSelection = editing && !_editor!.Selection.IsEmpty;
+        CutMenuItem.IsEnabled = hasSelection;
+        CopyMenuItem.IsEnabled = hasSelection;
+        PasteMenuItem.IsEnabled = editing;
+        SelectAllMenuItem.IsEnabled = editing;
+        BoldMenuItem.IsEnabled = editing;
+        ItalicMenuItem.IsEnabled = editing;
+        BoldButton.IsEnabled = editing;
+        ItalicButton.IsEnabled = editing;
+        ParagraphStyleCombo.IsEnabled = editing;
+        BoldButton.IsChecked = editing && _editor!.IsBoldActive;
+        ItalicButton.IsChecked = editing && _editor!.IsItalicActive;
     }
 
     private async Task ShowErrorAsync(string title, string message)

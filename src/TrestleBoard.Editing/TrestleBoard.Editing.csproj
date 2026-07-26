@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The editing brain (docs/M4-spec.md §0.2): TextEditorController + clipboard seam.
+       Headless-testable by construction — no Avalonia, no Skia in the public surface. -->
+  <ItemGroup>
+    <ProjectReference Include="..\TrestleBoard.Core\TrestleBoard.Core.csproj" />
+    <ProjectReference Include="..\TrestleBoard.Layout\TrestleBoard.Layout.csproj" />
+    <ProjectReference Include="..\TrestleBoard.Rendering\TrestleBoard.Rendering.csproj" />
+  </ItemGroup>
+</Project>

@@ -67,13 +67,46 @@ public sealed class TextLayoutEngine
 
                 if (para.Words.Count == 0)
                 {
-                    // Empty paragraph: consume one line slot of vertical space, no LineBox.
-                    if (y + para.LineHeight > frame.Rect.Bottom + Epsilon)
+                    // Empty paragraph: one line slot with an EMPTY LineSegment so the caret has
+                    // geometry and a hit-test target (docs/M4-spec.md §1.1). Band/segment math is
+                    // the same as a normal line, so an empty paragraph beside a photo still
+                    // reports the narrowed interval.
+                    float emptyMinWidth = _options.MinSegmentAvgCharMultiple
+                        * GetMetrics(ToKey(para.Style.DefaultRun), para.Style.DefaultRun.SizePt).AverageCharWidthPt;
+                    var emptySegments = new List<FloatInterval>();
+                    while (true)
                     {
-                        frameFull = true;
+                        if (y + para.LineHeight > frame.Rect.Bottom + Epsilon)
+                        {
+                            frameFull = true;
+                            break;
+                        }
+
+                        emptySegments = ComputeSegments(frame, y, y + para.LineHeight, emptyMinWidth);
+                        if (emptySegments.Count > 0)
+                        {
+                            break;
+                        }
+
+                        y += para.LineHeight;
+                    }
+
+                    if (frameFull)
+                    {
                         break;
                     }
 
+                    lines.Add(new LineBox(
+                        paraIdx,
+                        isParagraphStart: true,
+                        baselineY: y + para.MaxAscentPt,
+                        bandTop: y,
+                        bandBottom: y + para.LineHeight,
+                        lineHeight: para.LineHeight,
+                        maxAscentPt: para.MaxAscentPt,
+                        maxDescentPt: para.MaxDescentPt,
+                        segments: [new LineSegment(emptySegments[0], para.Style.Align, [])],
+                        source: new SourceSpan(para.StoryId, paraIdx, 0, 0)));
                     y += para.LineHeight + para.Style.SpaceAfterPt;
                     paraIdx++;
                     wordIdx = 0;
@@ -428,6 +461,7 @@ public sealed class TextLayoutEngine
         var glyphIds = new List<ushort>();
         var offsets = new List<SKPoint>();
         var clusters = new List<int>();
+        var penXs = new List<float>();
         float originX = 0f;
         float advance = 0f;
 
@@ -447,11 +481,13 @@ public sealed class TextLayoutEngine
                 glyphIds.ToArray(),
                 offsets.ToArray(),
                 clusters.ToArray(),
+                penXs.ToArray(),
                 new SourceSpan(para.StoryId, paragraphIndex, clusters[0], clusters[^1] + 1),
                 advance));
             glyphIds = [];
             offsets = [];
             clusters = [];
+            penXs = [];
             advance = 0f;
         }
 
@@ -471,6 +507,7 @@ public sealed class TextLayoutEngine
                 glyphIds.Add(glyph.GlyphId);
                 offsets.Add(new SKPoint(x - originX + glyph.XOffsetPt, -glyph.YOffsetPt));
                 clusters.Add(glyph.Cluster);
+                penXs.Add(x - originX);
                 advance += glyph.XAdvancePt;
                 x += glyph.XAdvancePt;
             }

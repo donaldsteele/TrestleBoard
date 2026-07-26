@@ -31,6 +31,28 @@
                   Click="OnExitClicked"
                   AutomationProperties.Name="Exit TrestleBoard" />
       </MenuItem>
+      <MenuItem Header="_Edit" AutomationProperties.Name="Edit menu">
+        <MenuItem x:Name="UndoMenuItem" Header="_Undo" InputGesture="Ctrl+Z" IsEnabled="False"
+                  Click="OnUndoClicked" AutomationProperties.Name="Undo" />
+        <MenuItem x:Name="RedoMenuItem" Header="_Redo" InputGesture="Ctrl+Y" IsEnabled="False"
+                  Click="OnRedoClicked" AutomationProperties.Name="Redo" />
+        <Separator />
+        <MenuItem x:Name="CutMenuItem" Header="Cu_t" InputGesture="Ctrl+X" IsEnabled="False"
+                  Click="OnCutClicked" AutomationProperties.Name="Cut" />
+        <MenuItem x:Name="CopyMenuItem" Header="_Copy" InputGesture="Ctrl+C" IsEnabled="False"
+                  Click="OnCopyClicked" AutomationProperties.Name="Copy" />
+        <MenuItem x:Name="PasteMenuItem" Header="_Paste" InputGesture="Ctrl+V" IsEnabled="False"
+                  Click="OnPasteClicked" AutomationProperties.Name="Paste" />
+        <Separator />
+        <MenuItem x:Name="SelectAllMenuItem" Header="Select _all" InputGesture="Ctrl+A" IsEnabled="False"
+                  Click="OnSelectAllClicked" AutomationProperties.Name="Select all" />
+      </MenuItem>
+      <MenuItem Header="F_ormat" AutomationProperties.Name="Format menu">
+        <MenuItem x:Name="BoldMenuItem" Header="_Bold" InputGesture="Ctrl+B" IsEnabled="False"
+                  Click="OnBoldClicked" AutomationProperties.Name="Bold" />
+        <MenuItem x:Name="ItalicMenuItem" Header="_Italic" InputGesture="Ctrl+I" IsEnabled="False"
+                  Click="OnItalicClicked" AutomationProperties.Name="Italic" />
+      </MenuItem>
       <MenuItem Header="_View" AutomationProperties.Name="View menu">
         <MenuItem Header="Zoom _in" InputGesture="Ctrl+OemPlus" Click="OnZoomInClicked" AutomationProperties.Name="Zoom in" />
         <MenuItem Header="Zoom _out" InputGesture="Ctrl+OemMinus" Click="OnZoomOutClicked" AutomationProperties.Name="Zoom out" />
@@ -38,8 +60,9 @@
         <MenuItem Header="_Fit page" InputGesture="Ctrl+D1" Click="OnFitPageClicked" AutomationProperties.Name="Fit page" />
       </MenuItem>
       <MenuItem Header="_Page" AutomationProperties.Name="Page menu">
-        <MenuItem Header="_Next page" InputGesture="PageDown" Click="OnNextPageClicked" AutomationProperties.Name="Next page" />
-        <MenuItem Header="_Previous page" InputGesture="PageUp" Click="OnPreviousPageClicked" AutomationProperties.Name="Previous page" />
+        <!-- Ctrl+PageUp/Down: bare PageUp/Down belongs to the caret while editing (M4 spec §4.3). -->
+        <MenuItem Header="_Next page" InputGesture="Ctrl+PageDown" Click="OnNextPageClicked" AutomationProperties.Name="Next page" />
+        <MenuItem Header="_Previous page" InputGesture="Ctrl+PageUp" Click="OnPreviousPageClicked" AutomationProperties.Name="Previous page" />
       </MenuItem>
     </Menu>
 
@@ -47,6 +70,18 @@
       <StackPanel Orientation="Horizontal" Spacing="8">
         <Button x:Name="OpenButton" FontSize="16" MinHeight="44" Click="OnOpenClicked"
                 AutomationProperties.Name="Open a newsletter">Open</Button>
+        <Button x:Name="UndoButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnUndoClicked"
+                AutomationProperties.Name="Undo">↶ Undo</Button>
+        <Button x:Name="RedoButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnRedoClicked"
+                AutomationProperties.Name="Redo">↷ Redo</Button>
+        <ToggleButton x:Name="BoldButton" FontSize="16" FontWeight="Bold" MinHeight="44" MinWidth="44" IsEnabled="False"
+                      Click="OnBoldClicked" AutomationProperties.Name="Bold">B Bold</ToggleButton>
+        <ToggleButton x:Name="ItalicButton" FontSize="16" FontStyle="Italic" MinHeight="44" MinWidth="44" IsEnabled="False"
+                      Click="OnItalicClicked" AutomationProperties.Name="Italic">I Italic</ToggleButton>
+        <ComboBox x:Name="ParagraphStyleCombo" FontSize="16" MinHeight="44" MinWidth="140" IsEnabled="False"
+                  SelectionChanged="OnParagraphStyleChanged"
+                  AutomationProperties.Name="Paragraph style" />
+        <Separator Width="12" Background="Transparent" />
         <Button x:Name="PrevPageButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnPreviousPageClicked"
                 AutomationProperties.Name="Previous page">◀ Back</Button>
         <TextBlock x:Name="PageLabel" FontSize="16" VerticalAlignment="Center" MinWidth="110"
@@ -54,7 +89,6 @@
                    AutomationProperties.Name="Current page" AutomationProperties.LiveSetting="Polite" />
         <Button x:Name="NextPageButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnNextPageClicked"
                 AutomationProperties.Name="Next page">Next ▶</Button>
-        <Separator Width="12" Background="Transparent" />
         <Button x:Name="ZoomOutButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnZoomOutClicked"
                 AutomationProperties.Name="Zoom out">− Smaller</Button>
         <TextBlock x:Name="ZoomLabel" FontSize="16" VerticalAlignment="Center" MinWidth="64"
@@ -75,7 +109,7 @@
       <canvas:PageCanvasControl x:Name="PageCanvas"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
-                                AutomationProperties.Name="Newsletter page preview" />
+                                AutomationProperties.Name="Newsletter page editor" />
     </ScrollViewer>
   </DockPanel>
 </Window>

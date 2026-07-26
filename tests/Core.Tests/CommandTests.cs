@@ -39,6 +39,25 @@ public sealed class CommandTests
         ["AddStory"] = _ => new AddStoryCommand(new Story { Id = "story-2" }),
         ["RemoveStory"] = _ => new RemoveStoryCommand("story-1"),
         ["SetMetadata"] = _ => new SetMetadataCommand(new DocumentMetadata { LodgeName = "Renamed Lodge", IssueMonth = 8, IssueYear = 2026 }),
+        ["SplitParagraph"] = _ => new SplitParagraphCommand("story-1", 0, 10),
+        ["SplitParagraph.MidRunBoundary"] = _ => new SplitParagraphCommand("story-1", 0, 35),
+        ["MergeParagraph"] = _ => new MergeParagraphCommand("story-1", 0),
+        ["ApplyCharacterStyle"] = _ => new ApplyCharacterStyleCommand("story-1", 0, 5, 20, "body"),
+        ["ApplyCharacterStyle.Clear"] = _ => new ApplyCharacterStyleCommand("story-1", 0, 0, 10, null),
+        ["ApplyParagraphStyle"] = _ => new ApplyParagraphStyleCommand("story-1", 0, "body-tight"),
+        ["Composite"] = _ => new CompositeCommand(
+            "Replace text",
+            new ChangeScope(ChangeKind.Text, StoryId: "story-1"),
+            [
+                new DeleteTextCommand("story-1", 1, 0, 6),
+                new InsertTextCommand("story-1", 1, 0, "Supper"),
+            ]),
+        ["EnsureCharacterStyle"] = _ => new EnsureCharacterStyleCommand(new CharacterStyleDef
+        {
+            Name = "caption",
+            FontFamily = "Source Sans 3",
+            SizePt = 10f,
+        }),
     };
 
     [Theory]

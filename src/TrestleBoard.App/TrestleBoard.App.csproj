@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TrestleBoard.Core\TrestleBoard.Core.csproj" />
+    <ProjectReference Include="..\TrestleBoard.Editing\TrestleBoard.Editing.csproj" />
     <ProjectReference Include="..\TrestleBoard.Layout\TrestleBoard.Layout.csproj" />
     <ProjectReference Include="..\TrestleBoard.Rendering\TrestleBoard.Rendering.csproj" />
     <ProjectReference Include="..\TrestleBoard.Imaging\TrestleBoard.Imaging.csproj" />
