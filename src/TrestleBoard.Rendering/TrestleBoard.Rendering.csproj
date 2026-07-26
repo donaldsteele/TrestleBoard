@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- PageRenderer (→ SKCanvas), bundled font store. -->
+  <!-- PageRenderer (→ SKCanvas), bundled font store.
+       Imaging is referenced so painting can apply photo recipes; that is the one dependency
+       edge M6 adds (docs/M6-spec.md §0) — the alternative was a second copy of auto-levels. -->
   <ItemGroup>
     <ProjectReference Include="..\TrestleBoard.Core\TrestleBoard.Core.csproj" />
     <ProjectReference Include="..\TrestleBoard.Layout\TrestleBoard.Layout.csproj" />
+    <ProjectReference Include="..\TrestleBoard.Imaging\TrestleBoard.Imaging.csproj" />
   </ItemGroup>
 </Project>

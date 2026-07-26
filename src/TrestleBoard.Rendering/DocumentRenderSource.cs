@@ -1,6 +1,7 @@
 using SkiaSharp;
 using TrestleBoard.Core.Commands;
 using TrestleBoard.Core.Model;
+using TrestleBoard.Imaging;
 using TrestleBoard.Layout;
 using TrestleBoard.Layout.Documents;
 using TrestleBoard.Layout.Editing;
@@ -24,7 +25,8 @@ public sealed class DocumentRenderSource : IDisposable
     private readonly Document _document;
     private readonly TextLayoutEngine _engine;
     private readonly Dictionary<string, byte[]> _assets;
-    private readonly Dictionary<string, SKImage?> _decodedImages = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, DecodedImage?> _decodedImages = new(StringComparer.Ordinal);
+    private readonly RecipeCache _recipeCache = new();
     private readonly Dictionary<string, LayoutResult> _layoutsByStory = new(StringComparer.Ordinal);
     private readonly Dictionary<string, StoryTextGeometry> _geometriesByStory = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FrameLayout> _frameLayoutsByBlockId = new(StringComparer.Ordinal);
@@ -434,33 +436,67 @@ public sealed class DocumentRenderSource : IDisposable
         }
     }
 
+    /// <summary>
+    /// Paints a photo through the M6 pipeline: decode once (EXIF baked in), render the recipe
+    /// through the cache, then place it per the block's fit mode (docs/M6-spec.md §2).
+    /// </summary>
     private void RenderImage(SKCanvas canvas, ImageFrame image, RectPt frameRect)
     {
         SKRect dest = ToRect(frameRect);
-        SKImage? decoded = ResolveImage(image.AssetRef);
+        DecodedImage? decoded = ResolveImage(image.AssetRef);
         if (decoded is null)
         {
             RenderPlaceholder(canvas, frameRect);
             return;
         }
 
-        // M3: aspect-fill (cover) only; recipes (crop/rotate/color) arrive with Imaging in M6.
-        float scale = Math.Max(dest.Width / decoded.Width, dest.Height / decoded.Height);
-        float w = decoded.Width * scale;
-        float h = decoded.Height * scale;
-        var src = new SKRect(0, 0, decoded.Width, decoded.Height);
-        var fitted = new SKRect(
-            dest.MidX - w / 2f,
-            dest.MidY - h / 2f,
-            dest.MidX + w / 2f,
-            dest.MidY + h / 2f);
+        ImageRecipeSpec recipe = ToSpec(image.Recipe);
+        int budget = PixelBudget(frameRect);
+        SKImage rendered = _recipeCache.GetOrAdd(
+            image.AssetRef,
+            recipe,
+            budget,
+            () => ImagePipeline.Render(decoded, recipe, budget));
+
+        (SKRect src, SKRect placed) = ImagePipeline.Fit(
+            new SKSize(rendered.Width, rendered.Height), dest, ToFitMode(image.Fit));
 
         int save = canvas.Save();
         canvas.ClipRect(dest);
-        using var sampling = new SKPaint { IsAntialias = true };
-        canvas.DrawImage(decoded, src, fitted, new SKSamplingOptions(SKCubicResampler.Mitchell), sampling);
+        using var paint = new SKPaint { IsAntialias = true };
+        canvas.DrawImage(rendered, src, placed, new SKSamplingOptions(SKCubicResampler.Mitchell), paint);
         canvas.RestoreToCount(save);
     }
+
+    /// <summary>
+    /// Render resolution is derived from the FRAME, never the zoom: a snapshot must not change
+    /// because the window happens to be a different size.
+    /// </summary>
+    private static int PixelBudget(RectPt frameRect) =>
+        Math.Clamp((int)MathF.Ceiling(Math.Max(frameRect.Width, frameRect.Height) * 2f), 64, 2048);
+
+    /// <summary>Core's recipe → the Imaging-side record (docs/M6-spec.md §0).</summary>
+    public static ImageRecipeSpec ToSpec(ImageRecipe recipe)
+    {
+        ArgumentNullException.ThrowIfNull(recipe);
+        return new ImageRecipeSpec(
+            recipe.CropNormalized is { } crop
+                ? new NormalizedRect(crop.X, crop.Y, crop.Width, crop.Height)
+                : null,
+            recipe.RotationSteps,
+            recipe.Brightness,
+            recipe.Contrast,
+            recipe.Saturation,
+            recipe.AutoLevels,
+            recipe.AutoLevelsPerChannel ? AutoLevelsMode.PerChannel : AutoLevelsMode.Luminance);
+    }
+
+    private static ImageFitMode ToFitMode(ImageFit fit) => fit switch
+    {
+        ImageFit.Contain => ImageFitMode.Contain,
+        ImageFit.Stretch => ImageFitMode.Stretch,
+        _ => ImageFitMode.Cover,
+    };
 
     private static void RenderShape(SKCanvas canvas, ShapeBlock shape, RectPt frameRect)
     {
@@ -499,19 +535,52 @@ public sealed class DocumentRenderSource : IDisposable
         canvas.DrawRect(rect, border);
     }
 
-    private SKImage? ResolveImage(string assetRef)
+    private DecodedImage? ResolveImage(string assetRef)
     {
-        if (_decodedImages.TryGetValue(assetRef, out SKImage? cached))
+        if (_decodedImages.TryGetValue(assetRef, out DecodedImage? cached))
         {
             return cached;
         }
 
-        SKImage? decoded = _assets.TryGetValue(assetRef, out byte[]? bytes)
-            ? SKImage.FromEncodedData(bytes)
+        DecodedImage? decoded = _assets.TryGetValue(assetRef, out byte[]? bytes)
+            ? ImageDecoder.Decode(bytes)
             : null;
         _decodedImages[assetRef] = decoded;
         return decoded;
     }
+
+    /// <summary>
+    /// Registers photo bytes for an asset the document is about to reference (the insert path).
+    /// The originals are stored verbatim — nothing here ever re-encodes them.
+    /// </summary>
+    public void AddAsset(string assetRef, byte[] bytes)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(assetRef);
+        ArgumentNullException.ThrowIfNull(bytes);
+
+        _assets[assetRef] = bytes;
+        if (_decodedImages.Remove(assetRef, out DecodedImage? stale))
+        {
+            stale?.Dispose();
+        }
+
+        _recipeCache.InvalidateAsset(assetRef);
+    }
+
+    public bool HasAsset(string assetRef) => _assets.ContainsKey(assetRef);
+
+    /// <summary>Pixel size of a decoded asset, for aspect-aware operations like auto-crop.</summary>
+    public bool TryGetImageSize(string assetRef, out int width, out int height)
+    {
+        DecodedImage? decoded = ResolveImage(assetRef);
+        width = decoded?.Width ?? 0;
+        height = decoded?.Height ?? 0;
+        return decoded is not null;
+    }
+
+    /// <summary>The decoded (upright) photo behind an asset, for auto-crop proposals.</summary>
+    public DecodedImage? GetDecodedImage(string assetRef) => ResolveImage(assetRef);
 
     private static SKRect ToRect(RectPt r) => new(r.X, r.Y, r.Right, r.Bottom);
 
@@ -523,11 +592,12 @@ public sealed class DocumentRenderSource : IDisposable
         }
 
         _disposed = true;
-        foreach (SKImage? image in _decodedImages.Values)
+        foreach (DecodedImage? image in _decodedImages.Values)
         {
             image?.Dispose();
         }
 
         _decodedImages.Clear();
+        _recipeCache.Dispose();
     }
 }

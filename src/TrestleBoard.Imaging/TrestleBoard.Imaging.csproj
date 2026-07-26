@@ -1,3 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Decode/EXIF, recipes, auto-crop, auto-levels, caches. -->
+  <!-- Decode/EXIF, recipes, auto-crop, auto-levels, caches.
+       SkiaSharp only, never Core (PLAN.md §9, docs/M6-spec.md §0): recipes arrive as the
+       plain ImageRecipeSpec record, so this stays usable without the document model. -->
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
+  </ItemGroup>
 </Project>

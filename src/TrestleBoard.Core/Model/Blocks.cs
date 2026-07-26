@@ -90,6 +90,13 @@ public sealed class ImageRecipe
 
     public bool AutoLevels { get; set; }
 
+    /// <summary>
+    /// Per-channel auto-levels instead of the luminance-only default. Kept as a separate flag
+    /// rather than turning <see cref="AutoLevels"/> into an enum so documents written before M6
+    /// still deserialize (docs/M6-spec.md §3).
+    /// </summary>
+    public bool AutoLevelsPerChannel { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtraProperties { get; set; }
 
@@ -101,6 +108,7 @@ public sealed class ImageRecipe
         Contrast = Contrast,
         Saturation = Saturation,
         AutoLevels = AutoLevels,
+        AutoLevelsPerChannel = AutoLevelsPerChannel,
         ExtraProperties = ExtraProperties is null ? null : new Dictionary<string, JsonElement>(ExtraProperties),
     };
 }

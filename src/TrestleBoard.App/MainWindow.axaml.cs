@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using TrestleBoard.App.Canvas;
+using TrestleBoard.App.Dialogs;
 using TrestleBoard.Core.Commands;
 using TrestleBoard.Core.Container;
 using TrestleBoard.Core.Samples;
@@ -28,6 +29,7 @@ public partial class MainWindow : Window
     private DocumentSession? _session;
     private TextEditorController? _editor;
     private FrameEditorController? _frames;
+    private PhotoController? _photos;
     private int _pageIndex;
     private bool _fitToWindow = true;
 
@@ -84,6 +86,10 @@ public partial class MainWindow : Window
     internal TextEditorController? EditorForTest => _editor;
 
     internal FrameEditorController? FramesForTest => _frames;
+
+    internal PhotoController? PhotosForTest => _photos;
+
+    internal TboardPackage? PackageForTest => _package;
 
     internal string? StatusLabelTextForTest => StatusLabel.Text;
 
@@ -223,6 +229,107 @@ public partial class MainWindow : Window
         }
     }
 
+    // ---- Photos (docs/M6-spec.md §7) --------------------------------------------------------
+
+    private async void OnInsertPhotoClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_photos is null || _source is null)
+        {
+            return;
+        }
+
+        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Choose a picture",
+            AllowMultiple = false,
+            FileTypeFilter = [FilePickerFileTypes.ImageAll],
+        });
+        if (files.Count == 0)
+        {
+            return;
+        }
+
+        await InsertPhotoFromFileAsync(files[0]);
+    }
+
+    private async Task InsertPhotoFromFileAsync(IStorageFile file)
+    {
+        byte[] bytes;
+        try
+        {
+            await using Stream stream = await file.OpenReadAsync();
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            bytes = buffer.ToArray();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            await ShowErrorAsync("Could not open that picture", ex.Message);
+            return;
+        }
+
+        var dialog = new PhotoInsertDialog(file.Name);
+        await dialog.ShowDialog(this);
+        if (!dialog.Confirmed)
+        {
+            return;
+        }
+
+        _editor?.End();
+        string? blockId = _photos!.InsertPhoto(_pageIndex, bytes, dialog.AltText, dialog.Caption);
+        if (blockId is null)
+        {
+            await ShowErrorAsync(
+                "That file is not a picture",
+                "TrestleBoard could not read that file as a picture. JPEG and PNG files work best.");
+            return;
+        }
+
+        _frames?.Select(blockId);
+        UpdateEditChrome();
+    }
+
+    private void OnFixPhotoClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_photos is not null && _frames?.SelectedBlockId is { } blockId)
+        {
+            _photos.FixPhoto(blockId);
+            UpdateEditChrome();
+        }
+    }
+
+    private async void OnAdjustPhotoClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_photos is null || _frames?.SelectedBlockId is not { } blockId || !_photos.IsPhoto(blockId))
+        {
+            return;
+        }
+
+        var window = new PhotoAdjustWindow(_photos, blockId);
+        await window.ShowDialog(this);
+        UpdateEditChrome();
+    }
+
+    /// <summary>Drag-and-drop is an accelerator; the Insert menu item is the primary path (PLAN.md §6).</summary>
+    private void OnCanvasDragOver(object? sender, DragEventArgs e)
+    {
+        bool hasFiles = _photos is not null && e.DataTransfer.Contains(DataFormat.File);
+        e.DragEffects = hasFiles ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private async void OnCanvasDrop(object? sender, DragEventArgs e)
+    {
+        e.Handled = true;
+        if (_photos is null
+            || e.DataTransfer.TryGetFiles()?.OfType<IStorageFile>().FirstOrDefault() is not { } file)
+        {
+            return;
+        }
+
+        await InsertPhotoFromFileAsync(file);
+    }
+
     private void OnLinkFramesClicked(object? sender, RoutedEventArgs e)
     {
         _frames?.BeginLink();
@@ -338,6 +445,18 @@ public partial class MainWindow : Window
                 OnToggleWrapClicked(sender, e);
                 e.Handled = true;
                 break;
+            case Key.P when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
+                OnInsertPhotoClicked(sender, e);
+                e.Handled = true;
+                break;
+            case Key.F when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
+                OnFixPhotoClicked(sender, e);
+                e.Handled = true;
+                break;
+            case Key.A when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
+                OnAdjustPhotoClicked(sender, e);
+                e.Handled = true;
+                break;
             case Key.L when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
                 OnLinkFramesClicked(sender, e);
                 e.Handled = true;
@@ -374,12 +493,14 @@ public partial class MainWindow : Window
             package.Document, package.Assets, _fonts, session);
         var editor = new TextEditorController(session, source, new AvaloniaTextClipboard(this));
         var frames = new FrameEditorController(session, source);
+        var photos = new PhotoController(session, source, new PackageAssetStore(package));
 
         _source?.Dispose();
         _source = source;
         _session = session;
         _editor = editor;
         _frames = frames;
+        _photos = photos;
         _package = package;
         _pageIndex = 0;
         PageCanvas.Source = source;
@@ -391,6 +512,7 @@ public partial class MainWindow : Window
         session.Changed += (_, _) => UpdateEditChrome();
         editor.Changed += (_, _) => UpdateEditChrome();
         frames.Changed += (_, _) => UpdateEditChrome();
+        photos.Changed += (_, _) => UpdateEditChrome();
         editor.RevealRequested += OnCaretReveal;
 
         bool hasDoc = source.PageCount > 0;
@@ -545,10 +667,27 @@ public partial class MainWindow : Window
         LinkFramesMenuItem.IsEnabled = isTextFrame;
         UnlinkFramesMenuItem.IsEnabled = isTextFrame;
 
-        StatusLabel.Text = _frames?.StatusMessage
+        bool isPhoto = hasFrame && _photos?.IsPhoto(_frames!.SelectedBlockId) == true;
+        InsertPhotoMenuItem.IsEnabled = hasDocument;
+        InsertPhotoButton.IsEnabled = hasDocument;
+        FixPhotoMenuItem.IsEnabled = isPhoto;
+        FixPhotoButton.IsEnabled = isPhoto;
+        AdjustPhotoMenuItem.IsEnabled = isPhoto;
+
+        StatusLabel.Text = _photos?.StatusMessage
+            ?? _frames?.StatusMessage
             ?? (_source is { IsOverset: true }
                 ? "Some text does not fit in its frame. Select that frame to see what to do."
                 : "");
+    }
+
+    /// <summary>
+    /// Where inserted photo bytes are kept: the open package, verbatim. Nothing re-encodes them,
+    /// which is what makes "originals byte-identical in the container" true (docs/M6-spec.md §6).
+    /// </summary>
+    private sealed class PackageAssetStore(TboardPackage package) : IPhotoAssetStore
+    {
+        public void Register(string assetRef, byte[] bytes) => package.Assets[assetRef] = bytes;
     }
 
     private async Task ShowErrorAsync(string title, string message)

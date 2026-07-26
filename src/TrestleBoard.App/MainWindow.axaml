@@ -80,6 +80,16 @@
                   IsEnabled="False" Click="OnSendToBackClicked"
                   AutomationProperties.Name="Send to back" />
         <Separator />
+        <MenuItem x:Name="InsertPhotoMenuItem" Header="Insert a _picture…" InputGesture="Ctrl+Shift+P"
+                  IsEnabled="False" Click="OnInsertPhotoClicked"
+                  AutomationProperties.Name="Insert a picture" />
+        <MenuItem x:Name="FixPhotoMenuItem" Header="Fi_x this picture" InputGesture="Ctrl+Shift+F"
+                  IsEnabled="False" Click="OnFixPhotoClicked"
+                  AutomationProperties.Name="Fix this picture" />
+        <MenuItem x:Name="AdjustPhotoMenuItem" Header="Adjust the pictu_re…" InputGesture="Ctrl+Shift+A"
+                  IsEnabled="False" Click="OnAdjustPhotoClicked"
+                  AutomationProperties.Name="Adjust the picture" />
+        <Separator />
         <MenuItem x:Name="LinkFramesMenuItem" Header="_Continue this text in another frame…" InputGesture="Ctrl+Shift+L"
                   IsEnabled="False" Click="OnLinkFramesClicked"
                   AutomationProperties.Name="Continue this text in another frame" />
@@ -137,6 +147,10 @@
                 AutomationProperties.Name="Add a text frame">+ Text frame</Button>
         <Button x:Name="WrapButton" FontSize="16" MinHeight="44" IsEnabled="False" Click="OnToggleWrapClicked"
                 AutomationProperties.Name="Wrap text around this frame">Wrap text</Button>
+        <Button x:Name="InsertPhotoButton" FontSize="16" MinHeight="44" IsEnabled="False" Click="OnInsertPhotoClicked"
+                AutomationProperties.Name="Insert a picture">+ Picture</Button>
+        <Button x:Name="FixPhotoButton" FontSize="16" MinHeight="44" IsEnabled="False" Click="OnFixPhotoClicked"
+                AutomationProperties.Name="Fix this picture">Fix photo</Button>
         <Button x:Name="BringForwardButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False"
                 Click="OnBringForwardClicked" AutomationProperties.Name="Bring forward">Forward</Button>
         <Button x:Name="SendBackwardButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False"
@@ -159,6 +173,9 @@
       <canvas:PageCanvasControl x:Name="PageCanvas"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
+                                DragDrop.AllowDrop="True"
+                                DragDrop.DragOver="OnCanvasDragOver"
+                                DragDrop.Drop="OnCanvasDrop"
                                 AutomationProperties.Name="Newsletter page editor" />
     </ScrollViewer>
   </DockPanel>
