@@ -1,0 +1,596 @@
+# TrestleBoard — Manual Screen-Reader Test Script
+
+**Status: WRITTEN, NOT YET EXECUTED.** This document is the M9 deliverable required by
+`docs/M9-spec.md` §7 and PLAN.md §11-M9. Writing it is something an agent can do by reading the
+source; *running* it is not — it requires a person sitting at a real machine with NVDA or
+VoiceOver actually turned on, listening to what the screen reader actually says, and writing it
+down. No automated test substitutes for that, and none has been run in place of it. Nothing in
+this document should be read as "this passed" or "this was tested" — it is the instrument, not
+the result. `docs/M9-spec.md` §8 tracks the executed pass as an open item.
+
+**Who this is for.** You do not need to be a programmer. You need about 30 minutes, a computer
+with NVDA (Windows) or a Mac with VoiceOver, and a willingness to write down exactly what you
+hear — even when what you hear is "nothing."
+
+**Before you begin, please read "Problems found while writing this script" at the end of this
+document.** It lists several places where the app does not yet do what it is supposed to. Those
+sections are marked clearly below too, but it saves confusion to know up front that a few of the
+ten sections describe features (a start screen, templates, crash recovery) that do not exist in
+the app yet, and one keyboard shortcut is confirmed broken. You are not doing anything wrong if
+those steps don't work — that is what this script is for.
+
+---
+
+## Setup
+
+### Getting the app running
+
+TrestleBoard is not packaged yet (that is milestone M10), so there is no installer. From a
+checkout of the repository, with the .NET 10 SDK installed:
+
+```
+dotnet run --project src/TrestleBoard.App
+```
+
+This opens the main window directly — there is no splash or start screen (see §1 below).
+
+### Windows — NVDA
+
+1. Download and install NVDA from nvaccess.org (free).
+2. Start NVDA. It announces itself when it starts.
+3. Turn on the **Speech Viewer** so you can copy-paste exactly what NVDA said instead of
+   re-typing it from memory: NVDA menu (`NVDA+N`) ▸ Tools ▸ Speech Viewer. A small window opens
+   and fills with every phrase NVDA speaks. Keep it visible (or Alt+Tab to it) as you work through
+   the script, and copy each relevant line into the "Heard" column of the results table.
+4. Basic NVDA keys you'll use: `Tab`/`Shift+Tab` to move focus, `NVDA+Down Arrow` to read the
+   current line/item again if you missed it, `Insert` is the default NVDA key if `NVDA+…`
+   shortcuts don't respond (some laptops use `Insert` instead of the Caps Lock/NVDA key).
+
+### macOS — VoiceOver
+
+1. Turn VoiceOver on/off with `Cmd+F5` (or ask Siri "turn on VoiceOver").
+2. Turn on the **Caption Panel** so you can read (and copy) what VoiceOver says instead of relying
+   on memory: open VoiceOver Utility (`VO+F8` — VO is `Control+Option` by default), go to the
+   General category, and enable "Show caption panel." (The exact menu wording has moved around
+   between macOS versions; if you can't find it, search System Settings for "VoiceOver Utility.")
+3. Basic VoiceOver keys: `VO+Right/Left Arrow` to move between items, `Tab` to move between
+   controls in a window, `VO+Space` to activate the current item.
+
+### Linux — Orca (best-effort)
+
+PLAN.md §6 is explicit that Linux screen-reader support (AT-SPI, read by Orca) is
+**best-effort — the weakest of the three Avalonia targets, not a tested/guaranteed level.** If you
+are testing on Linux: install and start Orca (`orca` from your distribution's screen-reader
+package, or `Super+Alt+S` on GNOME), and work through the same steps. For every Linux step,
+**write down what you observe rather than marking Pass/Fail** — there is no promised behaviour to
+grade against here, only a record of the current state. Mark these rows "Observed" in the results
+table, not Pass or Fail.
+
+### A note on what "PASS" means below
+
+Every step tells you exactly what you should **hear**. Write down what you actually heard —
+word for word if you can (copy it out of the Speech Viewer / Caption Panel). "The button seemed
+accessible" is not a usable answer; "NVDA said 'Fix photo, button'" is.
+
+---
+
+## 1. Launch and the start screen
+
+> **This section tests what actually happens at launch, not the start screen described in
+> PLAN.md §7.** No start screen exists in this build — see Finding 4 at the end of this document.
+> The app opens straight into the main editing window with no document loaded.
+
+**1.1** Launch the app (`dotnet run --project src/TrestleBoard.App`).
+Expected: your screen reader announces a window. Per the source
+(`src/TrestleBoard.App/MainWindow.axaml`, `AutomationProperties.Name="TrestleBoard main window"`),
+it should say something containing **"TrestleBoard main window."** Write down exactly what you
+heard.
+
+**1.2** Press `Tab` a few times from first launch.
+Expected: focus moves into the menu bar (File is the first menu) and then to the "Open" toolbar
+button. Most other toolbar buttons and menu items are disabled because no document is open yet —
+NVDA/VoiceOver should say "unavailable" or "dimmed" for those. Note which ones you land on and
+whether each is announced as unavailable.
+
+**1.3** Open the File menu (`Alt+F` or arrow onto it and press `Enter`/`Down Arrow`).
+Expected: you hear "File menu," then each item: "Open a newsletter," "Open the sample
+newsletter," "Export as PDF" (this one should say unavailable/dimmed — no document is open),
+"Exit TrestleBoard."
+
+---
+
+## 2. Opening a template
+
+> **This section tests the closest thing that currently exists to "open a template."** The three
+> embedded templates described in PLAN.md §7 and `docs/M9-spec.md` §2 (Classic 414, Simple
+> 4-page, 6-page with photos) do not exist in the source yet — see Finding 4. What exists is a
+> single built-in sample document and ordinary file-open.
+
+**2.1** From the File menu, choose "Open the sample newsletter" (`OnOpenSampleClicked` — no
+keyboard shortcut is advertised for this one, only the menu path).
+Expected: the document loads; the window title changes (screen readers do not always announce a
+title change automatically — check whether yours does). The page/zoom labels in the toolbar
+should now show real values instead of "No newsletter."
+
+**2.2** Tab to the **"Current page"** label in the toolbar.
+Expected to hear: something like **"Page 1 of *n*, Current page."** Write down the exact number
+of pages announced.
+
+**2.3** Tab to the **"Current zoom"** label.
+Expected to hear: something like **"100%, Current zoom."**
+
+**2.4** From the File menu, choose "Open a newsletter…" (`Ctrl+O`).
+Expected: an operating-system file-picker dialog opens (this is not TrestleBoard's own UI — its
+accessibility is Windows'/macOS's responsibility, not the app's). Confirm your screen reader can
+navigate it normally, then press Escape or Cancel to close it without opening a file.
+
+---
+
+## 3. The main window: menus, toolbar, page/zoom labels, status line
+
+Work through every menu below. For each item, press `Tab`/arrow onto it (or open the menu with
+`Alt+`the underlined letter) and write down exactly what is announced. All names below come
+directly from `AutomationProperties.Name` in `src/TrestleBoard.App/MainWindow.axaml` — if you hear
+something different, that is itself a finding, write it down.
+
+**3.1 File menu** (`Alt+F`): Open a newsletter (`Ctrl+O`) · Open the sample newsletter · Export as
+PDF (`Ctrl+E`) · Exit TrestleBoard.
+
+**3.2 Edit menu** (`Alt+E`): Undo (`Ctrl+Z`) · Redo (`Ctrl+Y`) · Cut (`Ctrl+X`) · Copy (`Ctrl+C`) ·
+Paste (`Ctrl+V`) · Select all (`Ctrl+A`). With no document open, or nothing selected, most of
+these should announce as unavailable — check.
+
+**3.3 Format menu** (`Alt+O`): Bold (`Ctrl+B`) · Italic (`Ctrl+I`). Both should be unavailable
+until you are typing inside a text frame (§5 below).
+
+**3.4 Insert menu** (`Alt+I`): Lodge officers · Birthdays · Committees · District calendar ·
+Announcement box · Cover heading. None of these carry a keyboard shortcut of their own — the menu
+is the only path to each. All six should be unavailable until a document is open.
+
+**3.5 Object menu** (`Alt+J`): Add a text frame (`Ctrl+Shift+T`) · Delete this frame (`Delete`) ·
+Wrap text around this frame (`Ctrl+Shift+W`) · Bring forward (`Ctrl+]`) · Send backward (`Ctrl+[`)
+· Bring to front (`Ctrl+Shift+]`) · Send to back (`Ctrl+Shift+[`) · Insert a picture
+(`Ctrl+Shift+P`) · Fix this picture (`Ctrl+Shift+F`) · Adjust the picture (`Ctrl+Shift+A`) · Edit
+this item (`Ctrl+Shift+E`) · Edit this list (`Ctrl+Shift+G`) · Fit this item to its contents
+(`Ctrl+Shift+Y`) · Make the rest of this text fit (`Ctrl+Shift+M`) · Continue this text in another
+frame (`Ctrl+Shift+L`) · Stop continuing into the next frame (`Ctrl+Shift+K`). This is the longest
+menu — read through every item and note anything whose spoken name doesn't match its visible text.
+
+**3.6 View menu** (`Alt+V`): Zoom in (`Ctrl+=`) · Zoom out (`Ctrl+-`) · Actual size (`Ctrl+0`) ·
+Fit page (`Ctrl+1`).
+
+**3.7 Page menu** (`Alt+P`): Next page (`Ctrl+Page Down`) · Previous page (`Ctrl+Page Up`) · Add a
+page after this one · Delete this page · Move this page earlier · Move this page later.
+
+**3.8 Toolbar, left to right.** With the sample newsletter open, `Tab` across the whole toolbar
+row and write down what each announces: Open · Undo · Redo · Bold · Italic · **Paragraph style**
+(a dropdown/combo box) · Previous page (`◀ Back`) · **Current page** label · Next page (`Next ▶`)
+· Zoom out (`− Smaller`) · **Current zoom** label · Zoom in (`+ Bigger`) · Fit the whole page in
+the window (`Fit page`) · Add a text frame (`+ Text frame`) · Wrap text around this frame (`Wrap
+text`) · Insert a picture (`+ Picture`) · Fix this picture (`Fix photo`) · Bring forward
+(`Forward`) · Send backward (`Backward`).
+**PASS criterion:** every button announces role "button" plus the plain-language name above — not
+just the glyph/short label that's visibly printed on it (e.g. you should hear "Zoom out," not "−
+Smaller" read as a symbol, though exact renderings vary by screen reader).
+
+**3.9 Status line.** Select a frame that overflows its text (see §6/§5 for how to make one, or use
+the sample document and look for a red `+` badge), and check whether the status line — labelled
+"Status" — speaks its text automatically without you having to Tab to it. It is marked as a
+"polite" live region in the source, but live-region support varies by screen reader/OS
+combination; write down whether it announced itself or whether you had to go find it.
+
+---
+
+## 4. The canvas: tabbing between blocks
+
+> **Read this before you run the section.** `docs/M9-spec.md` §5 and PLAN.md §6 promise that the
+> page canvas exposes each block to the screen reader by name — "Text frame: …," "Photo: …," a
+> widget's display name, "Decoration" for a shape. **That code does not exist in this build** (no
+> `PageCanvasAutomationPeer` anywhere in the source — see Finding 2). The canvas is one opaque
+> control named "Newsletter page editor." This section is expected, on the evidence read while
+> writing this script, to fail. Please run it anyway and write down exactly what (if anything)
+> is announced — "nothing was announced" is the correct and useful answer if that's what happens.
+
+**4.1** With the sample newsletter open, build a small test page: use Insert ▸ Lodge officers to
+add a widget (cancel out of the wizard once the box appears on the page), Object ▸ Insert a
+picture… to add a photo (see §7 for the description prompt), and Object ▸ Add a text frame to add
+an empty text frame. You now have at least three different kinds of block on one page. (There is
+no menu path to the pre-built five-page sample with a full mix of content — it exists only for
+the automated tests — so building a small page by hand like this is currently the only way to get
+a mixed page in front of a screen reader.)
+
+**4.2** Click once on the empty grey area around the page (not on any block) to make sure nothing
+is selected, then Tab until focus reaches "Newsletter page editor."
+Expected: NVDA/VoiceOver says something containing "Newsletter page editor."
+
+**4.3** With the canvas focused, press `Tab` again.
+**PASS criterion:** the screen reader should say the name of the block that is now selected —
+for example "Text frame: Write the story here" or "Photo: [your description]" or the widget's
+display name ("Lodge officers"). Write down exactly what you hear. If you hear nothing at all
+(the visible selection outline moves but nothing is spoken), that confirms the gap described
+above — write "nothing announced, selection moved silently" rather than leaving it blank.
+
+**4.4** Repeat `Tab` several more times to cycle through every block on the page, and `Shift+Tab`
+to go backward.
+Expected/PASS criterion: same as 4.3, once per block, in both directions.
+
+**4.5** Press `Escape` to clear the selection.
+Expected: whatever was announced for the selected block should stop being implied — again, note
+whether anything is said at all.
+
+---
+
+## 5. Editing text in a frame
+
+**5.1** Tab to a text frame on the canvas (or click it), then press `Enter` (or `F2`) to start
+editing.
+Expected: this switches from frame-selection mode into text-editing mode. There is no separate
+accessible control for "the text inside the frame" — the whole page is one custom-drawn surface —
+so **do not expect NVDA/VoiceOver to announce "editing" or read the frame's text back to you.**
+Write down whatever is or isn't said.
+
+**5.2** Type a short sentence.
+Expected/PASS criterion: this is the sharpest edge of the gap described in §4 — because the canvas
+paints its own text instead of using a native text box, your screen reader has no way to read
+character-by-character or word-by-word feedback as you type, and no way to announce what you just
+typed. Confirm this is in fact what happens (or, if your screen reader surprises you and does
+say something, write down exactly what).
+
+**5.3** Press `Escape`.
+Expected: you leave text-editing mode and the frame becomes the selected frame again (per
+`docs/M5-spec.md` §1.2, this is the documented, intentional route from typing back to frame
+manipulation). Note whether anything is announced.
+
+**5.4** Select the text you typed (`Ctrl+A` selects the whole story while editing) and press
+`Ctrl+B` to make it bold.
+Expected: the Bold button/menu item should now show as "checked"/"pressed" if you Tab to it. Note
+whether your screen reader announces the toggle state.
+
+---
+
+## 6. Running the Officers wizard end to end
+
+This is the accessibility centerpiece of the whole application (PLAN.md §6) — read every step.
+
+**6.1** With a document open, choose Insert ▸ Lodge officers.
+Expected: a new window opens immediately (per `docs/M7-spec.md` §7's "insert puts an EMPTY widget
+on the page and opens its wizard straight away" rule) — you do not need to separately select the
+new widget on the canvas first. Write down what is announced when the window opens; it should
+contain "Lodge officers" and a "Step X of Y" progress phrase (per the source, the officers wizard
+runs to 14 screens: a first screen plus one per each of the twelve officer positions plus a final
+review screen).
+
+**6.2** Without pressing Tab, press `Alt+N` (Next) a couple of times.
+**PASS criterion:** each time, the screen reader should automatically announce the new screen's
+heading — you should not have to Tab to a control to find out the question changed. (The source
+comment for this says explicitly: "Avalonia has no live region, and this is the only reliable way
+to make Narrator/VoiceOver announce the new question" — the header is silently focused and
+unfocused on every screen change specifically to produce this announcement.) Write down whether
+it worked and what was said.
+
+**6.3** On one of the officer screens, leave the phone number field but type something invalid
+(e.g. letters instead of digits) into it, then press `Alt+N`.
+**PASS criterion:** an error message appears and should be announced. Per the source it reads
+something like *"⚠ Check this — Phone numbers look like 555-0100. Please check this one."* — a
+complete, plain-language sentence, not the word "invalid" or "error." Confirm the wording you
+hear is a real sentence, not a technical message.
+
+**6.4** Continue through to the review screen (use `Alt+N` repeatedly, or `Ctrl+Enter` to jump
+straight there once everything validates).
+Expected: a read-only list of what will be saved, and **every single line should have its own
+"Change this" button** right next to it. Tab through a few lines and confirm each has an adjacent,
+separately-focusable "Change this" button (not one shared button for the whole screen).
+
+**6.5** Activate "Change this" on one of the lines partway down the list.
+Expected: you should land back on the exact screen for that item, not screen 1.
+
+**6.6** Return to the review screen and note the primary button's label.
+Expected: it should read "Save it," not "Next" or "Finish."
+
+**6.7 — Known gap, test it anyway.** Go back to Insert ▸ Lodge officers again (a fresh widget),
+type something into the first field, then press `Escape`.
+**Expected per the written spec (`docs/M7-spec.md` §6.6):** a plain-language confirmation —
+*"Throw away what you typed? Nothing has been added to the newsletter yet."*
+**What the code currently does (verified while writing this script):** the wizard window closes
+immediately with no confirmation of any kind. **This step is expected to fail.** Confirm that is
+what happens (the window just closes) and record it — this is Finding 6 below, and this step is
+how you can reproduce it.
+
+**6.8** Once you've saved an officers list, Tab to the Edit menu and read the Undo item.
+Expected: it should read something like "Undo Edit lodge officers" — the plain-language
+description PLAN.md §4 requires, not a generic "Undo."
+
+---
+
+## 7. Inserting a photo, including the description prompt
+
+**7.1** Choose Object ▸ Insert a picture… (`Ctrl+Shift+P`).
+Expected: the operating system's file picker opens (again, not TrestleBoard's own accessibility —
+confirm you can navigate it, then choose any JPEG or PNG).
+
+**7.2** After choosing a file, a "Describe this picture" window should open.
+**PASS criterion:** the description text box should already have keyboard focus — you should be
+able to start typing immediately with no extra Tab press. Confirm this, and write down the
+announced name of that box; per the source it should be **"Description of the picture."**
+
+**7.3** Tab to the second text box.
+Expected name: **"Caption printed under the picture."** The visible label above it should read
+"Caption (optional)" — confirm the word "optional" is conveyed somehow (either spoken directly, or
+readable from context), since this field, unlike the description, is not required.
+
+**7.4** Type a (fictional) description — for example "Two officers at a Placeholder Lodge social"
+— and Tab to the "Put it on the page" button, then activate it.
+**Observation to record, not a strict pass/fail:** try this a second time leaving the description
+completely blank, and note whether the app stops you. As written today the "Put it on the page"
+button does not require the description box to contain anything — nothing currently prevents an
+undescribed photo from reaching the page. Write down what you observe; see Finding 10.
+
+**7.5** With the new photo selected on the canvas (Tab to it, per §4's caveats), choose Object ▸
+Fix this picture (`Ctrl+Shift+F`).
+Expected: the status line should announce something like *"Picture fixed. Press Ctrl+Z if you
+liked it better before."* Confirm whether this is spoken without you having to go find it (it is
+the same "polite" status line from §3.9).
+
+**7.6** Choose Object ▸ Adjust the picture… (`Ctrl+Shift+A`).
+Expected: a window titled "Adjust the picture" opens with three sliders — **"Brighter or darker,"
+"More or less contrast," "More or less colour"** — plus **"Turn the picture a quarter turn"** and
+**"Undo all changes to this picture"** buttons. Tab through all five controls and record what is
+announced for each; write down the window's own announced name too (compare it against the
+visible title "Adjust the picture" — this window does not explicitly set an accessible name in the
+source, so what you hear may fall back to the title text, which is worth confirming either way).
+
+---
+
+## 8. The grid re-editor
+
+**8.1** Select a widget that has a list inside it (Lodge officers, Birthdays, or Committees all
+qualify), then choose Object ▸ Edit this list… (`Ctrl+Shift+G`).
+Expected: a window titled "*[widget name]* — edit list" opens, with every row on one scrolling
+page instead of one row per screen.
+
+**8.2** Tab through several rows.
+Expected: each field is individually labelled and focusable, the same as in the step-by-step
+wizard (§6) — for example a phone number box should still announce "Phone" or the field's label,
+not just "edit box."
+
+**8.3** If the widget you chose allows adding/removing rows (Birthdays and Committees do;
+Officers does not — its twelve positions are fixed), find the "Add another"/"Remove" buttons and
+confirm they are reachable by Tab and clearly named.
+
+**8.4** Select the Cover heading widget instead (Insert ▸ Cover heading) and check whether Object
+▸ Edit this list… is available at all.
+Expected: it should be greyed out/unavailable, since a cover heading has no list inside it —
+confirm your screen reader announces it as unavailable rather than silently doing nothing when
+activated.
+
+---
+
+## 9. Exporting a PDF
+
+**9.1** With a document open, choose File ▸ Export as PDF… (`Ctrl+E`).
+Expected: the operating system's save-file dialog opens; give it a name and save.
+
+**9.2** After the save dialog closes, listen carefully.
+**Observation to record:** as written today, nothing in the app confirms the export succeeded —
+no status-line message, unlike Fix Photo in §7.5. The only feedback is that the save dialog itself
+closed (which the operating system announces, not TrestleBoard). Confirm whether this matches
+what you experience, and write down anything you do hear.
+
+**9.3** Try exporting again but cancel the save dialog instead of saving.
+Expected: nothing happens; no error, no PDF written.
+
+**9.4** If you can arrange a failure (for example, opening the exported PDF file in another
+program first, on an OS where that locks the file, then exporting to the same name again): a
+dialog titled "Could not export the PDF" should appear with a plain-language explanation and an
+"OK" button. Confirm the message is a full sentence in plain language, not a raw exception.
+
+---
+
+## 10. Crash recovery: the restore dialog
+
+> **This section cannot currently be executed. There is nothing to test.** `docs/M9-spec.md` §1
+> specifies a `RecoveryService` that autosaves every 60 seconds (or 5 seconds after you stop
+> typing) and, on the next launch after a crash, shows a restore dialog with a thumbnail of page 1.
+> The `RecoveryService` class itself exists and has its own automated tests
+> (`src/TrestleBoard.Editing/RecoveryService.cs`), but **nothing in `TrestleBoard.App` ever
+> constructs or uses it** — there is no autosave running, no file written to
+> `<AppData>/TrestleBoard/recovery/`, and no restore dialog anywhere in the source. See Finding 3.
+
+**10.1** For the record, try it anyway: open the sample document, type something, then force-quit
+the app from your OS's task manager (do not use File ▸ Exit — that is a clean close and won't
+demonstrate anything either way).
+
+**10.2** Relaunch the app.
+**Expected result today:** the app opens with no document loaded and no mention of the work you
+just lost — because nothing was ever saved for recovery. Confirm this is what happens, and record
+it as "not implemented" rather than Pass or Fail in the results table — a Fail would imply a
+recovery dialog appeared and did something wrong, and that is not what's being observed here.
+
+---
+
+## Results table
+
+Copy this table (or the row shape) into a spreadsheet or a copy of this file as you go. Use the
+step numbers from above so the full "what you should hear" text doesn't need to be retyped.
+
+| Step | Screen reader + version | What you heard (verbatim, from the Speech Viewer / Caption Panel) | Pass / Fail / N/A / Not implemented / Observed | Notes |
+|---|---|---|---|---|
+| 1.1 | | | | |
+| 1.2 | | | | |
+| 1.3 | | | | |
+| 2.1 | | | | |
+| 2.2 | | | | |
+| 2.3 | | | | |
+| 2.4 | | | | |
+| 3.1 | | | | |
+| 3.2 | | | | |
+| 3.3 | | | | |
+| 3.4 | | | | |
+| 3.5 | | | | |
+| 3.6 | | | | |
+| 3.7 | | | | |
+| 3.8 | | | | |
+| 3.9 | | | | |
+| 4.2 | | | | |
+| 4.3 | | | | |
+| 4.4 | | | | |
+| 4.5 | | | | |
+| 5.1 | | | | |
+| 5.2 | | | | |
+| 5.3 | | | | |
+| 5.4 | | | | |
+| 6.1 | | | | |
+| 6.2 | | | | |
+| 6.3 | | | | |
+| 6.4 | | | | |
+| 6.5 | | | | |
+| 6.6 | | | | |
+| 6.7 | | | | expected to fail — see Finding 6 |
+| 6.8 | | | | |
+| 7.2 | | | | |
+| 7.3 | | | | |
+| 7.4 | | | | see Finding 10 |
+| 7.5 | | | | |
+| 7.6 | | | | |
+| 8.1 | | | | |
+| 8.2 | | | | |
+| 8.3 | | | | |
+| 8.4 | | | | |
+| 9.1 | | | | |
+| 9.2 | | | | see Finding 7 |
+| 9.3 | | | | |
+| 9.4 | | | | |
+| 10.1 | | | | |
+| 10.2 | | | | mark "Not implemented" — see Finding 3 |
+
+Add rows for anything else you notice along the way, even if it isn't in a numbered step.
+
+---
+
+## Reporting failures
+
+For anything marked Fail (or anything surprising even if you weren't sure how to mark it):
+
+1. File an issue in the project's GitHub repository (or hand a written note to whoever is running
+   the milestone if you don't have GitHub access) with the label `accessibility` if that label
+   exists.
+2. Include, at minimum:
+   - The step number (e.g. "4.3").
+   - The exact utterance you heard, or "nothing was announced" if that's what happened — copy it
+     out of the Speech Viewer / Caption Panel rather than paraphrasing from memory.
+   - What you expected to hear (copy it from this document).
+   - Screen reader name **and version number** (Help ▸ About in NVDA; VoiceOver's version tracks
+     the macOS version — include that).
+   - Operating system and version.
+   - Whether you could reproduce it a second time.
+3. Do not soften or summarize the utterance — "it didn't sound quite right" is not fixable;
+   "NVDA said 'button' with no name" is.
+
+---
+
+## A note on Linux/Orca results specifically
+
+Per PLAN.md §6, Linux AT-SPI support in Avalonia is explicitly **best-effort — the weakest of the
+three targets, not something this project promises to a specific standard.** If you ran this
+script under Orca, please still fill in the results table, but grade those rows "Observed" rather
+than Pass/Fail, and mention them separately when you report back. A gap on Linux that doesn't
+exist on Windows/macOS is useful information; it is not being held to the same bar as those two.
+
+---
+
+## Problems found while writing this script
+
+These were found by reading the actual source while preparing the steps above, not by running the
+script (which, per the note at the top of this document, has not happened yet). They are listed
+here because several of them determine what a tester can and cannot do, and because a couple are
+concrete, reproducible bugs rather than missing features.
+
+1. **`Ctrl+Shift+Y` ("Fit to contents") is dead — shadowed by `Ctrl+Y` (Redo).**
+   `src/TrestleBoard.App/MainWindow.axaml.cs`, `OnWindowKeyDown`, has `case Key.Y when ctrl:`
+   (Redo) at roughly line 556, and a separate `case Key.Y when ctrl && shift:` (Fit to contents)
+   at roughly line 643. C# evaluates `switch` cases in order, and the Redo case's guard is only
+   `ctrl` — it does not exclude Shift — so it matches `Ctrl+Shift+Y` too, before the later case is
+   ever reached. Pressing the shortcut the Object menu itself advertises for "Fit this item to its
+   contents" (`Ctrl+Shift+Y`) actually redoes the last undone action. The menu item still works
+   fine by mouse/Enter; only the keyboard gesture is broken. This is exactly the kind of
+   menu-advertises-a-gesture-the-handler-doesn't-implement bug the milestone's automated keyboard
+   audit (`docs/M9-spec.md` §6) is meant to catch — worth adding a regression test for this
+   specific pair of shortcuts.
+
+2. **No custom automation peer for the canvas — this is the big one.** PLAN.md §6 and
+   `docs/M9-spec.md` §5 both promise a `PageCanvasAutomationPeer` that exposes every block on the
+   page as a named child: "Text frame: …," "Photo: …," a widget's display name, "Decoration" for a
+   shape. Nothing named anything close to that exists anywhere in the source tree (searched the
+   whole `src/` directory). `PageCanvasControl` currently exposes exactly one accessible element —
+   itself, named "Newsletter page editor" via `AutomationProperties.Name` in the XAML.
+   Tab-cycling block selection (`FrameEditorController.CycleSelection`, wired from
+   `PageCanvasControl.HandleFrameModeKey`) changes only the on-screen outline and resize handles;
+   `FrameEditorController.Select` sets `StatusMessage` to `null` on an ordinary selection (only an
+   *overset* frame gets a status message) — so there is no accessible name, no role change, and no
+   status-line announcement when a screen-reader user moves between blocks. Given the PLAN's own
+   acceptance bar for this milestone is "NVDA reads every control on the main window," this is the
+   single largest gap between what's promised and what's built: on the canvas, today, NVDA reads
+   nothing as you move between blocks. Section 4 of this script is built to surface exactly this.
+
+3. **Crash recovery is not wired into the app.** `RecoveryService`/`IRecoveryStore`
+   (`src/TrestleBoard.Editing/RecoveryService.cs`) exist and are unit-tested in isolation, but
+   `Program.cs`, `App.axaml.cs`, and `MainWindow.axaml.cs` never construct a `RecoveryService`,
+   never call `Poll()`, and there is no restore dialog anywhere under `src/TrestleBoard.App`. No
+   autosave currently runs; nothing is ever written to
+   `<AppData>/TrestleBoard/recovery/`. Section 10 of this script documents this rather than
+   pretending it can be tested.
+
+4. **No start screen and no templates.** PLAN.md §7 and `docs/M9-spec.md` §2 describe a start
+   screen with "Start from last month" / "Open a newsletter" / "Start from a template" tiles, and
+   three embedded `.tboard` templates (Classic 414, Simple 4-page, 6-page with photos). Neither
+   exists: `App.axaml.cs` constructs `MainWindow` directly with no start screen in front of it, and
+   a repo-wide search for "Template" only turns up the pre-existing `isTemplate` flag on
+   `TboardManifest` — no template resources, no gallery UI. Sections 1 and 2 above test the actual
+   launch path instead of the one PLAN.md describes.
+
+5. **No theme or UI-scale setting.** PLAN.md §6 and §9-M9 promise Light/Dark/true High-Contrast
+   themes and a 100–200% UI-scale setting reachable from a Settings dialog. Neither `App.axaml`,
+   `App.axaml.cs`, nor anything under `Dialogs/` contains a Settings window, theme resource
+   dictionaries, or a scale mechanism. This script has no themes section for that reason — there
+   is nothing yet to point a tester at.
+
+6. **`WizardWindow`'s Cancel/Escape never confirms, contradicting the written spec.**
+   `docs/M7-spec.md` §6.6 states plainly that Escape, when the session `IsDirty`, should show
+   *"Throw away what you typed? Nothing has been added to the newsletter yet."* before discarding
+   anything. In `src/TrestleBoard.App/Dialogs/WizardWindow.cs`, the Cancel button is built as
+   `cancel.IsCancel = true` (which routes Escape to the same handler) wired to
+   `(_, _) => Close()` — no dirty check, no confirmation dialog, for either Escape or the Cancel
+   button. A tester who fills in several of the twelve officer fields and then presses Escape
+   loses that work silently. Step 6.7 above is written specifically to reproduce this.
+
+7. **PDF export succeeds silently.** `OnExportPdfClicked` in `MainWindow.axaml.cs` writes the file
+   and returns without ever setting `StatusLabel.Text` or otherwise confirming success — contrast
+   with `PhotoController.FixPhoto`, which sets a plain-language confirmation message
+   ("Picture fixed. Press Ctrl+Z…"). A screen-reader user who successfully exports a PDF gets no
+   accessible signal that it worked, only that the save dialog closed (an OS-level event, not an
+   app one).
+
+8. **Dialog windows are inconsistent about setting their own accessible name.**
+   `WizardWindow` and `WidgetGridWindow` both explicitly call
+   `AutomationProperties.SetName(this, …)` on themselves. `PhotoInsertDialog`, `PhotoAdjustWindow`,
+   and the generic error dialog built inline in `MainWindow.ShowErrorAsync` do not — they set only
+   `Title` and rely on whatever Avalonia's default window automation peer falls back to. This may
+   turn out to be harmless (a `Title` fallback is plausible), but it was not verified either way
+   while writing this script, since only a screen reader can settle it — steps 7.6 and 9.4 above
+   ask the tester to check and record it either way.
+
+9. **The one fixture with a realistic mix of block types is not reachable from the UI.**
+   `MainWindow.OpenIssueSample()` loads a five-page fixture with a representative spread of text
+   frames, photos, and widgets, but it is only ever called from the headless test suite — there is
+   no menu item or button that reaches it. A human tester has to assemble an equivalent page by
+   hand (as Section 4 instructs) before there's anything interesting to Tab through.
+
+10. **The photo description prompt does not require a description.** PLAN.md §6 states
+    "screen-reader users must not meet an unlabelled photo," and `docs/M6-spec.md` §6 says alt
+    text "is prompted at insert" — but `PhotoInsertDialog`'s "Put it on the page" button has no
+    validation on the description box; an empty string flows straight through
+    `InsertPhotoFromFileAsync` into `PhotoController.InsertPhoto` with nothing stopping it. Nothing
+    in the wording of the specs strictly requires the field to be *mandatory* (only "prompted"),
+    so this is flagged as an open question rather than a clear-cut bug — but as built, it is
+    possible to insert a photo with no accessible description at all, which undercuts the stated
+    purpose of the dialog. Step 7.4 above asks the tester to confirm this and record it.

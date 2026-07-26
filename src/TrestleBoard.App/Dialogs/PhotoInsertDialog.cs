@@ -13,6 +13,7 @@ public sealed class PhotoInsertDialog : Window
 {
     private readonly TextBox _altText;
     private readonly TextBox _caption;
+    private readonly TextBlock _warning;
 
     public PhotoInsertDialog(string fileName)
     {
@@ -41,6 +42,17 @@ public sealed class PhotoInsertDialog : Window
         };
         Avalonia.Automation.AutomationProperties.SetName(_caption, "Caption printed under the picture");
 
+        _warning = new TextBlock
+        {
+            Text = "⚠ Please type a short description first. People who cannot see the picture "
+                + "have nothing else to go on.",
+            FontSize = 16,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 460,
+            Foreground = Brushes.Firebrick,
+            IsVisible = false,
+        };
+
         var insert = new Button
         {
             Content = "Put it on the page",
@@ -51,6 +63,16 @@ public sealed class PhotoInsertDialog : Window
         };
         insert.Click += (_, _) =>
         {
+            // A description is what a screen-reader user gets instead of the picture (PLAN.md §6),
+            // so the button that puts a photo on the page refuses until there is one. The dialog
+            // asks for it first for the same reason.
+            if (string.IsNullOrWhiteSpace(_altText.Text))
+            {
+                _warning.IsVisible = true;
+                _altText.Focus();
+                return;
+            }
+
             Confirmed = true;
             Close();
         };
@@ -88,6 +110,7 @@ public sealed class PhotoInsertDialog : Window
                     MaxWidth = 460,
                 },
                 _altText,
+                _warning,
                 new TextBlock { Text = "Caption (optional)", FontSize = 16 },
                 _caption,
                 new StackPanel

@@ -2,11 +2,14 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using TrestleBoard.App.Canvas;
 using TrestleBoard.App.Dialogs;
 using TrestleBoard.Core.Commands;
 using TrestleBoard.Core.Container;
 using TrestleBoard.Core.Samples;
+using TrestleBoard.Core.Templates;
+using TrestleBoard.Core.Workflow;
 using TrestleBoard.Editing;
 using TrestleBoard.Export.Pdf;
 using TrestleBoard.Layout.Fonts;
@@ -21,6 +24,11 @@ namespace TrestleBoard.App;
 /// text frame, type with full undo/redo, page through, zoom/fit, export the PDF. Every mouse
 /// action has a keyboard path (PLAN.md §6).
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    "Reliability",
+    "CA1001:Types that own disposable fields should be disposable",
+    Justification = "A Window's lifetime is its Closed event, not IDisposable; the recovery service, "
+        + "render source and font store are all released there.")]
 public partial class MainWindow : Window
 {
     private static readonly double[] ZoomSteps = [0.5, 0.65, 0.8, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0];
@@ -34,6 +42,10 @@ public partial class MainWindow : Window
     private PhotoController? _photos;
     private WidgetController? _widgets;
     private PageFlowController? _pages;
+    private RecoveryService? _recovery;
+    private IRecoveryStore? _recoveryStore;
+    private DispatcherTimer? _recoveryTimer;
+    private string? _documentPath;
     private readonly WidgetLayoutProvider _widgetProvider = WidgetLayoutProvider.CreateDefault();
     private int _pageIndex;
     private bool _fitToWindow = true;
@@ -44,9 +56,100 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
         Closed += (_, _) =>
         {
+            // A clean close removes the recovery file, so a file surviving startup MEANS the app
+            // did not close cleanly (docs/M9-spec.md §1.4). Any unsaved work is written first.
+            _recoveryTimer?.Stop();
+            _recovery?.SaveNow();
+            _recovery?.Complete();
+            _recovery?.Dispose();
             _source?.Dispose();
             _fonts.Dispose();
         };
+    }
+
+    /// <summary>
+    /// Wires autosave to the open document. One tick a second; the service decides whether a rule
+    /// says it is time to write (docs/M9-spec.md §1.1).
+    /// </summary>
+    private void StartRecovery(TboardPackage package)
+    {
+        _recovery?.Complete();
+        _recovery?.Dispose();
+        _recoveryStore ??= new FileRecoveryStore();
+
+        _recovery = new RecoveryService(
+            _session!,
+            _recoveryStore,
+            () => new RecoveryService.RecoveryPayload(SnapshotBytes(package), _documentPath));
+
+        _recoveryTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _recoveryTimer.Tick -= OnRecoveryTick;
+        _recoveryTimer.Tick += OnRecoveryTick;
+        _recoveryTimer.Start();
+    }
+
+    private void OnRecoveryTick(object? sender, EventArgs e) => _recovery?.Poll();
+
+    /// <summary>
+    /// The whole document plus a page-1 thumbnail — "is this the work I lost?" is answered by
+    /// looking, not by reading a filename (docs/M9-spec.md §1.3).
+    /// </summary>
+    private byte[] SnapshotBytes(TboardPackage package)
+    {
+        if (_source is { PageCount: > 0 })
+        {
+            try
+            {
+                package.Thumbnails["page-1.png"] = _source.RenderPageToPng(0, scale: 0.35f);
+            }
+            catch (InvalidOperationException)
+            {
+                // A thumbnail is a nicety; the document bytes are the point.
+            }
+        }
+
+        using var buffer = new MemoryStream();
+        TboardContainer.Save(package, buffer);
+        return buffer.ToArray();
+    }
+
+    /// <summary>Offers back anything that survived a previous run (docs/M9-spec.md §1.5).</summary>
+    internal async Task<bool> OfferRecoveryAsync()
+    {
+        _recoveryStore ??= new FileRecoveryStore();
+        IReadOnlyList<RecoverySnapshot> survivors = _recoveryStore.FindRecoverable();
+        if (survivors.Count == 0)
+        {
+            return false;
+        }
+
+        RecoverySnapshot snapshot = survivors[0];
+        TboardPackage? package = null;
+        try
+        {
+            using var buffer = new MemoryStream(snapshot.Bytes);
+            package = TboardContainer.Load(buffer);
+        }
+        catch (Exception ex) when (ex is InvalidDataException or Core.Migrations.UnsupportedFormatException)
+        {
+            _recoveryStore.Delete(snapshot.Id);
+            return false;
+        }
+
+        package.Thumbnails.TryGetValue("page-1.png", out byte[]? thumbnail);
+        var dialog = new RestoreDialog(snapshot, thumbnail, DateTimeOffset.UtcNow);
+        await dialog.ShowDialog(this);
+
+        if (!dialog.Restore)
+        {
+            _recoveryStore.Delete(snapshot.Id);
+            return false;
+        }
+
+        _documentPath = snapshot.OriginalPath;
+        ShowPackage(package);
+        StatusLabel.Text = "Your work is back. Save it when you are ready.";
+        return true;
     }
 
     private async void OnOpenClicked(object? sender, RoutedEventArgs e)
@@ -100,6 +203,35 @@ public partial class MainWindow : Window
     internal WidgetController? WidgetsForTest => _widgets;
 
     internal PageFlowController? PagesForTest => _pages;
+
+    internal RecoveryService? RecoveryForTest => _recovery;
+
+    internal void UseRecoveryStoreForTest(IRecoveryStore store) => _recoveryStore = store;
+
+    /// <summary>Opens one of the shipped templates (PLAN.md §7).</summary>
+    internal void OpenTemplate(string templateId)
+    {
+        _documentPath = null;
+        ShowPackage(TemplateLibrary.Create(templateId));
+    }
+
+    /// <summary>
+    /// Start-from-last-month: carries the data forward, bumps the date, clears the prose
+    /// (docs/M9-spec.md §3). The result is a NEW unsaved newsletter, so the path is cleared.
+    /// </summary>
+    internal bool StartFromLastMonth()
+    {
+        if (_package is null)
+        {
+            return false;
+        }
+
+        TboardPackage next = CarryForward.NextIssue(_package);
+        _documentPath = null;
+        ShowPackage(next);
+        StatusLabel.Text = "Carried forward. Last month's articles have been cleared for you to rewrite.";
+        return true;
+    }
 
     internal DocumentRenderSource? SourceForTest => _source;
 
@@ -553,7 +685,9 @@ public partial class MainWindow : Window
                 _session?.Undo();
                 e.Handled = true;
                 break;
-            case Key.Y when ctrl:
+            // MUST exclude Shift: a bare "when ctrl" also matches Ctrl+Shift+Y, which would shadow
+            // Fit to contents below and silently redo instead.
+            case Key.Y when ctrl && !e.KeyModifiers.HasFlag(KeyModifiers.Shift):
                 _session?.Redo();
                 e.Handled = true;
                 break;
@@ -689,6 +823,7 @@ public partial class MainWindow : Window
         Title = $"TrestleBoard — {package.Document.Metadata.Title}";
 
         session.Changed += (_, _) => UpdateEditChrome();
+        StartRecovery(package);
         editor.Changed += (_, _) => UpdateEditChrome();
         frames.Changed += (_, _) => UpdateEditChrome();
         photos.Changed += (_, _) => UpdateEditChrome();

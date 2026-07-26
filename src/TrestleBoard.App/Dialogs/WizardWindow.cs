@@ -54,7 +54,7 @@ public sealed class WizardWindow : Window
         _next = MakeButton("Next ▶", OnNext);
         _next.IsDefault = true;
         _showAll = MakeButton("Show all at once", OnShowAll);
-        Button cancel = MakeButton("Cancel", (_, _) => Close());
+        Button cancel = MakeButton("Cancel", (_, _) => CancelWithConfirmation());
         cancel.IsCancel = true;
 
         _scroller = new ScrollViewer
@@ -130,6 +130,82 @@ public sealed class WizardWindow : Window
         RenderScreen();
     }
 
+    /// <summary>
+    /// Throwing away typed answers is not something to do on a stray Esc (docs/M7-spec.md §6.6).
+    /// Nothing has reached the newsletter yet, so the confirmation says so — the fear being
+    /// answered is "have I just lost it?", not "what is a dialog?".
+    /// </summary>
+    private async void CancelWithConfirmation()
+    {
+        if (!_session.IsDirty)
+        {
+            Close();
+            return;
+        }
+
+        var keepGoing = new Button
+        {
+            Content = "Keep going",
+            FontSize = 20,
+            MinHeight = 44,
+            MinWidth = 180,
+            IsDefault = true,
+        };
+        var discard = new Button
+        {
+            Content = "Throw it away",
+            FontSize = 20,
+            MinHeight = 44,
+            MinWidth = 180,
+        };
+
+        var confirm = new Window
+        {
+            Title = "Throw away what you typed?",
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+            Content = new StackPanel
+            {
+                Margin = new Avalonia.Thickness(24),
+                Spacing = 16,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = "Throw away what you typed? Nothing has been added to the newsletter yet.",
+                        FontSize = 20,
+                        TextWrapping = TextWrapping.Wrap,
+                        MaxWidth = 460,
+                    },
+                    new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Spacing = 12,
+                        HorizontalAlignment = HorizontalAlignment.Right,
+                        Children = { discard, keepGoing },
+                    },
+                },
+            },
+        };
+
+        bool discarded = false;
+        keepGoing.Click += (_, _) => confirm.Close();
+        discard.Click += (_, _) =>
+        {
+            discarded = true;
+            confirm.Close();
+        };
+
+        AutomationProperties.SetName(confirm, "Throw away what you typed?");
+        await confirm.ShowDialog(this);
+
+        if (discarded)
+        {
+            Close();
+        }
+    }
+
     private void Commit()
     {
         if (!_session.TryCommit(out System.Text.Json.JsonElement data, out int version,
@@ -148,6 +224,13 @@ public sealed class WizardWindow : Window
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
+        if (e is { Key: Key.Escape, KeyModifiers: KeyModifiers.None })
+        {
+            CancelWithConfirmation();
+            e.Handled = true;
+            return;
+        }
+
         // Every gesture has a menu/button twin; these are accelerators, never the only path.
         if (e.KeyModifiers == KeyModifiers.Alt)
         {
