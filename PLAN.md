@@ -282,13 +282,14 @@ Model guidance: **Fable/Opus** for high-risk algorithmic work (layout engine, te
 **Goal:** usable by the actual committee.
 **Deliverables:** 3 templates (build "Classic 414" by hand IN the app — dogfooding; placeholder data only per §0, since templates are embedded in the repo); start screen; start-from-last-month with carry-forward + meeting-rule date bumping; autosave/crash recovery/rotating .bak per §4; Light/Dark/High-Contrast themes; UI scale setting; automation-peer pass over canvas; full keyboard audit; NVDA + VoiceOver manual test script (written + executed).
 **Acceptance:** kill the process mid-edit → relaunch offers recovery with thumbnail, ≤60s data loss; complete a full issue keyboard-only; NVDA reads every control on the main window.
-**Post-milestone:** `/graphify . --wiki` (architecture wiki for future maintenance); `/wiki:lint`.
+**Post-milestone:** ~~`/graphify . --wiki` (architecture wiki for future maintenance); `/wiki:lint`~~ — **deferred to M10** (owner's call, 2026-07-26); see M10's post-milestone step.
 **Agents:** **Opus** for a11y peers + recovery flow; **Sonnet** for templates/start screen; **general-purpose (Sonnet)** to author the manual a11y test script; **cavecrew-reviewer (Sonnet)**.
 
 ### M10 — Packaging & release (S/M)
 **Goal:** installable by an 80-year-old.
 **Deliverables:** Velopack packaging for 4 RIDs; GH Actions release workflow on tag; auto-update wired to GitHub Releases; `.tboard` file association; plain-language install instructions with SmartScreen/Gatekeeper screenshots (no code signing — documented workarounds).
 **Acceptance:** on fresh Windows and macOS machines: download → install → open template → export PDF following only the written instructions; pushing a new tag produces an update an installed copy picks up automatically.
+**Post-milestone:** `/graphify . --update` and `/graphify . --wiki` (architecture wiki for future maintenance); ingest the M9 AND M10 decisions into llm-wiki; `/wiki:lint`. **Carried over from M9** — M9's post-milestone plugin pass was deliberately deferred here rather than run at the time (owner's call, 2026-07-26), so this step covers both milestones.
 **Agents:** **Sonnet** throughout; `claude-code-guide` (Sonnet) for Velopack/Actions specifics; **cavecrew-reviewer (Sonnet)**.
 
 ### Sizing & sequencing notes
