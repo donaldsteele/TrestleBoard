@@ -8,6 +8,7 @@ using TrestleBoard.Layout;
 using TrestleBoard.Layout.Documents;
 using TrestleBoard.Layout.Editing;
 using TrestleBoard.Layout.Fonts;
+using TrestleBoard.Layout.Input;
 using TrestleBoard.Layout.Widgets;
 
 namespace TrestleBoard.Rendering;
@@ -208,6 +209,35 @@ public sealed class DocumentRenderSource : IDisposable
 
     /// <summary>True when the block is a text frame (the canvas needs it for mode arbitration).</summary>
     public bool IsTextBlock(string blockId) => _document.FindBlock(blockId).Block is TextBlock;
+
+    /// <summary>
+    /// Would this story still overflow if the given frames existed? Auto-flow asks this before it
+    /// commits anything, so a run that cannot help leaves the document untouched (docs/M8-spec.md §2).
+    /// The speculative layout is never cached and never affects the painted state.
+    /// </summary>
+    public bool WouldStillBeOverset(
+        string blockId,
+        IReadOnlyList<(string PageId, Block Frame, string PreviousFrameId)> plannedFrames)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(plannedFrames);
+        if (_document.FindBlock(blockId).Block is not TextBlock head)
+        {
+            return false;
+        }
+
+        var planned = new List<(string PageId, TextBlock Frame)>(plannedFrames.Count);
+        foreach ((string pageId, Block frame, string _) in plannedFrames)
+        {
+            if (frame is TextBlock text)
+            {
+                planned.Add((pageId, text));
+            }
+        }
+
+        LayoutRequest request = DocumentLayoutAdapter.BuildSpeculativeRequest(_document, head, planned);
+        return _engine.Layout(request).IsOverset;
+    }
 
     /// <summary>
     /// Empty-widget prompts are drawn on screen and never printed. The PDF exporter turns this off

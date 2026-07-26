@@ -121,6 +121,9 @@
         <MenuItem x:Name="FitToContentsMenuItem" Header="Fit to _contents" InputGesture="Ctrl+Shift+Y"
                   IsEnabled="False" Click="OnFitToContentsClicked"
                   AutomationProperties.Name="Fit this item to its contents" />
+        <MenuItem x:Name="AutoFlowMenuItem" Header="_Make the rest fit" InputGesture="Ctrl+Shift+M"
+                  IsEnabled="False" Click="OnAutoFlowClicked"
+                  AutomationProperties.Name="Make the rest of this text fit" />
         <Separator />
         <MenuItem x:Name="LinkFramesMenuItem" Header="_Continue this text in another frame…" InputGesture="Ctrl+Shift+L"
                   IsEnabled="False" Click="OnLinkFramesClicked"
@@ -139,6 +142,15 @@
         <!-- Ctrl+PageUp/Down: bare PageUp/Down belongs to the caret while editing (M4 spec §4.3). -->
         <MenuItem Header="_Next page" InputGesture="Ctrl+PageDown" Click="OnNextPageClicked" AutomationProperties.Name="Next page" />
         <MenuItem Header="_Previous page" InputGesture="Ctrl+PageUp" Click="OnPreviousPageClicked" AutomationProperties.Name="Previous page" />
+        <Separator />
+        <MenuItem x:Name="AddPageMenuItem" Header="_Add a page after this one" IsEnabled="False"
+                  Click="OnAddPageClicked" AutomationProperties.Name="Add a page after this one" />
+        <MenuItem x:Name="RemovePageMenuItem" Header="_Delete this page" IsEnabled="False"
+                  Click="OnRemovePageClicked" AutomationProperties.Name="Delete this page" />
+        <MenuItem x:Name="MovePageUpMenuItem" Header="Move this page _earlier" IsEnabled="False"
+                  Click="OnMovePageEarlierClicked" AutomationProperties.Name="Move this page earlier" />
+        <MenuItem x:Name="MovePageDownMenuItem" Header="Move this page _later" IsEnabled="False"
+                  Click="OnMovePageLaterClicked" AutomationProperties.Name="Move this page later" />
       </MenuItem>
     </Menu>
 

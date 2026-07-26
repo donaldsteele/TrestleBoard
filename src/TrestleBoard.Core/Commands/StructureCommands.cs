@@ -27,6 +27,52 @@ public sealed class AddPageCommand(Page page, int index) : IDocumentCommand
     public bool TryMerge(IDocumentCommand newer) => false;
 }
 
+/// <summary>
+/// Reorders pages (docs/M8-spec.md §3). Deliberately does NOT touch <c>linkNext</c>: a chain is a
+/// list of block ids, so moving the page a frame sits on changes where it prints, not what
+/// continues into what.
+/// </summary>
+public sealed class MovePageCommand(string pageId, int newIndex) : IDocumentCommand
+{
+    private int _oldIndex = -1;
+
+    public string PageId { get; } = pageId;
+
+    public int NewIndex { get; } = newIndex;
+
+    public string Description => "Move page";
+
+    public ChangeScope Scope => new(ChangeKind.PageStructure, PageId: PageId);
+
+    public void Apply(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        _oldIndex = document.Pages.FindIndex(p => p.Id == PageId);
+        if (_oldIndex < 0)
+        {
+            throw new KeyNotFoundException($"Page not found: {PageId}");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(NewIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(NewIndex, document.Pages.Count);
+
+        Page page = document.Pages[_oldIndex];
+        document.Pages.RemoveAt(_oldIndex);
+        document.Pages.Insert(NewIndex, page);
+    }
+
+    public void Revert(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        int current = document.Pages.FindIndex(p => p.Id == PageId);
+        Page page = document.Pages[current];
+        document.Pages.RemoveAt(current);
+        document.Pages.Insert(_oldIndex, page);
+    }
+
+    public bool TryMerge(IDocumentCommand newer) => false;
+}
+
 public sealed class RemovePageCommand(string pageId) : IDocumentCommand
 {
     private Page? _removed;

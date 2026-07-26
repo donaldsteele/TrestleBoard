@@ -14,6 +14,13 @@ public sealed record LayoutOptions
     public bool EnableStandardLigatures { get; init; } = true;
 
     public bool EnableKerning { get; init; } = true;
+
+    /// <summary>
+    /// Fewest lines of a paragraph allowed to stay behind when it breaks across frames
+    /// (docs/M8-spec.md §4). A single line stranded at the foot of a page is the most visible flaw
+    /// in the printed examples. 0 restores the pre-M8 behaviour exactly.
+    /// </summary>
+    public int MinLinesAtBreak { get; init; } = 2;
 }
 
 /// <summary>
@@ -151,6 +158,13 @@ public sealed class TextLayoutEngine
                 }
             }
 
+            // Orphan control runs after the frame is full and never on the last frame in the chain,
+            // where there is nowhere to push text to and doing so would only manufacture overset.
+            if (frameIdx < request.Frames.Count - 1)
+            {
+                PushOrphansForward(lines, plans, ref paraIdx, ref wordIdx, _options.MinLinesAtBreak);
+            }
+
             frameLayouts.Add(new FrameLayout(frameIdx, frame.Rect, lines));
         }
 
@@ -162,6 +176,49 @@ public sealed class TextLayoutEngine
         }
 
         return new LayoutResult(frameLayouts, overflow);
+    }
+
+    /// <summary>
+    /// Moves a stranded tail of a paragraph to the next frame (docs/M8-spec.md §4). Only the
+    /// "behind" side is enforced: the "forward" count is not known until the next frame is laid out,
+    /// and fixing it after the fact would need a second pass over frames already emitted.
+    /// </summary>
+    private static void PushOrphansForward(
+        List<LineBox> lines,
+        List<ParagraphPlan> plans,
+        ref int paraIdx,
+        ref int wordIdx,
+        int minLines)
+    {
+        // wordIdx > 0 means the frame stopped part-way through paragraph paraIdx.
+        if (minLines <= 1 || wordIdx <= 0 || lines.Count == 0 || paraIdx >= plans.Count)
+        {
+            return;
+        }
+
+        int stranded = 0;
+        for (int i = lines.Count - 1; i >= 0 && lines[i].ParagraphIndex == paraIdx; i--)
+        {
+            stranded++;
+        }
+
+        // Nothing to fix, or fixing it would empty the frame and simply move the problem along.
+        if (stranded == 0 || stranded >= minLines || stranded >= lines.Count)
+        {
+            return;
+        }
+
+        // Rewind to the first word of the first stranded line and drop those lines.
+        int startChar = lines[^stranded].Source.StartChar;
+        List<WordCluster> words = plans[paraIdx].Words;
+        int rewound = words.FindIndex(w => w.StartChar == startChar);
+        if (rewound < 0)
+        {
+            return;
+        }
+
+        lines.RemoveRange(lines.Count - stranded, stranded);
+        wordIdx = rewound;
     }
 
     // ---- Paragraph preparation -------------------------------------------------------------

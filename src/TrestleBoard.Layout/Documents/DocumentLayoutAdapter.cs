@@ -55,6 +55,34 @@ public static class DocumentLayoutAdapter
         return plans;
     }
 
+    /// <summary>
+    /// Lays a story out against its real chain PLUS frames that do not exist yet — how auto-flow
+    /// asks "would one more frame be enough?" without touching the document (docs/M8-spec.md §2).
+    /// A planned frame on a page that does not exist yet simply has no exclusions.
+    /// </summary>
+    public static LayoutRequest BuildSpeculativeRequest(
+        Document document,
+        TextBlock head,
+        IReadOnlyList<(string PageId, TextBlock Frame)> plannedFrames)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(head);
+        ArgumentNullException.ThrowIfNull(plannedFrames);
+
+        StoryLayoutPlan real = BuildPlan(document, document.FindBlock(head.Id).Page, head, null);
+        var frames = new List<LayoutFrame>(real.Request.Frames);
+        foreach ((string pageId, TextBlock frame) in plannedFrames)
+        {
+            Page? page = document.Pages.Find(p => p.Id == pageId);
+            frames.Add(new LayoutFrame(
+                ToFrameRect(frame.FrameRect),
+                page is null ? [] : BuildExclusions(page, frame, null),
+                frame.ColumnCount));
+        }
+
+        return new LayoutRequest(real.Request.Story, frames);
+    }
+
     private static StoryLayoutPlan BuildPlan(
         Document document,
         Page headPage,
@@ -85,7 +113,14 @@ public static class DocumentLayoutAdapter
                 break;
             }
 
-            (Page nextPage, Block nextBlock) = document.FindBlock(nextId);
+            // A link whose target is gone TERMINATES the chain (docs/M8-spec.md §3.1). Deleting the
+            // page a continuation frame sat on must cost the user that continuation — reported as
+            // overset — not the whole document to an exception thrown mid-paint.
+            if (!document.TryFindBlock(nextId, out Page? nextPage, out Block? nextBlock))
+            {
+                break;
+            }
+
             if (nextBlock is not TextBlock nextText)
             {
                 throw new InvalidOperationException($"linkNext target {nextId} is not a text block.");

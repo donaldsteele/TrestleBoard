@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     private FrameEditorController? _frames;
     private PhotoController? _photos;
     private WidgetController? _widgets;
+    private PageFlowController? _pages;
     private readonly WidgetLayoutProvider _widgetProvider = WidgetLayoutProvider.CreateDefault();
     private int _pageIndex;
     private bool _fitToWindow = true;
@@ -83,6 +84,9 @@ public partial class MainWindow : Window
     /// <summary>Also the headless-test entry point (no file dialog involved).</summary>
     internal void OpenSample() => ShowPackage(SampleDocument.CreatePackage(SamplePhoto.CreatePng()));
 
+    /// <summary>The whole five-page issue fixture (docs/M8-spec.md §6); the headless tests' entry point.</summary>
+    internal void OpenIssueSample() => ShowPackage(SampleIssue.CreatePackage(SamplePhoto.CreatePng()));
+
     internal string? PageLabelTextForTest => PageLabel.Text;
 
     internal string? ZoomLabelTextForTest => ZoomLabel.Text;
@@ -94,6 +98,8 @@ public partial class MainWindow : Window
     internal PhotoController? PhotosForTest => _photos;
 
     internal WidgetController? WidgetsForTest => _widgets;
+
+    internal PageFlowController? PagesForTest => _pages;
 
     internal DocumentRenderSource? SourceForTest => _source;
 
@@ -338,6 +344,45 @@ public partial class MainWindow : Window
         }
 
         await InsertPhotoFromFileAsync(file);
+    }
+
+    // ---- Pages and flow (docs/M8-spec.md §2/§3) ---------------------------------------------
+
+    private void OnAddPageClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_pages is not null)
+        {
+            _pages.AddPage(_pageIndex);
+            GoToPage(_pageIndex + 1);
+        }
+    }
+
+    private void OnRemovePageClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_pages is not null && _pages.RemovePage(_pageIndex))
+        {
+            GoToPage(Math.Min(_pageIndex, _pages.PageCount - 1));
+        }
+    }
+
+    private void OnMovePageEarlierClicked(object? sender, RoutedEventArgs e) => MovePage(-1);
+
+    private void OnMovePageLaterClicked(object? sender, RoutedEventArgs e) => MovePage(1);
+
+    private void MovePage(int delta)
+    {
+        if (_pages is not null && _pages.MovePage(_pageIndex, _pageIndex + delta))
+        {
+            GoToPage(_pageIndex + delta);
+        }
+    }
+
+    private void OnAutoFlowClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_pages is not null && _frames?.SelectedBlockId is { } blockId)
+        {
+            _pages.AutoFlow(blockId);
+        }
     }
 
     // ---- Widgets (docs/M7-spec.md §7/§8) ----------------------------------------------------
@@ -599,6 +644,10 @@ public partial class MainWindow : Window
                 OnFitToContentsClicked(sender, e);
                 e.Handled = true;
                 break;
+            case Key.M when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
+                OnAutoFlowClicked(sender, e);
+                e.Handled = true;
+                break;
             case Key.O when ctrl:
                 OnOpenClicked(sender, e);
                 e.Handled = true;
@@ -621,6 +670,7 @@ public partial class MainWindow : Window
         var frames = new FrameEditorController(session, source);
         var photos = new PhotoController(session, source, new PackageAssetStore(package));
         var widgets = new WidgetController(session, source, _widgetProvider);
+        var pages = new PageFlowController(session, source);
 
         _source?.Dispose();
         _source = source;
@@ -629,6 +679,7 @@ public partial class MainWindow : Window
         _frames = frames;
         _photos = photos;
         _widgets = widgets;
+        _pages = pages;
         _package = package;
         _pageIndex = 0;
         PageCanvas.Source = source;
@@ -642,6 +693,7 @@ public partial class MainWindow : Window
         frames.Changed += (_, _) => UpdateEditChrome();
         photos.Changed += (_, _) => UpdateEditChrome();
         widgets.Changed += (_, _) => UpdateEditChrome();
+        pages.Changed += (_, _) => { UpdatePageChrome(); UpdateEditChrome(); };
         editor.RevealRequested += OnCaretReveal;
 
         bool hasDoc = source.PageCount > 0;
@@ -796,6 +848,13 @@ public partial class MainWindow : Window
         LinkFramesMenuItem.IsEnabled = isTextFrame;
         UnlinkFramesMenuItem.IsEnabled = isTextFrame;
 
+        bool multiPage = _pages is { PageCount: > 1 };
+        AddPageMenuItem.IsEnabled = hasDocument;
+        RemovePageMenuItem.IsEnabled = multiPage;
+        MovePageUpMenuItem.IsEnabled = multiPage && _pageIndex > 0;
+        MovePageDownMenuItem.IsEnabled = multiPage && _pageIndex < (_pages?.PageCount ?? 0) - 1;
+        AutoFlowMenuItem.IsEnabled = hasFrame && _pages?.CanAutoFlow(_frames!.SelectedBlockId) == true;
+
         bool isWidget = hasFrame && _widgets?.IsWidget(_frames!.SelectedBlockId) == true;
         bool canEditWidget = isWidget && _widgets!.CanEdit(_frames!.SelectedBlockId);
         InsertOfficersMenuItem.IsEnabled = hasDocument;
@@ -815,7 +874,8 @@ public partial class MainWindow : Window
         FixPhotoButton.IsEnabled = isPhoto;
         AdjustPhotoMenuItem.IsEnabled = isPhoto;
 
-        StatusLabel.Text = _widgets?.StatusMessage
+        StatusLabel.Text = _pages?.StatusMessage
+            ?? _widgets?.StatusMessage
             ?? _photos?.StatusMessage
             ?? _frames?.StatusMessage
             ?? (_source is { IsOverset: true }

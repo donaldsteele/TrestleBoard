@@ -36,6 +36,7 @@ public sealed class CommandTests
             2),
         ["AddPage"] = _ => new AddPageCommand(new Page { Id = "page-3", MasterRef = "master-1" }, 2),
         ["RemovePage"] = _ => new RemovePageCommand("page-2"),
+        ["MovePage"] = _ => new MovePageCommand("page-2", 0),
         ["AddStory"] = _ => new AddStoryCommand(new Story { Id = "story-2" }),
         ["RemoveStory"] = _ => new RemoveStoryCommand("story-1"),
         ["SetMetadata"] = _ => new SetMetadataCommand(new DocumentMetadata { LodgeName = "Renamed Lodge", IssueMonth = 8, IssueYear = 2026 }),
