@@ -5,6 +5,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using TrestleBoard.App.Canvas;
 using TrestleBoard.App.Dialogs;
+using TrestleBoard.App.Settings;
 using TrestleBoard.Core.Commands;
 using TrestleBoard.Core.Container;
 using TrestleBoard.Core.Samples;
@@ -46,6 +47,7 @@ public partial class MainWindow : Window
     private IRecoveryStore? _recoveryStore;
     private DispatcherTimer? _recoveryTimer;
     private string? _documentPath;
+    private AppSettings _settings = AppSettings.Load();
     private readonly WidgetLayoutProvider _widgetProvider = WidgetLayoutProvider.CreateDefault();
     private int _pageIndex;
     private bool _fitToWindow = true;
@@ -54,6 +56,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
+        ApplySettings(_settings);
         Closed += (_, _) =>
         {
             // A clean close removes the recovery file, so a file surviving startup MEANS the app
@@ -477,6 +480,51 @@ public partial class MainWindow : Window
 
         await InsertPhotoFromFileAsync(file);
     }
+
+    // ---- Look and size (PLAN.md §6, docs/M9-spec.md §4) -------------------------------------
+
+    private async void OnSettingsClicked(object? sender, RoutedEventArgs e)
+    {
+        var dialog = new SettingsDialog(_settings);
+        await dialog.ShowDialog(this);
+        if (!dialog.Confirmed)
+        {
+            return;
+        }
+
+        _settings = dialog.Result;
+        _settings.Save();
+        ApplySettings(_settings);
+        StatusLabel.Text = "Saved. You can change this again from View, How things look.";
+    }
+
+    /// <summary>
+    /// Chrome only. The CANVAS is deliberately left out of the scale transform and out of the theme:
+    /// the page is a piece of paper, white in dark mode too, and its own zoom is a separate control
+    /// (docs/M9-spec.md §4).
+    /// </summary>
+    internal void ApplySettings(AppSettings settings)
+    {
+        _settings = settings.Normalised();
+
+        if (Avalonia.Application.Current is { } application)
+        {
+            ThemeManager.Apply(application, _settings);
+        }
+
+        double scale = _settings.UiScale;
+        foreach (LayoutTransformControl host in new[] { MenuScale, ToolbarScale, StatusScale })
+        {
+            // A LAYOUT transform, not a render transform: scaled chrome has to take up the room it
+            // now occupies, or the buttons simply overlap each other.
+            host.LayoutTransform = scale == 1d ? null : new Avalonia.Media.ScaleTransform(scale, scale);
+        }
+    }
+
+    internal AppSettings SettingsForTest => _settings;
+
+    /// <summary>The chrome hosts the UI scale is applied to; the canvas is deliberately not one.</summary>
+    internal LayoutTransformControl[] ChromeScaleHostsForTest => [MenuScale, ToolbarScale, StatusScale];
 
     // ---- Pages and flow (docs/M8-spec.md §2/§3) ---------------------------------------------
 

@@ -8,7 +8,8 @@
         AutomationProperties.Name="TrestleBoard main window">
   <!-- Minimum 16pt UI text, every action keyboard-reachable (PLAN.md §6). -->
   <DockPanel>
-    <Menu DockPanel.Dock="Top" FontSize="16">
+    <LayoutTransformControl x:Name="MenuScale" DockPanel.Dock="Top">
+    <Menu FontSize="16">
       <MenuItem Header="_File" AutomationProperties.Name="File menu">
         <MenuItem x:Name="OpenMenuItem"
                   Header="_Open a newsletter…"
@@ -137,6 +138,9 @@
         <MenuItem Header="Zoom _out" InputGesture="Ctrl+OemMinus" Click="OnZoomOutClicked" AutomationProperties.Name="Zoom out" />
         <MenuItem Header="_Actual size" InputGesture="Ctrl+D0" Click="OnZoomResetClicked" AutomationProperties.Name="Actual size" />
         <MenuItem Header="_Fit page" InputGesture="Ctrl+D1" Click="OnFitPageClicked" AutomationProperties.Name="Fit page" />
+        <Separator />
+        <MenuItem x:Name="SettingsMenuItem" Header="How things _look…" Click="OnSettingsClicked"
+                  AutomationProperties.Name="Change how things look" />
       </MenuItem>
       <MenuItem Header="_Page" AutomationProperties.Name="Page menu">
         <!-- Ctrl+PageUp/Down: bare PageUp/Down belongs to the caret while editing (M4 spec §4.3). -->
@@ -153,8 +157,10 @@
                   Click="OnMovePageLaterClicked" AutomationProperties.Name="Move this page later" />
       </MenuItem>
     </Menu>
+    </LayoutTransformControl>
 
-    <Border DockPanel.Dock="Top" Padding="8" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+    <LayoutTransformControl x:Name="ToolbarScale" DockPanel.Dock="Top">
+    <Border Padding="8" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
       <StackPanel Orientation="Horizontal" Spacing="8">
         <Button x:Name="OpenButton" FontSize="16" MinHeight="44" Click="OnOpenClicked"
                 AutomationProperties.Name="Open a newsletter">Open</Button>
@@ -201,13 +207,16 @@
                 Click="OnSendBackwardClicked" AutomationProperties.Name="Send backward">Backward</Button>
       </StackPanel>
     </Border>
+    </LayoutTransformControl>
 
     <!-- Plain-language status line: overset warnings and link prompts land here, never colour
          alone (PLAN.md §6, docs/M5-spec.md §8.4). -->
-    <Border DockPanel.Dock="Bottom" Padding="12,8" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+    <LayoutTransformControl x:Name="StatusScale" DockPanel.Dock="Bottom">
+    <Border Padding="12,8" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
       <TextBlock x:Name="StatusLabel" FontSize="16" TextWrapping="Wrap" Text=""
                  AutomationProperties.Name="Status" AutomationProperties.LiveSetting="Polite" />
     </Border>
+    </LayoutTransformControl>
 
     <ScrollViewer x:Name="CanvasScroller"
                   HorizontalScrollBarVisibility="Auto"
