@@ -51,10 +51,19 @@ public sealed class PageFlowControllerTests
 
         int frames = harness.Session.Document.Pages.SelectMany(p => p.Blocks).Count(b => b is TextBlock);
 
-        // The prose is short enough to need only a couple of continuations; if the loop kept going
-        // after the story fit, this would be at the cap instead.
+        // Fewest means fewest: removing the last frame the run added must put the story back into
+        // overset. Anything looser would pass against a loop that over-pours.
         Assert.False(harness.Source.IsOverset);
-        Assert.InRange(frames, 2, 4);
+
+        string last = harness.Session.Document.Pages
+            .SelectMany(p => p.Blocks)
+            .OfType<TextBlock>()
+            .Last(b => b.Id != EditorTestHarness.BlockId)
+            .Id;
+        (Page lastPage, _) = harness.Session.Document.FindBlock(last);
+        harness.Session.Execute(new RemoveBlockCommand(lastPage.Id, last));
+
+        Assert.True(harness.Source.IsOverset, $"{frames} frames were added, but the last one was not needed");
     }
 
     [Fact]
@@ -172,6 +181,44 @@ public sealed class PageFlowControllerTests
         Assert.NotNull(head.LinkNext);
         harness.Session.Undo();
         Assert.False(harness.Source.IsOverset);
+    }
+
+    /// <summary>
+    /// Auto-flow may be invoked on a frame in the MIDDLE of a chain. Overflow is a property of the
+    /// whole chain, so measuring it from the selected frame instead of the chain's head predicts an
+    /// overflow that is not there and pours more pages than the story needs.
+    /// </summary>
+    [Fact]
+    public void FlowingFromTheMiddleOfAChainAddsNoMoreThanFlowingFromItsHead()
+    {
+        int fromHead;
+        using (var head = new EditorTestHarness(Prose(60), frameHeightPt: 120, withExclusion: false))
+        {
+            Flow(head).AutoFlow(EditorTestHarness.BlockId);
+            fromHead = head.Session.Document.Pages.SelectMany(p => p.Blocks).Count(b => b is TextBlock);
+        }
+
+        using var harness = new EditorTestHarness(Prose(60), frameHeightPt: 120, withExclusion: false);
+        PageFlowController flow = Flow(harness);
+
+        // One continuation by hand, then flow from THAT frame rather than from the head.
+        flow.AutoFlow(EditorTestHarness.BlockId);
+        harness.Session.Undo();
+
+        string firstAdded = "frame-1";
+        flow.AutoFlow(EditorTestHarness.BlockId);
+        TextBlock middle = harness.Session.Document.Pages
+            .SelectMany(p => p.Blocks)
+            .OfType<TextBlock>()
+            .First(b => b.Id != EditorTestHarness.BlockId);
+        Assert.Equal(firstAdded, middle.Id);
+
+        // Already flowed, so nothing more is needed no matter which frame is selected.
+        Assert.False(harness.Source.IsOverset);
+        Assert.False(flow.CanAutoFlow(middle.Id));
+
+        int total = harness.Session.Document.Pages.SelectMany(p => p.Blocks).Count(b => b is TextBlock);
+        Assert.Equal(fromHead, total);
     }
 
     [Fact]

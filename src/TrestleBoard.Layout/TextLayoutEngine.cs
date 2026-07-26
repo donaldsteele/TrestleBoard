@@ -162,7 +162,8 @@ public sealed class TextLayoutEngine
             // where there is nowhere to push text to and doing so would only manufacture overset.
             if (frameIdx < request.Frames.Count - 1)
             {
-                PushOrphansForward(lines, plans, ref paraIdx, ref wordIdx, _options.MinLinesAtBreak);
+                PushOrphansForward(
+                    lines, plans, spaceBeforeConsumed, ref paraIdx, ref wordIdx, _options.MinLinesAtBreak);
             }
 
             frameLayouts.Add(new FrameLayout(frameIdx, frame.Rect, lines));
@@ -186,6 +187,7 @@ public sealed class TextLayoutEngine
     private static void PushOrphansForward(
         List<LineBox> lines,
         List<ParagraphPlan> plans,
+        bool[] spaceBeforeConsumed,
         ref int paraIdx,
         ref int wordIdx,
         int minLines)
@@ -219,6 +221,14 @@ public sealed class TextLayoutEngine
 
         lines.RemoveRange(lines.Count - stranded, stranded);
         wordIdx = rewound;
+
+        // Pushing the paragraph's FIRST line forward un-starts the paragraph, so its space-before is
+        // owed again — otherwise it lands flush against the top of the next frame, unlike every
+        // other paragraph that begins one.
+        if (rewound == 0)
+        {
+            spaceBeforeConsumed[paraIdx] = false;
+        }
     }
 
     // ---- Paragraph preparation -------------------------------------------------------------

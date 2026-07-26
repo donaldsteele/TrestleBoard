@@ -58,7 +58,6 @@ public sealed class Document
         PageMasters.Find(m => m.Id == masterId)
             ?? throw new KeyNotFoundException($"Page master not found: {masterId}");
 
-    /// <summary>Finds a block anywhere in the document; throws if absent.</summary>
     /// <summary>
     /// Non-throwing lookup, for callers that must survive a reference to a block that is no longer
     /// there — a linkNext left dangling by a deleted page (docs/M8-spec.md §3.1).
@@ -84,6 +83,7 @@ public sealed class Document
         return false;
     }
 
+    /// <summary>Finds a block anywhere in the document; throws if absent.</summary>
     public (Page Page, Block Block) FindBlock(string blockId)
     {
         foreach (Page page in Pages)

@@ -112,11 +112,13 @@ public sealed class IssueExportTests
         long withPhoto = ExportedSize(withPhoto: true);
         long cost = withPhoto - withoutPhoto;
 
+        // A concrete ceiling, not a ratio: an embedded lossless raster of the same photo runs to
+        // hundreds of KB, so this fails long before the file gets anywhere near the 2.5 MB budget.
         Assert.True(cost > 0, "the photo should cost something");
         Assert.True(
-            cost < withoutPhoto,
-            $"the photo costs {cost / 1024} KB against {withoutPhoto / 1024} KB of text and fonts — "
-            + "if that ever inverts, image embedding needs looking at again");
+            cost < 100_000,
+            $"the photo costs {cost / 1024} KB in the exported file — it was under 2 KB when this was "
+            + "written, so something has started embedding it uncompressed");
     }
 
     private static long ExportedSize(bool withPhoto)

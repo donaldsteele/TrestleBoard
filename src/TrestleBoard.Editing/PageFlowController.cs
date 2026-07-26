@@ -132,6 +132,10 @@ public sealed class PageFlowController
         int nextFrameOrdinal = HighestOrdinal(
             document.Pages.SelectMany(p => p.Blocks).Select(b => b.Id), "frame") + 1;
 
+        // Overflow is a property of the whole chain, so it is measured from the chain's HEAD even
+        // when the user invoked this on a frame part-way down it.
+        string headId = HeadOf(blockId);
+
         // The tail walks off the end of the document as soon as the first frame is planned, so its
         // page and master are tracked here rather than looked up — nothing has been executed yet.
         (Page firstTailPage, Block firstTailBlock) = document.FindBlock(tailId);
@@ -181,7 +185,7 @@ public sealed class PageFlowController
             tailPageId = targetPageId;
             added++;
 
-            if (!StillOverset(document, blockId, plan))
+            if (!StillOverset(headId, plan))
             {
                 break;
             }
@@ -206,6 +210,45 @@ public sealed class PageFlowController
         return true;
     }
 
+    /// <summary>
+    /// First frame of the chain this block belongs to. Auto-flow may be invoked on a frame in the
+    /// MIDDLE of a chain, and a speculative layout started from there would pour the whole story
+    /// into a truncated frame list — predicting overflow that does not exist.
+    /// </summary>
+    private string HeadOf(string blockId)
+    {
+        Document document = _session.Document;
+        string current = blockId;
+        var visited = new HashSet<string>(StringComparer.Ordinal) { current };
+        while (true)
+        {
+            string? previous = null;
+            foreach (Page page in document.Pages)
+            {
+                foreach (Block block in page.Blocks)
+                {
+                    if (block is TextBlock { LinkNext: { } next } && next == current)
+                    {
+                        previous = block.Id;
+                        break;
+                    }
+                }
+
+                if (previous is not null)
+                {
+                    break;
+                }
+            }
+
+            if (previous is null || !visited.Add(previous))
+            {
+                return current;
+            }
+
+            current = previous;
+        }
+    }
+
     /// <summary>Last frame of the chain this block belongs to.</summary>
     private string TailOf(string blockId)
     {
@@ -228,7 +271,6 @@ public sealed class PageFlowController
     /// out against the planned geometry, WITHOUT touching the document.
     /// </summary>
     private bool StillOverset(
-        Document document,
         string headBlockId,
         List<(string PageId, TextBlock Frame, string PreviousFrameId)> plan)
     {

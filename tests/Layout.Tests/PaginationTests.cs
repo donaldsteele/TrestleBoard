@@ -113,6 +113,45 @@ public sealed class PaginationTests
         Assert.NotEmpty(result.Frames[0].Lines);
     }
 
+    /// <summary>
+    /// Pushing a paragraph's FIRST line forward un-starts the paragraph, so the space above it is
+    /// owed again — otherwise it lands flush against the top of the next frame while every other
+    /// paragraph that begins one gets its space.
+    /// </summary>
+    [Fact]
+    public void APushedParagraphStillGetsItsSpaceAbove()
+    {
+        const float spaceBefore = 12f;
+        ParagraphStyle style = TestData.Para(spaceBefore: spaceBefore);
+        var story = new LayoutStory(
+            "story-1",
+            [
+                new LayoutParagraph(style, [new LayoutRun("A short opening line.", style.DefaultRun)]),
+                new LayoutParagraph(style, [new LayoutRun(TwoParagraphs, style.DefaultRun)]),
+            ]);
+
+        LayoutRequest Request(float firstHeight) => new(
+            story,
+            [
+                new LayoutFrame(new FrameRect(0, 0, 220, firstHeight), []),
+                new LayoutFrame(new FrameRect(300, 0, 520, 600), []),
+            ]);
+
+        // A height that leaves exactly one line of paragraph 1 behind, so orphan control pushes the
+        // paragraph's first line — and with it, the paragraph's start — into the second frame.
+        LayoutResult probe = Engine(0).Layout(Request(600f));
+        float height = probe.Frames[0].Lines.First(l => l.ParagraphIndex == 1).BandBottom + 1f;
+
+        LayoutResult pushed = Engine(2).Layout(Request(height));
+        Assert.Equal(0, LinesOfParagraph(pushed.Frames[0], 1));
+
+        LineBox firstOfSecondFrame = pushed.Frames[1].Lines[0];
+        Assert.Equal(1, firstOfSecondFrame.ParagraphIndex);
+        Assert.True(
+            firstOfSecondFrame.BandTop >= spaceBefore - 0.01f,
+            $"the pushed paragraph starts at {firstOfSecondFrame.BandTop:F2}pt, losing its space above");
+    }
+
     // ---- cross-page chains ---------------------------------------------------------------------
 
     /// <summary>
