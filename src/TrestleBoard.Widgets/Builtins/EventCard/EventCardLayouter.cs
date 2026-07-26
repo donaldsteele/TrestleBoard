@@ -45,21 +45,18 @@ public sealed class EventCardLayouter : IWidgetLayouter
         float left = paddingPt;
         float right = widthPt - paddingPt;
 
-        // Pass 1: measure. Nothing here is added to the real draw list; it exists only to learn how
-        // tall the card's content makes it, before the background can be drawn.
-        var probe = new WidgetDrawListBuilder(widthPt);
-        float contentBottomPt = LayoutContent(probe, shaper, data, style, left, right, paddingPt);
-        float cardHeightPt = contentBottomPt + paddingPt;
-
-        // Pass 2: draw for real. Fill first, border second, so both sit behind every text run.
+        // The background is sized from the MEASURED content height, which is not known until the
+        // content is laid out — and the renderer paints in list order. So the content goes down
+        // first and the background slides underneath it, rather than shaping every string twice.
         var builder = new WidgetDrawListBuilder(widthPt);
-        builder.Fill(0f, 0f, widthPt, cardHeightPt, fillArgb);
+        float cardHeightPt = LayoutContent(builder, shaper, data, style, left, right, paddingPt) + paddingPt;
+
         if (data.ShowBorder)
         {
-            builder.Border(0f, 0f, widthPt, cardHeightPt, strokeWidthPt, strokeArgb);
+            builder.PrependBorder(0f, 0f, widthPt, cardHeightPt, strokeWidthPt, strokeArgb);
         }
 
-        LayoutContent(builder, shaper, data, style, left, right, paddingPt);
+        builder.PrependFill(0f, 0f, widthPt, cardHeightPt, fillArgb);
         builder.Grow(cardHeightPt);
 
         bool isEmpty = string.IsNullOrWhiteSpace(data.Title) && string.IsNullOrWhiteSpace(data.BodyText);
