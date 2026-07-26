@@ -199,21 +199,62 @@ public sealed class WizardSession
 
     // ---- finish --------------------------------------------------------------------------
 
-    public IReadOnlyList<string> ReviewLines
+    /// <summary>
+    /// The review screen's read-back. Each line carries the screen that produced it, so "Change
+    /// this" lands on the answer the user is looking at rather than sending them back to the start
+    /// (docs/M7-spec.md §6.6) — the whole point of a review step for someone who has just answered
+    /// fourteen questions.
+    /// </summary>
+    public IReadOnlyList<WizardReviewLine> ReviewLines
     {
         get
         {
-            var lines = new List<string>();
-            foreach (IWizardStep step in Definition.Wizard.Steps)
+            var lines = new List<WizardReviewLine>();
+            for (int stepIndex = 0; stepIndex < Definition.Wizard.Steps.Count; stepIndex++)
             {
-                if (step.Kind != WizardStepKind.Review && step.IsActive(_data))
+                IWizardStep step = Definition.Wizard.Steps[stepIndex];
+                if (step.Kind == WizardStepKind.Review || !step.IsActive(_data))
                 {
-                    lines.AddRange(step.GetSummaryLines(_data));
+                    continue;
+                }
+
+                IReadOnlyList<string> summary = step.GetSummaryLines(_data);
+
+                // A list step's summary is one line per row, so a paginated one maps line i to the
+                // screen showing row i. Everything else has a single screen.
+                bool paginated = step is IWizardListStep { Pagination: WizardListPagination.OneRowPerScreen }
+                    && !_showAllRows.Contains(stepIndex)
+                    && step.GetRowCount(_data) == summary.Count;
+
+                for (int i = 0; i < summary.Count; i++)
+                {
+                    lines.Add(new WizardReviewLine(
+                        summary[i],
+                        FindScreenIndex(stepIndex, paginated ? i : -1)));
                 }
             }
 
             return lines;
         }
+    }
+
+    /// <summary>Screen showing a given step (and row, when it is paginated); 0 if it has none.</summary>
+    public int FindScreenIndex(int stepIndex, int rowIndex)
+    {
+        for (int i = 0; i < _screens.Count; i++)
+        {
+            if (_screens[i].StepIndex != stepIndex)
+            {
+                continue;
+            }
+
+            if (rowIndex < 0 || _screens[i].RowIndex == rowIndex)
+            {
+                return i;
+            }
+        }
+
+        return 0;
     }
 
     /// <summary>Validates EVERY active step; the caller navigates to the first failure's screen.</summary>
@@ -373,7 +414,10 @@ public sealed class WizardSession
 
     private void RebuildScreens()
     {
-        int previousStep = _screens.Count > 0 ? _screens[Math.Min(_screenIndex, _screens.Count - 1)].StepIndex : 0;
+        // Remember the screen the user is ACTUALLY on — step and row — not just its numeric index:
+        // adding or removing a row before the current one leaves the index pointing at a different
+        // row of the same step, which is invisible to a step-only comparison.
+        Screen? previous = _screens.Count > 0 ? _screens[Math.Min(_screenIndex, _screens.Count - 1)] : null;
         _screens.Clear();
         IReadOnlyList<IWizardStep> steps = Definition.Wizard.Steps;
         for (int i = 0; i < steps.Count; i++)
@@ -400,17 +444,39 @@ public sealed class WizardSession
             }
         }
 
-        if (_screenIndex >= _screens.Count)
+        if (_screens.Count == 0)
         {
-            _screenIndex = Math.Max(0, _screens.Count - 1);
+            _screenIndex = 0;
+            return;
         }
 
-        if (_screens.Count > 0 && _screens[_screenIndex].StepIndex != previousStep)
+        if (previous is not { } was)
         {
-            // A step disappeared under the cursor (a mode switch): land on the nearest survivor.
-            int fallback = _screens.FindIndex(s => s.StepIndex >= previousStep);
-            _screenIndex = fallback >= 0 ? fallback : _screens.Count - 1;
+            _screenIndex = Math.Min(_screenIndex, _screens.Count - 1);
+            return;
         }
+
+        // Same screen still there: stay on it, wherever it moved to.
+        int exact = _screens.IndexOf(was);
+        if (exact >= 0)
+        {
+            _screenIndex = exact;
+            return;
+        }
+
+        // Its row went away (or a step did): land on the nearest survivor of that step, else on the
+        // next step that still exists.
+        int sameStep = _screens.FindLastIndex(s => s.StepIndex == was.StepIndex);
+        if (sameStep >= 0)
+        {
+            _screenIndex = was.RowIndex < 0
+                ? sameStep
+                : Math.Min(sameStep, _screens.FindIndex(s => s.StepIndex == was.StepIndex) + was.RowIndex);
+            return;
+        }
+
+        int fallback = _screens.FindIndex(s => s.StepIndex >= was.StepIndex);
+        _screenIndex = fallback >= 0 ? fallback : _screens.Count - 1;
     }
 
     private readonly record struct Screen(int StepIndex, int RowIndex);

@@ -1534,6 +1534,17 @@ milestone does not rediscover them.
   process; a shown window leaves a queued menu measure that the headless session's teardown runs
   against an already-disposed font manager ("fonts:SystemFonts was not present"), which fails the
   test that queued it and every test after it.
+- **Insert does NOT fit-to-contents**, contrary to §8.2's pseudocode. Fitting an empty widget would
+  collapse the box to a sliver — BirthdayList's empty content is one heading line — so the insert
+  keeps `DefaultSizePt` and the first wizard commit does the fitting. Deliberate, recorded here.
+- **Emphasis can only be synthesised when the bold cut exists.** Deriving the emphasis face by
+  bolding a document-supplied body face asks `FontStore` for a weight that may not be bundled (a
+  document naming Cinzel for its table body is enough), and there is no system fallback — it throws
+  at paint time and the widget degrades to a grey box over a styling nicety. The resolver checks with
+  `TryResolve` and falls back to the regular face.
+- **Every review line carries its own screen index.** A single "Change this" that always returned to
+  screen 0 makes the review step worse than useless for someone who spotted a typo in the seventh of
+  fourteen answers.
 - **A widget payload is re-indented by the container.** `JsonElement.WriteTo` re-emits it inside
   `document.json` at the surrounding indent, so a save/reload comparison must be on the DECODED
   value, never on `GetRawText()`.

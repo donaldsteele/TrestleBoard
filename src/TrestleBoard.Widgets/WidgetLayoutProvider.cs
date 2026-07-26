@@ -44,8 +44,12 @@ public sealed class WidgetLayoutProvider : IWidgetLayoutProvider, IWidgetCatalog
             drawList = definition.Layouter.Layout(
                 new WidgetLayoutContext(data, request.WidthPt, request.Style, request.Shaper));
         }
-        catch (Exception ex) when (ex is InvalidOperationException or KeyNotFoundException or ArgumentException)
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException)
         {
+            // "Must NEVER throw" is the whole contract of this seam: a layouter fault has to become
+            // a grey box, not a dead paint pass that takes the newsletter down with it. Deliberately
+            // broad — the alternative is enumerating what six independently written layouters (and
+            // every future one) might throw, and being wrong about it in front of the user.
             return false;
         }
 

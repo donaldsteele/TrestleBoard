@@ -73,6 +73,31 @@ public static class WizardValidators
         return null;
     }
 
+    /// <summary>
+    /// A choice must be one of the offered values. Without this a widget would silently reinterpret
+    /// anything else — which is exactly what an unguarded free-text field on a Choice would allow.
+    /// </summary>
+    public static string? Choice(WizardField field, string value)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+        if (field.Choices is not { Count: > 0 } choices)
+        {
+            return null;
+        }
+
+        foreach (WizardChoice choice in choices)
+        {
+            if (string.Equals(choice.Value, value, StringComparison.Ordinal))
+            {
+                return null;
+            }
+        }
+
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"Please pick one of: {string.Join(", ", choices.Select(c => c.Label))}.");
+    }
+
     public static string TooLong(string label, int max) =>
         string.Create(
             CultureInfo.InvariantCulture,
@@ -133,6 +158,7 @@ public static class WizardValidators
             WizardFieldKind.MonthDay => MonthDay(value),
             WizardFieldKind.DayOfMonthRule => DayOfMonthRule(value),
             WizardFieldKind.Time => Time(value),
+            WizardFieldKind.Choice => Choice(field, value),
             _ => null,
         };
 

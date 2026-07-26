@@ -163,6 +163,26 @@ public sealed class WidgetContractTests
         }
     }
 
+    /// <summary>
+    /// "Must NEVER throw" is the entire contract of the layout seam: a faulty layouter has to become
+    /// a grey box, not a dead paint pass that takes the newsletter down with it (docs/M7-spec.md §4.1).
+    /// </summary>
+    [Fact]
+    public void ALayouterThatFaultsBecomesAPlaceholderInsteadOfKillingThePaint()
+    {
+        var registry = new WidgetRegistry();
+        registry.Register(new ExplodingWidget());
+        var provider = new WidgetLayoutProvider(registry);
+
+        using var doc = JsonDocument.Parse("""{"heading":"Sample","note":""}""");
+
+        Assert.False(provider.TryLayout(
+            new WidgetLayoutRequest(
+                "testExploding", 1, doc.RootElement, 240f,
+                WidgetTestData.CreateStyle(), WidgetTestData.CreateShaper()),
+            out _));
+    }
+
     [Fact]
     public void AMissingMigrationStepDegradesToReadOnlyRatherThanLosingData()
     {
@@ -259,9 +279,17 @@ public sealed class WidgetContractTests
 
         public override IWidgetLayouter Layouter { get; } = new EmptyLayouter();
 
+        // Test-only: the real widgets are source-generated (spec §1.2 rule 1), but a private nested
+        // fixture type cannot be, so this one asks for a reflection resolver explicitly.
+        private static readonly System.Text.Json.JsonSerializerOptions FixtureOptions = new()
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+            TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver(),
+        };
+
         protected override System.Text.Json.Serialization.Metadata.JsonTypeInfo<OneField> TypeInfo =>
             (System.Text.Json.Serialization.Metadata.JsonTypeInfo<OneField>)
-                WidgetData.Options.GetTypeInfo(typeof(OneField));
+                FixtureOptions.GetTypeInfo(typeof(OneField));
 
         public override OneField CreateEmpty(WidgetSeed seed) => new();
 
@@ -285,6 +313,25 @@ public sealed class WidgetContractTests
     private sealed class BrokenChainWidget : TwoVersionWidget
     {
         public override int CurrentDataVersion => 3;
+    }
+
+    /// <summary>Throws the kind of thing a hand-written layouter gets wrong: an index slip.</summary>
+    private sealed class ExplodingWidget : TwoVersionWidget
+    {
+        public override string TypeId => "testExploding";
+
+        public override int CurrentDataVersion => 1;
+
+        public override IWidgetLayouter Layouter { get; } = new ExplodingLayouter();
+    }
+
+    private sealed class ExplodingLayouter : IWidgetLayouter
+    {
+        public WidgetDrawList Layout(WidgetLayoutContext context)
+        {
+            int[] empty = [];
+            return empty[3] == 0 ? throw new InvalidOperationException() : null!;
+        }
     }
 
     private sealed class EmptyLayouter : IWidgetLayouter

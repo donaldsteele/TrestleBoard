@@ -47,3 +47,6 @@ public sealed record WizardField(
     WizardFieldValidator? Validator = null);
 
 public readonly record struct WizardFieldError(string FieldKey, int RowIndex, string Message);
+
+/// <summary>One line of the review screen, and the screen "Change this" should go back to.</summary>
+public readonly record struct WizardReviewLine(string Text, int ScreenIndex);

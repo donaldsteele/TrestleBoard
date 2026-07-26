@@ -169,8 +169,19 @@ public sealed class WizardWindow : Window
         }
         else if (e is { Key: Key.Enter, KeyModifiers: KeyModifiers.Control })
         {
-            _session.TryGoTo(_session.ScreenCount - 1);
-            RenderScreen();
+            // Only when everything already validates: a review screen listing half-answered
+            // questions as "—" would be a worse place to land than where the user is standing.
+            if (_session.TryCommit(out _, out _, out IReadOnlyList<WizardFieldError> pending))
+            {
+                _session.TryGoTo(_session.ScreenCount - 1);
+                RenderScreen();
+            }
+            else
+            {
+                _session.TryGoTo(_session.FindScreen(pending[0]));
+                RenderScreen(pending);
+            }
+
             e.Handled = true;
         }
     }
@@ -409,24 +420,36 @@ public sealed class WizardWindow : Window
             Margin = new Avalonia.Thickness(0, 0, 0, 8),
         });
 
-        foreach (string line in _session.ReviewLines)
+        // Every line carries its OWN "Change this": someone who has just answered fourteen questions
+        // and spots a typo in the seventh must not be sent back to the first (docs/M7-spec.md §6.6).
+        foreach (WizardReviewLine line in _session.ReviewLines)
         {
-            _body.Children.Add(new TextBlock
+            int target = line.ScreenIndex;
+            Button change = MakeButton("Change this", (_, _) =>
             {
-                Text = line,
-                FontSize = 18,
-                TextWrapping = TextWrapping.Wrap,
-                MaxWidth = 780,
+                _session.TryGoTo(target);
+                RenderScreen();
+            });
+            change.MinWidth = 140;
+
+            _body.Children.Add(new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 12,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = line.Text,
+                        FontSize = 18,
+                        TextWrapping = TextWrapping.Wrap,
+                        Width = 560,
+                        VerticalAlignment = VerticalAlignment.Center,
+                    },
+                    change,
+                },
             });
         }
-
-        Button change = MakeButton("Change this", (_, _) =>
-        {
-            _session.TryGoTo(0);
-            RenderScreen();
-        });
-        change.Margin = new Avalonia.Thickness(0, 12, 0, 0);
-        _body.Children.Add(change);
     }
 
     private void AddRow()

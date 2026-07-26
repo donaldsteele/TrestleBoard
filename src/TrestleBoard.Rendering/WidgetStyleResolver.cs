@@ -12,7 +12,11 @@ namespace TrestleBoard.Rendering;
 /// </summary>
 public static class WidgetStyleResolver
 {
-    public static WidgetStyleContext Resolve(Document document, WidgetBlock block, WidgetStyleContext defaults)
+    public static WidgetStyleContext Resolve(
+        Document document,
+        WidgetBlock block,
+        WidgetStyleContext defaults,
+        FontStore? fonts = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(block);
@@ -33,10 +37,11 @@ public static class WidgetStyleResolver
         {
             Heading = heading,
             Body = body,
-            // Emphasis tracks the resolved body face so a restyled table stays internally consistent.
-            Emphasis = table?.BodyCharacterStyleRef is null
-                ? defaults.Emphasis
-                : body with { Weight = FontWeight.Bold },
+            // Emphasis tracks the resolved body face so a restyled table stays internally
+            // consistent — but only if that bold face is actually bundled. There is no system
+            // fallback (PLAN.md §1), so asking for an unbundled weight would throw at paint time and
+            // the whole widget would degrade to a grey box over a styling nicety.
+            Emphasis = Emphasise(body, table?.BodyCharacterStyleRef, defaults.Emphasis, fonts),
             RuleArgb = table?.RuleArgb ?? defaults.RuleArgb,
             RuleWidthPt = table?.RuleWidthPt ?? defaults.RuleWidthPt,
             FillArgb = frame?.FillArgb ?? defaults.FillArgb,
@@ -45,6 +50,27 @@ public static class WidgetStyleResolver
             PaddingPt = frame is null ? defaults.PaddingPt : frame.PaddingPt,
             ColorTokens = document.Theme.ColorTokens,
         };
+    }
+
+    private static CharacterStyle Emphasise(
+        CharacterStyle body,
+        string? bodyStyleRef,
+        CharacterStyle fallback,
+        FontStore? fonts)
+    {
+        if (bodyStyleRef is null)
+        {
+            return fallback;
+        }
+
+        CharacterStyle bold = body with { Weight = FontWeight.Bold };
+        if (fonts is null || fonts.TryResolve(new FontKey(bold.FontFamily, bold.Weight, bold.Slant), out _))
+        {
+            return bold;
+        }
+
+        // No bold cut for that family: emphasise with the regular face rather than throwing.
+        return body;
     }
 
     private static CharacterStyle? Character(StyleSheet styles, string? name)

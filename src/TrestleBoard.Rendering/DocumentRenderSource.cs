@@ -277,7 +277,7 @@ public sealed class DocumentRenderSource : IDisposable
             dataVersion,
             data,
             widthPt,
-            WidgetStyleResolver.Resolve(_document, widget, defaults),
+            WidgetStyleResolver.Resolve(_document, widget, defaults, _fonts),
             WidgetShaper);
 
         if (!_widgets.TryLayout(request, out WidgetDrawList list))
@@ -720,7 +720,7 @@ public sealed class DocumentRenderSource : IDisposable
             widget.DataVersion,
             widget.Data,
             widthPt,
-            WidgetStyleResolver.Resolve(_document, widget, defaults),
+            WidgetStyleResolver.Resolve(_document, widget, defaults, _fonts),
             WidgetShaper);
 
         if (!_widgets.TryLayout(request, out WidgetDrawList list))

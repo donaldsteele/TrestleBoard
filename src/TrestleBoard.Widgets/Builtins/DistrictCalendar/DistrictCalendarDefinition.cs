@@ -61,7 +61,7 @@ public sealed class DistrictCalendarDefinition : WidgetDefinition<DistrictCalend
                                 new WizardChoice(ModeBoth, "Both"),
                             ]),
                         new WizardFieldBinding<DistrictCalendarData>(
-                            "mode", d => ModeToValue(d.Mode), (d, v) => d.Mode = ValueToMode(v))),
+                            "mode", d => ModeToValue(d.Mode), SetMode)),
                 ]),
             new RecordListStep<DistrictCalendarData, DistrictLodgeEntry>(
                 "Other lodges in the district",
@@ -132,10 +132,25 @@ public sealed class DistrictCalendarDefinition : WidgetDefinition<DistrictCalend
         _ => ModeBoth,
     };
 
-    private static DistrictCalendarMode ValueToMode(string value) => value switch
+    /// <summary>
+    /// An unrecognised value LEAVES THE MODE ALONE rather than quietly resetting it to the
+    /// meeting-days table. Both editors render this field as a picker, so a bad value should not
+    /// arrive at all — and if one ever does, losing the user's choice to a silent default is the
+    /// worst possible answer.
+    /// </summary>
+    private static void SetMode(DistrictCalendarData data, string value)
     {
-        ModeEvents => DistrictCalendarMode.Events,
-        ModeBoth => DistrictCalendarMode.Both,
-        _ => DistrictCalendarMode.MeetingDays,
-    };
+        switch (value)
+        {
+            case ModeMeetingDays:
+                data.Mode = DistrictCalendarMode.MeetingDays;
+                break;
+            case ModeEvents:
+                data.Mode = DistrictCalendarMode.Events;
+                break;
+            case ModeBoth:
+                data.Mode = DistrictCalendarMode.Both;
+                break;
+        }
+    }
 }

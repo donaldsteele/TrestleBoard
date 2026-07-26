@@ -216,23 +216,65 @@ public sealed class WidgetGridWindow : Window
         };
         panel.Children.Add(label);
 
-        bool multiLine = field.Kind == WizardFieldKind.MultiLineText;
-        var box = new TextBox
+        // A Choice field MUST be a picker here too. Rendering it as a text box would let someone
+        // type free text into a field the widget will silently reinterpret — the grid is a second
+        // view of the same wizard, not a laxer one.
+        Control input;
+        if (field.Kind == WizardFieldKind.Choice && field.Choices is { Count: > 0 } choices)
         {
-            FontSize = 20,
-            MinHeight = multiLine ? 120 : 44,
-            Width = 520,
-            Text = _session.GetValue(step, field.Key, rowIndex),
-            AcceptsReturn = multiLine,
-            TextWrapping = multiLine ? TextWrapping.Wrap : TextWrapping.NoWrap,
-            Watermark = field.ExampleText,
-            MaxLength = field.MaxLength,
-        };
-        box.TextChanged += (_, _) => _session.SetValue(step, field.Key, rowIndex, box.Text ?? "");
-        AutomationProperties.SetName(box, label.Text);
-        AutomationProperties.SetLabeledBy(box, label);
-        panel.Children.Add(box);
+            var combo = new ComboBox
+            {
+                FontSize = 20,
+                MinHeight = 44,
+                Width = 520,
+                ItemsSource = choices.Select(c => c.Label).ToList(),
+                SelectedIndex = Math.Max(0, IndexOfChoice(choices, _session.GetValue(step, field.Key, rowIndex))),
+            };
+            combo.SelectionChanged += (_, _) =>
+            {
+                if (combo.SelectedIndex >= 0)
+                {
+                    _session.SetValue(step, field.Key, rowIndex, choices[combo.SelectedIndex].Value);
+                    Render();
+                }
+            };
+            input = combo;
+        }
+        else
+        {
+            bool multiLine = field.Kind == WizardFieldKind.MultiLineText;
+            var box = new TextBox
+            {
+                FontSize = 20,
+                MinHeight = multiLine ? 120 : 44,
+                Width = 520,
+                Text = _session.GetValue(step, field.Key, rowIndex),
+                AcceptsReturn = multiLine,
+                TextWrapping = multiLine ? TextWrapping.Wrap : TextWrapping.NoWrap,
+                Watermark = field.ExampleText,
+                MaxLength = field.MaxLength,
+            };
+            box.TextChanged += (_, _) => _session.SetValue(step, field.Key, rowIndex, box.Text ?? "");
+            input = box;
+        }
+
+        AutomationProperties.SetName(input, label.Text);
+        AutomationProperties.SetLabeledBy(input, label);
+        panel.Children.Add(input);
         return panel;
+    }
+
+    private static int IndexOfChoice(IReadOnlyList<WizardChoice> choices, string value)
+    {
+        for (int i = 0; i < choices.Count; i++)
+        {
+            if (string.Equals(choices[i].Value, value, StringComparison.Ordinal))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     private void RenderErrors(IReadOnlyList<WizardFieldError> errors)
