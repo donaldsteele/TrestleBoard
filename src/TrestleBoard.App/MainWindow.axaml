@@ -1,19 +1,81 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:canvas="using:TrestleBoard.App.Canvas"
         x:Class="TrestleBoard.App.MainWindow"
         Title="TrestleBoard"
         Width="1100" Height="800"
         WindowStartupLocation="CenterScreen"
         AutomationProperties.Name="TrestleBoard main window">
-  <!-- Minimum 16pt UI text everywhere (PLAN.md §6). -->
-  <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
-    <TextBlock Text="TrestleBoard"
-               FontSize="32"
-               FontWeight="SemiBold"
-               HorizontalAlignment="Center"
-               AutomationProperties.Name="TrestleBoard" />
-    <TextBlock Text="Milestone 0 scaffold — the editor arrives in later milestones."
-               FontSize="16"
-               HorizontalAlignment="Center" />
-  </StackPanel>
+  <!-- Minimum 16pt UI text, every action keyboard-reachable (PLAN.md §6). -->
+  <DockPanel>
+    <Menu DockPanel.Dock="Top" FontSize="16">
+      <MenuItem Header="_File" AutomationProperties.Name="File menu">
+        <MenuItem x:Name="OpenMenuItem"
+                  Header="_Open a newsletter…"
+                  InputGesture="Ctrl+O"
+                  Click="OnOpenClicked"
+                  AutomationProperties.Name="Open a newsletter" />
+        <MenuItem x:Name="OpenSampleMenuItem"
+                  Header="Open the _sample newsletter"
+                  Click="OnOpenSampleClicked"
+                  AutomationProperties.Name="Open the sample newsletter" />
+        <Separator />
+        <MenuItem x:Name="ExportPdfMenuItem"
+                  Header="_Export as PDF…"
+                  InputGesture="Ctrl+E"
+                  IsEnabled="False"
+                  Click="OnExportPdfClicked"
+                  AutomationProperties.Name="Export as PDF" />
+        <Separator />
+        <MenuItem Header="E_xit"
+                  Click="OnExitClicked"
+                  AutomationProperties.Name="Exit TrestleBoard" />
+      </MenuItem>
+      <MenuItem Header="_View" AutomationProperties.Name="View menu">
+        <MenuItem Header="Zoom _in" InputGesture="Ctrl+OemPlus" Click="OnZoomInClicked" AutomationProperties.Name="Zoom in" />
+        <MenuItem Header="Zoom _out" InputGesture="Ctrl+OemMinus" Click="OnZoomOutClicked" AutomationProperties.Name="Zoom out" />
+        <MenuItem Header="_Actual size" InputGesture="Ctrl+D0" Click="OnZoomResetClicked" AutomationProperties.Name="Actual size" />
+        <MenuItem Header="_Fit page" InputGesture="Ctrl+D1" Click="OnFitPageClicked" AutomationProperties.Name="Fit page" />
+      </MenuItem>
+      <MenuItem Header="_Page" AutomationProperties.Name="Page menu">
+        <MenuItem Header="_Next page" InputGesture="PageDown" Click="OnNextPageClicked" AutomationProperties.Name="Next page" />
+        <MenuItem Header="_Previous page" InputGesture="PageUp" Click="OnPreviousPageClicked" AutomationProperties.Name="Previous page" />
+      </MenuItem>
+    </Menu>
+
+    <Border DockPanel.Dock="Top" Padding="8" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button x:Name="OpenButton" FontSize="16" MinHeight="44" Click="OnOpenClicked"
+                AutomationProperties.Name="Open a newsletter">Open</Button>
+        <Button x:Name="PrevPageButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnPreviousPageClicked"
+                AutomationProperties.Name="Previous page">◀ Back</Button>
+        <TextBlock x:Name="PageLabel" FontSize="16" VerticalAlignment="Center" MinWidth="110"
+                   TextAlignment="Center" Text="No newsletter"
+                   AutomationProperties.Name="Current page" AutomationProperties.LiveSetting="Polite" />
+        <Button x:Name="NextPageButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnNextPageClicked"
+                AutomationProperties.Name="Next page">Next ▶</Button>
+        <Separator Width="12" Background="Transparent" />
+        <Button x:Name="ZoomOutButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnZoomOutClicked"
+                AutomationProperties.Name="Zoom out">− Smaller</Button>
+        <TextBlock x:Name="ZoomLabel" FontSize="16" VerticalAlignment="Center" MinWidth="64"
+                   TextAlignment="Center" Text="100%"
+                   AutomationProperties.Name="Current zoom" AutomationProperties.LiveSetting="Polite" />
+        <Button x:Name="ZoomInButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnZoomInClicked"
+                AutomationProperties.Name="Zoom in">+ Bigger</Button>
+        <Button x:Name="FitButton" FontSize="16" MinHeight="44" IsEnabled="False" Click="OnFitPageClicked"
+                AutomationProperties.Name="Fit the whole page in the window">Fit page</Button>
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer x:Name="CanvasScroller"
+                  HorizontalScrollBarVisibility="Auto"
+                  VerticalScrollBarVisibility="Auto"
+                  Background="#FF6B6B6B"
+                  SizeChanged="OnScrollerSizeChanged">
+      <canvas:PageCanvasControl x:Name="PageCanvas"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                AutomationProperties.Name="Newsletter page preview" />
+    </ScrollViewer>
+  </DockPanel>
 </Window>

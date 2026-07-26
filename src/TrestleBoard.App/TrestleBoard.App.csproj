@@ -23,4 +23,7 @@
     <ProjectReference Include="..\TrestleBoard.Widgets\TrestleBoard.Widgets.csproj" />
     <ProjectReference Include="..\TrestleBoard.Export.Pdf\TrestleBoard.Export.Pdf.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="App.HeadlessTests" />
+  </ItemGroup>
 </Project>
