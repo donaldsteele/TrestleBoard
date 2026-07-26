@@ -142,6 +142,51 @@ public sealed class ContainerTests
         Assert.Throws<Migrations.UnsupportedFormatException>(() => TboardContainer.Load(ms));
     }
 
+    /// <summary>
+    /// A widget written by a LATER version of TrestleBoard: unknown type, unknown properties inside
+    /// its payload, unknown properties on its block. This build cannot draw or edit it, but it must
+    /// keep the user's newsletter intact byte for byte (docs/M7-spec.md §2.1).
+    /// </summary>
+    [Fact]
+    public void AWidgetFromANewerVersionSurvivesSaveLoadSaveVerbatim()
+    {
+        TboardPackage package = Fixtures.BuildPackage();
+        using var ms = new MemoryStream();
+        TboardContainer.Save(package, ms);
+
+        RewriteEntry(ms, "document.json", root =>
+        {
+            JsonObject widget = root["pages"]![1]!["blocks"]!.AsArray()
+                .First(b => b!["id"]!.GetValue<string>() == "widget-1")!.AsObject();
+            widget["widgetType"] = "memorialPanel";
+            widget["dataVersion"] = 9;
+            widget["futureBlockKnob"] = "keep-me";
+            widget["data"] = new JsonObject
+            {
+                ["brother"] = "A. Placeholder",
+                ["futurePayloadKnob"] = JsonValue.Create(7),
+            };
+        });
+
+        ms.Position = 0;
+        TboardPackage loaded = TboardContainer.Load(ms);
+        using var resaved = new MemoryStream();
+        TboardContainer.Save(loaded, resaved);
+
+        JsonObject widgetAfter = ReadEntry(resaved, "document.json")["pages"]![1]!["blocks"]!.AsArray()
+            .First(b => b!["id"]!.GetValue<string>() == "widget-1")!.AsObject();
+        Assert.Equal("memorialPanel", widgetAfter["widgetType"]!.GetValue<string>());
+        Assert.Equal(9, widgetAfter["dataVersion"]!.GetValue<int>());
+        Assert.Equal("keep-me", widgetAfter["futureBlockKnob"]!.GetValue<string>());
+        Assert.Equal("A. Placeholder", widgetAfter["data"]!["brother"]!.GetValue<string>());
+        Assert.Equal(7, widgetAfter["data"]!["futurePayloadKnob"]!.GetValue<int>());
+
+        // And a second save is byte-identical, so an untouched newsletter never drifts.
+        using var thirdSave = new MemoryStream();
+        TboardContainer.Save(loaded, thirdSave);
+        Assert.Equal(resaved.ToArray(), thirdSave.ToArray());
+    }
+
     private static JsonObject ReadEntry(MemoryStream zipStream, string entryName)
     {
         zipStream.Position = 0;

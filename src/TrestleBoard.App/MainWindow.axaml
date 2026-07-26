@@ -53,6 +53,28 @@
         <MenuItem x:Name="ItalicMenuItem" Header="_Italic" InputGesture="Ctrl+I" IsEnabled="False"
                   Click="OnItalicClicked" AutomationProperties.Name="Italic" />
       </MenuItem>
+      <!-- Insert menu: the six widgets each get their own item so a keyboard user never has to
+           go through a picker (docs/M7-spec.md §8.1). -->
+      <MenuItem Header="_Insert" AutomationProperties.Name="Insert menu">
+        <MenuItem x:Name="InsertOfficersMenuItem" Header="_Lodge officers" IsEnabled="False"
+                  Click="OnInsertWidgetClicked" Tag="officersTable"
+                  AutomationProperties.Name="Insert the lodge officers table" />
+        <MenuItem x:Name="InsertBirthdaysMenuItem" Header="_Birthdays" IsEnabled="False"
+                  Click="OnInsertWidgetClicked" Tag="birthdayList"
+                  AutomationProperties.Name="Insert the birthday list" />
+        <MenuItem x:Name="InsertCommitteesMenuItem" Header="_Committees" IsEnabled="False"
+                  Click="OnInsertWidgetClicked" Tag="committeeList"
+                  AutomationProperties.Name="Insert the committee list" />
+        <MenuItem x:Name="InsertDistrictMenuItem" Header="_District calendar" IsEnabled="False"
+                  Click="OnInsertWidgetClicked" Tag="districtCalendar"
+                  AutomationProperties.Name="Insert the district calendar" />
+        <MenuItem x:Name="InsertAnnouncementMenuItem" Header="_Announcement box" IsEnabled="False"
+                  Click="OnInsertWidgetClicked" Tag="eventCard"
+                  AutomationProperties.Name="Insert an announcement box" />
+        <MenuItem x:Name="InsertCoverMenuItem" Header="Cover _heading" IsEnabled="False"
+                  Click="OnInsertWidgetClicked" Tag="coverBanner"
+                  AutomationProperties.Name="Insert the cover heading" />
+      </MenuItem>
       <!-- Object menu: every direct-manipulation gesture also lives here with a shortcut,
            so nothing on the canvas is mouse-only (PLAN.md §6, docs/M5-spec.md §9). -->
       <MenuItem Header="Ob_ject" AutomationProperties.Name="Object menu">
@@ -89,6 +111,16 @@
         <MenuItem x:Name="AdjustPhotoMenuItem" Header="Adjust the pictu_re…" InputGesture="Ctrl+Shift+A"
                   IsEnabled="False" Click="OnAdjustPhotoClicked"
                   AutomationProperties.Name="Adjust the picture" />
+        <Separator />
+        <MenuItem x:Name="EditWidgetMenuItem" Header="_Edit this item…" InputGesture="Ctrl+Shift+E"
+                  IsEnabled="False" Click="OnEditWidgetClicked"
+                  AutomationProperties.Name="Edit this item" />
+        <MenuItem x:Name="EditWidgetListMenuItem" Header="Edit _list…" InputGesture="Ctrl+Shift+G"
+                  IsEnabled="False" Click="OnEditWidgetListClicked"
+                  AutomationProperties.Name="Edit this list" />
+        <MenuItem x:Name="FitToContentsMenuItem" Header="Fit to _contents" InputGesture="Ctrl+Shift+Y"
+                  IsEnabled="False" Click="OnFitToContentsClicked"
+                  AutomationProperties.Name="Fit this item to its contents" />
         <Separator />
         <MenuItem x:Name="LinkFramesMenuItem" Header="_Continue this text in another frame…" InputGesture="Ctrl+Shift+L"
                   IsEnabled="False" Click="OnLinkFramesClicked"

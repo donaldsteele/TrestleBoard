@@ -12,5 +12,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\TrestleBoard.Rendering\TrestleBoard.Rendering.csproj" />
     <ProjectReference Include="..\..\src\TrestleBoard.Export.Pdf\TrestleBoard.Export.Pdf.csproj" />
+    <!-- Rendering itself never references Widgets (it draws them through IWidgetLayoutProvider);
+         the snapshots inject the real registry, which is also what proves the seam works. -->
+    <ProjectReference Include="..\..\src\TrestleBoard.Widgets\TrestleBoard.Widgets.csproj" />
   </ItemGroup>
 </Project>

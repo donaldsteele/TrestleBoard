@@ -28,12 +28,24 @@ public static class DocumentPdfExporter
         using var stream = new SKManagedWStream(output);
         using SKDocument document = SKDocument.CreatePdf(stream, skMetadata)
             ?? throw new InvalidOperationException("SKDocument.CreatePdf returned null.");
-        for (int i = 0; i < source.PageCount; i++)
+
+        // "Not filled in yet" prompts are an on-screen nudge and must never reach a printed
+        // newsletter (docs/M7-spec.md §8.4).
+        bool prompts = source.ShowEmptyPrompts;
+        source.ShowEmptyPrompts = false;
+        try
         {
-            Core.Model.SizePt size = source.GetPageSize(i);
-            SKCanvas canvas = document.BeginPage(size.Width, size.Height);
-            source.RenderPage(canvas, i);
-            document.EndPage();
+            for (int i = 0; i < source.PageCount; i++)
+            {
+                Core.Model.SizePt size = source.GetPageSize(i);
+                SKCanvas canvas = document.BeginPage(size.Width, size.Height);
+                source.RenderPage(canvas, i);
+                document.EndPage();
+            }
+        }
+        finally
+        {
+            source.ShowEmptyPrompts = prompts;
         }
 
         document.Close();

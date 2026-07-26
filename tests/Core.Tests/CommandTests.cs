@@ -52,6 +52,18 @@ public sealed class CommandTests
                 new DeleteTextCommand("story-1", 1, 0, 6),
                 new InsertTextCommand("story-1", 1, 0, "Supper"),
             ]),
+        // M7's widget commit: data and fit-to-contents in ONE undo step (docs/M7-spec.md §7.3).
+        ["Composite.WidgetEdit"] = _ => new CompositeCommand(
+            "Edit lodge officers",
+            new ChangeScope(ChangeKind.BlockContent, BlockId: "widget-1"),
+            [
+                new SetWidgetDataCommand(
+                    "widget-1",
+                    JsonSerializer.Deserialize<JsonElement>(
+                        """{"heading":"Lodge Officers","officers":[{"position":"Worshipful Master","name":"A. Placeholder"}]}"""),
+                    1),
+                new ResizeBlockCommand("widget-1", new RectPt(300f, 400f, 240f, 190f)),
+            ]),
         ["SetZOrder"] = _ => new SetZOrderCommand("img-1", 0),
         ["SetLinkNext.Clear"] = _ => new SetLinkNextCommand("text-1", null),
         ["SetLinkNext.Set"] = _ => new SetLinkNextCommand("text-2", "text-1"),

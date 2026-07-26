@@ -10,5 +10,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\TrestleBoard.Editing\TrestleBoard.Editing.csproj" />
+    <!-- Editing itself never references Widgets (it sees them through IWidgetCatalog); the tests
+         do, so WidgetController is exercised against the real registry rather than a mock. -->
+    <ProjectReference Include="..\..\src\TrestleBoard.Widgets\TrestleBoard.Widgets.csproj" />
   </ItemGroup>
 </Project>

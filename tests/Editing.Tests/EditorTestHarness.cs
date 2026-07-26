@@ -41,7 +41,11 @@ internal sealed class EditorTestHarness : IDisposable
 
     private static readonly Lazy<FontStore> Fonts = new(BundledFonts.CreateDefaultStore);
 
-    public EditorTestHarness(string? initialText, int frameHeightPt = 420, bool withExclusion = true)
+    public EditorTestHarness(
+        string? initialText,
+        int frameHeightPt = 420,
+        bool withExclusion = true,
+        Layout.Widgets.IWidgetLayoutProvider? widgets = null)
     {
         var doc = new Document();
         doc.StyleSheet.CharacterStyles.Add(new CharacterStyleDef
@@ -105,7 +109,8 @@ internal sealed class EditorTestHarness : IDisposable
 
         Clock = new ManualTimeProvider();
         Session = new DocumentSession(doc, Clock);
-        Source = DocumentRenderSource.CreateEditable(doc, new Dictionary<string, byte[]>(), Fonts.Value, Session);
+        Source = DocumentRenderSource.CreateEditable(
+            doc, new Dictionary<string, byte[]>(), Fonts.Value, Session, options: null, widgets: widgets);
         Clipboard = new FakeClipboard();
         Controller = new TextEditorController(Session, Source, Clipboard);
         Frames = new FrameEditorController(Session, Source);

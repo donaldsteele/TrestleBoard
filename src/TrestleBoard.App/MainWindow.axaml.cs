@@ -11,6 +11,8 @@ using TrestleBoard.Editing;
 using TrestleBoard.Export.Pdf;
 using TrestleBoard.Layout.Fonts;
 using TrestleBoard.Rendering;
+using TrestleBoard.Widgets;
+using TrestleBoard.Widgets.Wizards;
 
 namespace TrestleBoard.App;
 
@@ -30,6 +32,8 @@ public partial class MainWindow : Window
     private TextEditorController? _editor;
     private FrameEditorController? _frames;
     private PhotoController? _photos;
+    private WidgetController? _widgets;
+    private readonly WidgetLayoutProvider _widgetProvider = WidgetLayoutProvider.CreateDefault();
     private int _pageIndex;
     private bool _fitToWindow = true;
 
@@ -88,6 +92,12 @@ public partial class MainWindow : Window
     internal FrameEditorController? FramesForTest => _frames;
 
     internal PhotoController? PhotosForTest => _photos;
+
+    internal WidgetController? WidgetsForTest => _widgets;
+
+    internal DocumentRenderSource? SourceForTest => _source;
+
+    internal WidgetLayoutProvider WidgetProviderForTest => _widgetProvider;
 
     internal TboardPackage? PackageForTest => _package;
 
@@ -330,6 +340,110 @@ public partial class MainWindow : Window
         await InsertPhotoFromFileAsync(file);
     }
 
+    // ---- Widgets (docs/M7-spec.md §7/§8) ----------------------------------------------------
+
+    /// <summary>
+    /// Insert puts an EMPTY widget on the page and opens its wizard straight away: inserting means
+    /// "I want to fill this in", and the box is already visible while the questions are answered.
+    /// </summary>
+    private async void OnInsertWidgetClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_widgets is null || sender is not MenuItem { Tag: string typeId })
+        {
+            return;
+        }
+
+        string blockId = _widgets.InsertWidget(_pageIndex, typeId);
+        _frames?.Select(blockId);
+        UpdateEditChrome();
+        await RunWizardAsync(blockId, grid: false);
+    }
+
+    private async void OnEditWidgetClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_frames?.SelectedBlockId is { } blockId)
+        {
+            await RunWizardAsync(blockId, grid: false);
+        }
+    }
+
+    private async void OnEditWidgetListClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_frames?.SelectedBlockId is { } blockId)
+        {
+            await RunWizardAsync(blockId, grid: true);
+        }
+    }
+
+    private void OnFitToContentsClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_frames?.SelectedBlockId is { } blockId)
+        {
+            _widgets?.FitToContents(blockId);
+        }
+    }
+
+    /// <summary>
+    /// Both editors run the SAME session and commit through the SAME controller call, so "one
+    /// wizard run = one undo step" holds however the user got there (docs/M7-spec.md §7.3).
+    /// </summary>
+    private async Task RunWizardAsync(string blockId, bool grid)
+    {
+        if (_widgets is null || _session is null || !_widgets.CanEdit(blockId))
+        {
+            UpdateEditChrome();
+            return;
+        }
+
+        if (CreateSession(blockId) is not { } wizard)
+        {
+            return;
+        }
+
+        if (grid)
+        {
+            var window = new WidgetGridWindow(wizard);
+            await window.ShowDialog(this);
+            if (window.Confirmed)
+            {
+                _widgets.ApplyWidgetData(blockId, window.Data, window.DataVersion, window.UndoLabel);
+            }
+        }
+        else
+        {
+            var window = new WizardWindow(wizard);
+            await window.ShowDialog(this);
+            if (window.Confirmed)
+            {
+                _widgets.ApplyWidgetData(blockId, window.Data, window.DataVersion, window.UndoLabel);
+            }
+            else
+            {
+                StatusLabel.Text =
+                    "Nothing was filled in yet. Press Ctrl+Z to take it back off the page.";
+                return;
+            }
+        }
+
+        UpdateEditChrome();
+    }
+
+    /// <summary>Pre-filled from whatever is already on the block — that IS the re-edit path (§7.1).</summary>
+    private WizardSession? CreateSession(string blockId)
+    {
+        if (_widgets?.GetWidgetType(blockId) is not { } typeId
+            || _session is null
+            || !_widgetProvider.Registry.TryGet(typeId, out IWidgetDefinition? definition))
+        {
+            return null;
+        }
+
+        (_, Core.Model.Block block) = _session.Document.FindBlock(blockId);
+        var widget = (Core.Model.WidgetBlock)block;
+        return WizardSession.Create(
+            definition, widget.Data, widget.DataVersion, WidgetController.SeedFrom(_session.Document));
+    }
+
     private void OnLinkFramesClicked(object? sender, RoutedEventArgs e)
     {
         _frames?.BeginLink();
@@ -473,6 +587,18 @@ public partial class MainWindow : Window
                 Restack(f => e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? f.SendToBack() : f.SendBackward());
                 e.Handled = true;
                 break;
+            case Key.E when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
+                OnEditWidgetClicked(sender, e);
+                e.Handled = true;
+                break;
+            case Key.G when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
+                OnEditWidgetListClicked(sender, e);
+                e.Handled = true;
+                break;
+            case Key.Y when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
+                OnFitToContentsClicked(sender, e);
+                e.Handled = true;
+                break;
             case Key.O when ctrl:
                 OnOpenClicked(sender, e);
                 e.Handled = true;
@@ -490,10 +616,11 @@ public partial class MainWindow : Window
     {
         var session = new DocumentSession(package.Document);
         DocumentRenderSource source = DocumentRenderSource.CreateEditable(
-            package.Document, package.Assets, _fonts, session);
+            package.Document, package.Assets, _fonts, session, options: null, widgets: _widgetProvider);
         var editor = new TextEditorController(session, source, new AvaloniaTextClipboard(this));
         var frames = new FrameEditorController(session, source);
         var photos = new PhotoController(session, source, new PackageAssetStore(package));
+        var widgets = new WidgetController(session, source, _widgetProvider);
 
         _source?.Dispose();
         _source = source;
@@ -501,6 +628,7 @@ public partial class MainWindow : Window
         _editor = editor;
         _frames = frames;
         _photos = photos;
+        _widgets = widgets;
         _package = package;
         _pageIndex = 0;
         PageCanvas.Source = source;
@@ -513,6 +641,7 @@ public partial class MainWindow : Window
         editor.Changed += (_, _) => UpdateEditChrome();
         frames.Changed += (_, _) => UpdateEditChrome();
         photos.Changed += (_, _) => UpdateEditChrome();
+        widgets.Changed += (_, _) => UpdateEditChrome();
         editor.RevealRequested += OnCaretReveal;
 
         bool hasDoc = source.PageCount > 0;
@@ -667,6 +796,18 @@ public partial class MainWindow : Window
         LinkFramesMenuItem.IsEnabled = isTextFrame;
         UnlinkFramesMenuItem.IsEnabled = isTextFrame;
 
+        bool isWidget = hasFrame && _widgets?.IsWidget(_frames!.SelectedBlockId) == true;
+        bool canEditWidget = isWidget && _widgets!.CanEdit(_frames!.SelectedBlockId);
+        InsertOfficersMenuItem.IsEnabled = hasDocument;
+        InsertBirthdaysMenuItem.IsEnabled = hasDocument;
+        InsertCommitteesMenuItem.IsEnabled = hasDocument;
+        InsertDistrictMenuItem.IsEnabled = hasDocument;
+        InsertAnnouncementMenuItem.IsEnabled = hasDocument;
+        InsertCoverMenuItem.IsEnabled = hasDocument;
+        EditWidgetMenuItem.IsEnabled = canEditWidget;
+        EditWidgetListMenuItem.IsEnabled = canEditWidget && CreateSession(_frames!.SelectedBlockId!)?.HasListSteps == true;
+        FitToContentsMenuItem.IsEnabled = isWidget;
+
         bool isPhoto = hasFrame && _photos?.IsPhoto(_frames!.SelectedBlockId) == true;
         InsertPhotoMenuItem.IsEnabled = hasDocument;
         InsertPhotoButton.IsEnabled = hasDocument;
@@ -674,7 +815,8 @@ public partial class MainWindow : Window
         FixPhotoButton.IsEnabled = isPhoto;
         AdjustPhotoMenuItem.IsEnabled = isPhoto;
 
-        StatusLabel.Text = _photos?.StatusMessage
+        StatusLabel.Text = _widgets?.StatusMessage
+            ?? _photos?.StatusMessage
             ?? _frames?.StatusMessage
             ?? (_source is { IsOverset: true }
                 ? "Some text does not fit in its frame. Select that frame to see what to do."

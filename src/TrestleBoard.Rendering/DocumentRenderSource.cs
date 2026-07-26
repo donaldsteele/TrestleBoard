@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 using SkiaSharp;
 using TrestleBoard.Core.Commands;
 using TrestleBoard.Core.Model;
@@ -6,6 +8,7 @@ using TrestleBoard.Layout;
 using TrestleBoard.Layout.Documents;
 using TrestleBoard.Layout.Editing;
 using TrestleBoard.Layout.Fonts;
+using TrestleBoard.Layout.Widgets;
 
 namespace TrestleBoard.Rendering;
 
@@ -34,17 +37,33 @@ public sealed class DocumentRenderSource : IDisposable
     private readonly Dictionary<string, HashSet<string>> _storiesByPageId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, RectPt> _previewRects = new(StringComparer.Ordinal);
     private readonly List<string> _oversetTailBlockIds = [];
+    private readonly Dictionary<string, (float WidthPt, WidgetDrawList List)> _widgetDrawLists =
+        new(StringComparer.Ordinal);
+    private readonly List<string> _widgetOverflowBlockIds = [];
+    private readonly FontStore _fonts;
+    private readonly LayoutOptions? _layoutOptions;
+    private readonly IWidgetLayoutProvider? _widgets;
+    private WidgetTextShaper? _widgetShaper;
     private List<StoryLayoutPlan> _plans = [];
     private readonly HashSet<string> _dirtyStories = new(StringComparer.Ordinal);
     private bool _allDirty = true;
     private bool _isOverset;
     private bool _disposed;
 
-    private DocumentRenderSource(Document document, Dictionary<string, byte[]> assets, TextLayoutEngine engine)
+    private DocumentRenderSource(
+        Document document,
+        Dictionary<string, byte[]> assets,
+        TextLayoutEngine engine,
+        FontStore fonts,
+        LayoutOptions? options,
+        IWidgetLayoutProvider? widgets)
     {
         _document = document;
         _assets = assets;
         _engine = engine;
+        _fonts = fonts;
+        _layoutOptions = options;
+        _widgets = widgets;
     }
 
     public int PageCount => _document.Pages.Count;
@@ -76,7 +95,8 @@ public sealed class DocumentRenderSource : IDisposable
         Document document,
         IReadOnlyDictionary<string, byte[]> assets,
         FontStore fonts,
-        LayoutOptions? options = null)
+        LayoutOptions? options = null,
+        IWidgetLayoutProvider? widgets = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(assets);
@@ -84,7 +104,10 @@ public sealed class DocumentRenderSource : IDisposable
         return new DocumentRenderSource(
             document,
             assets.ToDictionary(StringComparer.Ordinal),
-            new TextLayoutEngine(fonts, options));
+            new TextLayoutEngine(fonts, options),
+            fonts,
+            options,
+            widgets);
     }
 
     /// <summary>Creates a source wired to a session: every executed/undone command marks the
@@ -94,10 +117,11 @@ public sealed class DocumentRenderSource : IDisposable
         IReadOnlyDictionary<string, byte[]> assets,
         FontStore fonts,
         DocumentSession session,
-        LayoutOptions? options = null)
+        LayoutOptions? options = null,
+        IWidgetLayoutProvider? widgets = null)
     {
         ArgumentNullException.ThrowIfNull(session);
-        DocumentRenderSource source = Create(document, assets, fonts, options);
+        DocumentRenderSource source = Create(document, assets, fonts, options, widgets);
         session.Changed += (_, e) => source.Invalidate(e.Scope);
         return source;
     }
@@ -118,6 +142,17 @@ public sealed class DocumentRenderSource : IDisposable
         {
             // Page structure changes the frame set; content may change intrinsic size; play safe.
             _allDirty = true;
+        }
+
+        // Widget geometry AND widget data both change the drawn box, and a data change can change
+        // the measured height and therefore the exclusion (docs/M7-spec.md §5.2).
+        if (scope.BlockId is { } widgetBlockId)
+        {
+            _widgetDrawLists.Remove(widgetBlockId);
+        }
+        else
+        {
+            _widgetDrawLists.Clear();
         }
 
         LayoutInvalidated?.Invoke(this, EventArgs.Empty);
@@ -174,6 +209,120 @@ public sealed class DocumentRenderSource : IDisposable
     /// <summary>True when the block is a text frame (the canvas needs it for mode arbitration).</summary>
     public bool IsTextBlock(string blockId) => _document.FindBlock(blockId).Block is TextBlock;
 
+    /// <summary>
+    /// Empty-widget prompts are drawn on screen and never printed. The PDF exporter turns this off
+    /// for the duration of an export (docs/M7-spec.md §8.4).
+    /// </summary>
+    public bool ShowEmptyPrompts { get; set; } = true;
+
+    /// <summary>The shaper widgets measure and draw through; one per source, metrics cached.</summary>
+    private WidgetTextShaper WidgetShaper => _widgetShaper ??= new WidgetTextShaper(_fonts, _layoutOptions);
+
+    /// <summary>The laid-out widget at its current frame width, or false when it cannot be laid out.</summary>
+    public bool TryGetWidgetDrawList(string blockId, [NotNullWhen(true)] out WidgetDrawList? drawList)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(blockId);
+        drawList = null;
+        if (_document.FindBlock(blockId).Block is not WidgetBlock widget)
+        {
+            return false;
+        }
+
+        RectPt rect = DocumentLayoutAdapter.EffectiveRect(widget, _previewRects);
+        return TryLayoutWidget(widget, rect.Width, out drawList);
+    }
+
+    /// <summary>Natural height of a widget at a width — what "Fit to contents" resizes to (§4.6).</summary>
+    public bool TryMeasureWidgetHeight(string blockId, float widthPt, out float heightPt)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        heightPt = 0f;
+        if (_document.FindBlock(blockId).Block is not WidgetBlock widget
+            || !TryLayoutWidget(widget, widthPt, out WidgetDrawList? drawList))
+        {
+            return false;
+        }
+
+        heightPt = drawList.HeightPt;
+        return true;
+    }
+
+    /// <summary>
+    /// Height a widget WOULD have with a payload that is not on the document yet. This is what lets
+    /// a wizard commit and its fit-to-contents resize be one command instead of two (§7.3); the
+    /// hypothetical layout is never cached.
+    /// </summary>
+    public bool TryMeasureWidgetHeight(
+        string blockId,
+        JsonElement? data,
+        int dataVersion,
+        float widthPt,
+        out float heightPt)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        heightPt = 0f;
+        if (_widgets is null || _document.FindBlock(blockId).Block is not WidgetBlock widget)
+        {
+            return false;
+        }
+
+        if (!_widgets.TryGetStyleDefaults(widget.WidgetType, out WidgetStyleContext defaults))
+        {
+            return false;
+        }
+
+        var request = new WidgetLayoutRequest(
+            widget.WidgetType,
+            dataVersion,
+            data,
+            widthPt,
+            WidgetStyleResolver.Resolve(_document, widget, defaults),
+            WidgetShaper);
+
+        if (!_widgets.TryLayout(request, out WidgetDrawList list))
+        {
+            return false;
+        }
+
+        heightPt = list.HeightPt;
+        return true;
+    }
+
+    /// <summary>
+    /// Widgets whose content does not fit the box the user gave them — the overset badge hangs on
+    /// these exactly as it does on an overflowing story (docs/M7-spec.md §4.6).
+    /// </summary>
+    public IReadOnlyList<string> GetWidgetOverflowBlockIds()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _widgetOverflowBlockIds.Clear();
+        if (_widgets is null)
+        {
+            return _widgetOverflowBlockIds;
+        }
+
+        foreach (Page page in _document.Pages)
+        {
+            foreach (Block block in page.Blocks)
+            {
+                if (block is not WidgetBlock widget)
+                {
+                    continue;
+                }
+
+                RectPt rect = DocumentLayoutAdapter.EffectiveRect(widget, _previewRects);
+                if (TryLayoutWidget(widget, rect.Width, out WidgetDrawList? list)
+                    && list.HeightPt > rect.Height + 0.5f)
+                {
+                    _widgetOverflowBlockIds.Add(widget.Id);
+                }
+            }
+        }
+
+        return _widgetOverflowBlockIds;
+    }
+
     /// <summary>Topmost block containing the point, or null (docs/M5-spec.md §1.1).</summary>
     public string? HitTestBlock(int pageIndex, float xPt, float yPt)
     {
@@ -225,6 +374,17 @@ public sealed class DocumentRenderSource : IDisposable
     {
         Page page = _document.Pages[pageIndex];
         return _document.GetMaster(page.MasterRef).Size;
+    }
+
+    /// <summary>
+    /// The laid-out lines of one text frame. Public so tests can assert that body text actually
+    /// split around a block — the acceptance criterion for wrap (docs/M7-spec.md §10.2).
+    /// </summary>
+    public bool TryGetFrameLayout(string blockId, [NotNullWhen(true)] out FrameLayout? layout)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        EnsureLayout();
+        return _frameLayoutsByBlockId.TryGetValue(blockId, out layout);
     }
 
     public bool TryGetStoryGeometry(string storyId, out StoryTextGeometry geometry)
@@ -427,9 +587,8 @@ public sealed class DocumentRenderSource : IDisposable
             case ShapeBlock shape:
                 RenderShape(canvas, shape, rect);
                 break;
-            case WidgetBlock:
-                // Widgets render for real in M7; a neutral placeholder keeps layout honest.
-                RenderPlaceholder(canvas, rect);
+            case WidgetBlock widget:
+                RenderWidget(canvas, widget, rect);
                 break;
             default:
                 throw new NotSupportedException($"Unknown block type: {block.GetType().Name}");
@@ -518,6 +677,60 @@ public sealed class DocumentRenderSource : IDisposable
             };
             canvas.DrawRect(rect, strokePaint);
         }
+    }
+
+    /// <summary>
+    /// Paints a widget through the injected provider (docs/M7-spec.md §0.1). With no provider — or
+    /// an unknown widget type, or a dataVersion newer than this build — the neutral M3 placeholder
+    /// is drawn instead, which is what keeps the pre-M7 baselines from moving.
+    /// </summary>
+    private void RenderWidget(SKCanvas canvas, WidgetBlock widget, RectPt frameRect)
+    {
+        if (!TryLayoutWidget(widget, frameRect.Width, out WidgetDrawList? drawList))
+        {
+            RenderPlaceholder(canvas, frameRect);
+            return;
+        }
+
+        WidgetDrawListRenderer.Render(canvas, drawList, frameRect, WidgetShaper, ShowEmptyPrompts);
+    }
+
+    private bool TryLayoutWidget(WidgetBlock widget, float widthPt, [NotNullWhen(true)] out WidgetDrawList? drawList)
+    {
+        drawList = null;
+        if (_widgets is null)
+        {
+            return false;
+        }
+
+        if (_widgetDrawLists.TryGetValue(widget.Id, out (float WidthPt, WidgetDrawList List) cached)
+            && cached.WidthPt == widthPt)
+        {
+            drawList = cached.List;
+            return true;
+        }
+
+        if (!_widgets.TryGetStyleDefaults(widget.WidgetType, out WidgetStyleContext defaults))
+        {
+            return false;
+        }
+
+        var request = new WidgetLayoutRequest(
+            widget.WidgetType,
+            widget.DataVersion,
+            widget.Data,
+            widthPt,
+            WidgetStyleResolver.Resolve(_document, widget, defaults),
+            WidgetShaper);
+
+        if (!_widgets.TryLayout(request, out WidgetDrawList list))
+        {
+            return false;
+        }
+
+        _widgetDrawLists[widget.Id] = (widthPt, list);
+        drawList = list;
+        return true;
     }
 
     private static void RenderPlaceholder(SKCanvas canvas, RectPt frameRect)

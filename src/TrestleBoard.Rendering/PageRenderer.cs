@@ -51,8 +51,14 @@ public sealed class PageRenderer
         }
     }
 
-    private static void DrawRun(SKCanvas canvas, PositionedGlyphRun run)
+    /// <summary>
+    /// Draws one positioned run. Public since M7: widget draw lists carry the same runs and must
+    /// rasterise through exactly this path, or widget text and body text would not match.
+    /// </summary>
+    public static void DrawRun(SKCanvas canvas, PositionedGlyphRun run)
     {
+        ArgumentNullException.ThrowIfNull(canvas);
+        ArgumentNullException.ThrowIfNull(run);
         if (run.Glyphs.Count == 0)
         {
             return;
