@@ -66,14 +66,20 @@ public sealed class IssueExportTests
         Assert.Contains(page2!.Lines, l => Narrowed(l, 504f));
     }
 
-    [Fact]
-    public void EveryPageMatchesItsBaseline()
+    /// <summary>
+    /// One test per page, not a loop: a loop stops at the first missing baseline and CI then uploads
+    /// only that page's candidate, so promoting a new fixture would take five round trips.
+    /// </summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    public void EachPageMatchesItsBaseline(int pageIndex)
     {
         using DocumentRenderSource source = CreateSource();
-        for (int page = 0; page < source.PageCount; page++)
-        {
-            AssertPageMatchesBaseline(source, page);
-        }
+        AssertPageMatchesBaseline(source, pageIndex);
     }
 
     /// <summary>
@@ -196,7 +202,7 @@ public sealed class IssueExportTests
         {
             string info = Run("pdfinfo", $"\"{pdfPath}\"");
             Assert.Contains("Placeholder Lodge", info, StringComparison.Ordinal);
-            Assert.Contains("Pages:          5", info, StringComparison.Ordinal);
+            Assert.Matches(@"Pages:\s+5", info);
         }
     }
 
