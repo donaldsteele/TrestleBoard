@@ -80,6 +80,10 @@ public static class CarryForward
     {
         if (!MeetingRule.TryParse(document.Metadata.MeetingRule, out MeetingRule rule))
         {
+            // No usable rule, so the printed date cannot be recomputed. Leaving LAST month's date
+            // under THIS month's issue is the same failure the prose reset exists to prevent, so the
+            // date is cleared instead and the user is left an empty field to fill in.
+            ClearMeetingDates(document);
             return;
         }
 
@@ -144,48 +148,42 @@ public static class CarryForward
     /// This is the safety-critical step (docs/M9-spec.md §3 step 5): the failure being designed
     /// against is last month's message going out under this month's date, and the only safe default
     /// is to clear it and make the user write. Widget data is untouched here — it is carried
-    /// forward unchanged by step 4, handled simply by not being reset.</summary>
-    private static void ResetArticleProse(Document document, string prompt)
+    /// forward unchanged by step 4, handled simply by not being reset.
+    ///
+    /// Clears EVERY story, not only those a text frame still points at. An orphaned story — one
+    /// whose frame was deleted at some point — is invisible in the editor but still sits in the
+    /// saved container, and "carry-forward never silently keeps prose" has to mean never.</summary>
+    /// <summary>
+    /// Blanks every cover banner's printed date. An empty field asks to be filled in; a wrong date
+    /// looks finished and goes out.
+    /// </summary>
+    private static void ClearMeetingDates(Document document)
     {
-        var storyIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (Page page in document.Pages)
         {
-            CollectStoryRefs(page.Blocks, storyIds);
+            UpdateCoverBanners(page.Blocks, string.Empty);
         }
 
         foreach (PageMaster master in document.PageMasters)
         {
-            CollectStoryRefs(master.Blocks, storyIds);
+            UpdateCoverBanners(master.Blocks, string.Empty);
         }
+    }
 
+    private static void ResetArticleProse(Document document, string prompt)
+    {
         foreach (Story story in document.Stories)
         {
-            if (!storyIds.Contains(story.Id))
-            {
-                continue;
-            }
-
             string styleRef = story.Paragraphs.Count > 0
                 ? story.Paragraphs[0].ParagraphStyleRef
                 : FallbackParagraphStyleRef;
 
-            List<StoryParagraph> promptParagraphs = [new StoryParagraph
+            story.Paragraphs = [new StoryParagraph
             {
                 ParagraphStyleRef = styleRef,
                 Runs = [new StoryRun { Text = prompt }],
             }];
-            story.Paragraphs = promptParagraphs;
         }
     }
 
-    private static void CollectStoryRefs(List<Block> blocks, HashSet<string> storyIds)
-    {
-        foreach (Block block in blocks)
-        {
-            if (block is TextBlock text)
-            {
-                storyIds.Add(text.StoryRef);
-            }
-        }
-    }
 }

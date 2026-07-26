@@ -21,6 +21,16 @@
                   Click="OnOpenSampleClicked"
                   AutomationProperties.Name="Open the sample newsletter" />
         <Separator />
+        <MenuItem x:Name="NewFromTemplateMenuItem"
+                  Header="Start from a _template…"
+                  Click="OnNewFromTemplateClicked"
+                  AutomationProperties.Name="Start from a template" />
+        <MenuItem x:Name="NewFromLastMonthMenuItem"
+                  Header="Start from _last month"
+                  IsEnabled="False"
+                  Click="OnStartFromLastMonthClicked"
+                  AutomationProperties.Name="Start this month from last month's newsletter" />
+        <Separator />
         <MenuItem x:Name="ExportPdfMenuItem"
                   Header="_Export as PDF…"
                   InputGesture="Ctrl+E"
@@ -161,6 +171,9 @@
 
     <LayoutTransformControl x:Name="ToolbarScale" DockPanel.Dock="Top">
     <Border Padding="8" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
+      <!-- Scrolls horizontally: at 200% the toolbar is wider than most windows, and a control the
+           user cannot reach is the same as a control that is not there (PLAN.md §6). -->
+      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
       <StackPanel Orientation="Horizontal" Spacing="8">
         <Button x:Name="OpenButton" FontSize="16" MinHeight="44" Click="OnOpenClicked"
                 AutomationProperties.Name="Open a newsletter">Open</Button>
@@ -206,6 +219,7 @@
         <Button x:Name="SendBackwardButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False"
                 Click="OnSendBackwardClicked" AutomationProperties.Name="Send backward">Backward</Button>
       </StackPanel>
+      </ScrollViewer>
     </Border>
     </LayoutTransformControl>
 

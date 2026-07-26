@@ -91,6 +91,35 @@ public sealed class AccessibilityTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>
+    /// A screen reader must see the page as it is now, not as it was when it first looked.
+    ///
+    /// Honest note on what this proves: it passes with the explicit InvalidateBlocks call removed,
+    /// because Avalonia re-queries the children on this path anyway. It pins the OUTCOME the user
+    /// depends on, not the mechanism. The invalidation call is kept because the caching behaviour is
+    /// Avalonia's to change and the call costs nothing — but this test would not catch its loss.
+    /// </summary>
+    [Fact]
+    public async Task TheBlockListKeepsUpWithEditsToThePage()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.OpenIssueSample();
+
+            AutomationPeer peer = window.CanvasForTest.CreateAutomationPeerForTest();
+            int before = peer.GetChildren().Count;
+
+            window.WidgetsForTest!.InsertWidget(0, "birthdayList");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(before + 1, peer.GetChildren().Count);
+            Assert.Contains("Birthdays", peer.GetChildren().Select(c => c.GetName()));
+
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
     [Fact]
     public async Task SelectingABlockThroughTheScreenReaderMovesTheRealSelection()
     {

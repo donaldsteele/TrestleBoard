@@ -249,17 +249,23 @@ public sealed class RecoveryServiceTests
         try
         {
             string path = Path.Combine(dir, "july.tboard");
-            for (int generation = 1; generation <= 7; generation++)
+            File.WriteAllText(path, "generation 1");
+
+            // ROTATE THEN WRITE — the documented order. Rotating after writing would make .bak1 a
+            // copy of the file just saved, so "restore an earlier version" would restore the very
+            // thing the user wanted to undo.
+            for (int generation = 2; generation <= 8; generation++)
             {
-                File.WriteAllText(path, $"generation {generation}");
                 FileRecoveryStore.RotateBackups(path);
+                File.WriteAllText(path, $"generation {generation}");
             }
 
-            // Five kept, newest first, and no sixth.
-            Assert.Equal("generation 7", File.ReadAllText(path));
+            Assert.Equal("generation 8", File.ReadAllText(path));
+
+            // .bak1 is the version BEFORE the current one, and five generations are kept.
             for (int i = 1; i <= 5; i++)
             {
-                Assert.Equal($"generation {7 - i + 1}", File.ReadAllText($"{path}.bak{i}"));
+                Assert.Equal($"generation {8 - i}", File.ReadAllText($"{path}.bak{i}"));
             }
 
             Assert.False(File.Exists($"{path}.bak6"));

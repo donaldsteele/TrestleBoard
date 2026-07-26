@@ -57,6 +57,16 @@ public partial class MainWindow : Window
         InitializeComponent();
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
         ApplySettings(_settings);
+
+        // The start screen and the recovery offer are the app's front door; without this they exist
+        // but nobody ever sees them.
+        Opened += async (_, _) =>
+        {
+            if (!SuppressStartupForTest)
+            {
+                await RunStartupAsync();
+            }
+        };
         Closed += (_, _) =>
         {
             // A clean close removes the recovery file, so a file surviving startup MEANS the app
@@ -76,6 +86,10 @@ public partial class MainWindow : Window
     /// </summary>
     private void StartRecovery(TboardPackage package)
     {
+        // SaveNow BEFORE Complete, exactly as the close path does. Complete() deletes the snapshot,
+        // so dropping it without writing would throw away edits the user has not autosaved yet —
+        // and there is no manual Save to fall back on.
+        _recovery?.SaveNow();
         _recovery?.Complete();
         _recovery?.Dispose();
         _recoveryStore ??= new FileRecoveryStore();
@@ -91,7 +105,22 @@ public partial class MainWindow : Window
         _recoveryTimer.Start();
     }
 
-    private void OnRecoveryTick(object? sender, EventArgs e) => _recovery?.Poll();
+    private void OnRecoveryTick(object? sender, EventArgs e)
+    {
+        try
+        {
+            _recovery?.Poll();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // An unhandled exception on a timer tick takes the whole app down — the autosave feature
+            // causing the very crash it exists to protect against. A skipped tick costs at most one
+            // interval; the next one tries again.
+            StatusLabel.Text =
+                "Could not save a backup copy just now. TrestleBoard will keep trying. "
+                + $"({ex.Message})";
+        }
+    }
 
     /// <summary>
     /// The whole document plus a page-1 thumbnail — "is this the work I lost?" is answered by
@@ -114,6 +143,34 @@ public partial class MainWindow : Window
         using var buffer = new MemoryStream();
         TboardContainer.Save(package, buffer);
         return buffer.ToArray();
+    }
+
+    /// <summary>
+    /// The real startup path (PLAN.md §7, docs/M9-spec.md §1.5/§2): offer back anything that
+    /// survived a crash, and otherwise ask what the user wants to do. Called once, from Opened.
+    /// </summary>
+    private async Task RunStartupAsync()
+    {
+        if (await OfferRecoveryAsync())
+        {
+            return;
+        }
+
+        var start = new StartDialog(canStartFromLastMonth: false);
+        await start.ShowDialog(this);
+
+        switch (start.Choice)
+        {
+            case StartChoice.Template:
+                OpenTemplate(start.SelectedTemplateId);
+                break;
+            case StartChoice.OpenFile:
+                OnOpenClicked(this, new RoutedEventArgs());
+                break;
+            case StartChoice.LastMonth:
+                // Only reachable once a newsletter is open; the tile explains that and is disabled.
+                break;
+        }
     }
 
     /// <summary>Offers back anything that survived a previous run (docs/M9-spec.md §1.5).</summary>
@@ -177,6 +234,9 @@ public partial class MainWindow : Window
             using var buffer = new MemoryStream();
             await stream.CopyToAsync(buffer);
             buffer.Position = 0;
+
+            // Recovery offers to put the work back where it came from, so the path has to be known.
+            _documentPath = files[0].TryGetLocalPath();
             ShowPackage(TboardContainer.Load(buffer));
         }
         catch (Exception ex) when (ex is Core.Migrations.UnsupportedFormatException or System.IO.InvalidDataException)
@@ -286,6 +346,27 @@ public partial class MainWindow : Window
                 + $"({ex.Message})");
         }
     }
+
+    private async void OnNewFromTemplateClicked(object? sender, RoutedEventArgs e)
+    {
+        var start = new StartDialog(canStartFromLastMonth: _package is not null);
+        await start.ShowDialog(this);
+
+        switch (start.Choice)
+        {
+            case StartChoice.Template:
+                OpenTemplate(start.SelectedTemplateId);
+                break;
+            case StartChoice.LastMonth:
+                StartFromLastMonth();
+                break;
+            case StartChoice.OpenFile:
+                OnOpenClicked(this, new RoutedEventArgs());
+                break;
+        }
+    }
+
+    private void OnStartFromLastMonthClicked(object? sender, RoutedEventArgs e) => StartFromLastMonth();
 
     private void OnExitClicked(object? sender, RoutedEventArgs e) => Close();
 
@@ -522,6 +603,11 @@ public partial class MainWindow : Window
     }
 
     internal AppSettings SettingsForTest => _settings;
+
+    /// <summary>Headless tests drive the shell directly; they must not get a modal start screen.</summary>
+    internal static bool SuppressStartupForTest { get; set; } = true;
+
+    internal Task RunStartupForTest() => RunStartupAsync();
 
     /// <summary>The chrome hosts the UI scale is applied to; the canvas is deliberately not one.</summary>
     internal LayoutTransformControl[] ChromeScaleHostsForTest => [MenuScale, ToolbarScale, StatusScale];
@@ -881,6 +967,7 @@ public partial class MainWindow : Window
 
         bool hasDoc = source.PageCount > 0;
         ExportPdfMenuItem.IsEnabled = hasDoc;
+        NewFromLastMonthMenuItem.IsEnabled = hasDoc;
         ZoomInButton.IsEnabled = hasDoc;
         ZoomOutButton.IsEnabled = hasDoc;
         FitButton.IsEnabled = hasDoc;

@@ -155,10 +155,22 @@ public sealed partial class TemplateTests
     [GeneratedRegex(@"(\(\d{3}\)\s*|\d{3}[-.\s])?\d{3}[-.\s]\d{4}\b")]
     private static partial Regex PhoneShapedPattern();
 
-    /// <summary>"John Smith" or "A. Placeholder" shaped — the two forms every fictional name in
-    /// this repo's fixtures already uses (PLAN.md §0), so this is exactly the shape a real one
-    /// pasted in later would take too.</summary>
-    [GeneratedRegex(@"\b[A-Z][a-z]+\s[A-Z][a-z]+\b|\b[A-Z]\.\s?[A-Z][a-z]+\b")]
+    /// <summary>
+    /// The shapes a name pasted into a template would actually take:
+    /// <list type="bullet">
+    /// <item>"John Smith" — two capitalised words</item>
+    /// <item>"A. Placeholder", "A.B. Smith" — initials then a surname</item>
+    /// <item>"Bro. Smith", "W. Bro. Wilson", "Wor. Jones" — a Masonic honorific and a surname,
+    /// which is how a lodge secretary would most naturally write one, and which a two-word pattern
+    /// alone would miss entirely</item>
+    /// </list>
+    /// Deliberately over-eager: a false positive costs one entry in the allow-list below, and a
+    /// false negative ships somebody's name to print.
+    /// </summary>
+    [GeneratedRegex(
+        @"\b[A-Z][a-z]+\s[A-Z][a-z]+\b"
+        + @"|\b[A-Z]\.\s?[A-Z]?\.?\s?[A-Z][a-z]+\b"
+        + @"|\b(?:Bro|Wor|Rt|W)\.\s?(?:Wor\.\s?|Bro\.\s?)?[A-Z][a-z]+\b")]
     private static partial Regex NameShapedPattern();
 
     private static IEnumerable<string> EnumerateHumanStrings(Document document)

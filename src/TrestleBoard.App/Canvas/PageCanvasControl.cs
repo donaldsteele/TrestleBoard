@@ -40,6 +40,7 @@ public sealed class PageCanvasControl : Control
 
     private readonly DispatcherTimer _caretBlink;
     private DocumentRenderSource? _source;
+    private Avalonia.Automation.Peers.AutomationPeer? _peer;
     private TextEditorController? _editor;
     private FrameEditorController? _frames;
     private bool _caretVisible = true;
@@ -82,11 +83,11 @@ public sealed class PageCanvasControl : Control
     /// (PLAN.md §6, docs/M9-spec.md §5).
     /// </summary>
     protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer() =>
-        new PageCanvasAutomationPeer(this);
+        _peer = new PageCanvasAutomationPeer(this);
 
     /// <summary>The peer a screen reader would get; the headless a11y tests assert on it.</summary>
     internal Avalonia.Automation.Peers.AutomationPeer CreateAutomationPeerForTest() =>
-        OnCreateAutomationPeer();
+        _peer ??= OnCreateAutomationPeer();
 
     public DocumentRenderSource? Source
     {
@@ -100,6 +101,11 @@ public sealed class PageCanvasControl : Control
                 {
                     InvalidateMeasure();
                     InvalidateVisual();
+
+                    // Avalonia caches an automation peer's children until it is told otherwise, so
+                    // without this a screen reader keeps reading the page as it was when it first
+                    // looked — every edit invisible to it (docs/M9-spec.md §5).
+                    (_peer as PageCanvasAutomationPeer)?.InvalidateBlocks();
                 });
             }
 

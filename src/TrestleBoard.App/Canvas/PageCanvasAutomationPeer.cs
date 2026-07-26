@@ -28,6 +28,12 @@ public sealed class PageCanvasAutomationPeer : ControlAutomationPeer
             ? $"Newsletter page {_canvas.PageIndex + 1} of {source.PageCount}"
             : "Newsletter page";
 
+    /// <summary>
+    /// Tells the automation system the page has changed, so it re-asks for the children rather than
+    /// serving the ones it cached the first time it looked.
+    /// </summary>
+    public void InvalidateBlocks() => InvalidateChildren();
+
     protected override IReadOnlyList<AutomationPeer> GetOrCreateChildrenCore()
     {
         var children = new List<AutomationPeer>();

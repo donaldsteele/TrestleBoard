@@ -12,6 +12,9 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // A real launch runs the startup flow — recovery first, then the start screen. The
+            // headless tests set this true so they can drive the shell without a modal in the way.
+            MainWindow.SuppressStartupForTest = false;
             desktop.MainWindow = new MainWindow();
         }
 

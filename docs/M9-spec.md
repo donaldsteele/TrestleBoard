@@ -210,6 +210,26 @@ Linux AT-SPI is best-effort per PLAN §6 and the script says so.
 | `App.HeadlessTests` | The recovery dialog appears for a surviving file and not otherwise; start screen tiles; a full issue driven keyboard-only; the canvas peer names every block. |
 | `Rendering.SnapshotTests` | Each template's page 1, so a template cannot rot unnoticed. |
 
+## 9a. Implementation notes (recorded after the build)
+
+- **Built is not wired.** The first version of this milestone had `RecoveryService`, `StartDialog`,
+  `RestoreDialog`, `TemplateLibrary` and `CarryForward` all implemented and passing tests in
+  isolation, and NONE of them reachable from a real launch — no caller for the recovery offer, no
+  construction of the start screen, no menu items for templates or carry-forward. The acceptance
+  criterion "relaunch offers recovery with thumbnail" was unmet by the shipped app while every
+  underlying part was green. Unit tests over a component say nothing about whether anyone can get to
+  it; the startup path now has its own test.
+- **`Complete()` without `SaveNow()` deletes work.** Opening a second document dropped the first
+  document's snapshot before writing it. There is no manual Save in the app, so those edits were
+  simply gone. Both paths — close and re-open — now save first.
+- **An autosave that throws on the UI thread crashes the app**, which is the exact failure it exists
+  to prevent. The timer tick swallows I/O errors and reports them in the status line; a skipped tick
+  costs at most one interval.
+- **Carry-forward clears EVERY story**, not only those a frame still points at. An orphaned story is
+  invisible in the editor and still in the saved container.
+- **An unreadable meeting rule clears the printed date** rather than leaving last month's under this
+  month's issue. An empty field asks to be filled in; a wrong date looks finished and goes out.
+
 ## 10. Deferrals
 
 | Item | Why |

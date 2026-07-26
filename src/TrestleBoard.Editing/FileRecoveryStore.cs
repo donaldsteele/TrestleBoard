@@ -36,9 +36,13 @@ public sealed class FileRecoveryStore : IRecoveryStore
         string document = Path.Combine(_directory, snapshot.Id + DocumentExtension);
         string sidecar = Path.Combine(_directory, snapshot.Id + SidecarExtension);
 
-        WriteAtomic(document, snapshot.Bytes);
+        // Sidecar FIRST, document second. Both writes are atomic, but a crash between them has to
+        // leave the pair readable: an old document with a new sidecar merely reports a slightly
+        // early time, whereas a new document with a stale sidecar would tell the user their current
+        // work is older than it is.
         WriteAtomic(sidecar, JsonSerializer.SerializeToUtf8Bytes(
             new Sidecar(snapshot.OriginalPath, snapshot.SavedAt)));
+        WriteAtomic(document, snapshot.Bytes);
     }
 
     public void Delete(string id)
@@ -101,17 +105,31 @@ public sealed class FileRecoveryStore : IRecoveryStore
         string BackupPath(int index) => string.Create(
             CultureInfo.InvariantCulture, $"{documentPath}.bak{index}");
 
-        // Oldest first, so nothing is overwritten before it has been shifted along.
+        // Oldest first, so nothing is overwritten before it has been shifted along. A locked
+        // generation (an antivirus scan, an open handle) must not abandon the rotation half-done and
+        // skip the copy that actually protects the user.
         Remove(BackupPath(keep));
         for (int i = keep - 1; i >= 1; i--)
         {
-            if (File.Exists(BackupPath(i)))
+            try
             {
-                File.Move(BackupPath(i), BackupPath(i + 1), overwrite: true);
+                if (File.Exists(BackupPath(i)))
+                {
+                    File.Move(BackupPath(i), BackupPath(i + 1), overwrite: true);
+                }
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
             }
         }
 
-        File.Copy(documentPath, BackupPath(1), overwrite: true);
+        try
+        {
+            File.Copy(documentPath, BackupPath(1), overwrite: true);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 
     private static void WriteAtomic(string path, byte[] bytes)

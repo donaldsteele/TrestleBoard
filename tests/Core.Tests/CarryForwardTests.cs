@@ -198,4 +198,58 @@ public sealed class CarryForwardTests
 
     private static string CanonicalJson(JsonElement? element) =>
         element is null ? "" : JsonSerializer.Serialize(element.Value);
+
+    /// <summary>
+    /// An orphaned story — one whose frame was deleted at some point — is invisible in the editor
+    /// but still in the saved container. "Never silently keeps prose" has to mean never.
+    /// </summary>
+    [Fact]
+    public void EvenAStoryNoFramePointsAtLosesLastMonthsProse()
+    {
+        TboardPackage previous = SampleIssue.CreatePackage();
+        previous.Document.Stories.Add(new Story
+        {
+            Id = "story-orphan",
+            Paragraphs =
+            {
+                new StoryParagraph
+                {
+                    ParagraphStyleRef = "body",
+                    Runs = [new StoryRun { Text = "An article whose frame was deleted last month." }],
+                },
+            },
+        });
+
+        TboardPackage next = CarryForward.NextIssue(previous);
+
+        Story orphan = next.Document.Stories.First(s => s.Id == "story-orphan");
+        Assert.DoesNotContain(
+            "whose frame was deleted",
+            string.Concat(orphan.Paragraphs.SelectMany(p => p.Runs).Select(r => r.Text)),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// With no usable meeting rule the date cannot be recomputed. Leaving LAST month's date under
+    /// THIS month's issue is the same failure the prose reset exists to prevent, so it is cleared.
+    /// </summary>
+    [Fact]
+    public void AnUnreadableMeetingRuleClearsTheDateRatherThanKeepingAStaleOne()
+    {
+        TboardPackage previous = SampleIssue.CreatePackage();
+        previous.Document.Metadata.MeetingRule = "whenever we can all make it";
+
+        TboardPackage next = CarryForward.NextIssue(previous);
+
+        JsonElement payload = next.Document.Pages
+            .SelectMany(p => p.Blocks)
+            .OfType<WidgetBlock>()
+            .First(w => w.WidgetType == "coverBanner")
+            .Data!.Value;
+
+        Assert.Equal("", payload.GetProperty("meetingDateText").GetString());
+
+        // And the rule itself is left alone, so the user can correct it rather than retype it.
+        Assert.Equal("whenever we can all make it", next.Document.Metadata.MeetingRule);
+    }
 }
