@@ -353,6 +353,96 @@ public sealed class DocumentRenderSource : IDisposable
         return _widgetOverflowBlockIds;
     }
 
+    /// <summary>
+    /// A PNG of one page, at a fraction of full size. The recovery dialog uses it to answer "is this
+    /// the work I lost?" by showing rather than telling (docs/M9-spec.md §1.3).
+    /// </summary>
+    public byte[] RenderPageToPng(int pageIndex, float scale = 1f)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(scale);
+
+        SizePt size = GetPageSize(pageIndex);
+        var info = new SKImageInfo(
+            Math.Max(1, (int)MathF.Ceiling(size.Width * scale)),
+            Math.Max(1, (int)MathF.Ceiling(size.Height * scale)),
+            SKColorType.Rgba8888,
+            SKAlphaType.Premul,
+            SKColorSpace.CreateSrgb());
+
+        using SKSurface surface = SKSurface.Create(info)
+            ?? throw new InvalidOperationException("Could not create a thumbnail surface.");
+        surface.Canvas.Scale(scale);
+        RenderPage(surface.Canvas, pageIndex);
+        surface.Canvas.Flush();
+
+        using SKImage image = surface.Snapshot();
+        using SKData data = image.Encode(SKEncodedImageFormat.Png, 90)
+            ?? throw new InvalidOperationException("Could not encode the thumbnail.");
+        return data.ToArray();
+    }
+
+    /// <summary>
+    /// What a screen reader should say about each block on a page, in stacking order
+    /// (docs/M9-spec.md §5). Names come from the SAME data the page prints — a photo's alt text, a
+    /// widget's display name, the story's own first words — so they cannot drift from what is there.
+    /// </summary>
+    public IReadOnlyList<(string BlockId, string Name)> DescribeBlocks(int pageIndex)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        EnsureLayout();
+
+        var described = new List<(string BlockId, string Name)>();
+        foreach (Block block in _document.Pages[pageIndex].Blocks.OrderBy(b => b.ZOrder))
+        {
+            described.Add((block.Id, Describe(block)));
+        }
+
+        return described;
+    }
+
+    private string Describe(Block block) => block switch
+    {
+        TextBlock text => "Text frame: " + Opening(text),
+        ImageFrame image => image.AltText.Length > 0
+            ? "Photo: " + image.AltText
+
+            // M6 has demanded a description at insert since it shipped, so a blank one means the
+            // file predates that or was written by another tool. Say so rather than saying nothing.
+            : "Photo with no description",
+        WidgetBlock widget => WidgetName(widget),
+        ShapeBlock => "Decoration",
+        _ => "Item",
+    };
+
+    /// <summary>
+    /// A widget's own display name — "Lodge officers", "Birthdays". The catalogue is the interface
+    /// that knows them; the same object implements both seams in practice, and a widget this build
+    /// does not recognise still gets something sayable.
+    /// </summary>
+    private string WidgetName(WidgetBlock widget) =>
+        _widgets is IWidgetCatalog catalog && catalog.TryGetInfo(widget.WidgetType, out WidgetInfo info)
+            ? info.DisplayName
+            : "Newsletter item";
+
+    /// <summary>First few words of a story, for the frame's spoken name.</summary>
+    private string Opening(TextBlock text)
+    {
+        Story story = _document.GetStory(text.StoryRef);
+        foreach (StoryParagraph paragraph in story.Paragraphs)
+        {
+            string line = string.Concat(paragraph.Runs.Select(r => r.Text)).Trim();
+            if (line.Length == 0)
+            {
+                continue;
+            }
+
+            return line.Length <= 40 ? line : line[..40].TrimEnd() + "…";
+        }
+
+        return "empty";
+    }
+
     /// <summary>Topmost block containing the point, or null (docs/M5-spec.md §1.1).</summary>
     public string? HitTestBlock(int pageIndex, float xPt, float yPt)
     {

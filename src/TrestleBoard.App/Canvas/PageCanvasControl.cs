@@ -77,6 +77,17 @@ public sealed class PageCanvasControl : Control
     }
 
     /// <summary>The laid-out document; not an AvaloniaProperty because it is set wholesale on open.</summary>
+    /// <summary>
+    /// Without this the canvas is one opaque control and a screen reader sees nothing inside it
+    /// (PLAN.md §6, docs/M9-spec.md §5).
+    /// </summary>
+    protected override Avalonia.Automation.Peers.AutomationPeer OnCreateAutomationPeer() =>
+        new PageCanvasAutomationPeer(this);
+
+    /// <summary>The peer a screen reader would get; the headless a11y tests assert on it.</summary>
+    internal Avalonia.Automation.Peers.AutomationPeer CreateAutomationPeerForTest() =>
+        OnCreateAutomationPeer();
+
     public DocumentRenderSource? Source
     {
         get => _source;
