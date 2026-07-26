@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TrestleBoard.App/TrestleBoard.App.csproj" />
+    <Project Path="src/TrestleBoard.Core/TrestleBoard.Core.csproj" />
+    <Project Path="src/TrestleBoard.Export.Pdf/TrestleBoard.Export.Pdf.csproj" />
+    <Project Path="src/TrestleBoard.Imaging/TrestleBoard.Imaging.csproj" />
+    <Project Path="src/TrestleBoard.Layout/TrestleBoard.Layout.csproj" />
+    <Project Path="src/TrestleBoard.Rendering/TrestleBoard.Rendering.csproj" />
+    <Project Path="src/TrestleBoard.Widgets/TrestleBoard.Widgets.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/App.HeadlessTests/App.HeadlessTests.csproj" />
+    <Project Path="tests/Core.Tests/Core.Tests.csproj" />
+    <Project Path="tests/Imaging.Tests/Imaging.Tests.csproj" />
+    <Project Path="tests/Layout.Tests/Layout.Tests.csproj" />
+    <Project Path="tests/Rendering.SnapshotTests/Rendering.SnapshotTests.csproj" />
+    <Project Path="tests/Widgets.Tests/Widgets.Tests.csproj" />
+  </Folder>
+</Solution>

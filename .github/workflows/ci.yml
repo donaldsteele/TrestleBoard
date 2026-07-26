@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET (pinned by global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore TrestleBoard.slnx
+
+      - name: Build
+        run: dotnet build TrestleBoard.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test TrestleBoard.slnx -c Release --no-build
+
+      # Snapshot diffs (actual-vs-expected) become useful from M1 onward.
+      - name: Upload snapshot diffs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-diffs-${{ matrix.os }}
+          path: |
+            **/*.received.png
+            **/*.actual.png
+          if-no-files-found: ignore

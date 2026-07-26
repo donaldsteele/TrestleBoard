@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- SKDocument PDF export, metadata. -->
+  <ItemGroup>
+    <ProjectReference Include="..\TrestleBoard.Rendering\TrestleBoard.Rendering.csproj" />
+  </ItemGroup>
+</Project>

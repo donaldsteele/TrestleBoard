@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- IWidgetDefinition, registry, six built-in widgets. -->
+  <ItemGroup>
+    <ProjectReference Include="..\TrestleBoard.Core\TrestleBoard.Core.csproj" />
+    <ProjectReference Include="..\TrestleBoard.Layout\TrestleBoard.Layout.csproj" />
+  </ItemGroup>
+</Project>

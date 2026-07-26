@@ -1,0 +1,19 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="TrestleBoard.App.MainWindow"
+        Title="TrestleBoard"
+        Width="1100" Height="800"
+        WindowStartupLocation="CenterScreen"
+        AutomationProperties.Name="TrestleBoard main window">
+  <!-- Minimum 16pt UI text everywhere (PLAN.md §6). -->
+  <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
+    <TextBlock Text="TrestleBoard"
+               FontSize="32"
+               FontWeight="SemiBold"
+               HorizontalAlignment="Center"
+               AutomationProperties.Name="TrestleBoard" />
+    <TextBlock Text="Milestone 0 scaffold — the editor arrives in later milestones."
+               FontSize="16"
+               HorizontalAlignment="Center" />
+  </StackPanel>
+</Window>

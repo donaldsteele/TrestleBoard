@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Shaping, line breaking, exclusion segments, pagination → LayoutResult.
+       SkiaSharp/HarfBuzzSharp references land in the M1 spike. -->
+  <ItemGroup>
+    <ProjectReference Include="..\TrestleBoard.Core\TrestleBoard.Core.csproj" />
+  </ItemGroup>
+</Project>

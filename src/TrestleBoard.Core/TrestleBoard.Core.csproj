@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Model, styles, stories, commands, DocumentSession, .tboard container. Deps: BCL only (PLAN.md §9). -->
+</Project>

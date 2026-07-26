@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Avalonia shell. ONLY project referencing Avalonia (PLAN.md §9). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="Avalonia.Diagnostics" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TrestleBoard.Core\TrestleBoard.Core.csproj" />
+    <ProjectReference Include="..\TrestleBoard.Layout\TrestleBoard.Layout.csproj" />
+    <ProjectReference Include="..\TrestleBoard.Rendering\TrestleBoard.Rendering.csproj" />
+    <ProjectReference Include="..\TrestleBoard.Imaging\TrestleBoard.Imaging.csproj" />
+    <ProjectReference Include="..\TrestleBoard.Widgets\TrestleBoard.Widgets.csproj" />
+    <ProjectReference Include="..\TrestleBoard.Export.Pdf\TrestleBoard.Export.Pdf.csproj" />
+  </ItemGroup>
+</Project>
