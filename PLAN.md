@@ -485,7 +485,18 @@ milestones, so it falls to M12.
 every menu item, the dispatcher and two constraining tests; **Sonnet** for the menu restructure and
 toolbar trim; **cavecrew-reviewer (Sonnet)**.
 
-### M12 — Lodge address book (L)
+### M12 — Lodge address book (L) — **delivered 2026-07-27**
+**Status:** implemented; design, decisions and open items in `docs/M12-spec.md`. Everything ships —
+`TrestleBoard.Roster` with the store, the ten-copy backup ring and its own single-level undo; the
+CSV and XLSX readers with a fixture for every hazard listed below; the merge policy with idempotence
+as its guard test; the six-screen headless import session and the window that renders it; the People
+window and menu; XLSX export with every cell as text; and the `AppPaths` settable root, which lands
+here rather than in M15 because this is the milestone that creates the hazard. ClosedXML's footprint
+was measured before anything was built, as this milestone's flagged uncertainty requires: **+9.6 MiB
+per RID, +4.6%** — accepted, no fallback needed (`docs/M12-spec.md` §1). One acceptance item is
+half met and marked so in the spec (§4): the XLSX fixtures are produced by LibreOffice and by
+hand-written OOXML in Excel's shape, but **no fixture has been produced by Excel itself**, because no
+machine here has it.
 
 **Goal:** import the member list once, from the spreadsheet the committee already keeps; never type a
 name twice again.

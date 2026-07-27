@@ -299,3 +299,41 @@ assertion message on a public CI log. Pointed at a temporary folder, it cannot.
 `PeopleShellTests` and `AccessibilityTests` read the roster fixtures by **linking** them from
 `tests/Roster.Tests/Fixtures` rather than copying them, so §0 rule 5's "fixtures exist in exactly one
 place" stays literally true of the repository.
+
+---
+
+## 8. The privacy gate, as tests
+
+PLAN.md §12 gate 7 says the privacy check re-runs after every roster stage, and from M12 it also
+checks that no roster file or roster-derived fixture exists outside `tests/Roster.Tests`.
+`RosterPrivacyTests` is that, as three assertions that run on every build:
+
+- **No roster file exists anywhere in the repository** — `roster*.json`, `roster*.xlsx`,
+  `*.roster.bak.json`, `Lodge-address-book-*`. AppData cannot be committed, but a user's "Save as a
+  spreadsheet…" lands wherever they browse to, and that can be a clone of this repository.
+- **Member fixtures exist only in `tests/Roster.Tests/Fixtures`.** A stray fixture in a scanned path
+  is the actual exposure §0 rule 5 is written about: graphify and llm-wiki read the tree, and AppData
+  is not what they would find.
+- **Every person in the fixtures is fictional** — emails end `@example.invalid`, telephone numbers
+  are in the reserved 555-01xx range, and every surname is one of five obviously invented ones.
+  Checked rather than trusted, because a fixture is exactly the sort of file somebody would helpfully
+  make "more realistic".
+
+The first was verified by writing a `roster.json` at the repository root and watching it fail.
+
+`.gitignore` gained the same four patterns in the milestone's first commit, before any code that
+could write one existed.
+
+---
+
+## 9. Open items
+
+- **No XLSX fixture produced by Excel itself.** PLAN.md asks for fixtures from Excel *and*
+  LibreOffice. LibreOffice produced `members-100.xlsx`; `excel-dates.xlsx` is hand-written OOXML in
+  the shape Excel writes (shared strings, date-styled numeric cells), which exercises the same reader
+  paths but is not the same evidence. Closing this needs a machine with Excel on it.
+- **A keyboard-only run of the whole import flow has not been done by a person.** Every screen is
+  keyboard-operable by construction (list boxes, combo boxes and buttons, no drag anywhere) and the
+  headless tests drive the session end to end, but PLAN.md's acceptance says *"all of it completable
+  keyboard-only"* and that is a claim a person should make after doing it. It belongs in
+  `docs/accessibility-test-script.md` alongside M11's outstanding NVDA pass.
