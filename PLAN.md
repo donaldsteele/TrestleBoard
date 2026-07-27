@@ -618,7 +618,20 @@ left as they are for the same reason as at M10.
 **Agents:** **Opus** for the import session and merge policy; **Sonnet** for the People window and export;
 **cavecrew-reviewer (Sonnet)**.
 
-### M13 — Roster-driven widgets (M)
+### M13 — Roster-driven widgets (M) — **delivered 2026-07-27**
+**Status:** implemented; design, decisions and open items in `docs/M13-spec.md`. Everything ships,
+including the whole scope-cut list — birthday generation, the re-sync diff dialog, the officers
+person picker with its blank-phone auto-fill and review-screen write-back, and the committee picker.
+`BirthdayListData` is at `dataVersion` 2 with a one-line migration, and `TemplateTests` passes
+untouched exactly as this milestone predicted. Two deliberate deviations are recorded in
+`docs/M13-spec.md`: the projection returns a fifth list, `Updates`, because a renamed brother is
+neither an addition nor a removal and the diff would otherwise have to claim nothing was changing;
+and `removedMemberIds` is recorded at the moment of removal through a new `RecordListStep.onRemoveRow`
+hook rather than inferred at sync time, because inference cannot tell a deliberate deletion from
+somebody added to the address book after the list was made. One item stays open there (§9): **a
+keyboard-only run of the sync and the officers picker by a person**, now section 13 of
+`docs/accessibility-test-script.md` — the `AutoCompleteBox`'s screen-reader behaviour is the one
+control in the app nobody has yet listened to.
 
 **Goal:** the address book actually fills things in — birthdays generate themselves, officers and
 committees stop being retyped.

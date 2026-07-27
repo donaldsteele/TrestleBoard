@@ -520,6 +520,67 @@ back to what it was.
 
 ---
 
+## 13. Birthdays and officers from the address book, keyboard-only (M13)
+
+You need the fictional address book from section 12 loaded before you start, and a newsletter open
+whose issue month matches at least one birthday in it.
+
+**13.1** With nothing selected, look at the panel's **What's next** card. If the birthday list is out
+of date it leads with **Update the birthday list**. Reach that button with the keyboard alone
+(F6 to the panel, then Tab) and press it.
+**What you should hear:** the reason sentence beneath it, then the diff window's heading.
+
+**13.2** On the diff window, Tab through everything. It should read as headings and names — "These
+will be added (7)", then each name and date — followed by the sentence "Nothing changes until you
+press Update the list."
+**What you should hear:** nothing that sounds like a status code or a count of records.
+
+**13.3** Choose **Leave it as it is**. Confirm the newsletter did not change: the status line should
+say so, and Ctrl+Z should still take back whatever you did before this.
+
+**13.4** Do it again and choose **Update the list**.
+**What you should hear:** a plain sentence in the status line saying what changed and that Ctrl+Z
+takes it back. Press Ctrl+Z and confirm the list goes back exactly as it was, in one step.
+
+**13.5** Select the birthday list on the page and press `Ctrl+Shift+U`. This is the same action from
+the other direction.
+**What you should hear:** either the diff window again, or — if it is already up to date — "The
+birthday list already matches your address book."
+
+**13.6** Empty the address book (or open a newsletter whose month nobody was born in) and press
+`Ctrl+Shift+U` again. **The point of this step is the refusal.** It must say why, in a sentence, and
+point somewhere useful.
+
+**13.7** Insert a fresh birthday list from the Insert menu with the address book loaded.
+**What you should hear:** the extra first screen — "We found N birthdays in <month> in your address
+book. Add them?" — before the wizard's own questions. Answer **No, I'll type them myself** once and
+confirm the wizard is exactly as it was before M13.
+
+**13.8** Run the officers wizard. On the Worshipful Master's screen, type three letters of a name
+from the address book.
+**What you should hear:** whether the suggestion list is announced at all, and how. This is the one
+control in the app whose screen-reader behaviour has never been observed — write down verbatim what
+happens, even if it is nothing.
+
+**13.9** Choose a name from the suggestions and Tab to the phone box.
+**What you should hear:** the phone number already filled in from the address book. Then type a
+different number over it.
+
+**13.10** Continue to the review screen. Under **While we are here** there should be one checkbox
+asking whether to update that person's phone number in the address book. Confirm it is **not**
+ticked, tick it with the keyboard, and finish.
+**What you should hear:** after saving, a sentence saying the address book was updated too.
+
+**13.11** Type a name that is **not** in the address book into an officer's Name box and finish the
+screen. This must simply work — the picker is never a dead end.
+
+**13.12** Edit a committee and use **Add someone from the address book…**. Reach it, search with
+three letters, and add somebody, all from the keyboard.
+**What you should hear:** the spoken result count as you type, and the name appearing as a new line
+in the members box.
+
+---
+
 ## Results table
 
 Copy this table (or the row shape) into a spreadsheet or a copy of this file as you go. Use the
@@ -593,6 +654,18 @@ step numbers from above so the full "what you should hear" text doesn't need to 
 | 12.8 | | | | |
 | 12.9 | | | | |
 | 12.10 | | | | |
+| 13.1 | | | | |
+| 13.2 | | | | |
+| 13.3 | | | | |
+| 13.4 | | | | |
+| 13.5 | | | | |
+| 13.6 | | | | |
+| 13.7 | | | | |
+| 13.8 | | | | |
+| 13.9 | | | | |
+| 13.10 | | | | |
+| 13.11 | | | | |
+| 13.12 | | | | |
 
 Add rows for anything else you notice along the way, even if it isn't in a numbered step.
 
