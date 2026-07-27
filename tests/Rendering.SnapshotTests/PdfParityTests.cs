@@ -62,9 +62,29 @@ public sealed class PdfParityTests
         ExportAcceptancePdf(out string pdfPath);
         string report = Run("pdffonts", $"\"{pdfPath}\"");
 
-        Assert.Contains("SourceSerif4", report, StringComparison.Ordinal);
+        // Derived from the fixture's own fonts rather than hard-coding a PostScript name: the
+        // original literal asserted a spelling, not a property. Now that FontStore can
+        // substitute, this gains a genuinely new guarantee — a silent substitution anywhere in
+        // the export path leaves a family out of the report and fails here.
+        TrestleBoard.Layout.Fonts.FontKey[] faces = SnapshotInfra.AcceptanceFixture().Frames
+            .SelectMany(f => f.Lines)
+            .SelectMany(l => l.Segments)
+            .SelectMany(s => s.Runs)
+            .Select(r => r.Font.Key)
+            .Distinct()
+            .ToArray();
+        Assert.NotEmpty(faces);
+        foreach (string family in faces.Select(k => k.Family).Distinct(StringComparer.Ordinal))
+        {
+            Assert.Contains(
+                family.Replace(" ", string.Empty, StringComparison.Ordinal),
+                report,
+                StringComparison.Ordinal);
+        }
+
+        // One embedded font per face the fixture actually uses — no more, no fewer.
         string[] rows = report.Split('\n', StringSplitOptions.RemoveEmptyEntries)[2..];
-        Assert.NotEmpty(rows);
+        Assert.Equal(faces.Length, rows.Length);
         Assert.All(rows, row => Assert.Contains("yes yes", row, StringComparison.Ordinal));
     }
 

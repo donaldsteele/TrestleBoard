@@ -1,4 +1,5 @@
 using SkiaSharp;
+using TrestleBoard.Layout;
 using TrestleBoard.Layout.Editing;
 
 namespace TrestleBoard.Rendering;
@@ -16,6 +17,70 @@ public static class TextOverlayRenderer
         {
             canvas.DrawRect(new SKRect(rect.LeftPt, rect.TopPt, rect.RightPt, rect.BottomPt), paint);
         }
+    }
+
+    /// <summary>
+    /// Underlines the text spans whose font was changed by hand, for View → "Show where fonts
+    /// were changed" (PLAN.md M14, off by default).
+    /// <para>
+    /// An EDITOR overlay, beside the caret and the selection — never a PageRenderer concern, or
+    /// the marks would print into the PDF. And a line rather than a coloured squiggle: §6 bans
+    /// colour as the only carrier of meaning.
+    /// </para>
+    /// </summary>
+    public static void DrawFontOverrides(
+        SKCanvas canvas,
+        LayoutResult result,
+        IReadOnlyCollection<SourceSpan> spans,
+        uint argb = 0x88606060,
+        float thicknessPt = 0.9f)
+    {
+        ArgumentNullException.ThrowIfNull(canvas);
+        ArgumentNullException.ThrowIfNull(result);
+        ArgumentNullException.ThrowIfNull(spans);
+        if (spans.Count == 0)
+        {
+            return;
+        }
+
+        using var paint = new SKPaint { Color = new SKColor(argb), Style = SKPaintStyle.Fill };
+        foreach (FrameLayout frame in result.Frames)
+        {
+            foreach (LineBox line in frame.Lines)
+            {
+                float top = line.BaselineY + (line.MaxDescentPt * 0.45f);
+                foreach (LineSegment segment in line.Segments)
+                {
+                    foreach (PositionedGlyphRun run in segment.Runs)
+                    {
+                        if (run.Glyphs.Count == 0 || !Overlaps(run.Source, spans))
+                        {
+                            continue;
+                        }
+
+                        canvas.DrawRect(
+                            new SKRect(run.OriginX, top, run.OriginX + run.AdvanceWidthPt, top + thicknessPt),
+                            paint);
+                    }
+                }
+            }
+        }
+    }
+
+    private static bool Overlaps(SourceSpan run, IReadOnlyCollection<SourceSpan> spans)
+    {
+        foreach (SourceSpan span in spans)
+        {
+            if (span.StoryId == run.StoryId
+                && span.ParagraphIndex == run.ParagraphIndex
+                && span.StartChar < run.EndChar
+                && run.StartChar < span.EndChar)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static void DrawCaret(SKCanvas canvas, CaretGeometry caret, uint argb = 0xFF000000, float widthPt = 1.2f)

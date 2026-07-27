@@ -75,6 +75,36 @@ internal static class SnapshotInfra
         return new TextLayoutEngine(Store.Value).Layout(new LayoutRequest(story, [frame]));
     }
 
+    /// <summary>
+    /// One line per bundled family, set in that family at 12pt (PLAN.md M14).
+    /// <para>
+    /// A NEW fixture, deliberately — <see cref="AlignmentSampler"/> is left alone so M14 re-bakes
+    /// nothing. This is the only artifact that shows all 20 families rasterising side by side,
+    /// and it is what catches a bad instancer run by eye.
+    /// </para>
+    /// </summary>
+    public static LayoutResult FontCatalogSampler()
+    {
+        var paragraphs = new List<LayoutParagraph>();
+        foreach (FontFamilyInfo family in BundledFontCatalog.Families)
+        {
+            var run = new CharacterStyle(family.Family, FontWeight.Regular, FontStyleSlant.Normal, 12f, 0xFF000000);
+            var style = new ParagraphStyle(1.25f, 0f, 3f, 0f, TextAlign.Left, run);
+            paragraphs.Add(new LayoutParagraph(style, [new LayoutRun(FamilySampleLine(family), run)]));
+        }
+
+        var story = new LayoutStory("font-catalog", paragraphs);
+        var frame = new LayoutFrame(new FrameRect(20, 20, 460, 660), []);
+        return new TextLayoutEngine(Store.Value).Layout(new LayoutRequest(story, [frame]));
+    }
+
+    /// <summary>The one line the sampler sets for a family. Fictional text only (PLAN.md §0).</summary>
+    public static string FamilySampleLine(FontFamilyInfo family)
+    {
+        ArgumentNullException.ThrowIfNull(family);
+        return $"{family.Family}: {family.SampleText}";
+    }
+
     public static byte[] RenderFixturePng(LayoutResult result) =>
         PngRenderer.RenderToPng(result, PageWidthPt, PageHeightPt, scale: 1f);
 
