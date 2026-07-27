@@ -15,12 +15,20 @@ namespace TrestleBoard.App.Dialogs;
 public sealed class WidgetGridWindow : Window
 {
     private readonly WizardSession _session;
+    private readonly IReadOnlyList<PersonSuggestion> _people;
     private readonly StackPanel _body = new() { Spacing = 16, Margin = new Avalonia.Thickness(24) };
     private readonly StackPanel _errorPanel = new() { Spacing = 4, IsVisible = false };
 
-    public WidgetGridWindow(WizardSession session)
+    /// <param name="session">The same session the step wizard drives. One POCO, one command.</param>
+    /// <param name="people">
+    /// Names the address book can offer (M13). The grid is a second view of the same wizard, not a
+    /// laxer one, so a Person field is a picker here too — otherwise the fast path would quietly be
+    /// the one without the help in it.
+    /// </param>
+    public WidgetGridWindow(WizardSession session, IReadOnlyList<PersonSuggestion>? people = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
+        _people = people ?? [];
 
         Title = $"{session.Title} — edit list";
         MinWidth = 900;
@@ -89,6 +97,37 @@ public sealed class WidgetGridWindow : Window
     public int DataVersion { get; private set; }
 
     public string UndoLabel => _session.UndoLabel;
+
+    /// <summary>Builds the grid's controls without showing the window — see WizardWindow's note.</summary>
+    internal void RenderForTest() => Render();
+
+    /// <summary>The controls the grid built, for the field-kind tests.</summary>
+    internal IReadOnlyList<Control> ScreenControlsForTest => [.. Descendants(_body)];
+
+    private static IEnumerable<Control> Descendants(Panel root)
+    {
+        foreach (Control child in root.Children)
+        {
+            yield return child;
+            switch (child)
+            {
+                case Panel panel:
+                    foreach (Control nested in Descendants(panel))
+                    {
+                        yield return nested;
+                    }
+
+                    break;
+                case Border { Child: Panel inner }:
+                    foreach (Control nested in Descendants(inner))
+                    {
+                        yield return nested;
+                    }
+
+                    break;
+            }
+        }
+    }
 
     private void Commit()
     {
@@ -240,6 +279,29 @@ public sealed class WidgetGridWindow : Window
             };
             input = combo;
         }
+        else if (field.Kind == WizardFieldKind.Person)
+        {
+            var picker = new AutoCompleteBox
+            {
+                FontSize = 20,
+                MinHeight = 44,
+                Width = 520,
+                ItemsSource = _people.Select(p => p.Name).ToList(),
+                FilterMode = AutoCompleteFilterMode.ContainsOrdinal,
+                MinimumPrefixLength = 1,
+                Text = _session.GetValue(step, field.Key, rowIndex),
+                Watermark = field.ExampleText,
+            };
+            // See WizardWindow: the event only fires once the control has a template.
+            picker.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == AutoCompleteBox.TextProperty)
+                {
+                    _session.SetValue(step, field.Key, rowIndex, picker.Text ?? "");
+                }
+            };
+            input = picker;
+        }
         else
         {
             bool multiLine = field.Kind == WizardFieldKind.MultiLineText;
@@ -261,6 +323,24 @@ public sealed class WidgetGridWindow : Window
         AutomationProperties.SetName(input, label.Text);
         AutomationProperties.SetLabeledBy(input, label);
         panel.Children.Add(input);
+
+        if (field is { Kind: WizardFieldKind.MultiLineText, AllowsPeoplePicker: true } && _people.Count > 0)
+        {
+            panel.Children.Add(MakeButton("Add someone from the address book…", async (_, _) =>
+            {
+                if (await PersonPickerDialog.PickAsync(this, _people) is { } person)
+                {
+                    string existing = _session.GetValue(step, field.Key, rowIndex);
+                    _session.SetValue(
+                        step,
+                        field.Key,
+                        rowIndex,
+                        existing.Length == 0 ? person.Name : existing.TrimEnd('\n') + "\n" + person.Name);
+                    Render();
+                }
+            }));
+        }
+
         return panel;
     }
 

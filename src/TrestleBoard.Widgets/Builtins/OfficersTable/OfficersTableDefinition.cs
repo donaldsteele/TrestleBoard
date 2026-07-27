@@ -59,11 +59,16 @@ public sealed class OfficersTableDefinition : WidgetDefinition<OfficersTableData
                 d => d.Officers,
                 () => new OfficerEntry(),
                 [
+                    // M13: a pick rather than a typing job. The wizard stays fourteen screens — that
+                    // was a deliberate M7 design — but each screen becomes "choose him", and free
+                    // typing still works for a brother who is not in the address book.
                     (new WizardField(
                             "name",
                             "Name",
+                            WizardFieldKind.Person,
                             IsOptional: true,
-                            HelpText: "Leave this blank if nobody holds this office.",
+                            HelpText: "Start typing, and names from your address book appear. "
+                                + "You can type a name that is not in it.",
                             ExampleText: "A. Placeholder"),
                         new WizardFieldBinding<OfficerEntry>(
                             "name", r => r.Name, (r, v) => r.Name = v)),

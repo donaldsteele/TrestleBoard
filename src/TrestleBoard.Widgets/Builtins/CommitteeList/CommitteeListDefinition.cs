@@ -72,7 +72,10 @@ public sealed class CommitteeListDefinition : WidgetDefinition<CommitteeListData
                             WizardFieldKind.MultiLineText,
                             IsOptional: true,
                             HelpText: "One name per line. Leave this blank if the committee has no members yet.",
-                            ExampleText: "A. Placeholder"),
+                            ExampleText: "A. Placeholder",
+                            // M13: the members stay a plain list of strings — no schema change, no
+                            // migration, no layouter change. The picker simply appends a line.
+                            AllowsPeoplePicker: true),
                         new WizardFieldBinding<CommitteeEntry>(
                             "members",
                             r => string.Join('\n', r.Members),

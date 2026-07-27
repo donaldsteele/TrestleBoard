@@ -15,7 +15,13 @@ namespace TrestleBoard.App.Dialogs;
 /// </summary>
 public sealed class WizardWindow : Window
 {
+    /// <summary>One brother picked from the address book, and where he was picked.</summary>
+    private sealed record PersonPick(IWizardStep Step, int RowIndex, string? PhoneFieldKey, PersonSuggestion Person);
+
     private readonly WizardSession _session;
+    private readonly IReadOnlyList<PersonSuggestion> _people;
+    private readonly List<PersonPick> _picks = [];
+    private readonly HashSet<string> _writeBackIds = new(StringComparer.Ordinal);
     private readonly TextBlock _header = new()
     {
         FontSize = 24,
@@ -39,9 +45,16 @@ public sealed class WizardWindow : Window
     private readonly Button _showAll;
     private readonly ScrollViewer _scroller;
 
-    public WizardWindow(WizardSession session)
+    /// <param name="session">The wizard's whole state. This window holds none of it.</param>
+    /// <param name="people">
+    /// Names the address book can offer (M13), handed in by the shell rather than fetched — PLAN.md
+    /// §5's projection rule. Null or empty simply means the wizard behaves exactly as it did before
+    /// there was an address book.
+    /// </param>
+    public WizardWindow(WizardSession session, IReadOnlyList<PersonSuggestion>? people = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
+        _people = people ?? [];
 
         Title = session.Title;
         MinWidth = 900;
@@ -103,6 +116,16 @@ public sealed class WizardWindow : Window
     public int DataVersion { get; private set; }
 
     public string UndoLabel => _session.UndoLabel;
+
+    /// <summary>
+    /// Builds the current screen's controls without showing the window. Tests use it because a shown
+    /// headless window runs a real layout pass, and this suite's headless platform has no font
+    /// manager behind it — the same reason <c>WidgetShellTests</c> deliberately never shows one.
+    /// </summary>
+    internal void RenderForTest() => RenderScreen();
+
+    /// <summary>The controls the current screen built, for the tests that check which kind got which.</summary>
+    internal IReadOnlyList<Control> ScreenControlsForTest => [.. Descendants(_body)];
 
     // ---- navigation ------------------------------------------------------------------------
 
@@ -420,6 +443,12 @@ public sealed class WizardWindow : Window
 
     private StackPanel BuildField(WizardField field, int rowIndex, double? labelWidth)
     {
+        // Bound to the step this control was built for, not to "whatever step the wizard is on when
+        // the event arrives". Avalonia raises TextChanged through the dispatcher, so a box from the
+        // screen the user has just left can still fire — and a write aimed at a step that no longer
+        // has that field in it is a KeyNotFoundException out of the middle of a wizard.
+        IWizardStep owner = _session.CurrentStep;
+
         var panel = new StackPanel { Spacing = 4 };
         var label = new TextBlock
         {
@@ -439,17 +468,46 @@ public sealed class WizardWindow : Window
                 MinHeight = 44,
                 Width = 560,
                 ItemsSource = choices.Select(c => c.Label).ToList(),
-                SelectedIndex = Math.Max(0, IndexOfChoice(choices, _session.GetValue(field.Key, rowIndex))),
+                SelectedIndex = Math.Max(0, IndexOfChoice(choices, _session.GetValue(owner, field.Key, rowIndex))),
             };
             combo.SelectionChanged += (_, _) =>
             {
                 if (combo.SelectedIndex >= 0)
                 {
-                    _session.SetValue(field.Key, choices[combo.SelectedIndex].Value, rowIndex);
+                    _session.SetValue(owner, field.Key, rowIndex, choices[combo.SelectedIndex].Value);
                     RenderScreen();
                 }
             };
             input = combo;
+        }
+        else if (field.Kind == WizardFieldKind.Person)
+        {
+            // Editable, always: a brother who is not in the address book must still be typeable, or
+            // the wizard has a dead end in it (PLAN.md §11 M13).
+            var picker = new AutoCompleteBox
+            {
+                FontSize = 20,
+                MinHeight = 44,
+                Width = 560,
+                ItemsSource = _people.Select(p => p.Name).ToList(),
+                FilterMode = AutoCompleteFilterMode.ContainsOrdinal,
+                MinimumPrefixLength = 1,
+                Text = _session.GetValue(owner, field.Key, rowIndex),
+                Watermark = field.ExampleText,
+            };
+            // The property, not the TextChanged event: AutoCompleteBox raises that one from its
+            // templated inner text box, so it says nothing until the control has been shown.
+            picker.PropertyChanged += (_, e) =>
+            {
+                if (e.Property != AutoCompleteBox.TextProperty)
+                {
+                    return;
+                }
+
+                _session.SetValue(owner, field.Key, rowIndex, picker.Text ?? "");
+                NotePersonPicked(owner, rowIndex, picker.Text);
+            };
+            input = picker;
         }
         else
         {
@@ -459,14 +517,14 @@ public sealed class WizardWindow : Window
                 FontSize = 20,
                 MinHeight = multiLine ? 260 : 44,
                 Width = 560,
-                Text = _session.GetValue(field.Key, rowIndex),
+                Text = _session.GetValue(owner, field.Key, rowIndex),
                 AcceptsReturn = multiLine,
                 TextWrapping = multiLine ? TextWrapping.Wrap : TextWrapping.NoWrap,
                 Watermark = field.ExampleText,
                 MaxLength = field.MaxLength,
             };
-            box.LostFocus += (_, _) => _session.SetValue(field.Key, box.Text ?? "", rowIndex);
-            box.TextChanged += (_, _) => _session.SetValue(field.Key, box.Text ?? "", rowIndex);
+            box.LostFocus += (_, _) => _session.SetValue(owner, field.Key, rowIndex, box.Text ?? "");
+            box.TextChanged += (_, _) => _session.SetValue(owner, field.Key, rowIndex, box.Text ?? "");
             input = box;
         }
 
@@ -478,6 +536,24 @@ public sealed class WizardWindow : Window
 
         AutomationProperties.SetLabeledBy(input, label);
         panel.Children.Add(input);
+
+        // Committees keep a plain list of names, so the picker only ever appends a line (M13).
+        if (field is { Kind: WizardFieldKind.MultiLineText, AllowsPeoplePicker: true } && _people.Count > 0)
+        {
+            panel.Children.Add(MakeButton("Add someone from the address book…", async (_, _) =>
+            {
+                if (await PersonPickerDialog.PickAsync(this, _people) is { } person)
+                {
+                    string existing = _session.GetValue(owner, field.Key, rowIndex);
+                    _session.SetValue(
+                        owner,
+                        field.Key,
+                        rowIndex,
+                        existing.Length == 0 ? person.Name : existing.TrimEnd('\n') + "\n" + person.Name);
+                    RenderScreen();
+                }
+            }));
+        }
 
         if (field.HelpText is { Length: > 0 } helpText)
         {
@@ -492,6 +568,89 @@ public sealed class WizardWindow : Window
         }
 
         return panel;
+    }
+
+    /// <summary>
+    /// Two cheap wins that hit the "I type the same name three times" complaint directly (M13).
+    /// Picking a brother fills in a <em>blank</em> phone box from the address book — never one the
+    /// user has already typed in — and remembers the pick, so the review screen can offer to send a
+    /// corrected number back the other way.
+    /// </summary>
+    private void NotePersonPicked(IWizardStep step, int rowIndex, string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        PersonSuggestion? person = _people.FirstOrDefault(
+            p => string.Equals(p.Name, text.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (person is null)
+        {
+            return;
+        }
+
+        string? phoneKey = step.Fields.FirstOrDefault(f => f.Kind == WizardFieldKind.Phone)?.Key;
+
+        _picks.RemoveAll(p => ReferenceEquals(p.Step, step) && p.RowIndex == rowIndex);
+        _picks.Add(new PersonPick(step, rowIndex, phoneKey, person));
+
+        if (phoneKey is null || string.IsNullOrWhiteSpace(person.Phone))
+        {
+            return;
+        }
+
+        if (_session.GetValue(step, phoneKey, rowIndex).Length == 0)
+        {
+            _session.SetValue(step, phoneKey, rowIndex, person.Phone!);
+            RenderScreen();
+        }
+    }
+
+    /// <summary>
+    /// Phone numbers the user agreed to send back to the address book. Empty unless they ticked a
+    /// box on the review screen — keeping the book fresh must never be something that happens to
+    /// somebody (PLAN.md §11 M13).
+    /// </summary>
+    internal IReadOnlyList<(string MemberId, string Phone)> PhoneWriteBacks
+    {
+        get
+        {
+            var writes = new List<(string, string)>();
+            foreach (PersonPick pick in _picks)
+            {
+                if (pick.PhoneFieldKey is not { } key || !_writeBackIds.Contains(pick.Person.Id))
+                {
+                    continue;
+                }
+
+                string typed = _session.GetValue(pick.Step, key, pick.RowIndex).Trim();
+                if (typed.Length > 0 && !string.Equals(typed, pick.Person.Phone, StringComparison.Ordinal))
+                {
+                    writes.Add((pick.Person.Id, typed));
+                }
+            }
+
+            return writes;
+        }
+    }
+
+    /// <summary>Picks whose typed phone number disagrees with the one in the address book.</summary>
+    private IEnumerable<PersonPick> PhoneDisagreements()
+    {
+        foreach (PersonPick pick in _picks)
+        {
+            if (pick.PhoneFieldKey is not { } key)
+            {
+                continue;
+            }
+
+            string typed = _session.GetValue(pick.Step, key, pick.RowIndex).Trim();
+            if (typed.Length > 0 && !string.Equals(typed, pick.Person.Phone ?? "", StringComparison.Ordinal))
+            {
+                yield return pick;
+            }
+        }
     }
 
     private void RenderReview()
@@ -533,6 +692,58 @@ public sealed class WizardWindow : Window
                 },
             });
         }
+
+        RenderPhoneWriteBacks();
+    }
+
+    /// <summary>
+    /// One checkbox per brother whose number the user has just typed differently from the address
+    /// book (M13). Off by default and phrased as a question, because keeping the book fresh is a
+    /// favour the user does, not something the app does behind their back.
+    /// </summary>
+    private void RenderPhoneWriteBacks()
+    {
+        List<PersonPick> disagreements = [.. PhoneDisagreements()];
+        if (disagreements.Count == 0)
+        {
+            return;
+        }
+
+        _body.Children.Add(new TextBlock
+        {
+            Text = "While we are here",
+            FontSize = 18,
+            FontWeight = FontWeight.Bold,
+            Margin = new Avalonia.Thickness(0, 16, 0, 4),
+        });
+
+        foreach (PersonPick pick in disagreements)
+        {
+            string id = pick.Person.Id;
+            string text = string.IsNullOrWhiteSpace(pick.Person.Phone)
+                ? $"Also add this phone number to {pick.Person.Name} in your address book?"
+                : $"Also update {pick.Person.Name}'s phone in your address book?";
+            var box = new CheckBox
+            {
+                Content = text,
+                FontSize = 18,
+                MinHeight = 44,
+                IsChecked = _writeBackIds.Contains(id),
+            };
+            AutomationProperties.SetName(box, text);
+            box.IsCheckedChanged += (_, _) =>
+            {
+                if (box.IsChecked == true)
+                {
+                    _writeBackIds.Add(id);
+                }
+                else
+                {
+                    _writeBackIds.Remove(id);
+                }
+            };
+            _body.Children.Add(box);
+        }
     }
 
     private void AddRow()
@@ -547,7 +758,7 @@ public sealed class WizardWindow : Window
     {
         foreach (Control control in Descendants(_body))
         {
-            if (control is TextBox or ComboBox)
+            if (control is TextBox or ComboBox or AutoCompleteBox)
             {
                 control.Focus();
                 return;

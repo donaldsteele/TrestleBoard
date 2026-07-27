@@ -1522,9 +1522,10 @@ public partial class MainWindow : Window
             return;
         }
 
+        IReadOnlyList<PersonSuggestion> people = PeopleForWizards();
         if (grid)
         {
-            var window = new WidgetGridWindow(wizard);
+            var window = new WidgetGridWindow(wizard, people);
             await window.ShowDialog(this);
             if (window.Confirmed)
             {
@@ -1533,11 +1534,12 @@ public partial class MainWindow : Window
         }
         else
         {
-            var window = new WizardWindow(wizard);
+            var window = new WizardWindow(wizard, people);
             await window.ShowDialog(this);
             if (window.Confirmed)
             {
                 _widgets.ApplyWidgetData(blockId, window.Data, window.DataVersion, window.UndoLabel);
+                WritePhoneNumbersBack(window.PhoneWriteBacks);
             }
             else
             {
@@ -1547,6 +1549,42 @@ public partial class MainWindow : Window
         }
 
         RefreshActions();
+    }
+
+    /// <summary>
+    /// The names a wizard may offer (M13). Handed to the window rather than reached for by it, which
+    /// is PLAN.md §5's projection rule applied to the second way people's names could have got into
+    /// <c>TrestleBoard.Widgets</c>.
+    /// </summary>
+    private IReadOnlyList<PersonSuggestion> PeopleForWizards() =>
+        [.. Roster.Book.InListOrder().Select(m => new PersonSuggestion(m.Id, m.DisplayName, m.Phone))];
+
+    /// <summary>
+    /// The other half of the officers wizard's small favour: a phone number the user corrected on
+    /// the page goes back to the address book too — but only for the brothers they ticked, and it
+    /// is its own address-book change with its own undo, because Ctrl+Z never crosses that boundary
+    /// (PLAN.md §11 M12).
+    /// </summary>
+    private void WritePhoneNumbersBack(IReadOnlyList<(string MemberId, string Phone)> writes)
+    {
+        int written = 0;
+        foreach ((string memberId, string phone) in writes)
+        {
+            if (Roster.Book.Find(memberId) is not { } member)
+            {
+                continue;
+            }
+
+            Roster.Save(member with { Phone = phone }, $"Change {member.DisplayName}'s phone number");
+            written++;
+        }
+
+        if (written > 0)
+        {
+            Announce(written == 1
+                ? "The phone number in your address book was updated too."
+                : $"{written} phone numbers in your address book were updated too.");
+        }
     }
 
     /// <summary>

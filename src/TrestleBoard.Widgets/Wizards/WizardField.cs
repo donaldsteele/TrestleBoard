@@ -23,6 +23,14 @@ public enum WizardFieldKind
 
     /// <summary>One of a fixed list.</summary>
     Choice,
+
+    /// <summary>
+    /// A person's name (M13). Offered from the lodge address book, but <b>free typing is always
+    /// allowed</b> — a brother who is not in the book must still be typeable, or the wizard has a
+    /// dead end in it. The candidate names are handed to the window by the shell; nothing here
+    /// reaches for a roster (PLAN.md §5).
+    /// </summary>
+    Person,
 }
 
 public sealed record WizardChoice(string Value, string Label);
@@ -34,6 +42,11 @@ public delegate string? WizardFieldValidator(string value);
 /// One question. The label is the question in plain language; help text is one calm sentence under
 /// the box; the example becomes the watermark AND part of the error message — never a replacement
 /// for the label (PLAN.md §6).
+///
+/// <c>AllowsPeoplePicker</c> (M13) puts an "Add someone from the address book…" button beside a
+/// several-line field, which is how committees stop being retyped without their members list
+/// changing shape at all: it stays a list of strings, so there is no migration and no layouter
+/// change to get wrong.
 /// </summary>
 public sealed record WizardField(
     string Key,
@@ -44,7 +57,8 @@ public sealed record WizardField(
     string? ExampleText = null,
     IReadOnlyList<WizardChoice>? Choices = null,
     int MaxLength = 200,
-    WizardFieldValidator? Validator = null);
+    WizardFieldValidator? Validator = null,
+    bool AllowsPeoplePicker = false);
 
 public readonly record struct WizardFieldError(string FieldKey, int RowIndex, string Message);
 
