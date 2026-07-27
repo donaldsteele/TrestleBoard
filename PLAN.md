@@ -295,6 +295,12 @@ applied on close, and the `.tboard` association on all three platforms.
 **Deliverables:** Velopack packaging for 4 RIDs; GH Actions release workflow on tag; auto-update wired to GitHub Releases; `.tboard` file association; plain-language install instructions with SmartScreen/Gatekeeper screenshots (no code signing — documented workarounds).
 **Acceptance:** on fresh Windows and macOS machines: download → install → open template → export PDF following only the written instructions; pushing a new tag produces an update an installed copy picks up automatically.
 **Post-milestone:** `/graphify . --update` and `/graphify . --wiki` (architecture wiki for future maintenance); ingest the M9 AND M10 decisions into llm-wiki; `/wiki:lint`. **Carried over from M9** — M9's post-milestone plugin pass was deliberately deferred here rather than run at the time (owner's call, 2026-07-26), so this step covers both milestones.
+**Post-milestone status (2026-07-26):** done. graphify updated (3141 nodes / 6843 edges) and the
+architecture wiki regenerated (201 articles) — the incremental pass was **AST-only**, so the 12
+changed docs and 33 changed baseline images stay unstamped in the manifest and are re-queued for
+the next semantic run. llm-wiki has `m9-decisions` and `m10-decisions`; `/wiki:lint` is clean apart
+from four long-standing orphan monthly-issue source pages, left as they are rather than wired up to
+satisfy the linter.
 **Agents:** **Sonnet** throughout; `claude-code-guide` (Sonnet) for Velopack/Actions specifics; **cavecrew-reviewer (Sonnet)**.
 
 ### Sizing & sequencing notes
