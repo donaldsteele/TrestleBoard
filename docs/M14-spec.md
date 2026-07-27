@@ -288,10 +288,10 @@ strictly worse by adding a second place a family name can live.
    could be re-baked here. Committing it would have broken CI on ubuntu and macos. It is a two-line
    change plus `TRESTLEBOARD_UPDATE_BASELINES=1` on each of the three operating systems, and it is
    recorded in PLAN.md as `- [!]`.
-2. **`font-catalog-sampler` has no macOS baseline yet.** The Linux one was baked after the fact —
-   see §15 — leaving macOS, which needs `.github/workflows/bake-baselines.yml`. The per-face
-   assertions cover the guarantee meanwhile, and the comparison skips with a message telling the
-   next maintainer exactly what to run.
+2. ~~**`font-catalog-sampler` has no Linux or macOS baseline.**~~ **Closed 2026-07-27** by §15: the
+   Linux baseline was baked in the container and the macOS one promoted from a bake run. All three
+   exist, so `FontCatalogSamplerMatchesBaseline` compares everywhere and skips nowhere. The per-face
+   assertions that carried the guarantee meanwhile are unchanged.
 3. **A keyboard-only run of the font picker by a person** is section 14 of
    `docs/accessibility-test-script.md`. The grouped `ListBox` with image-bearing rows is a shape
    nobody in this project has listened to with a screen reader yet — in particular whether the group
@@ -329,6 +329,14 @@ is `workflow_dispatch`-only, takes the runner as an input, regenerates, prints w
 `tests/Rendering.SnapshotTests/Baselines` as an artifact. It **commits nothing** — a maintainer
 promotes the file. Dispatch it on the branch that carries the change being re-baked, or it bakes the
 old pixels.
+
+```
+gh workflow run bake-baselines.yml --ref <branch> -f os=macos-latest
+gh run download <id> -n baselines-macos-latest -D <out>
+```
+
+The macOS bake reported the same single untracked file the container did, so the same reproduction
+argument holds there: 14 of 15 came back byte-identical to what was already committed.
 
 This is the same "promote the CI artifact" idiom the snapshot failure messages have always
 suggested; it just has a job behind it now.
