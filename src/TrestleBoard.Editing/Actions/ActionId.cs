@@ -79,6 +79,13 @@ public static class ActionId
     public const string PreviousRegion = "view.previousRegion";
     public const string ToggleActionPanel = "view.toggleActionPanel";
 
+    // ---- The address book (M12) ---------------------------------------------------------------
+    public const string ShowPeople = "people.show";
+    public const string ImportPeople = "people.import";
+    public const string ExportPeople = "people.export";
+    public const string UndoPeopleChange = "people.undo";
+    public const string RestorePeople = "people.restore";
+
     // ---- Help ---------------------------------------------------------------------------------
     public const string CheckForUpdates = "help.checkForUpdates";
     public const string About = "help.about";

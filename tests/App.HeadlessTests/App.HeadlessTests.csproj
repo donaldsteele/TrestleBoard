@@ -13,4 +13,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\TrestleBoard.App\TrestleBoard.App.csproj" />
   </ItemGroup>
+  <!-- Linked, never copied: PLAN.md §0 rule 5 says a roster fixture exists in exactly ONE place in
+       the repository, and that place is tests/Roster.Tests/Fixtures. These two are read by
+       PeopleShellTests to drive the real import window. -->
+  <ItemGroup>
+    <None Include="..\Roster.Tests\Fixtures\members-100.csv" Link="Fixtures\members-100.csv" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Roster.Tests\Fixtures\old-format.xls" Link="Fixtures\old-format.xls" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

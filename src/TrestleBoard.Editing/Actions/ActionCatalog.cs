@@ -140,6 +140,18 @@ public static class ActionCatalog
         new(ActionId.ToggleActionPanel, "Show what I can do",
             "Shows or hides the panel of things you can do to what you have chosen.", ActionGroup.View),
 
+        // ---- The address book (M12) ---------------------------------------------------------------
+        new(ActionId.ShowPeople, "People…", "Opens your lodge address book.",
+            ActionGroup.People, "Ctrl+Shift+R", IsPrimary: true),
+        new(ActionId.ImportPeople, "Import from a file…",
+            "Reads a list of members from a spreadsheet you already have.", ActionGroup.People),
+        new(ActionId.ExportPeople, "Save as a spreadsheet…",
+            "Writes your address book out so you can open it in Excel.", ActionGroup.People),
+        new(ActionId.UndoPeopleChange, "Undo the last change",
+            "Takes back the last change to your address book.", ActionGroup.People),
+        new(ActionId.RestorePeople, "Restore an earlier version…",
+            "Puts your address book back as it was on an earlier day.", ActionGroup.People),
+
         // ---- Help -------------------------------------------------------------------------------
         new(ActionId.CheckForUpdates, "Check for an update", "Asks whether a newer TrestleBoard exists.",
             ActionGroup.Help),
@@ -168,11 +180,31 @@ public static class ActionCatalog
 
         return actionId switch
         {
-            // Always available: these are how you get a newsletter in the first place.
+            // Always available: these are how you get a newsletter in the first place. The address
+            // book's own two doors are here too — it is app state, so it does not need a newsletter
+            // open, and an empty book is exactly when importing matters most.
             ActionId.Open or ActionId.OpenSample or ActionId.NewFromTemplate or ActionId.Exit
                 or ActionId.Settings or ActionId.NextRegion or ActionId.PreviousRegion
-                or ActionId.ToggleActionPanel or ActionId.CheckForUpdates or ActionId.About =>
+                or ActionId.ToggleActionPanel or ActionId.CheckForUpdates or ActionId.About
+                or ActionId.ShowPeople or ActionId.ImportPeople =>
                 ActionAvailability.Available,
+
+            // ---- The address book (M12) -----------------------------------------------------------
+            ActionId.ExportPeople => context.RosterCount > 0
+                ? ActionAvailability.Available
+                : ActionAvailability.Blocked(
+                    "Your address book is empty, so there is nothing to save yet. Import a list, or "
+                    + "add somebody in the People window.",
+                    ActionId.ImportPeople),
+            ActionId.UndoPeopleChange => context.RosterCanUndo
+                ? ActionAvailability.Available
+                : ActionAvailability.Blocked(
+                    "Nothing has changed in your address book since TrestleBoard was opened."),
+            ActionId.RestorePeople => context.RosterHasEarlierVersions
+                ? ActionAvailability.Available
+                : ActionAvailability.Blocked(
+                    "There are no earlier versions of your address book yet. TrestleBoard keeps one "
+                    + "every time you change it."),
 
             ActionId.StartFromLastMonth => context.CanStartFromLastMonth
                 ? ActionAvailability.Available
@@ -364,6 +396,7 @@ public static class ActionCatalog
         ActionGroup.Arrange => "Front and back",
         ActionGroup.Page => "Pages",
         ActionGroup.View => "Looking at it",
+        ActionGroup.People => "Your address book",
         _ => "Help",
     };
 

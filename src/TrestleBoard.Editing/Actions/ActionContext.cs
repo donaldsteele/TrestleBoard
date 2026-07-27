@@ -118,6 +118,21 @@ public sealed record ActionContext
     /// <summary>A generated birthday list was made for a month that is no longer the issue month (M13).</summary>
     public bool BirthdayListIsStale { get; init; }
 
+    // ---- The address book (M12) ---------------------------------------------------------------
+
+    /// <summary>How many people the address book holds.</summary>
+    public int RosterCount { get; init; }
+
+    /// <summary>There is one address-book change to take back. Deliberately separate from
+    /// <see cref="CanUndo"/>: Ctrl+Z never crosses the roster/document boundary.</summary>
+    public bool RosterCanUndo { get; init; }
+
+    /// <summary>"Add A. Placeholder" — the tail of the People menu's undo item.</summary>
+    public string? RosterUndoDescription { get; init; }
+
+    /// <summary>The backup ring holds at least one earlier version to restore.</summary>
+    public bool RosterHasEarlierVersions { get; init; }
+
     /// <summary>True when a block of some kind is selected as an object.</summary>
     public bool HasFrameSelection =>
         Selection is SelectionKind.TextFrame or SelectionKind.Photo

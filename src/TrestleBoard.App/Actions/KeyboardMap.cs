@@ -86,6 +86,9 @@ internal static class KeyboardMap
         new(Key.PageDown, KeyModifiers.None, ActionId.NextPage, KeyScope.WhileNotTyping),
         new(Key.PageUp, KeyModifiers.None, ActionId.PreviousPage, KeyScope.WhileNotTyping),
 
+        // ---- The address book (M12) ---------------------------------------------------------------
+        new(Key.R, CtrlShift, ActionId.ShowPeople),
+
         // ---- Looking at it ----------------------------------------------------------------------
         new(Key.OemPlus, Ctrl, ActionId.ZoomIn),
         new(Key.OemMinus, Ctrl, ActionId.ZoomOut),

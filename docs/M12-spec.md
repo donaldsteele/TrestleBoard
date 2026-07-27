@@ -247,3 +247,55 @@ it proves a great deal about a writer and a guesser together.
 
 Export writes only to a path the user browsed to (PLAN.md §0 rule 5). There is no default location
 beside the repository or the newsletter.
+
+---
+
+## 7. The People menu, and the three windows
+
+**A top-level `Peop_le` menu**, not an item buried in File: the address book becomes one of the five
+things this app does. Five items — People… (`Ctrl+Shift+R`), Import from a file…, Save as a
+spreadsheet…, Undo the last change, Restore an earlier version… — each of them a catalog entry, an
+availability rule, a runner handler and (for the one with a shortcut) a `KeyboardMap` row, exactly as
+M11's rule requires. The access key is `l`, because `P` already belongs to Page.
+
+Two of the five can be unavailable, and both say why rather than only going grey: saving a spreadsheet
+when the book is empty points at Import as its remedy, and the undo item names what it will take back
+(`_Undo Add A. Placeholder`) — **a separate sentence from the newsletter's Undo, because Ctrl+Z never
+crosses that boundary.**
+
+**`PeopleWindow`** is shaped around what somebody is actually doing when they open it, which is
+almost never "browse the membership": it is *"look somebody up and fix their phone number"*. Focus
+lands in a 24pt search box; the result count is a polite live region, because a search that silently
+finds nothing looks exactly like a search that is still thinking; rows read `Name — office —
+birthday` so the useful facts need no click; and the editor is a **single page**, not a wizard. The
+wizard shape is right for data you do not have yet and wrong for correcting one field of data you do.
+The same form is reused for Add a person, so it is learned once. Deleting asks, and the confirm
+answers the question the user is actually worried about — *"Newsletters you already made will not
+change."*
+
+It carries one sentence that exists nowhere else in the app: the address book is **kept on this
+computer only**, and the spreadsheet is how you share it. PLAN.md's flagged uncertainty says to say
+so in the People window rather than only in the plan; this is that.
+
+**`RosterImportWindow`** renders `RosterImportSession` and nothing else — no decision, no count and
+no sentence lives in the window. **`RosterRestoreDialog`** lists the ring by *when it was taken and
+how many people were in it*, which is how somebody recognises the version they want.
+
+### Where the address book is read from
+
+`MainWindow.Roster` is created lazily but read during the first `RefreshActions`, which is near
+enough to eager — and that is the right trade. The alternative, deferring until the People window is
+opened, would leave "Save as a spreadsheet…" greyed with the wrong reason until somebody happened to
+look, which is exactly the silent wrongness M11 exists to remove. The one thing that is *not* done
+per refresh is listing the backup directory: `RosterService.HasEarlierVersions` is tracked instead.
+
+### The headless suite now runs on a temporary app-state root
+
+`HeadlessSession` sets `AppPaths.Root` to a per-process temporary folder before Avalonia starts. The
+point is not tidiness. From M12 `%AppData%/TrestleBoard` holds real members' names, birthdays,
+telephone numbers and emails, and a test suite that *could* read that file could print it in an
+assertion message on a public CI log. Pointed at a temporary folder, it cannot.
+
+`PeopleShellTests` and `AccessibilityTests` read the roster fixtures by **linking** them from
+`tests/Roster.Tests/Fixtures` rather than copying them, so §0 rule 5's "fixtures exist in exactly one
+place" stays literally true of the repository.

@@ -7,6 +7,7 @@ using TrestleBoard.App.Dialogs;
 using TrestleBoard.App.Settings;
 using TrestleBoard.Core.Model;
 using TrestleBoard.Layout.Widgets;
+using TrestleBoard.Roster;
 using TrestleBoard.Widgets;
 using TrestleBoard.Widgets.Wizards;
 using Xunit;
@@ -326,6 +327,27 @@ public sealed class AccessibilityTests
         Assert.NotNull(photoBlock);
         yield return (nameof(PhotoAdjustWindow), new PhotoAdjustWindow(photoHost.PhotosForTest!, photoBlock));
         photoHost.Close();
+
+        // The address book's three windows (M12). The roster they are built over is fictional and
+        // in-memory; the suite's app-state root is a temporary folder, so none of this can reach a
+        // real address book (PLAN.md §0 rule 5).
+        yield return (nameof(PeopleWindow), new PeopleWindow(FictionalRoster()));
+        yield return (nameof(RosterImportWindow), new RosterImportWindow(RosterBook.Empty));
+        yield return (nameof(RosterRestoreDialog), new RosterRestoreDialog(
+        [
+            new RosterBackup("roster-20260727-090000-000.roster.bak.json", DateTimeOffset.UnixEpoch, 3),
+        ]));
+    }
+
+    private static RosterService FictionalRoster()
+    {
+        string path = Path.Combine(AppPaths.Root, "accessibility", "roster.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var service = new RosterService(new RosterStore(path));
+        service.Save(
+            new Member { Id = "person-1", DisplayName = "A. Placeholder", Office = "Worshipful Master" },
+            "Add A. Placeholder");
+        return service;
     }
 
     private static WizardSession NewOfficersWizard()

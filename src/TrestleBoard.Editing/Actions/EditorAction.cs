@@ -36,6 +36,13 @@ public enum ActionGroup
     /// <summary>Zoom, theme, window regions.</summary>
     View,
 
+    /// <summary>
+    /// The lodge address book (M12). Its own group because it is app state rather than newsletter
+    /// state — nothing here is about what is selected on the page, which is why the selection panel
+    /// never shows it and the menu bar always does.
+    /// </summary>
+    People,
+
     /// <summary>Updates and the about box.</summary>
     Help,
 }

@@ -21,12 +21,14 @@ public sealed class RosterService
     private RosterBook _book;
     private RosterBook? _undo;
     private string? _undoDescription;
+    private bool _hasEarlierVersions;
 
     public RosterService(RosterStore store)
     {
         ArgumentNullException.ThrowIfNull(store);
         _store = store;
         _book = store.Load();
+        _hasEarlierVersions = store.Backups().Count > 0;
     }
 
     /// <summary>Raised after any change, so the People window and the "what's next" card can refresh.</summary>
@@ -78,6 +80,7 @@ public sealed class RosterService
         _undo = null;
         _undoDescription = null;
         _book = previous;
+        _hasEarlierVersions |= _store.Exists;
         _store.Save(_book);
         Changed?.Invoke(this, EventArgs.Empty);
         return true;
@@ -101,9 +104,19 @@ public sealed class RosterService
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// Is there an earlier version to restore? Tracked rather than re-scanned, because the shell
+    /// asks this on every refresh and a directory listing per keystroke is not a thing to do.
+    /// </summary>
+    public bool HasEarlierVersions => _hasEarlierVersions;
+
     private void Apply(RosterBook book, string description)
     {
         ArgumentNullException.ThrowIfNull(book);
+
+        // A save copies the file it replaces into the ring — so if there is a file now, there is a
+        // kept copy afterwards.
+        _hasEarlierVersions |= _store.Exists;
         _undo = _book;
         _undoDescription = description;
         _book = book.Normalised();

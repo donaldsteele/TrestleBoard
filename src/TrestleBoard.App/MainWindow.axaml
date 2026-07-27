@@ -162,6 +162,27 @@
         <MenuItem Header="Move this page _later" Tag="page.moveLater"
                   Click="OnActionClicked" AutomationProperties.Name="Move this page later" />
       </MenuItem>
+      <!-- Top-level rather than buried in File (M12): the address book becomes one of the five
+           things this app does, and the whole point of it is that a name is typed once. -->
+      <MenuItem Header="Peop_le" AutomationProperties.Name="People menu">
+        <MenuItem Header="_People…" Tag="people.show" InputGesture="Ctrl+Shift+R"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Open your lodge address book" />
+        <Separator />
+        <MenuItem Header="_Import from a file…" Tag="people.import"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Import members from a spreadsheet" />
+        <MenuItem Header="_Save as a spreadsheet…" Tag="people.export"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Save your address book as a spreadsheet" />
+        <Separator />
+        <MenuItem x:Name="UndoPeopleMenuItem" Header="_Undo the last change" Tag="people.undo"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Undo the last change to your address book" />
+        <MenuItem Header="_Restore an earlier version…" Tag="people.restore"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Restore an earlier version of your address book" />
+      </MenuItem>
       <!-- Updates are automatic and quiet (docs/M10-spec.md §2); this item exists so someone who
            wonders "am I on the newest one?" gets an answer instead of having to wonder. -->
       <MenuItem Header="_Help" AutomationProperties.Name="Help menu">

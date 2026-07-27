@@ -35,6 +35,7 @@
     <ProjectReference Include="..\TrestleBoard.Rendering\TrestleBoard.Rendering.csproj" />
     <ProjectReference Include="..\TrestleBoard.Imaging\TrestleBoard.Imaging.csproj" />
     <ProjectReference Include="..\TrestleBoard.Widgets\TrestleBoard.Widgets.csproj" />
+    <ProjectReference Include="..\TrestleBoard.Roster\TrestleBoard.Roster.csproj" />
     <ProjectReference Include="..\TrestleBoard.Export.Pdf\TrestleBoard.Export.Pdf.csproj" />
   </ItemGroup>
   <ItemGroup>

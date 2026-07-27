@@ -21,6 +21,7 @@ using TrestleBoard.Editing.Actions;
 using TrestleBoard.Export.Pdf;
 using TrestleBoard.Layout.Fonts;
 using TrestleBoard.Rendering;
+using TrestleBoard.Roster;
 using TrestleBoard.Widgets;
 using TrestleBoard.Widgets.Wizards;
 
@@ -66,6 +67,7 @@ public partial class MainWindow : Window
     private string? _documentPath;
     private UpdateCoordinator? _updates;
     private AppSettings _settings = AppSettings.Load();
+    private RosterService? _roster;
     private readonly WidgetLayoutProvider _widgetProvider = WidgetLayoutProvider.CreateDefault();
     private ActionContext _context = ActionContext.Empty;
     private string? _announcement;
@@ -188,6 +190,12 @@ public partial class MainWindow : Window
         UndoMenuItem.Header = _context.CanUndo ? $"_Undo {_context.UndoDescription}" : "_Undo";
         RedoMenuItem.Header = _context.CanRedo ? $"_Redo {_context.RedoDescription}" : "_Redo";
 
+        // The address book's own undo says what it will take back too — and stays a separate
+        // sentence from the newsletter's, because Ctrl+Z never crosses that boundary (M12).
+        UndoPeopleMenuItem.Header = _context.RosterCanUndo
+            ? $"_Undo {_context.RosterUndoDescription}"
+            : "_Undo the last change";
+
         RebuildParagraphStyleMenu();
 
         _panel.Update(
@@ -229,7 +237,18 @@ public partial class MainWindow : Window
                 ExportedPdfThisSession: _exportedThisSession,
                 SelectedWidgetHasListEditor: hasListEditor,
                 SelectedWidgetDisplayName: displayName,
-                CoverDateMissing: CoverHeadingNeedsADate()));
+                CoverDateMissing: CoverHeadingNeedsADate(),
+                RosterEmptyButNeeded: RosterEmptyButNeeded(),
+
+                // Reading the book here means the first refresh loads it, which is near enough to
+                // eager — and that is the right trade: "Save as a spreadsheet…" greyed with the
+                // wrong reason until somebody happens to open the People window would be exactly
+                // the silent wrongness M11 exists to remove. HasEarlierVersions is tracked rather
+                // than re-scanned, so no refresh lists a directory.
+                RosterCount: Roster.Book.Count,
+                RosterCanUndo: Roster.CanUndo,
+                RosterUndoDescription: Roster.UndoDescription,
+                RosterHasEarlierVersions: Roster.HasEarlierVersions));
     }
 
     /// <summary>
@@ -982,6 +1001,128 @@ public partial class MainWindow : Window
         }
 
         await InsertPhotoFromFileAsync(file);
+    }
+
+    // ---- The lodge address book (PLAN.md §11 M12) ---------------------------------------------
+
+    /// <summary>
+    /// The address book, loaded the first time anything asks for it. Lazy on purpose: an elderly
+    /// user who never opens the People window should never pay for reading the file, and a startup
+    /// that cannot fail is a startup that does not read anything it does not need.
+    ///
+    /// It reads <see cref="AppPaths.RosterFile"/> rather than building the AppData path itself,
+    /// which is what lets a harness be pointed somewhere else and be structurally unable to see real
+    /// members' details (PLAN.md §0 rule 5).
+    /// </summary>
+    internal RosterService Roster => _roster ??= CreateRoster();
+
+    private RosterService CreateRoster()
+    {
+        var service = new RosterService(new RosterStore(AppPaths.RosterFile));
+
+        // The "what's next" card and the People menu both read the book, so a change to it has to
+        // reach the same refresh every other change in the app goes through.
+        service.Changed += (_, _) => RefreshActions();
+        return service;
+    }
+
+    internal async Task ShowPeopleAsync()
+    {
+        var window = new PeopleWindow(Roster);
+        await window.ShowDialog(this);
+        RefreshActions();
+    }
+
+    internal async Task ImportPeopleAsync()
+    {
+        var window = new RosterImportWindow(Roster.Book);
+        await window.ShowDialog(this);
+
+        if (window.Result is { } book)
+        {
+            Roster.Replace(book, "Import people from a file");
+            Announce($"Your address book now has {book.Count} people.");
+        }
+    }
+
+    internal async Task ExportPeopleAsync()
+    {
+        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save your address book as a spreadsheet",
+            DefaultExtension = "xlsx",
+            SuggestedFileName = RosterExport.SuggestedFileName(DateTimeOffset.Now),
+            FileTypeChoices = [new FilePickerFileType("Excel workbook") { Patterns = ["*.xlsx"] }],
+        });
+
+        // Only ever where the user browsed to. There is no default location beside the repository
+        // or the newsletter (PLAN.md §0 rule 5).
+        if (file?.TryGetLocalPath() is not { } path)
+        {
+            return;
+        }
+
+        try
+        {
+            RosterExport.Save(Roster.Book, path);
+            Announce($"Your address book was saved as {Path.GetFileName(path)}.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            await ShowErrorAsync(
+                "Could not save your address book",
+                "TrestleBoard could not write that file. It may be open in Excel. " + ex.Message);
+        }
+    }
+
+    internal void UndoPeopleChange()
+    {
+        string? description = Roster.UndoDescription;
+        if (Roster.Undo())
+        {
+            Announce(description is null
+                ? "The last change to your address book was taken back."
+                : $"Taken back: {description.ToLowerInvariant()}.");
+        }
+    }
+
+    internal async Task RestorePeopleAsync()
+    {
+        var dialog = new RosterRestoreDialog(Roster.Backups());
+        await dialog.ShowDialog(this);
+
+        if (dialog.Chosen is { } backup)
+        {
+            Roster.Restore(backup);
+            Announce(
+                $"Your address book was put back as it was on {RosterRestoreDialog.Describe(backup)}. "
+                + "Undo the last change reverses this.");
+        }
+    }
+
+    /// <summary>
+    /// M12's "what's next" source: a list of people is on the page and the address book is empty, so
+    /// nothing can be filled in for the user. Read here because only the shell knows both halves.
+    /// </summary>
+    private bool RosterEmptyButNeeded()
+    {
+        if (_session is null || Roster.Book.Count > 0)
+        {
+            return false;
+        }
+
+        foreach (Core.Model.Page page in _session.Document.Pages)
+        {
+            foreach (Core.Model.Block block in page.Blocks)
+            {
+                if (block is Core.Model.WidgetBlock { WidgetType: "officersTable" or "birthdayList" or "committeeList" })
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     // ---- Look and size (PLAN.md §6, docs/M9-spec.md §4) -------------------------------------

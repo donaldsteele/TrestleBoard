@@ -97,6 +97,13 @@ internal sealed class ActionRunner
             [ActionId.PreviousRegion] = Sync(() => window.CycleRegion(forward: false)),
             [ActionId.ToggleActionPanel] = Sync(window.ToggleActionPanel),
 
+            // ---- The address book (M12) --------------------------------------------------------------
+            [ActionId.ShowPeople] = _ => window.ShowPeopleAsync(),
+            [ActionId.ImportPeople] = _ => window.ImportPeopleAsync(),
+            [ActionId.ExportPeople] = _ => window.ExportPeopleAsync(),
+            [ActionId.UndoPeopleChange] = Sync(window.UndoPeopleChange),
+            [ActionId.RestorePeople] = _ => window.RestorePeopleAsync(),
+
             // ---- Help ------------------------------------------------------------------------------
             [ActionId.CheckForUpdates] = _ => window.CheckForUpdatesForTest(userAsked: true),
             [ActionId.About] = _ => window.ShowAboutAsync(),

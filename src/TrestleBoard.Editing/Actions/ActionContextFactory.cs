@@ -19,13 +19,21 @@ namespace TrestleBoard.Editing.Actions;
 /// <param name="RosterEmptyButNeeded">M12: a people widget is on the page and the address book is empty.</param>
 /// <param name="BirthdayListIsStale">M13: a generated birthday list was made for another month.</param>
 /// <param name="CoverDateMissing">The cover heading has no meeting date filled in.</param>
+/// <param name="RosterCount">M12: how many people the address book holds.</param>
+/// <param name="RosterCanUndo">M12: there is one address-book change to take back.</param>
+/// <param name="RosterUndoDescription">M12: what that change was, in the user's words.</param>
+/// <param name="RosterHasEarlierVersions">M12: the backup ring holds something to restore.</param>
 public readonly record struct ShellFacts(
     bool ExportedPdfThisSession = false,
     bool SelectedWidgetHasListEditor = false,
     string? SelectedWidgetDisplayName = null,
     bool RosterEmptyButNeeded = false,
     bool BirthdayListIsStale = false,
-    bool CoverDateMissing = false);
+    bool CoverDateMissing = false,
+    int RosterCount = 0,
+    bool RosterCanUndo = false,
+    string? RosterUndoDescription = null,
+    bool RosterHasEarlierVersions = false);
 
 /// <summary>
 /// Takes one snapshot of the editing state for the action catalog to reason about. Reading the
@@ -107,6 +115,11 @@ public static class ActionContextFactory
             CoverDateMissing = shell.CoverDateMissing,
             RosterEmptyButNeeded = shell.RosterEmptyButNeeded,
             BirthdayListIsStale = shell.BirthdayListIsStale,
+
+            RosterCount = shell.RosterCount,
+            RosterCanUndo = shell.RosterCanUndo,
+            RosterUndoDescription = shell.RosterUndoDescription,
+            RosterHasEarlierVersions = shell.RosterHasEarlierVersions,
         };
     }
 
