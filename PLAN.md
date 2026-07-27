@@ -1014,7 +1014,27 @@ the only orphans, unchanged and deliberately so since M10.
 **Agents:** **Opus** for the catalog, the substitution policy and the sibling command; **Sonnet** for
 the styles window and the build script; **cavecrew-reviewer (Sonnet)**.
 
-### M15 — Screenshots & README (M) — **final milestone**
+### M15 — Screenshots & README (M) — **final milestone** — **delivered 2026-07-27**
+**Status:** implemented; design, decisions and open items in `docs/M15-spec.md`. Everything ships —
+the harness, the eighteen images, the generated `docs/images/README.md`, `DocsTests`, the README
+rewrite, and Help → "Show me an example newsletter".
+
+**The milestone's flagged uncertainty is retired.** Headless Skia *does* expose
+`ISkiaSharpApiLeaseFeature`: with `.UseSkia()` and `UseHeadlessDrawing = false` the page area is
+drawn by the real engine, so the composite fallback was not written. The images total **1.4 MB**,
+not the 4–5 MB estimated here; `.git` still roughly doubled (≈6 MB → ≈12 MB), and the reason behind
+that warning — PNGs never delta — is unchanged.
+
+One deliberate deviation is recorded in `docs/M15-spec.md` §5: `pdf-page-spread` rasterises at
+150 dpi as specified and then resamples the finished strip once to 1360px, because three US-Letter
+pages at 150 dpi is 3825px wide and this milestone's own "capture at 1×" rule puts GitHub's README
+column at ~880px. Doing it in that order keeps the glyphs properly rasterised rather than hinted at
+eight points.
+
+Two items stay open there (§9), both needing a person or a machine rather than a decision: **the
+application still has no licence file** — M15 documents the absence in the README rather than
+inventing one, since choosing a licence is the owner's call — and **the two hand-taken install
+screenshots**, which are reserved in `docs/images/README.md` and deliberately not linked.
 
 **Goal:** the project's front page shows what the app actually does. README.md is 34 lines with zero
 images today.
@@ -1223,9 +1243,9 @@ README; **cavecrew-reviewer (Sonnet)**.
   re-couples app state and document state.
 - **Mid-rollout `dataVersion` 2** (M13): a v2 birthday list opened in a pre-M13 build is
   move/resize/delete-only. Designed behaviour, but visible to users during a Velopack rollout.
-- **Does headless Skia expose `ISkiaSharpApiLeaseFeature`?** If it does not, `PageDrawOperation.Render`
-  early-returns and every screenshot has a blank page area — worthless. **The single biggest unverified
-  assumption in M15**; spike it as task one, with the composite fallback ready.
+- ~~**Does headless Skia expose `ISkiaSharpApiLeaseFeature`?**~~ — **answered at M15, 2026-07-27:
+  yes.** With `.UseSkia()` and `UseHeadlessDrawing = false` the lease is handed over and the page
+  area is drawn by the real engine. The composite fallback was not written (`docs/M15-spec.md` §1).
 - **The OFL licence text does not ship in the installer today** — the fonts do, the licences do not.
   A pre-existing compliance gap that M14 must close.
 - **Subsetting renumbers glyph IDs**, and the widget golden dumps record them — which is why M14
@@ -1234,3 +1254,6 @@ README; **cavecrew-reviewer (Sonnet)**.
   Unavoidable; the warning dialog must say so, and metric-compatible substitution must not be attempted.
 - **Committed screenshots roughly double `.git`** (~4–5 MB against a current 6.1 MB) and never delta,
   so every regeneration adds a full copy to history. Regenerate rarely and by name.
+  **Measured at M15:** the eighteen images came to 1.4 MB rather than 4–5 MB, and `.git` still about
+  doubled (≈6 MB → ≈12 MB, mostly loose objects). The never-delta point stands unchanged, and
+  `--only` exists for exactly this reason.
