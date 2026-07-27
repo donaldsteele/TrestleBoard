@@ -720,6 +720,14 @@ build's, so a v2 birthday list opened in a pre-M13 build becomes move/resize/del
 "newer version" message. That is designed behaviour, but users mid-Velopack-rollout will see it.
 
 **Post-milestone:** `/graphify . --update`; ingest the M13 decisions into llm-wiki.
+**Post-milestone status (2026-07-27):** done. graphify updated to 3896 nodes / 8469 edges; as at M10,
+M11 and M12 the incremental pass was **AST-only**, so the 17 changed docs and 33 baseline images stay
+unstamped in the manifest and are still queued for the next semantic run. llm-wiki has
+`m13-decisions`, with `birthday-list`, `officers-table`, `committee-list` and `carry-forward-workflow`
+updated — the last of those gains the point that M13 changes nothing in `CarryForward` itself and
+still fixes the wrong-month birthday list, because the stored source month stops matching the issue
+on its own. Graph extract clean at 25 nodes / 159 edges. `/wiki:lint` not run: the cadence is
+even-numbered milestones, so it falls to M14.
 **Agents:** **Opus** for the projection and re-sync semantics; **Sonnet** for the wizard field kind and
 pickers; **cavecrew-reviewer (Sonnet)**.
 
