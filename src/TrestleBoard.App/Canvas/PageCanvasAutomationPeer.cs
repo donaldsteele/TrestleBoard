@@ -113,7 +113,16 @@ public sealed class PageCanvasAutomationPeer : ControlAutomationPeer
 
         protected override AutomationPeer? GetLabeledByCore() => null;
 
-        protected override bool ShowContextMenuCore() => false;
-
+        /// <summary>
+        /// The Applications key over a block. Selecting first is deliberate: the flyout is built
+        /// from the current selection, so asking for "what can I do to this" has to make "this" the
+        /// selection before the question is answered (M11).
+        /// </summary>
+        protected override bool ShowContextMenuCore()
+        {
+            _canvas.FrameEditor?.Select(_blockId);
+            _canvas.RaisePeerContextMenuRequest();
+            return true;
+        }
     }
 }

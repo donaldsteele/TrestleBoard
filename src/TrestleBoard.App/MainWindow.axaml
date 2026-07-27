@@ -3,244 +3,235 @@
         xmlns:canvas="using:TrestleBoard.App.Canvas"
         x:Class="TrestleBoard.App.MainWindow"
         Title="TrestleBoard"
-        Width="1100" Height="800"
+        Width="1280" Height="860"
         WindowStartupLocation="CenterScreen"
         AutomationProperties.Name="TrestleBoard main window">
-  <!-- Minimum 16pt UI text, every action keyboard-reachable (PLAN.md §6). -->
+  <!-- Minimum 16pt UI text, every action keyboard-reachable (PLAN.md §6). Every menu item carries
+       the action id it runs in Tag and shares one Click handler: availability, the plain-language
+       reason it is unavailable, and the code that performs it all come from one place (M11). -->
   <DockPanel>
     <LayoutTransformControl x:Name="MenuScale" DockPanel.Dock="Top">
     <Menu FontSize="16">
       <MenuItem Header="_File" AutomationProperties.Name="File menu">
-        <MenuItem x:Name="OpenMenuItem"
-                  Header="_Open a newsletter…"
-                  InputGesture="Ctrl+O"
-                  Click="OnOpenClicked"
+        <MenuItem Header="_Open a newsletter…" Tag="newsletter.open"
+                  InputGesture="Ctrl+O" Click="OnActionClicked"
                   AutomationProperties.Name="Open a newsletter" />
-        <MenuItem x:Name="OpenSampleMenuItem"
-                  Header="Open the _sample newsletter"
-                  Click="OnOpenSampleClicked"
+        <MenuItem Header="Open the _sample newsletter" Tag="newsletter.openSample"
+                  Click="OnActionClicked"
                   AutomationProperties.Name="Open the sample newsletter" />
         <Separator />
-        <MenuItem x:Name="NewFromTemplateMenuItem"
-                  Header="Start from a _template…"
-                  Click="OnNewFromTemplateClicked"
+        <MenuItem Header="Start from a _template…" Tag="newsletter.newFromTemplate"
+                  Click="OnActionClicked"
                   AutomationProperties.Name="Start from a template" />
-        <MenuItem x:Name="NewFromLastMonthMenuItem"
-                  Header="Start from _last month"
-                  IsEnabled="False"
-                  Click="OnStartFromLastMonthClicked"
+        <MenuItem Header="Start from _last month" Tag="newsletter.startFromLastMonth"
+                  Click="OnActionClicked"
                   AutomationProperties.Name="Start this month from last month's newsletter" />
         <Separator />
-        <MenuItem x:Name="ExportPdfMenuItem"
-                  Header="_Export as PDF…"
-                  InputGesture="Ctrl+E"
-                  IsEnabled="False"
-                  Click="OnExportPdfClicked"
+        <MenuItem Header="_Export as PDF…" Tag="newsletter.exportPdf"
+                  InputGesture="Ctrl+E" Click="OnActionClicked"
                   AutomationProperties.Name="Export as PDF" />
         <Separator />
-        <MenuItem Header="E_xit"
-                  Click="OnExitClicked"
+        <MenuItem Header="E_xit" Tag="newsletter.exit" Click="OnActionClicked"
                   AutomationProperties.Name="Exit TrestleBoard" />
       </MenuItem>
       <MenuItem Header="_Edit" AutomationProperties.Name="Edit menu">
-        <MenuItem x:Name="UndoMenuItem" Header="_Undo" InputGesture="Ctrl+Z" IsEnabled="False"
-                  Click="OnUndoClicked" AutomationProperties.Name="Undo" />
-        <MenuItem x:Name="RedoMenuItem" Header="_Redo" InputGesture="Ctrl+Y" IsEnabled="False"
-                  Click="OnRedoClicked" AutomationProperties.Name="Redo" />
+        <MenuItem x:Name="UndoMenuItem" Header="_Undo" Tag="edit.undo"
+                  InputGesture="Ctrl+Z" Click="OnActionClicked" AutomationProperties.Name="Undo" />
+        <MenuItem x:Name="RedoMenuItem" Header="_Redo" Tag="edit.redo"
+                  InputGesture="Ctrl+Y" Click="OnActionClicked" AutomationProperties.Name="Redo" />
         <Separator />
-        <MenuItem x:Name="CutMenuItem" Header="Cu_t" InputGesture="Ctrl+X" IsEnabled="False"
-                  Click="OnCutClicked" AutomationProperties.Name="Cut" />
-        <MenuItem x:Name="CopyMenuItem" Header="_Copy" InputGesture="Ctrl+C" IsEnabled="False"
-                  Click="OnCopyClicked" AutomationProperties.Name="Copy" />
-        <MenuItem x:Name="PasteMenuItem" Header="_Paste" InputGesture="Ctrl+V" IsEnabled="False"
-                  Click="OnPasteClicked" AutomationProperties.Name="Paste" />
+        <MenuItem Header="Cu_t" Tag="edit.cut" InputGesture="Ctrl+X"
+                  Click="OnActionClicked" AutomationProperties.Name="Cut" />
+        <MenuItem Header="_Copy" Tag="edit.copy" InputGesture="Ctrl+C"
+                  Click="OnActionClicked" AutomationProperties.Name="Copy" />
+        <MenuItem Header="_Paste" Tag="edit.paste" InputGesture="Ctrl+V"
+                  Click="OnActionClicked" AutomationProperties.Name="Paste" />
         <Separator />
-        <MenuItem x:Name="SelectAllMenuItem" Header="Select _all" InputGesture="Ctrl+A" IsEnabled="False"
-                  Click="OnSelectAllClicked" AutomationProperties.Name="Select all" />
+        <MenuItem Header="Select _all" Tag="edit.selectAll" InputGesture="Ctrl+A"
+                  Click="OnActionClicked" AutomationProperties.Name="Select all" />
       </MenuItem>
+      <!-- Paragraph style used to be a toolbar combo with no menu path at all — the one command
+           in the app that a keyboard-only user could not reach (M11). -->
       <MenuItem Header="F_ormat" AutomationProperties.Name="Format menu">
-        <MenuItem x:Name="BoldMenuItem" Header="_Bold" InputGesture="Ctrl+B" IsEnabled="False"
-                  Click="OnBoldClicked" AutomationProperties.Name="Bold" />
-        <MenuItem x:Name="ItalicMenuItem" Header="_Italic" InputGesture="Ctrl+I" IsEnabled="False"
-                  Click="OnItalicClicked" AutomationProperties.Name="Italic" />
+        <MenuItem Header="_Bold" Tag="text.bold" InputGesture="Ctrl+B"
+                  Click="OnActionClicked" AutomationProperties.Name="Bold" />
+        <MenuItem Header="_Italic" Tag="text.italic" InputGesture="Ctrl+I"
+                  Click="OnActionClicked" AutomationProperties.Name="Italic" />
+        <Separator />
+        <MenuItem x:Name="ParagraphStyleMenu" Header="Paragraph _style" Tag="text.paragraphStyle"
+                  AutomationProperties.Name="Paragraph style" />
       </MenuItem>
       <!-- Insert menu: the six widgets each get their own item so a keyboard user never has to
            go through a picker (docs/M7-spec.md §8.1). -->
       <MenuItem Header="_Insert" AutomationProperties.Name="Insert menu">
-        <MenuItem x:Name="InsertOfficersMenuItem" Header="_Lodge officers" IsEnabled="False"
-                  Click="OnInsertWidgetClicked" Tag="officersTable"
+        <MenuItem Header="_Lodge officers" Tag="insert.officersTable"
+                  Click="OnActionClicked"
                   AutomationProperties.Name="Insert the lodge officers table" />
-        <MenuItem x:Name="InsertBirthdaysMenuItem" Header="_Birthdays" IsEnabled="False"
-                  Click="OnInsertWidgetClicked" Tag="birthdayList"
+        <MenuItem Header="_Birthdays" Tag="insert.birthdayList"
+                  Click="OnActionClicked"
                   AutomationProperties.Name="Insert the birthday list" />
-        <MenuItem x:Name="InsertCommitteesMenuItem" Header="_Committees" IsEnabled="False"
-                  Click="OnInsertWidgetClicked" Tag="committeeList"
+        <MenuItem Header="_Committees" Tag="insert.committeeList"
+                  Click="OnActionClicked"
                   AutomationProperties.Name="Insert the committee list" />
-        <MenuItem x:Name="InsertDistrictMenuItem" Header="_District calendar" IsEnabled="False"
-                  Click="OnInsertWidgetClicked" Tag="districtCalendar"
+        <MenuItem Header="_District calendar" Tag="insert.districtCalendar"
+                  Click="OnActionClicked"
                   AutomationProperties.Name="Insert the district calendar" />
-        <MenuItem x:Name="InsertAnnouncementMenuItem" Header="_Announcement box" IsEnabled="False"
-                  Click="OnInsertWidgetClicked" Tag="eventCard"
+        <MenuItem Header="_Announcement box" Tag="insert.eventCard"
+                  Click="OnActionClicked"
                   AutomationProperties.Name="Insert an announcement box" />
-        <MenuItem x:Name="InsertCoverMenuItem" Header="Cover _heading" IsEnabled="False"
-                  Click="OnInsertWidgetClicked" Tag="coverBanner"
+        <MenuItem Header="Cover _heading" Tag="insert.coverBanner"
+                  Click="OnActionClicked"
                   AutomationProperties.Name="Insert the cover heading" />
       </MenuItem>
-      <!-- Object menu: every direct-manipulation gesture also lives here with a shortcut,
-           so nothing on the canvas is mouse-only (PLAN.md §6, docs/M5-spec.md §9). -->
-      <MenuItem Header="Ob_ject" AutomationProperties.Name="Object menu">
-        <MenuItem x:Name="AddTextFrameMenuItem" Header="_Add a text frame" InputGesture="Ctrl+Shift+T"
-                  IsEnabled="False" Click="OnAddTextFrameClicked"
-                  AutomationProperties.Name="Add a text frame" />
-        <MenuItem x:Name="DeleteFrameMenuItem" Header="_Delete this frame" InputGesture="Delete"
-                  IsEnabled="False" Click="OnDeleteFrameClicked"
-                  AutomationProperties.Name="Delete this frame" />
+      <!-- Was "Object", fourteen flat items deep. Same commands, six direct entries and three
+           submenus, named for what the user is looking at rather than for a model type (M11).
+           Nothing was removed; the four front-to-back items simply went one level deeper. -->
+      <MenuItem Header="_This item" AutomationProperties.Name="This item menu">
+        <MenuItem Header="_Add a text frame" Tag="insert.textFrame" InputGesture="Ctrl+Shift+T"
+                  Click="OnActionClicked" AutomationProperties.Name="Add a text frame" />
+        <MenuItem Header="_Delete this" Tag="item.delete" InputGesture="Delete"
+                  Click="OnActionClicked" AutomationProperties.Name="Delete this" />
         <Separator />
-        <MenuItem x:Name="WrapMenuItem" Header="_Wrap text around this" InputGesture="Ctrl+Shift+W"
-                  IsEnabled="False" Click="OnToggleWrapClicked"
-                  AutomationProperties.Name="Wrap text around this frame" />
+        <MenuItem Header="_Change what this says…" Tag="item.edit" InputGesture="Ctrl+Shift+E"
+                  Click="OnActionClicked" AutomationProperties.Name="Change what this item says" />
+        <MenuItem Header="Edit the _list…" Tag="item.editList" InputGesture="Ctrl+Shift+G"
+                  Click="OnActionClicked" AutomationProperties.Name="Edit this list" />
+        <MenuItem Header="_Fit to contents" Tag="item.fitToContents" InputGesture="Ctrl+Shift+Y"
+                  Click="OnActionClicked" AutomationProperties.Name="Fit this item to its contents" />
+        <MenuItem Header="_Make the rest fit" Tag="flow.auto" InputGesture="Ctrl+Shift+M"
+                  Click="OnActionClicked" AutomationProperties.Name="Make the rest of this text fit" />
         <Separator />
-        <MenuItem x:Name="BringForwardMenuItem" Header="Bring _forward" InputGesture="Ctrl+OemCloseBrackets"
-                  IsEnabled="False" Click="OnBringForwardClicked"
-                  AutomationProperties.Name="Bring forward" />
-        <MenuItem x:Name="SendBackwardMenuItem" Header="Send _backward" InputGesture="Ctrl+OemOpenBrackets"
-                  IsEnabled="False" Click="OnSendBackwardClicked"
-                  AutomationProperties.Name="Send backward" />
-        <MenuItem x:Name="BringToFrontMenuItem" Header="Bring to f_ront" InputGesture="Ctrl+Shift+OemCloseBrackets"
-                  IsEnabled="False" Click="OnBringToFrontClicked"
-                  AutomationProperties.Name="Bring to front" />
-        <MenuItem x:Name="SendToBackMenuItem" Header="Send to bac_k" InputGesture="Ctrl+Shift+OemOpenBrackets"
-                  IsEnabled="False" Click="OnSendToBackClicked"
-                  AutomationProperties.Name="Send to back" />
-        <Separator />
-        <MenuItem x:Name="InsertPhotoMenuItem" Header="Insert a _picture…" InputGesture="Ctrl+Shift+P"
-                  IsEnabled="False" Click="OnInsertPhotoClicked"
-                  AutomationProperties.Name="Insert a picture" />
-        <MenuItem x:Name="FixPhotoMenuItem" Header="Fi_x this picture" InputGesture="Ctrl+Shift+F"
-                  IsEnabled="False" Click="OnFixPhotoClicked"
-                  AutomationProperties.Name="Fix this picture" />
-        <MenuItem x:Name="AdjustPhotoMenuItem" Header="Adjust the pictu_re…" InputGesture="Ctrl+Shift+A"
-                  IsEnabled="False" Click="OnAdjustPhotoClicked"
-                  AutomationProperties.Name="Adjust the picture" />
-        <Separator />
-        <MenuItem x:Name="EditWidgetMenuItem" Header="_Edit this item…" InputGesture="Ctrl+Shift+E"
-                  IsEnabled="False" Click="OnEditWidgetClicked"
-                  AutomationProperties.Name="Edit this item" />
-        <MenuItem x:Name="EditWidgetListMenuItem" Header="Edit _list…" InputGesture="Ctrl+Shift+G"
-                  IsEnabled="False" Click="OnEditWidgetListClicked"
-                  AutomationProperties.Name="Edit this list" />
-        <MenuItem x:Name="FitToContentsMenuItem" Header="Fit to _contents" InputGesture="Ctrl+Shift+Y"
-                  IsEnabled="False" Click="OnFitToContentsClicked"
-                  AutomationProperties.Name="Fit this item to its contents" />
-        <MenuItem x:Name="AutoFlowMenuItem" Header="_Make the rest fit" InputGesture="Ctrl+Shift+M"
-                  IsEnabled="False" Click="OnAutoFlowClicked"
-                  AutomationProperties.Name="Make the rest of this text fit" />
-        <Separator />
-        <MenuItem x:Name="LinkFramesMenuItem" Header="_Continue this text in another frame…" InputGesture="Ctrl+Shift+L"
-                  IsEnabled="False" Click="OnLinkFramesClicked"
-                  AutomationProperties.Name="Continue this text in another frame" />
-        <MenuItem x:Name="UnlinkFramesMenuItem" Header="_Stop continuing into the next frame" InputGesture="Ctrl+Shift+K"
-                  IsEnabled="False" Click="OnUnlinkFramesClicked"
-                  AutomationProperties.Name="Stop continuing into the next frame" />
+        <MenuItem Header="_Picture" AutomationProperties.Name="Picture submenu">
+          <MenuItem Header="_Insert a picture…" Tag="insert.photo" InputGesture="Ctrl+Shift+P"
+                    Click="OnActionClicked" AutomationProperties.Name="Insert a picture" />
+          <MenuItem Header="_Fix this picture" Tag="picture.fix" InputGesture="Ctrl+Shift+F"
+                    Click="OnActionClicked" AutomationProperties.Name="Fix this picture" />
+          <MenuItem Header="_Adjust the picture…" Tag="picture.adjust" InputGesture="Ctrl+Shift+A"
+                    Click="OnActionClicked" AutomationProperties.Name="Adjust the picture" />
+        </MenuItem>
+        <MenuItem Header="_Text flow" AutomationProperties.Name="Text flow submenu">
+          <MenuItem Header="_Wrap text around this" Tag="flow.wrap" InputGesture="Ctrl+Shift+W"
+                    Click="OnActionClicked" AutomationProperties.Name="Wrap text around this frame" />
+          <MenuItem Header="_Continue this text in another frame…" Tag="flow.link" InputGesture="Ctrl+Shift+L"
+                    Click="OnActionClicked" AutomationProperties.Name="Continue this text in another frame" />
+          <MenuItem Header="_Stop continuing into the next frame" Tag="flow.unlink" InputGesture="Ctrl+Shift+K"
+                    Click="OnActionClicked" AutomationProperties.Name="Stop continuing into the next frame" />
+        </MenuItem>
+        <MenuItem Header="A_rrange" AutomationProperties.Name="Arrange submenu">
+          <MenuItem Header="Bring _forward" Tag="arrange.bringForward" InputGesture="Ctrl+OemCloseBrackets"
+                    Click="OnActionClicked" AutomationProperties.Name="Bring forward" />
+          <MenuItem Header="Send _backward" Tag="arrange.sendBackward" InputGesture="Ctrl+OemOpenBrackets"
+                    Click="OnActionClicked" AutomationProperties.Name="Send backward" />
+          <MenuItem Header="Bring to f_ront" Tag="arrange.bringToFront" InputGesture="Ctrl+Shift+OemCloseBrackets"
+                    Click="OnActionClicked" AutomationProperties.Name="Bring to front" />
+          <MenuItem Header="Send to bac_k" Tag="arrange.sendToBack" InputGesture="Ctrl+Shift+OemOpenBrackets"
+                    Click="OnActionClicked" AutomationProperties.Name="Send to back" />
+        </MenuItem>
       </MenuItem>
       <MenuItem Header="_View" AutomationProperties.Name="View menu">
-        <MenuItem Header="Zoom _in" InputGesture="Ctrl+OemPlus" Click="OnZoomInClicked" AutomationProperties.Name="Zoom in" />
-        <MenuItem Header="Zoom _out" InputGesture="Ctrl+OemMinus" Click="OnZoomOutClicked" AutomationProperties.Name="Zoom out" />
-        <MenuItem Header="_Actual size" InputGesture="Ctrl+D0" Click="OnZoomResetClicked" AutomationProperties.Name="Actual size" />
-        <MenuItem Header="_Fit page" InputGesture="Ctrl+D1" Click="OnFitPageClicked" AutomationProperties.Name="Fit page" />
+        <MenuItem Header="Zoom _in" Tag="view.zoomIn" InputGesture="Ctrl+OemPlus"
+                  Click="OnActionClicked" AutomationProperties.Name="Zoom in" />
+        <MenuItem Header="Zoom _out" Tag="view.zoomOut" InputGesture="Ctrl+OemMinus"
+                  Click="OnActionClicked" AutomationProperties.Name="Zoom out" />
+        <MenuItem Header="_Actual size" Tag="view.actualSize" InputGesture="Ctrl+D0"
+                  Click="OnActionClicked" AutomationProperties.Name="Actual size" />
+        <MenuItem Header="_Fit page" Tag="view.fitPage" InputGesture="Ctrl+D1"
+                  Click="OnActionClicked" AutomationProperties.Name="Fit page" />
         <Separator />
-        <MenuItem x:Name="SettingsMenuItem" Header="How things _look…" Click="OnSettingsClicked"
+        <MenuItem Header="Show what I can _do" Tag="view.toggleActionPanel"
+                  Click="OnActionClicked" AutomationProperties.Name="Show or hide the panel of things you can do" />
+        <MenuItem Header="Move to the _next part of the window" Tag="view.nextRegion" InputGesture="F6"
+                  Click="OnActionClicked" AutomationProperties.Name="Move to the next part of the window" />
+        <Separator />
+        <MenuItem Header="How things _look…" Tag="view.settings" Click="OnActionClicked"
                   AutomationProperties.Name="Change how things look" />
       </MenuItem>
       <MenuItem Header="_Page" AutomationProperties.Name="Page menu">
         <!-- Ctrl+PageUp/Down: bare PageUp/Down belongs to the caret while editing (M4 spec §4.3). -->
-        <MenuItem Header="_Next page" InputGesture="Ctrl+PageDown" Click="OnNextPageClicked" AutomationProperties.Name="Next page" />
-        <MenuItem Header="_Previous page" InputGesture="Ctrl+PageUp" Click="OnPreviousPageClicked" AutomationProperties.Name="Previous page" />
+        <MenuItem Header="_Next page" Tag="page.next" InputGesture="Ctrl+PageDown"
+                  Click="OnActionClicked" AutomationProperties.Name="Next page" />
+        <MenuItem Header="_Previous page" Tag="page.previous" InputGesture="Ctrl+PageUp"
+                  Click="OnActionClicked" AutomationProperties.Name="Previous page" />
         <Separator />
-        <MenuItem x:Name="AddPageMenuItem" Header="_Add a page after this one" IsEnabled="False"
-                  Click="OnAddPageClicked" AutomationProperties.Name="Add a page after this one" />
-        <MenuItem x:Name="RemovePageMenuItem" Header="_Delete this page" IsEnabled="False"
-                  Click="OnRemovePageClicked" AutomationProperties.Name="Delete this page" />
-        <MenuItem x:Name="MovePageUpMenuItem" Header="Move this page _earlier" IsEnabled="False"
-                  Click="OnMovePageEarlierClicked" AutomationProperties.Name="Move this page earlier" />
-        <MenuItem x:Name="MovePageDownMenuItem" Header="Move this page _later" IsEnabled="False"
-                  Click="OnMovePageLaterClicked" AutomationProperties.Name="Move this page later" />
+        <MenuItem Header="_Add a page after this one" Tag="page.add"
+                  Click="OnActionClicked" AutomationProperties.Name="Add a page after this one" />
+        <MenuItem Header="_Delete this page" Tag="page.remove"
+                  Click="OnActionClicked" AutomationProperties.Name="Delete this page" />
+        <MenuItem Header="Move this page _earlier" Tag="page.moveEarlier"
+                  Click="OnActionClicked" AutomationProperties.Name="Move this page earlier" />
+        <MenuItem Header="Move this page _later" Tag="page.moveLater"
+                  Click="OnActionClicked" AutomationProperties.Name="Move this page later" />
       </MenuItem>
       <!-- Updates are automatic and quiet (docs/M10-spec.md §2); this item exists so someone who
            wonders "am I on the newest one?" gets an answer instead of having to wonder. -->
       <MenuItem Header="_Help" AutomationProperties.Name="Help menu">
-        <MenuItem x:Name="CheckForUpdatesMenuItem" Header="_Check for an update"
-                  Click="OnCheckForUpdatesClicked"
+        <MenuItem Header="_Check for an update" Tag="help.checkForUpdates"
+                  Click="OnActionClicked"
                   AutomationProperties.Name="Check for an update" />
-        <MenuItem x:Name="AboutMenuItem" Header="_About TrestleBoard"
-                  Click="OnAboutClicked"
+        <MenuItem Header="_About TrestleBoard" Tag="help.about"
+                  Click="OnActionClicked"
                   AutomationProperties.Name="About TrestleBoard" />
       </MenuItem>
     </Menu>
     </LayoutTransformControl>
 
+    <!-- Nine controls, down from eighteen (M11). Bold, italic, paragraph style, wrap, insert and
+         arrange all moved into the panel, where they sit beside the thing they act on. -->
     <LayoutTransformControl x:Name="ToolbarScale" DockPanel.Dock="Top">
     <Border Padding="8" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
       <!-- Scrolls horizontally: at 200% the toolbar is wider than most windows, and a control the
            user cannot reach is the same as a control that is not there (PLAN.md §6). -->
       <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button x:Name="OpenButton" FontSize="16" MinHeight="44" Click="OnOpenClicked"
+        <Button x:Name="OpenButton" FontSize="16" MinHeight="44" Tag="newsletter.open" Click="OnActionClicked"
                 AutomationProperties.Name="Open a newsletter">Open</Button>
-        <Button x:Name="UndoButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnUndoClicked"
+        <Button x:Name="UndoButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="edit.undo" Click="OnActionClicked"
                 AutomationProperties.Name="Undo">↶ Undo</Button>
-        <Button x:Name="RedoButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnRedoClicked"
+        <Button x:Name="RedoButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="edit.redo" Click="OnActionClicked"
                 AutomationProperties.Name="Redo">↷ Redo</Button>
-        <ToggleButton x:Name="BoldButton" FontSize="16" FontWeight="Bold" MinHeight="44" MinWidth="44" IsEnabled="False"
-                      Click="OnBoldClicked" AutomationProperties.Name="Bold">B Bold</ToggleButton>
-        <ToggleButton x:Name="ItalicButton" FontSize="16" FontStyle="Italic" MinHeight="44" MinWidth="44" IsEnabled="False"
-                      Click="OnItalicClicked" AutomationProperties.Name="Italic">I Italic</ToggleButton>
-        <ComboBox x:Name="ParagraphStyleCombo" FontSize="16" MinHeight="44" MinWidth="140" IsEnabled="False"
-                  SelectionChanged="OnParagraphStyleChanged"
-                  AutomationProperties.Name="Paragraph style" />
         <Separator Width="12" Background="Transparent" />
-        <Button x:Name="PrevPageButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnPreviousPageClicked"
+        <Button x:Name="PrevPageButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="page.previous" Click="OnActionClicked"
                 AutomationProperties.Name="Previous page">◀ Back</Button>
         <TextBlock x:Name="PageLabel" FontSize="16" VerticalAlignment="Center" MinWidth="110"
                    TextAlignment="Center" Text="No newsletter"
                    AutomationProperties.Name="Current page" AutomationProperties.LiveSetting="Polite" />
-        <Button x:Name="NextPageButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnNextPageClicked"
+        <Button x:Name="NextPageButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="page.next" Click="OnActionClicked"
                 AutomationProperties.Name="Next page">Next ▶</Button>
-        <Button x:Name="ZoomOutButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnZoomOutClicked"
+        <Button x:Name="ZoomOutButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="view.zoomOut" Click="OnActionClicked"
                 AutomationProperties.Name="Zoom out">− Smaller</Button>
         <TextBlock x:Name="ZoomLabel" FontSize="16" VerticalAlignment="Center" MinWidth="64"
                    TextAlignment="Center" Text="100%"
                    AutomationProperties.Name="Current zoom" AutomationProperties.LiveSetting="Polite" />
-        <Button x:Name="ZoomInButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False" Click="OnZoomInClicked"
+        <Button x:Name="ZoomInButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="view.zoomIn" Click="OnActionClicked"
                 AutomationProperties.Name="Zoom in">+ Bigger</Button>
-        <Button x:Name="FitButton" FontSize="16" MinHeight="44" IsEnabled="False" Click="OnFitPageClicked"
+        <Button x:Name="FitButton" FontSize="16" MinHeight="44" Tag="view.fitPage" Click="OnActionClicked"
                 AutomationProperties.Name="Fit the whole page in the window">Fit page</Button>
-        <Separator Width="12" Background="Transparent" />
-        <Button x:Name="AddTextFrameButton" FontSize="16" MinHeight="44" IsEnabled="False" Click="OnAddTextFrameClicked"
-                AutomationProperties.Name="Add a text frame">+ Text frame</Button>
-        <Button x:Name="WrapButton" FontSize="16" MinHeight="44" IsEnabled="False" Click="OnToggleWrapClicked"
-                AutomationProperties.Name="Wrap text around this frame">Wrap text</Button>
-        <Button x:Name="InsertPhotoButton" FontSize="16" MinHeight="44" IsEnabled="False" Click="OnInsertPhotoClicked"
-                AutomationProperties.Name="Insert a picture">+ Picture</Button>
-        <Button x:Name="FixPhotoButton" FontSize="16" MinHeight="44" IsEnabled="False" Click="OnFixPhotoClicked"
-                AutomationProperties.Name="Fix this picture">Fix photo</Button>
-        <Button x:Name="BringForwardButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False"
-                Click="OnBringForwardClicked" AutomationProperties.Name="Bring forward">Forward</Button>
-        <Button x:Name="SendBackwardButton" FontSize="16" MinHeight="44" MinWidth="44" IsEnabled="False"
-                Click="OnSendBackwardClicked" AutomationProperties.Name="Send backward">Backward</Button>
       </StackPanel>
       </ScrollViewer>
     </Border>
     </LayoutTransformControl>
 
-    <!-- Plain-language status line: overset warnings and link prompts land here, never colour
-         alone (PLAN.md §6, docs/M5-spec.md §8.4). -->
+    <!-- Plain-language status line: overset warnings, link prompts and the reason an action could
+         not run all land here, never colour alone (PLAN.md §6, docs/M5-spec.md §8.4). -->
     <LayoutTransformControl x:Name="StatusScale" DockPanel.Dock="Bottom">
     <Border Padding="12,8" Background="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}">
       <TextBlock x:Name="StatusLabel" FontSize="16" TextWrapping="Wrap" Text=""
                  AutomationProperties.Name="Status" AutomationProperties.LiveSetting="Polite" />
     </Border>
     </LayoutTransformControl>
+
+    <!-- The panel honours the UI scale; the canvas deliberately does not, because the page has its
+         own zoom (PLAN.md §11 M11, chrome budget). Below about 900px of window the panel folds
+         itself away to the button beside it rather than squeezing the page out. -->
+    <LayoutTransformControl x:Name="PanelScale" DockPanel.Dock="Right">
+      <ContentControl x:Name="ActionPanelHost" />
+    </LayoutTransformControl>
+
+    <Border x:Name="CollapsedPanelHost" DockPanel.Dock="Right" Padding="4" IsVisible="False">
+      <Button x:Name="ShowPanelButton" FontSize="16" MinHeight="44" VerticalAlignment="Top"
+              Tag="view.toggleActionPanel" Click="OnActionClicked"
+              AutomationProperties.Name="Show what I can do">What can I do? ▸</Button>
+    </Border>
 
     <ScrollViewer x:Name="CanvasScroller"
                   HorizontalScrollBarVisibility="Auto"

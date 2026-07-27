@@ -1,18 +1,24 @@
-using System.Text.RegularExpressions;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using TrestleBoard.App.Actions;
+using TrestleBoard.Editing.Actions;
 using Xunit;
 
 namespace TrestleBoard.App.HeadlessTests;
 
 /// <summary>
-/// The keyboard audit (PLAN.md §6, docs/M9-spec.md §6). Every gesture a menu advertises must
-/// actually reach its own handler — a menu that promises Ctrl+Shift+Y and silently redoes instead
-/// is worse than one that promises nothing, because the user has no way to tell.
+/// The keyboard audit (PLAN.md §6, docs/M9-spec.md §6, §11 M11). Every gesture the app advertises
+/// must actually reach its own action — a menu that promises Ctrl+Shift+Y and silently redoes
+/// instead is worse than one that promises nothing, because the user has no way to tell.
+///
+/// Until M11 the sharp end of this was a test that read <c>MainWindow.axaml.cs</c> looking for
+/// <c>case Key.X when …</c> in the wrong order. That caught exactly one shadowing pattern and only
+/// while the dispatcher stayed a switch. Pressing every registered key through the real window and
+/// checking where it lands catches every mis-dispatch, including ones no regex would describe.
 /// </summary>
-public sealed partial class KeyboardAuditTests
+public sealed class KeyboardAuditTests
 {
     private static HeadlessUnitTestSession Session => HeadlessSession.Instance;
 
@@ -56,52 +62,98 @@ public sealed partial class KeyboardAuditTests
     }
 
     /// <summary>
-    /// A `case Key.X when ctrl:` matches Ctrl+SHIFT+X too, so it shadows any later case for the
-    /// shifted gesture. This is how Ctrl+Shift+Y ("Fit to contents") silently redid instead — the
-    /// menu advertised it, and nothing in the app could reach it. Read the handler and refuse the
-    /// pattern outright, because it fails silently and only a user would notice.
+    /// The replacement for the old source-scraping test, and strictly stronger than it: press every
+    /// registered gesture through the real window and assert which action it reached. A shifted
+    /// gesture swallowed by its unshifted twin fails here as a wrong action id, whatever the shape
+    /// of the dispatcher happens to be.
     /// </summary>
     [Fact]
-    public void NoUnshiftedShortcutSwallowsItsShiftedTwin()
+    public async Task EveryRegisteredKeyPressReachesItsOwnAction()
     {
-        string source = File.ReadAllText(FindHandlerSource());
-        MatchCollection cases = KeyCaseRegex().Matches(source);
-        Assert.True(cases.Count > 20, $"only {cases.Count} key cases found — the handler was not read");
-
-        var bareByKey = new Dictionary<string, int>(StringComparer.Ordinal);
-        var shifted = new List<(string Key, int Index)>();
-
-        foreach (Match match in cases)
+        await Session.Dispatch(() =>
         {
-            string key = match.Groups["key"].Value;
-            string guard = match.Groups["guard"].Value;
-            bool mentionsShift = guard.Contains("Shift", StringComparison.Ordinal);
+            var window = new MainWindow();
+            window.Show();
+            window.OpenSample();
 
-            if (mentionsShift)
+            // Record and stop short: pressing Ctrl+O for real would open a file dialog on the runner.
+            var invoked = new List<string>();
+            window.ActionsForTest.InterceptorForTest = id =>
             {
-                shifted.Add((key, match.Index));
+                invoked.Add(id);
+                return true;
+            };
+
+            var wrong = new List<string>();
+            foreach (KeyShortcut shortcut in KeyboardMap.All)
+            {
+                // Only the shortcuts that apply outside a text session can be exercised here; the
+                // ones scoped to typing are covered by the editor's own tests.
+                if (shortcut.Scope == KeyScope.WhileTyping)
+                {
+                    continue;
+                }
+
+                invoked.Clear();
+
+                // The physical key is irrelevant here — the dispatcher matches on the logical Key,
+                // which is what a menu shortcut means on any keyboard layout.
+                window.KeyPress(
+                    shortcut.Key, ToRawModifiers(shortcut.Modifiers), PhysicalKey.None, keySymbol: null);
+
+                if (invoked.Count != 1 || invoked[0] != shortcut.ActionId)
+                {
+                    wrong.Add(
+                        $"{KeyboardMap.Describe(shortcut)} should reach {shortcut.ActionId} "
+                        + $"but reached [{string.Join(", ", invoked)}]");
+                }
             }
-            else if (!bareByKey.ContainsKey(key))
+
+            Assert.True(KeyboardMap.All.Count > 20, "the keyboard table is suspiciously small");
+            Assert.True(wrong.Count == 0, string.Join("; ", wrong));
+
+            window.ActionsForTest.InterceptorForTest = null;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// The panel prints a shortcut beside each action. A promise the keyboard cannot keep is worse
+    /// than no promise, so the two lists are compared rather than maintained in parallel by hand.
+    /// </summary>
+    [Fact]
+    public void EveryShortcutTheCatalogAdvertisesIsRegistered()
+    {
+        var missing = new List<string>();
+        foreach (EditorAction action in ActionCatalog.All)
+        {
+            if (action.DisplayGesture is not { } advertised)
             {
-                bareByKey[key] = match.Index;
+                continue;
+            }
+
+            bool found = KeyboardMap.All.Any(b =>
+                b.ActionId == action.Id
+                && string.Equals(KeyboardMap.Describe(b), advertised, StringComparison.Ordinal));
+            if (!found)
+            {
+                missing.Add($"{action.Id} advertises {advertised}");
             }
         }
 
-        var swallowed = new List<string>();
-        foreach ((string key, int index) in shifted)
-        {
-            // A bare case EARLIER in the switch wins the match, so the shifted one is unreachable.
-            if (bareByKey.TryGetValue(key, out int bareIndex) && bareIndex < index)
-            {
-                swallowed.Add(key);
-            }
-        }
+        Assert.True(missing.Count == 0, "advertised but not registered: " + string.Join("; ", missing));
+    }
 
-        Assert.True(
-            swallowed.Count == 0,
-            "these shifted shortcuts are unreachable because an un-shifted case matches first: "
-            + string.Join(", ", swallowed)
-            + ". Add `&& !e.KeyModifiers.HasFlag(KeyModifiers.Shift)` to the un-shifted case.");
+    /// <summary>Every key press the table knows about must land on an action that exists.</summary>
+    [Fact]
+    public void EveryRegisteredGestureNamesARealAction()
+    {
+        foreach (KeyShortcut shortcut in KeyboardMap.All)
+        {
+            Assert.True(
+                ActionCatalog.TryGet(shortcut.ActionId, out _),
+                $"{KeyboardMap.Describe(shortcut)} names an action that does not exist: {shortcut.ActionId}");
+        }
     }
 
     /// <summary>The regression itself, driven through the real window.</summary>
@@ -150,23 +202,24 @@ public sealed partial class KeyboardAuditTests
         }, TestContext.Current.CancellationToken);
     }
 
-    private static string FindHandlerSource()
+    private static RawInputModifiers ToRawModifiers(KeyModifiers modifiers)
     {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null)
+        RawInputModifiers raw = RawInputModifiers.None;
+        if (modifiers.HasFlag(KeyModifiers.Control))
         {
-            string candidate = Path.Combine(dir.FullName, "src", "TrestleBoard.App", "MainWindow.axaml.cs");
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-
-            dir = dir.Parent;
+            raw |= RawInputModifiers.Control;
         }
 
-        throw new FileNotFoundException("MainWindow.axaml.cs not found above " + AppContext.BaseDirectory);
-    }
+        if (modifiers.HasFlag(KeyModifiers.Shift))
+        {
+            raw |= RawInputModifiers.Shift;
+        }
 
-    [GeneratedRegex(@"case Key\.(?<key>\w+) when (?<guard>[^:]+):")]
-    private static partial Regex KeyCaseRegex();
+        if (modifiers.HasFlag(KeyModifiers.Alt))
+        {
+            raw |= RawInputModifiers.Alt;
+        }
+
+        return raw;
+    }
 }

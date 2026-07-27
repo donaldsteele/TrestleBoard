@@ -31,6 +31,13 @@ public sealed record AppSettings
 
     public int UiScalePercent { get; init; } = MinScalePercent;
 
+    /// <summary>
+    /// Whether the panel of things-you-can-do is docked open (M11). On by default: it is the
+    /// primary way actions are discovered now, and someone who has never seen it cannot decide
+    /// they want it.
+    /// </summary>
+    public bool ShowActionPanel { get; init; } = true;
+
     [JsonIgnore]
     public double UiScale => Math.Clamp(UiScalePercent, MinScalePercent, MaxScalePercent) / 100d;
 

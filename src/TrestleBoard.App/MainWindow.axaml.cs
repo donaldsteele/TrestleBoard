@@ -1,8 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using TrestleBoard.App.Actions;
 using TrestleBoard.App.Canvas;
 using TrestleBoard.App.Dialogs;
 using TrestleBoard.App.Settings;
@@ -14,6 +17,7 @@ using TrestleBoard.Core.Samples;
 using TrestleBoard.Core.Templates;
 using TrestleBoard.Core.Workflow;
 using TrestleBoard.Editing;
+using TrestleBoard.Editing.Actions;
 using TrestleBoard.Export.Pdf;
 using TrestleBoard.Layout.Fonts;
 using TrestleBoard.Rendering;
@@ -23,9 +27,15 @@ using TrestleBoard.Widgets.Wizards;
 namespace TrestleBoard.App;
 
 /// <summary>
-/// M3 viewer shell + M4 text editing: open a .tboard (or the built-in sample), click into a
-/// text frame, type with full undo/redo, page through, zoom/fit, export the PDF. Every mouse
-/// action has a keyboard path (PLAN.md §6).
+/// The editor shell: open a .tboard (or the built-in sample), click into a text frame, type with
+/// full undo/redo, page through, zoom/fit, export the PDF. Every mouse action has a keyboard path
+/// (PLAN.md §6).
+///
+/// From M11 every command in the app is declared once in <see cref="ActionCatalog"/> and performed
+/// once in <see cref="ActionRunner"/>. The menu bar, the right-docked panel, the right-click flyout
+/// and the keyboard table are four views of that one list, refreshed together by
+/// <see cref="RefreshActions"/> — which is what replaced the thirty scattered <c>IsEnabled =</c>
+/// assignments that used to grey controls out without ever saying why.
 /// </summary>
 [System.Diagnostics.CodeAnalysis.SuppressMessage(
     "Reliability",
@@ -36,7 +46,12 @@ public partial class MainWindow : Window
 {
     private static readonly double[] ZoomSteps = [0.5, 0.65, 0.8, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0];
 
+    /// <summary>Below this much window width the panel folds away rather than squeezing the page out.</summary>
+    private const double PanelFoldWidth = 900d;
+
     private readonly FontStore _fonts = BundledFonts.CreateDefaultStore();
+    private readonly ActionPanel _panel = new();
+    private readonly ActionRunner _actions;
     private TboardPackage? _package;
     private DocumentRenderSource? _source;
     private DocumentSession? _session;
@@ -52,14 +67,23 @@ public partial class MainWindow : Window
     private UpdateCoordinator? _updates;
     private AppSettings _settings = AppSettings.Load();
     private readonly WidgetLayoutProvider _widgetProvider = WidgetLayoutProvider.CreateDefault();
+    private ActionContext _context = ActionContext.Empty;
+    private string? _announcement;
     private int _pageIndex;
     private bool _fitToWindow = true;
+    private bool _exportedThisSession;
+    private int _regionIndex;
 
     public MainWindow()
     {
         InitializeComponent();
+        _actions = new ActionRunner(this);
+        ActionPanelHost.Content = _panel;
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
+        PageCanvas.ContextRequested += OnCanvasContextRequested;
+        PageCanvas.PeerAskedForContextMenu += (_, _) => ShowContextActions();
         ApplySettings(_settings);
+        RefreshActions();
 
         // The start screen and the recovery offer are the app's front door; without this they exist
         // but nobody ever sees them.
@@ -89,6 +113,298 @@ public partial class MainWindow : Window
 
     /// <summary>What the command line asked for; set by <see cref="App"/> on a real launch.</summary>
     public StartupOptions StartupOptions { get; init; } = StartupOptions.Empty;
+
+    // ---- The action surface (PLAN.md §11 M11) -------------------------------------------------
+
+    /// <summary>The snapshot every availability decision in the app is made against.</summary>
+    internal ActionContext CurrentActionContext => _context;
+
+    internal ActionRunner ActionsForTest => _actions;
+
+    internal ActionPanel PanelForTest => _panel;
+
+    /// <summary>
+    /// Says something in the status bar, which is a polite live region (PLAN.md §6) — this is where
+    /// the reason an action could not run is spoken. It survives the next refresh and is cleared by
+    /// the one after, so a refusal is readable but does not sit there for the rest of the session.
+    /// </summary>
+    internal void Announce(string message)
+    {
+        _announcement = message;
+        StatusLabel.Text = message;
+    }
+
+    /// <summary>
+    /// Every menu item, toolbar button and panel control carries its action id in Tag and shares
+    /// this one handler. Whether it can run, and what to say if it cannot, is decided in one place.
+    /// </summary>
+    private void OnActionClicked(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { Tag: string actionId })
+        {
+            _ = _actions.RunAsync(actionId, sender as Control);
+        }
+    }
+
+    /// <summary>
+    /// Takes one snapshot of the editing state and feeds every surface from it. This is the whole
+    /// of M11's replacement for <c>UpdateEditChrome</c>/<c>UpdateFrameChrome</c>: the panel, the
+    /// menus and the flyout cannot disagree, because they are all reading the same answer.
+    /// </summary>
+    internal void RefreshActions()
+    {
+        _context = BuildContext();
+
+        // The menu bar keeps conventional greying — "dimmed" is a convention screen readers
+        // announce — but every unavailable item now carries the plain-language reason in its
+        // HelpText, and pressing its shortcut says the reason out loud (PLAN.md §6).
+        foreach (MenuItem item in this.GetLogicalDescendants().OfType<MenuItem>())
+        {
+            if (item is not { Tag: string actionId } || !ActionCatalog.TryGet(actionId, out _))
+            {
+                continue;
+            }
+
+            ActionAvailability availability = ActionCatalog.Evaluate(actionId, _context);
+            item.IsEnabled = availability.IsAvailable;
+            Avalonia.Automation.AutomationProperties.SetHelpText(item, availability.Reason);
+        }
+
+        foreach (Button button in new[]
+                 {
+                     OpenButton, UndoButton, RedoButton, PrevPageButton, NextPageButton,
+                     ZoomOutButton, ZoomInButton, FitButton,
+                 })
+        {
+            if (button.Tag is string actionId && ActionCatalog.TryGet(actionId, out _))
+            {
+                ActionAvailability availability = ActionCatalog.Evaluate(actionId, _context);
+                button.IsEnabled = availability.IsAvailable;
+                Avalonia.Automation.AutomationProperties.SetHelpText(button, availability.Reason);
+            }
+        }
+
+        // Plain-language labels straight from the command descriptions (PLAN.md §4).
+        UndoMenuItem.Header = _context.CanUndo ? $"_Undo {_context.UndoDescription}" : "_Undo";
+        RedoMenuItem.Header = _context.CanRedo ? $"_Redo {_context.RedoDescription}" : "_Redo";
+
+        RebuildParagraphStyleMenu();
+
+        _panel.Update(
+            _context,
+            ActionCatalog.ForSelection(_context),
+            WhatsNext.Suggestions(_context),
+            (id, source) => _ = _actions.RunAsync(id, source));
+
+        UpdatePageChrome();
+        UpdateStatus();
+    }
+
+    private ActionContext BuildContext()
+    {
+        string? blockId = _frames?.SelectedBlockId;
+        bool isWidget = blockId is not null && _widgets?.IsWidget(blockId) == true;
+        string? widgetType = isWidget ? _widgets!.GetWidgetType(blockId) : null;
+
+        string? displayName = null;
+        if (widgetType is not null && _widgetProvider.Registry.TryGet(widgetType, out IWidgetDefinition? definition))
+        {
+            displayName = definition.DisplayName;
+        }
+
+        bool hasListEditor = isWidget
+            && _widgets!.CanEdit(blockId)
+            && CreateSession(blockId!)?.HasListSteps == true;
+
+        return ActionContextFactory.Create(
+            _session,
+            _source,
+            _editor,
+            _frames,
+            _photos,
+            _widgets,
+            _pages,
+            _pageIndex,
+            new ShellFacts(
+                ExportedPdfThisSession: _exportedThisSession,
+                SelectedWidgetHasListEditor: hasListEditor,
+                SelectedWidgetDisplayName: displayName,
+                CoverDateMissing: CoverHeadingNeedsADate()));
+    }
+
+    /// <summary>
+    /// The one "what's next" source that needs to read widget data: a cover heading on the page with
+    /// no meeting date typed into it. Read here rather than in Editing, which knows nothing about
+    /// what is inside a widget's payload.
+    /// </summary>
+    private bool CoverHeadingNeedsADate()
+    {
+        if (_session is null)
+        {
+            return false;
+        }
+
+        foreach (Core.Model.Page page in _session.Document.Pages)
+        {
+            foreach (Core.Model.Block block in page.Blocks)
+            {
+                if (block is not Core.Model.WidgetBlock { WidgetType: "coverBanner" } cover)
+                {
+                    continue;
+                }
+
+                if (cover.Data is not { } data
+                    || !data.TryGetProperty("meetingDateText", out System.Text.Json.JsonElement date)
+                    || string.IsNullOrWhiteSpace(date.GetString()))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Format → Paragraph style. This was a toolbar combo box and nothing else — the only command in
+    /// the app with no menu path at all, which is a hole in PLAN.md §6's guarantee (M11).
+    /// </summary>
+    private void RebuildParagraphStyleMenu()
+    {
+        ParagraphStyleMenu.IsEnabled = _context.IsEditingText;
+        Avalonia.Automation.AutomationProperties.SetHelpText(
+            ParagraphStyleMenu, ActionCatalog.Evaluate(ActionId.ParagraphStyle, _context).Reason);
+
+        var items = new List<MenuItem>();
+        foreach (string style in _editor?.AvailableParagraphStyles ?? [])
+        {
+            string styleRef = style;
+            var item = new MenuItem { Header = styleRef, FontSize = 16 };
+            Avalonia.Automation.AutomationProperties.SetName(item, styleRef);
+            item.Click += (_, _) =>
+            {
+                _editor?.ApplyParagraphStyle(styleRef);
+                RefreshActions();
+            };
+            items.Add(item);
+        }
+
+        ParagraphStyleMenu.ItemsSource = items;
+    }
+
+    /// <summary>
+    /// Right-click, Shift+F10 and the Applications key all land here, built from the same catalog as
+    /// the panel. Until M11 a screen-reader user pressing the Applications key over the canvas got
+    /// nothing at all.
+    /// </summary>
+    private void OnCanvasContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        ShowContextActions();
+        e.Handled = true;
+    }
+
+    private void ShowContextActions()
+    {
+        IReadOnlyList<ActionOffer> offers = ActionCatalog.ForSelection(_context);
+        if (offers.Count == 0)
+        {
+            Announce("Choose something on the page first, and its actions appear here.");
+            return;
+        }
+
+        var flyout = new MenuFlyout();
+        foreach (ActionOffer offer in offers)
+        {
+            var item = new MenuItem
+            {
+                Header = offer.Action.Title,
+                FontSize = 16,
+                IsEnabled = offer.IsAvailable,
+                Tag = offer.Action.Id,
+            };
+            Avalonia.Automation.AutomationProperties.SetName(item, offer.Action.Title);
+            Avalonia.Automation.AutomationProperties.SetHelpText(
+                item, offer.IsAvailable ? offer.Action.ShortDescription : offer.Availability.Reason);
+            item.Click += OnActionClicked;
+            flyout.Items.Add(item);
+        }
+
+        flyout.ShowAt(PageCanvas, showAtPointer: true);
+    }
+
+    /// <summary>
+    /// F6 walks the window's parts in a fixed order so a keyboard-only user can get from the page to
+    /// the panel without tabbing through every block on the page (PLAN.md §11 M11).
+    /// </summary>
+    internal void CycleRegion(bool forward)
+    {
+        (string Name, Control Root)[] regions =
+        [
+            ("the page", PageCanvas),
+            ("the panel of things you can do", ActionPanelHost),
+            ("the toolbar", OpenButton),
+            ("the menus", MenuScale),
+        ];
+
+        for (int step = 1; step <= regions.Length; step++)
+        {
+            int next = ((_regionIndex + (forward ? step : -step)) % regions.Length + regions.Length)
+                % regions.Length;
+            (string name, Control root) = regions[next];
+            if (TryFocusRegion(root))
+            {
+                _regionIndex = next;
+                Announce($"Moved to {name}.");
+                return;
+            }
+        }
+    }
+
+    private static bool TryFocusRegion(Control root)
+    {
+        if (root is { IsEffectivelyVisible: true, Focusable: true } && root.Focus())
+        {
+            return true;
+        }
+
+        foreach (Control candidate in root.GetVisualDescendants().OfType<Control>())
+        {
+            if (candidate is { IsEffectivelyVisible: true, IsEffectivelyEnabled: true, Focusable: true }
+                && candidate.Focus())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    internal void ToggleActionPanel()
+    {
+        _settings = _settings with { ShowActionPanel = !_settings.ShowActionPanel };
+        _settings.Save();
+        ApplyPanelVisibility();
+        Announce(_settings.ShowActionPanel
+            ? "The panel of things you can do is showing."
+            : "The panel is hidden. Bring it back from View, Show what I can do.");
+    }
+
+    /// <summary>
+    /// The chrome budget (PLAN.md §11 M11): the panel folds itself away on a narrow window rather
+    /// than leaving the page a strip down the middle.
+    /// </summary>
+    private void ApplyPanelVisibility()
+    {
+        bool roomForIt = Bounds.Width <= 0 || Bounds.Width >= PanelFoldWidth;
+        bool showPanel = _settings.ShowActionPanel && roomForIt;
+        PanelScale.IsVisible = showPanel;
+        CollapsedPanelHost.IsVisible = !showPanel;
+        ShowPanelButton.Content = _settings.ShowActionPanel && !roomForIt
+            ? "▸"
+            : "What can I do? ▸";
+    }
+
+    // ---- Autosave and recovery ----------------------------------------------------------------
 
     /// <summary>
     /// Wires autosave to the open document. One tick a second; the service decides whether a rule
@@ -126,9 +442,9 @@ public partial class MainWindow : Window
             // An unhandled exception on a timer tick takes the whole app down — the autosave feature
             // causing the very crash it exists to protect against. A skipped tick costs at most one
             // interval; the next one tries again.
-            StatusLabel.Text =
+            Announce(
                 "Could not save a backup copy just now. TrestleBoard will keep trying. "
-                + $"({ex.Message})";
+                + $"({ex.Message})");
         }
     }
 
@@ -186,7 +502,7 @@ public partial class MainWindow : Window
                 OpenTemplate(start.SelectedTemplateId);
                 break;
             case StartChoice.OpenFile:
-                OnOpenClicked(this, new RoutedEventArgs());
+                await OpenNewsletterAsync();
                 break;
             case StartChoice.LastMonth:
                 // Only reachable once a newsletter is open; the tile explains that and is disabled.
@@ -229,11 +545,13 @@ public partial class MainWindow : Window
 
         _documentPath = snapshot.OriginalPath;
         ShowPackage(package);
-        StatusLabel.Text = "Your work is back. Save it when you are ready.";
+        Announce("Your work is back. Save it when you are ready.");
         return true;
     }
 
-    private async void OnOpenClicked(object? sender, RoutedEventArgs e)
+    // ---- The newsletter -----------------------------------------------------------------------
+
+    internal async Task OpenNewsletterAsync()
     {
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
@@ -289,8 +607,65 @@ public partial class MainWindow : Window
             or Core.Migrations.UnsupportedFormatException)
         {
             _documentPath = null;
-            StatusLabel.Text = $"TrestleBoard could not open {Path.GetFileName(path)}. {ex.Message}";
+            Announce($"TrestleBoard could not open {Path.GetFileName(path)}. {ex.Message}");
             return false;
+        }
+    }
+
+    internal async Task NewFromTemplateAsync()
+    {
+        var start = new StartDialog(canStartFromLastMonth: _package is not null);
+        await start.ShowDialog(this);
+
+        switch (start.Choice)
+        {
+            case StartChoice.Template:
+                OpenTemplate(start.SelectedTemplateId);
+                break;
+            case StartChoice.LastMonth:
+                StartFromLastMonth();
+                break;
+            case StartChoice.OpenFile:
+                await OpenNewsletterAsync();
+                break;
+        }
+    }
+
+    internal async Task ExportPdfAsync()
+    {
+        if (_source is null || _package is null)
+        {
+            return;
+        }
+
+        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Export as PDF",
+            DefaultExtension = "pdf",
+            SuggestedFileName = $"{_package.Document.Metadata.Title} {_package.Document.Metadata.IssueYear}-{_package.Document.Metadata.IssueMonth:00}.pdf",
+            FileTypeChoices = [new FilePickerFileType("PDF document") { Patterns = ["*.pdf"] }],
+        });
+        if (file is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await using Stream stream = await file.OpenWriteAsync();
+            Core.Model.DocumentMetadata meta = _package.Document.Metadata;
+            DocumentPdfExporter.Export(
+                stream,
+                _source,
+                new PdfMetadata(meta.Title, meta.LodgeName, $"Trestle board {meta.IssueYear}-{meta.IssueMonth:00}"));
+            _exportedThisSession = true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            await ShowErrorAsync(
+                "Could not export the PDF",
+                "The PDF could not be saved. Make sure the file is not open in another program and try again. "
+                + $"({ex.Message})");
         }
     }
 
@@ -312,21 +687,18 @@ public partial class MainWindow : Window
         _ = CheckForUpdatesAsync(userAsked: false);
     }
 
-    private async Task CheckForUpdatesAsync(bool userAsked)
+    internal async Task CheckForUpdatesAsync(bool userAsked)
     {
         _updates ??= new UpdateCoordinator(new VelopackUpdateChannel());
         UpdateOutcome outcome = await _updates.CheckAsync(userAsked);
         if (outcome.Announce)
         {
-            StatusLabel.Text = outcome.Message;
+            Announce(outcome.Message);
         }
     }
 
-    private async void OnCheckForUpdatesClicked(object? sender, RoutedEventArgs e) =>
-        await CheckForUpdatesAsync(userAsked: true);
-
-    private async void OnAboutClicked(object? sender, RoutedEventArgs e) =>
-        await ShowErrorAsync(
+    internal Task ShowAboutAsync() =>
+        ShowErrorAsync(
             "About TrestleBoard",
             $"TrestleBoard {AppVersion()}\n\n"
                 + "The newsletter editor for Indian Land Masonic Lodge 414.\n\n"
@@ -343,8 +715,6 @@ public partial class MainWindow : Window
     internal Task CheckForUpdatesForTest(bool userAsked) => CheckForUpdatesAsync(userAsked);
 
     internal UpdateCoordinator? UpdatesForTest => _updates;
-
-    private void OnOpenSampleClicked(object? sender, RoutedEventArgs e) => OpenSample();
 
     /// <summary>Also the headless-test entry point (no file dialog involved).</summary>
     internal void OpenSample() => ShowPackage(SampleDocument.CreatePackage(SamplePhoto.CreatePng()));
@@ -391,7 +761,7 @@ public partial class MainWindow : Window
         TboardPackage next = CarryForward.NextIssue(_package);
         _documentPath = null;
         ShowPackage(next);
-        StatusLabel.Text = "Carried forward. Last month's articles have been cleared for you to rewrite.";
+        Announce("Carried forward. Last month's articles have been cleared for you to rewrite.");
         return true;
     }
 
@@ -409,73 +779,13 @@ public partial class MainWindow : Window
 
     internal void GoToNextPageForTest() => GoToPage(_pageIndex + 1);
 
-    private async void OnExportPdfClicked(object? sender, RoutedEventArgs e)
-    {
-        if (_source is null || _package is null)
-        {
-            return;
-        }
+    // ---- Edit / Format ------------------------------------------------------------------------
 
-        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = "Export as PDF",
-            DefaultExtension = "pdf",
-            SuggestedFileName = $"{_package.Document.Metadata.Title} {_package.Document.Metadata.IssueYear}-{_package.Document.Metadata.IssueMonth:00}.pdf",
-            FileTypeChoices = [new FilePickerFileType("PDF document") { Patterns = ["*.pdf"] }],
-        });
-        if (file is null)
-        {
-            return;
-        }
+    internal void Undo() => _session?.Undo();
 
-        try
-        {
-            await using Stream stream = await file.OpenWriteAsync();
-            Core.Model.DocumentMetadata meta = _package.Document.Metadata;
-            DocumentPdfExporter.Export(
-                stream,
-                _source,
-                new PdfMetadata(meta.Title, meta.LodgeName, $"Trestle board {meta.IssueYear}-{meta.IssueMonth:00}"));
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
-        {
-            await ShowErrorAsync(
-                "Could not export the PDF",
-                "The PDF could not be saved. Make sure the file is not open in another program and try again. "
-                + $"({ex.Message})");
-        }
-    }
+    internal void Redo() => _session?.Redo();
 
-    private async void OnNewFromTemplateClicked(object? sender, RoutedEventArgs e)
-    {
-        var start = new StartDialog(canStartFromLastMonth: _package is not null);
-        await start.ShowDialog(this);
-
-        switch (start.Choice)
-        {
-            case StartChoice.Template:
-                OpenTemplate(start.SelectedTemplateId);
-                break;
-            case StartChoice.LastMonth:
-                StartFromLastMonth();
-                break;
-            case StartChoice.OpenFile:
-                OnOpenClicked(this, new RoutedEventArgs());
-                break;
-        }
-    }
-
-    private void OnStartFromLastMonthClicked(object? sender, RoutedEventArgs e) => StartFromLastMonth();
-
-    private void OnExitClicked(object? sender, RoutedEventArgs e) => Close();
-
-    // ---- Edit / Format ----------------------------------------------------------------------
-
-    private void OnUndoClicked(object? sender, RoutedEventArgs e) => _session?.Undo();
-
-    private void OnRedoClicked(object? sender, RoutedEventArgs e) => _session?.Redo();
-
-    private async void OnCutClicked(object? sender, RoutedEventArgs e)
+    internal async Task CutAsync()
     {
         if (_editor is not null)
         {
@@ -483,7 +793,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void OnCopyClicked(object? sender, RoutedEventArgs e)
+    internal async Task CopyAsync()
     {
         if (_editor is not null)
         {
@@ -491,7 +801,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void OnPasteClicked(object? sender, RoutedEventArgs e)
+    internal async Task PasteAsync()
     {
         if (_editor is not null)
         {
@@ -499,70 +809,85 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnSelectAllClicked(object? sender, RoutedEventArgs e) => _editor?.SelectAll();
+    internal void SelectAllText() => _editor?.SelectAll();
 
-    private void OnBoldClicked(object? sender, RoutedEventArgs e)
-    {
-        _editor?.ToggleBold();
-        UpdateEditChrome();
-    }
+    internal void ToggleBold() => _editor?.ToggleBold();
 
-    private void OnItalicClicked(object? sender, RoutedEventArgs e)
-    {
-        _editor?.ToggleItalic();
-        UpdateEditChrome();
-    }
+    internal void ToggleItalic() => _editor?.ToggleItalic();
 
-    private void OnParagraphStyleChanged(object? sender, SelectionChangedEventArgs e)
+    /// <summary>
+    /// The panel's "Paragraph style ▸" opens the same list the Format menu shows, beside the button
+    /// that was pressed — a menu the user can reach without leaving the panel.
+    /// </summary>
+    internal void ShowParagraphStyles(Control? source)
     {
-        if (_editor is { IsActive: true } && ParagraphStyleCombo.SelectedItem is string styleRef)
+        if (source is null)
         {
-            _editor.ApplyParagraphStyle(styleRef);
-            UpdateEditChrome();
+            ParagraphStyleMenu.Open();
+            return;
         }
+
+        var flyout = new MenuFlyout();
+        foreach (string style in _editor?.AvailableParagraphStyles ?? [])
+        {
+            string styleRef = style;
+            var item = new MenuItem { Header = styleRef, FontSize = 16 };
+            Avalonia.Automation.AutomationProperties.SetName(item, styleRef);
+            item.Click += (_, _) =>
+            {
+                _editor?.ApplyParagraphStyle(styleRef);
+                RefreshActions();
+            };
+            flyout.Items.Add(item);
+        }
+
+        flyout.ShowAt(source);
     }
 
-    // ---- Object (frames, docs/M5-spec.md §9) ------------------------------------------------
+    // ---- Frames (docs/M5-spec.md §9) ----------------------------------------------------------
 
-    private void OnAddTextFrameClicked(object? sender, RoutedEventArgs e)
+    internal void AddTextFrame()
     {
         _editor?.End();
         _frames?.AddTextFrame(_pageIndex);
-        UpdateEditChrome();
     }
 
-    private void OnDeleteFrameClicked(object? sender, RoutedEventArgs e)
+    internal void DeleteSelectedFrame() => _frames?.DeleteSelected();
+
+    internal void ToggleWrap() => _frames?.ToggleWrap();
+
+    internal void Restack(Func<FrameEditorController, bool> action)
     {
-        _frames?.DeleteSelected();
-        UpdateEditChrome();
-    }
-
-    private void OnToggleWrapClicked(object? sender, RoutedEventArgs e)
-    {
-        _frames?.ToggleWrap();
-        UpdateEditChrome();
-    }
-
-    private void OnBringForwardClicked(object? sender, RoutedEventArgs e) => Restack(f => f.BringForward());
-
-    private void OnSendBackwardClicked(object? sender, RoutedEventArgs e) => Restack(f => f.SendBackward());
-
-    private void OnBringToFrontClicked(object? sender, RoutedEventArgs e) => Restack(f => f.BringToFront());
-
-    private void OnSendToBackClicked(object? sender, RoutedEventArgs e) => Restack(f => f.SendToBack());
-
-    private void Restack(Func<FrameEditorController, bool> action)
-    {
+        ArgumentNullException.ThrowIfNull(action);
         if (_frames is not null)
         {
             action(_frames);
-            UpdateEditChrome();
         }
     }
 
-    // ---- Photos (docs/M6-spec.md §7) --------------------------------------------------------
+    internal void BeginFrameLink()
+    {
+        _frames?.BeginLink();
+        PageCanvas.Focus();
+    }
 
-    private async void OnInsertPhotoClicked(object? sender, RoutedEventArgs e)
+    internal void UnlinkFrames() => _frames?.Unlink();
+
+    internal void AutoFlow()
+    {
+        if (_pages is not null && SelectedTextBlockId is { } blockId)
+        {
+            _pages.AutoFlow(blockId);
+        }
+    }
+
+    /// <summary>The frame the flow actions act on: the selected one, or the one being typed into.</summary>
+    private string? SelectedTextBlockId =>
+        _editor is { IsActive: true } ? _editor.BlockId : _frames?.SelectedBlockId;
+
+    // ---- Photos (docs/M6-spec.md §7) ----------------------------------------------------------
+
+    internal async Task InsertPhotoAsync()
     {
         if (_photos is null || _source is null)
         {
@@ -617,19 +942,18 @@ public partial class MainWindow : Window
         }
 
         _frames?.Select(blockId);
-        UpdateEditChrome();
+        RefreshActions();
     }
 
-    private void OnFixPhotoClicked(object? sender, RoutedEventArgs e)
+    internal void FixPhoto()
     {
         if (_photos is not null && _frames?.SelectedBlockId is { } blockId)
         {
             _photos.FixPhoto(blockId);
-            UpdateEditChrome();
         }
     }
 
-    private async void OnAdjustPhotoClicked(object? sender, RoutedEventArgs e)
+    internal async Task AdjustPhotoAsync()
     {
         if (_photos is null || _frames?.SelectedBlockId is not { } blockId || !_photos.IsPhoto(blockId))
         {
@@ -638,7 +962,6 @@ public partial class MainWindow : Window
 
         var window = new PhotoAdjustWindow(_photos, blockId);
         await window.ShowDialog(this);
-        UpdateEditChrome();
     }
 
     /// <summary>Drag-and-drop is an accelerator; the Insert menu item is the primary path (PLAN.md §6).</summary>
@@ -663,7 +986,7 @@ public partial class MainWindow : Window
 
     // ---- Look and size (PLAN.md §6, docs/M9-spec.md §4) -------------------------------------
 
-    private async void OnSettingsClicked(object? sender, RoutedEventArgs e)
+    internal async Task ShowSettingsAsync()
     {
         var dialog = new SettingsDialog(_settings);
         await dialog.ShowDialog(this);
@@ -672,19 +995,21 @@ public partial class MainWindow : Window
             return;
         }
 
-        _settings = dialog.Result;
+        _settings = dialog.Result with { ShowActionPanel = _settings.ShowActionPanel };
         _settings.Save();
         ApplySettings(_settings);
-        StatusLabel.Text = "Saved. You can change this again from View, How things look.";
+        Announce("Saved. You can change this again from View, How things look.");
     }
 
     /// <summary>
     /// Chrome only. The CANVAS is deliberately left out of the scale transform and out of the theme:
     /// the page is a piece of paper, white in dark mode too, and its own zoom is a separate control
-    /// (docs/M9-spec.md §4).
+    /// (docs/M9-spec.md §4). The action panel IS scaled — it is chrome, and a 16pt panel beside a
+    /// 32pt menu bar would be the one part of the window an elderly user could not read.
     /// </summary>
     internal void ApplySettings(AppSettings settings)
     {
+        ArgumentNullException.ThrowIfNull(settings);
         _settings = settings.Normalised();
 
         if (Avalonia.Application.Current is { } application)
@@ -693,12 +1018,14 @@ public partial class MainWindow : Window
         }
 
         double scale = _settings.UiScale;
-        foreach (LayoutTransformControl host in new[] { MenuScale, ToolbarScale, StatusScale })
+        foreach (LayoutTransformControl host in new[] { MenuScale, ToolbarScale, StatusScale, PanelScale })
         {
             // A LAYOUT transform, not a render transform: scaled chrome has to take up the room it
             // now occupies, or the buttons simply overlap each other.
             host.LayoutTransform = scale == 1d ? null : new Avalonia.Media.ScaleTransform(scale, scale);
         }
+
+        ApplyPanelVisibility();
     }
 
     internal AppSettings SettingsForTest => _settings;
@@ -709,11 +1036,11 @@ public partial class MainWindow : Window
     internal Task RunStartupForTest() => RunStartupAsync();
 
     /// <summary>The chrome hosts the UI scale is applied to; the canvas is deliberately not one.</summary>
-    internal LayoutTransformControl[] ChromeScaleHostsForTest => [MenuScale, ToolbarScale, StatusScale];
+    internal LayoutTransformControl[] ChromeScaleHostsForTest => [MenuScale, ToolbarScale, StatusScale, PanelScale];
 
     // ---- Pages and flow (docs/M8-spec.md §2/§3) ---------------------------------------------
 
-    private void OnAddPageClicked(object? sender, RoutedEventArgs e)
+    internal void AddPage()
     {
         if (_pages is not null)
         {
@@ -722,7 +1049,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnRemovePageClicked(object? sender, RoutedEventArgs e)
+    internal void RemovePage()
     {
         if (_pages is not null && _pages.RemovePage(_pageIndex))
         {
@@ -730,23 +1057,11 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnMovePageEarlierClicked(object? sender, RoutedEventArgs e) => MovePage(-1);
-
-    private void OnMovePageLaterClicked(object? sender, RoutedEventArgs e) => MovePage(1);
-
-    private void MovePage(int delta)
+    internal void MovePage(int delta)
     {
         if (_pages is not null && _pages.MovePage(_pageIndex, _pageIndex + delta))
         {
             GoToPage(_pageIndex + delta);
-        }
-    }
-
-    private void OnAutoFlowClicked(object? sender, RoutedEventArgs e)
-    {
-        if (_pages is not null && _frames?.SelectedBlockId is { } blockId)
-        {
-            _pages.AutoFlow(blockId);
         }
     }
 
@@ -756,36 +1071,28 @@ public partial class MainWindow : Window
     /// Insert puts an EMPTY widget on the page and opens its wizard straight away: inserting means
     /// "I want to fill this in", and the box is already visible while the questions are answered.
     /// </summary>
-    private async void OnInsertWidgetClicked(object? sender, RoutedEventArgs e)
+    internal async Task InsertWidgetAsync(string typeId)
     {
-        if (_widgets is null || sender is not MenuItem { Tag: string typeId })
+        if (_widgets is null)
         {
             return;
         }
 
         string blockId = _widgets.InsertWidget(_pageIndex, typeId);
         _frames?.Select(blockId);
-        UpdateEditChrome();
+        RefreshActions();
         await RunWizardAsync(blockId, grid: false);
     }
 
-    private async void OnEditWidgetClicked(object? sender, RoutedEventArgs e)
+    internal async Task EditWidgetAsync(bool grid)
     {
         if (_frames?.SelectedBlockId is { } blockId)
         {
-            await RunWizardAsync(blockId, grid: false);
+            await RunWizardAsync(blockId, grid);
         }
     }
 
-    private async void OnEditWidgetListClicked(object? sender, RoutedEventArgs e)
-    {
-        if (_frames?.SelectedBlockId is { } blockId)
-        {
-            await RunWizardAsync(blockId, grid: true);
-        }
-    }
-
-    private void OnFitToContentsClicked(object? sender, RoutedEventArgs e)
+    internal void FitWidgetToContents()
     {
         if (_frames?.SelectedBlockId is { } blockId)
         {
@@ -801,7 +1108,7 @@ public partial class MainWindow : Window
     {
         if (_widgets is null || _session is null || !_widgets.CanEdit(blockId))
         {
-            UpdateEditChrome();
+            RefreshActions();
             return;
         }
 
@@ -829,13 +1136,12 @@ public partial class MainWindow : Window
             }
             else
             {
-                StatusLabel.Text =
-                    "Nothing was filled in yet. Press Ctrl+Z to take it back off the page.";
+                Announce("Nothing was filled in yet. Press Ctrl+Z to take it back off the page.");
                 return;
             }
         }
 
-        UpdateEditChrome();
+        RefreshActions();
     }
 
     /// <summary>Pre-filled from whatever is already on the block — that IS the re-edit path (§7.1).</summary>
@@ -854,32 +1160,13 @@ public partial class MainWindow : Window
             definition, widget.Data, widget.DataVersion, WidgetController.SeedFrom(_session.Document));
     }
 
-    private void OnLinkFramesClicked(object? sender, RoutedEventArgs e)
-    {
-        _frames?.BeginLink();
-        PageCanvas.Focus();
-        UpdateEditChrome();
-    }
-
-    private void OnUnlinkFramesClicked(object? sender, RoutedEventArgs e)
-    {
-        _frames?.Unlink();
-        UpdateEditChrome();
-    }
-
     // ---- Navigation / zoom ------------------------------------------------------------------
 
-    private void OnNextPageClicked(object? sender, RoutedEventArgs e) => GoToPage(_pageIndex + 1);
+    internal void GoToRelativePage(int delta) => GoToPage(_pageIndex + delta);
 
-    private void OnPreviousPageClicked(object? sender, RoutedEventArgs e) => GoToPage(_pageIndex - 1);
+    internal void ZoomToActualSize() => SetZoom(1d, fit: false);
 
-    private void OnZoomInClicked(object? sender, RoutedEventArgs e) => StepZoom(+1);
-
-    private void OnZoomOutClicked(object? sender, RoutedEventArgs e) => StepZoom(-1);
-
-    private void OnZoomResetClicked(object? sender, RoutedEventArgs e) => SetZoom(1d, fit: false);
-
-    private void OnFitPageClicked(object? sender, RoutedEventArgs e)
+    internal void FitPage()
     {
         _fitToWindow = true;
         ApplyFitZoom();
@@ -896,133 +1183,22 @@ public partial class MainWindow : Window
         {
             _editor.ViewportHeightPt = (float)(CanvasScroller.Bounds.Height / Math.Max(PageCanvas.Zoom, 0.1));
         }
+
+        ApplyPanelVisibility();
     }
 
+    /// <summary>
+    /// One table, matched on exact modifiers (see <see cref="KeyboardMap"/>). The switch this
+    /// replaced matched with HasFlag, so <c>case Key.Y when ctrl:</c> also caught Ctrl+Shift+Y and
+    /// silently redid instead of fitting the box to its contents.
+    /// </summary>
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
-        bool ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
-        bool editing = _editor is { IsActive: true };
-        switch (e.Key)
+        bool typing = _editor is { IsActive: true };
+        if (KeyboardMap.Resolve(e.Key, e.KeyModifiers, typing) is { } actionId)
         {
-            // Bare PageUp/Down belongs to the caret while editing; page navigation keeps the
-            // bare gesture only when no session is active (docs/M4-spec.md §4.3).
-            case Key.PageDown when ctrl || !editing:
-                GoToPage(_pageIndex + 1);
-                e.Handled = true;
-                break;
-            case Key.PageUp when ctrl || !editing:
-                GoToPage(_pageIndex - 1);
-                e.Handled = true;
-                break;
-            case Key.Z when ctrl:
-                _session?.Undo();
-                e.Handled = true;
-                break;
-            // MUST exclude Shift: a bare "when ctrl" also matches Ctrl+Shift+Y, which would shadow
-            // Fit to contents below and silently redo instead.
-            case Key.Y when ctrl && !e.KeyModifiers.HasFlag(KeyModifiers.Shift):
-                _session?.Redo();
-                e.Handled = true;
-                break;
-            case Key.B when ctrl && editing:
-                _editor!.ToggleBold();
-                UpdateEditChrome();
-                e.Handled = true;
-                break;
-            case Key.I when ctrl && editing:
-                _editor!.ToggleItalic();
-                UpdateEditChrome();
-                e.Handled = true;
-                break;
-            case Key.X when ctrl && editing:
-                OnCutClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.C when ctrl && editing:
-                OnCopyClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.V when ctrl && editing:
-                OnPasteClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.OemPlus when ctrl:
-                StepZoom(+1);
-                e.Handled = true;
-                break;
-            case Key.OemMinus when ctrl:
-                StepZoom(-1);
-                e.Handled = true;
-                break;
-            case Key.D0 when ctrl:
-                SetZoom(1d, fit: false);
-                e.Handled = true;
-                break;
-            case Key.D1 when ctrl:
-                _fitToWindow = true;
-                ApplyFitZoom();
-                e.Handled = true;
-                break;
-            case Key.T when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
-                OnAddTextFrameClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.W when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
-                OnToggleWrapClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.P when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
-                OnInsertPhotoClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.F when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
-                OnFixPhotoClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.A when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
-                OnAdjustPhotoClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.L when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
-                OnLinkFramesClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.K when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
-                OnUnlinkFramesClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.OemCloseBrackets when ctrl:
-                Restack(f => e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? f.BringToFront() : f.BringForward());
-                e.Handled = true;
-                break;
-            case Key.OemOpenBrackets when ctrl:
-                Restack(f => e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? f.SendToBack() : f.SendBackward());
-                e.Handled = true;
-                break;
-            case Key.E when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
-                OnEditWidgetClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.G when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
-                OnEditWidgetListClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.Y when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
-                OnFitToContentsClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.M when ctrl && e.KeyModifiers.HasFlag(KeyModifiers.Shift):
-                OnAutoFlowClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.O when ctrl:
-                OnOpenClicked(sender, e);
-                e.Handled = true;
-                break;
-            case Key.E when ctrl:
-                OnExportPdfClicked(sender, e);
-                e.Handled = true;
-                break;
+            _ = _actions.RunAsync(actionId);
+            e.Handled = true;
         }
     }
 
@@ -1049,32 +1225,25 @@ public partial class MainWindow : Window
         _pages = pages;
         _package = package;
         _pageIndex = 0;
+        _exportedThisSession = false;
         PageCanvas.Source = source;
         PageCanvas.Editor = editor;
         PageCanvas.FrameEditor = frames;
         PageCanvas.PageIndex = 0;
         Title = $"TrestleBoard — {package.Document.Metadata.Title}";
 
-        session.Changed += (_, _) => UpdateEditChrome();
+        session.Changed += (_, _) => RefreshActions();
         StartRecovery(package);
-        editor.Changed += (_, _) => UpdateEditChrome();
-        frames.Changed += (_, _) => UpdateEditChrome();
-        photos.Changed += (_, _) => UpdateEditChrome();
-        widgets.Changed += (_, _) => UpdateEditChrome();
-        pages.Changed += (_, _) => { UpdatePageChrome(); UpdateEditChrome(); };
+        editor.Changed += (_, _) => RefreshActions();
+        frames.Changed += (_, _) => RefreshActions();
+        photos.Changed += (_, _) => RefreshActions();
+        widgets.Changed += (_, _) => RefreshActions();
+        pages.Changed += (_, _) => RefreshActions();
         editor.RevealRequested += OnCaretReveal;
 
-        bool hasDoc = source.PageCount > 0;
-        ExportPdfMenuItem.IsEnabled = hasDoc;
-        NewFromLastMonthMenuItem.IsEnabled = hasDoc;
-        ZoomInButton.IsEnabled = hasDoc;
-        ZoomOutButton.IsEnabled = hasDoc;
-        FitButton.IsEnabled = hasDoc;
-        ParagraphStyleCombo.ItemsSource = editor.AvailableParagraphStyles;
         _fitToWindow = true;
         ApplyFitZoom();
-        UpdatePageChrome();
-        UpdateEditChrome();
+        RefreshActions();
     }
 
     private void OnCaretReveal(object? sender, CaretRevealEventArgs e)
@@ -1103,18 +1272,18 @@ public partial class MainWindow : Window
 
         _pageIndex = index;
         PageCanvas.PageIndex = index;
-        // Selection is per page; carrying it to another page would make the Object menu act on
-        // something the user cannot see.
+        // Selection is per page; carrying it to another page would make the panel act on something
+        // the user cannot see.
         _frames?.ClearSelection();
         if (_fitToWindow)
         {
             ApplyFitZoom();
         }
 
-        UpdatePageChrome();
+        RefreshActions();
     }
 
-    private void StepZoom(int direction)
+    internal void StepZoom(int direction)
     {
         if (_source is null)
         {
@@ -1154,102 +1323,23 @@ public partial class MainWindow : Window
         SetZoom(Math.Clamp(zoom, 0.1, 4.0), fit: true);
     }
 
-    private void UpdatePageChrome()
+    private void UpdatePageChrome() =>
+        PageLabel.Text = _source is { PageCount: > 0 }
+            ? $"Page {_pageIndex + 1} of {_source.PageCount}"
+            : "No newsletter";
+
+    private void UpdateStatus()
     {
-        if (_source is null)
-        {
-            return;
-        }
-
-        PageLabel.Text = $"Page {_pageIndex + 1} of {_source.PageCount}";
-        PrevPageButton.IsEnabled = _pageIndex > 0;
-        NextPageButton.IsEnabled = _pageIndex < _source.PageCount - 1;
-    }
-
-    private void UpdateEditChrome()
-    {
-        bool canUndo = _session?.CanUndo == true;
-        bool canRedo = _session?.CanRedo == true;
-        UndoMenuItem.IsEnabled = canUndo;
-        RedoMenuItem.IsEnabled = canRedo;
-        UndoButton.IsEnabled = canUndo;
-        RedoButton.IsEnabled = canRedo;
-        // Plain-language labels straight from the command descriptions (PLAN.md §4).
-        UndoMenuItem.Header = canUndo ? $"_Undo {_session!.UndoDescription}" : "_Undo";
-        RedoMenuItem.Header = canRedo ? $"_Redo {_session!.RedoDescription}" : "_Redo";
-
-        bool editing = _editor is { IsActive: true };
-        bool hasSelection = editing && !_editor!.Selection.IsEmpty;
-        CutMenuItem.IsEnabled = hasSelection;
-        CopyMenuItem.IsEnabled = hasSelection;
-        PasteMenuItem.IsEnabled = editing;
-        SelectAllMenuItem.IsEnabled = editing;
-        BoldMenuItem.IsEnabled = editing;
-        ItalicMenuItem.IsEnabled = editing;
-        BoldButton.IsEnabled = editing;
-        ItalicButton.IsEnabled = editing;
-        ParagraphStyleCombo.IsEnabled = editing;
-        BoldButton.IsChecked = editing && _editor!.IsBoldActive;
-        ItalicButton.IsChecked = editing && _editor!.IsItalicActive;
-
-        UpdateFrameChrome();
-    }
-
-    private void UpdateFrameChrome()
-    {
-        bool hasDocument = _source is { PageCount: > 0 };
-        bool hasFrame = _frames is { HasSelection: true };
-        bool isTextFrame = hasFrame
-            && _source is not null
-            && _source.IsTextBlock(_frames!.SelectedBlockId!);
-
-        AddTextFrameMenuItem.IsEnabled = hasDocument;
-        AddTextFrameButton.IsEnabled = hasDocument;
-        DeleteFrameMenuItem.IsEnabled = hasFrame;
-        WrapMenuItem.IsEnabled = hasFrame;
-        WrapButton.IsEnabled = hasFrame;
-        BringForwardMenuItem.IsEnabled = hasFrame;
-        SendBackwardMenuItem.IsEnabled = hasFrame;
-        BringToFrontMenuItem.IsEnabled = hasFrame;
-        SendToBackMenuItem.IsEnabled = hasFrame;
-        BringForwardButton.IsEnabled = hasFrame;
-        SendBackwardButton.IsEnabled = hasFrame;
-        LinkFramesMenuItem.IsEnabled = isTextFrame;
-        UnlinkFramesMenuItem.IsEnabled = isTextFrame;
-
-        bool multiPage = _pages is { PageCount: > 1 };
-        AddPageMenuItem.IsEnabled = hasDocument;
-        RemovePageMenuItem.IsEnabled = multiPage;
-        MovePageUpMenuItem.IsEnabled = multiPage && _pageIndex > 0;
-        MovePageDownMenuItem.IsEnabled = multiPage && _pageIndex < (_pages?.PageCount ?? 0) - 1;
-        AutoFlowMenuItem.IsEnabled = hasFrame && _pages?.CanAutoFlow(_frames!.SelectedBlockId) == true;
-
-        bool isWidget = hasFrame && _widgets?.IsWidget(_frames!.SelectedBlockId) == true;
-        bool canEditWidget = isWidget && _widgets!.CanEdit(_frames!.SelectedBlockId);
-        InsertOfficersMenuItem.IsEnabled = hasDocument;
-        InsertBirthdaysMenuItem.IsEnabled = hasDocument;
-        InsertCommitteesMenuItem.IsEnabled = hasDocument;
-        InsertDistrictMenuItem.IsEnabled = hasDocument;
-        InsertAnnouncementMenuItem.IsEnabled = hasDocument;
-        InsertCoverMenuItem.IsEnabled = hasDocument;
-        EditWidgetMenuItem.IsEnabled = canEditWidget;
-        EditWidgetListMenuItem.IsEnabled = canEditWidget && CreateSession(_frames!.SelectedBlockId!)?.HasListSteps == true;
-        FitToContentsMenuItem.IsEnabled = isWidget;
-
-        bool isPhoto = hasFrame && _photos?.IsPhoto(_frames!.SelectedBlockId) == true;
-        InsertPhotoMenuItem.IsEnabled = hasDocument;
-        InsertPhotoButton.IsEnabled = hasDocument;
-        FixPhotoMenuItem.IsEnabled = isPhoto;
-        FixPhotoButton.IsEnabled = isPhoto;
-        AdjustPhotoMenuItem.IsEnabled = isPhoto;
-
-        StatusLabel.Text = _pages?.StatusMessage
+        string? message = _pages?.StatusMessage
             ?? _widgets?.StatusMessage
             ?? _photos?.StatusMessage
             ?? _frames?.StatusMessage
             ?? (_source is { IsOverset: true }
                 ? "Some text does not fit in its frame. Select that frame to see what to do."
-                : "");
+                : null);
+
+        StatusLabel.Text = message ?? _announcement ?? "";
+        _announcement = null;
     }
 
     /// <summary>
@@ -1263,7 +1353,7 @@ public partial class MainWindow : Window
 
     private async Task ShowErrorAsync(string title, string message)
     {
-        // Plain-language error dialog (PLAN.md §6); a richer shared dialog arrives with M9.
+        // Plain-language error dialog (PLAN.md §6).
         var dialog = new Window
         {
             Title = title,

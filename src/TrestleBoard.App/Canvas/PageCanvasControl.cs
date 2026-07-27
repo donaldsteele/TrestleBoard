@@ -89,6 +89,14 @@ public sealed class PageCanvasControl : Control
     internal Avalonia.Automation.Peers.AutomationPeer CreateAutomationPeerForTest() =>
         _peer ??= OnCreateAutomationPeer();
 
+    /// <summary>
+    /// Raised when a screen-reader user asks for the context menu through the automation peer — the
+    /// Applications key. Until M11 that request was refused outright and they got nothing at all.
+    /// </summary>
+    internal event EventHandler? PeerAskedForContextMenu;
+
+    internal void RaisePeerContextMenuRequest() => PeerAskedForContextMenu?.Invoke(this, EventArgs.Empty);
+
     public DocumentRenderSource? Source
     {
         get => _source;
