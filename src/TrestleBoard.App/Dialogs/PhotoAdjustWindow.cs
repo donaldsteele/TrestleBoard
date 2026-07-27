@@ -57,6 +57,7 @@ public sealed class PhotoAdjustWindow : Window
             IsDefault = true,
         };
         done.Click += (_, _) => Close();
+        Avalonia.Automation.AutomationProperties.SetName(done, "Done, close this window");
 
         Content = new StackPanel
         {

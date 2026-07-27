@@ -14,7 +14,6 @@
     <PackageVersion Include="Avalonia.Fonts.Inter" Version="11.3.18" />
     <PackageVersion Include="Avalonia.Diagnostics" Version="11.3.18" />
     <PackageVersion Include="Avalonia.Headless" Version="11.3.18" />
-    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
 
   <!-- Pinned at M1. SkiaSharp stays on the 3.x line (4.x exists but is untested against the

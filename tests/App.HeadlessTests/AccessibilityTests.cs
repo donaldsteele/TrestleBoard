@@ -3,6 +3,12 @@ using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Avalonia.Headless;
+using TrestleBoard.App.Dialogs;
+using TrestleBoard.App.Settings;
+using TrestleBoard.Core.Model;
+using TrestleBoard.Layout.Widgets;
+using TrestleBoard.Widgets;
+using TrestleBoard.Widgets.Wizards;
 using Xunit;
 
 namespace TrestleBoard.App.HeadlessTests;
@@ -19,41 +25,123 @@ public sealed class AccessibilityTests
     /// <summary>
     /// A control with no accessible name is a control a screen reader announces as "button" and
     /// nothing else. This is the check that stops one being added.
+    ///
+    /// Until M11 it walked <c>MainWindow</c> only, so the wizard, the grid editor, the photo
+    /// sliders, the settings dialog and the start screen had never been checked at all — which is
+    /// the fair trade for amending the keyboard audit in the same milestone.
     /// </summary>
     [Fact]
     public async Task EveryControlTheUserCanReachHasSomethingToSay()
     {
         await Session.Dispatch(() =>
         {
-            var window = new MainWindow();
-            window.OpenSample();
-
             var unnamed = new List<string>();
             int checked_ = 0;
-            foreach (Control control in Descendants(window))
+
+            foreach ((string windowName, Window window) in EveryWindow())
             {
-                if (control is not (Button or MenuItem or ComboBox or TextBox))
+                foreach (Control control in Descendants(window))
                 {
-                    continue;
+                    if (control is not (Button or MenuItem or ComboBox or TextBox))
+                    {
+                        continue;
+                    }
+
+                    checked_++;
+
+                    if (control is MenuItem { Header: null })
+                    {
+                        continue;
+                    }
+
+                    string? name = Avalonia.Automation.AutomationProperties.GetName(control);
+                    if (string.IsNullOrWhiteSpace(name) && control is not MenuItem)
+                    {
+                        unnamed.Add($"{windowName}: {control.GetType().Name} '{control.Name ?? "(unnamed)"}'");
+                    }
                 }
 
-                checked_++;
-
-                if (control is MenuItem { Header: null })
-                {
-                    continue;
-                }
-
-                string? name = Avalonia.Automation.AutomationProperties.GetName(control);
-                if (string.IsNullOrWhiteSpace(name) && control is not MenuItem)
-                {
-                    unnamed.Add($"{control.GetType().Name} '{control.Name ?? "(unnamed)"}'");
-                }
+                window.Close();
             }
 
             // Guard against the walk finding nothing and the assertion passing vacuously.
-            Assert.True(checked_ > 20, $"only {checked_} controls were examined — the tree walk found nothing");
+            Assert.True(checked_ > 40, $"only {checked_} controls were examined — the tree walk found nothing");
             Assert.True(unnamed.Count == 0, "controls with no accessible name: " + string.Join(", ", unnamed));
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// Two items in the same menu sharing an access key means Alt-F-A picks whichever comes first
+    /// and the other is unreachable that way. Untested before M11, and likelier now that the Object
+    /// menu has become three submenus.
+    /// </summary>
+    [Fact]
+    public async Task NoTwoItemsInOneMenuShareAnAccessKey()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.OpenSample();
+
+            var clashes = new List<string>();
+            int menusChecked = 0;
+
+            foreach (MenuItem parent in window.GetLogicalDescendants().OfType<MenuItem>())
+            {
+                List<MenuItem> children = parent.Items.OfType<MenuItem>().ToList();
+                if (children.Count == 0)
+                {
+                    continue;
+                }
+
+                menusChecked++;
+                var byKey = new Dictionary<char, List<string>>();
+                foreach (MenuItem child in children)
+                {
+                    if (child.Header is not string header || AccessKeyOf(header) is not { } key)
+                    {
+                        continue;
+                    }
+
+                    if (!byKey.TryGetValue(key, out List<string>? headers))
+                    {
+                        headers = [];
+                        byKey[key] = headers;
+                    }
+
+                    headers.Add(header);
+                }
+
+                clashes.AddRange(byKey
+                    .Where(kv => kv.Value.Count > 1)
+                    .Select(kv => $"{parent.Header}: '{kv.Key}' → {string.Join(" / ", kv.Value)}"));
+            }
+
+            // The top-level menu bar itself, which is not a MenuItem's child collection.
+            var topLevel = new Dictionary<char, List<string>>();
+            foreach (MenuItem item in window.GetLogicalDescendants().OfType<Menu>()
+                         .SelectMany(m => m.Items.OfType<MenuItem>()))
+            {
+                if (item.Header is not string header || AccessKeyOf(header) is not { } key)
+                {
+                    continue;
+                }
+
+                if (!topLevel.TryGetValue(key, out List<string>? headers))
+                {
+                    headers = [];
+                    topLevel[key] = headers;
+                }
+
+                headers.Add(header);
+            }
+
+            clashes.AddRange(topLevel
+                .Where(kv => kv.Value.Count > 1)
+                .Select(kv => $"menu bar: '{kv.Key}' → {string.Join(" / ", kv.Value)}"));
+
+            Assert.True(menusChecked >= 6, $"only {menusChecked} menus were examined");
+            Assert.True(clashes.Count == 0, "two items share an access key: " + string.Join("; ", clashes));
 
             window.Close();
         }, TestContext.Current.CancellationToken);
@@ -142,6 +230,28 @@ public sealed class AccessibilityTests
     }
 
     /// <summary>
+    /// Asking for the context menu over a block used to return false outright, so a screen-reader
+    /// user pressing the Applications key got nothing at all (PLAN.md §11 M11).
+    /// </summary>
+    [Fact]
+    public async Task TheApplicationsKeyOverABlockAsksForItsActions()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenIssueSample();
+
+            AutomationPeer block = window.CanvasForTest.CreateAutomationPeerForTest().GetChildren()[0];
+
+            Assert.True(block.ShowContextMenu());
+            Assert.NotNull(window.FramesForTest!.SelectedBlockId);
+
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
     /// PLAN.md §6: every command has a menu item AND a shortcut, and drag-and-drop is never the only
     /// path. The menu is the thing that makes the app operable without a mouse at all.
     /// </summary>
@@ -179,6 +289,54 @@ public sealed class AccessibilityTests
 
             window.Close();
         }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>The character after the first underscore, which is what Alt activates.</summary>
+    private static char? AccessKeyOf(string header)
+    {
+        int index = header.IndexOf('_', StringComparison.Ordinal);
+        return index >= 0 && index + 1 < header.Length
+            ? char.ToUpperInvariant(header[index + 1])
+            : null;
+    }
+
+    /// <summary>
+    /// Every window the app can put in front of the user. Built with fictional placeholder data
+    /// only (PLAN.md §0 rule 2).
+    /// </summary>
+    private static IEnumerable<(string Name, Window Window)> EveryWindow()
+    {
+        var main = new MainWindow();
+        main.OpenSample();
+        yield return (nameof(MainWindow), main);
+
+        WizardSession wizard = NewOfficersWizard();
+        yield return (nameof(WizardWindow), new WizardWindow(wizard));
+        yield return (nameof(WidgetGridWindow), new WidgetGridWindow(NewOfficersWizard()));
+        yield return (nameof(SettingsDialog), new SettingsDialog(new AppSettings()));
+        yield return (nameof(StartDialog), new StartDialog(canStartFromLastMonth: true));
+
+        var photoHost = new MainWindow();
+        photoHost.OpenIssueSample();
+        string? photoBlock = photoHost.SessionForTest!.Document.Pages
+            .SelectMany(p => p.Blocks)
+            .OfType<ImageFrame>()
+            .Select(b => b.Id)
+            .FirstOrDefault();
+        Assert.NotNull(photoBlock);
+        yield return (nameof(PhotoAdjustWindow), new PhotoAdjustWindow(photoHost.PhotosForTest!, photoBlock));
+        photoHost.Close();
+    }
+
+    private static WizardSession NewOfficersWizard()
+    {
+        var provider = WidgetLayoutProvider.CreateDefault();
+        Assert.True(provider.Registry.TryGet("officersTable", out IWidgetDefinition? definition));
+        return WizardSession.Create(
+            definition!,
+            existingData: null,
+            dataVersion: 1,
+            new WidgetSeed("Placeholder Lodge", 3, 2026, "1st Tuesday"));
     }
 
     private static IEnumerable<Control> Descendants(Control root)
