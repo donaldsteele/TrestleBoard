@@ -608,6 +608,13 @@ three letters; all of it completable keyboard-only.
 
 **Post-milestone:** `/graphify . --update`; ingest the M12 decisions into llm-wiki; `/wiki:lint`
 (even-numbered milestone).
+**Post-milestone status (2026-07-27):** done. graphify updated to 3681 nodes / 7998 edges; as at M10
+and M11 the incremental pass was **AST-only**, so the 16 changed docs and 33 baseline images stay
+unstamped in the manifest and are still queued for the next semantic run. llm-wiki has
+`m12-decisions`, with `officers-table`, `birthday-list` and `committee-list` updated — the address
+book is what those three sections stop being retyped from. `/wiki:lint` is clean at 24 pages (graph
+lint clean too, 141 edges) apart from the same four long-standing orphan monthly-issue source pages,
+left as they are for the same reason as at M10.
 **Agents:** **Opus** for the import session and merge policy; **Sonnet** for the People window and export;
 **cavecrew-reviewer (Sonnet)**.
 
