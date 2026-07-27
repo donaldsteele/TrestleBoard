@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.LogicalTree;
+using TrestleBoard.App.Actions;
 using TrestleBoard.Editing.Actions;
 using Xunit;
 
@@ -41,7 +42,7 @@ public sealed class ActionSurfaceTests
                 {
                     if (!button.IsEnabled)
                     {
-                        greyed.Add($"{window.PanelForTest.HeadingForTest}: {button.Content}");
+                        greyed.Add($"{window.PanelForTest.HeadingForTest}: {ActionPanel.LabelOf(button)}");
                     }
                 }
             }
@@ -208,7 +209,7 @@ public sealed class ActionSurfaceTests
 
             Assert.Contains(steps, s => s.ActionId == ActionId.ExportPdf);
             Assert.Contains(steps, s => s.Why.Contains("remind you", StringComparison.Ordinal));
-            Assert.Contains(window.PanelForTest.ButtonsForTest, b => (b.Content as string) == "Export the PDF");
+            Assert.Contains(window.PanelForTest.ButtonsForTest, b => ActionPanel.LabelOf(b) == "Export the PDF");
 
             window.Close();
         }, TestContext.Current.CancellationToken);
@@ -232,8 +233,8 @@ public sealed class ActionSurfaceTests
             Assert.NotEmpty(buttons);
             Assert.All(buttons, b =>
             {
-                Assert.True(b.Focusable, $"{b.Content} cannot take focus");
-                Assert.True(b.IsTabStop, $"{b.Content} is not in the tab order");
+                Assert.True(b.Focusable, $"{ActionPanel.LabelOf(b)} cannot take focus");
+                Assert.True(b.IsTabStop, $"{ActionPanel.LabelOf(b)} is not in the tab order");
             });
 
             window.CanvasForTest.Focus();

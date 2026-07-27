@@ -1,6 +1,7 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using TrestleBoard.Widgets.Wizards;
 
@@ -70,15 +71,7 @@ public sealed class WidgetGridWindow : Window
                         _errorPanel,
                     },
                 },
-                new StackPanel
-                {
-                    [DockPanel.DockProperty] = Dock.Bottom,
-                    Orientation = Orientation.Horizontal,
-                    Spacing = 12,
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    Margin = new Avalonia.Thickness(24, 12, 24, 24),
-                    Children = { cancel, save },
-                },
+                ButtonBar(cancel, save),
                 new ScrollViewer
                 {
                     VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
@@ -88,6 +81,33 @@ public sealed class WidgetGridWindow : Window
         };
 
         Opened += (_, _) => Render();
+    }
+
+    /// <summary>
+    /// Save and Cancel, on a shaded band of their own. The band is not decoration: the scrolling
+    /// list is clipped wherever the bar begins, and without a background behind the buttons the
+    /// half-cut row underneath read as though the bar were sitting on top of it.
+    /// </summary>
+    private static Border ButtonBar(Button cancel, Button save)
+    {
+        var bar = new Border
+        {
+            [DockPanel.DockProperty] = Dock.Bottom,
+            Padding = new Avalonia.Thickness(24, 12, 24, 24),
+            Child = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 12,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Children = { cancel, save },
+            },
+        };
+
+        // By reference, like the toolbar and status bar: High Contrast swaps the brush out and a
+        // hard-coded colour would survive the swap and stop meeting the contrast rule.
+        bar[!BackgroundProperty] =
+            new DynamicResourceExtension("SystemControlBackgroundChromeMediumLowBrush");
+        return bar;
     }
 
     public bool Confirmed { get; private set; }

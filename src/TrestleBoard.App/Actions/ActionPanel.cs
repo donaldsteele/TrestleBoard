@@ -64,6 +64,22 @@ internal sealed class ActionPanel : Border
     /// <summary>The panel's heading, which is also what a screen reader announces on a selection change.</summary>
     internal string HeadingForTest => _heading.Text ?? string.Empty;
 
+    /// <summary>
+    /// The label a panel button carries. Buttons hold a wrapping <see cref="TextBlock"/> rather
+    /// than a bare string, so a long title with its shortcut ("Wrap text around this
+    /// (Ctrl+Shift+W)") runs onto a second line instead of being clipped by the 320px panel.
+    /// </summary>
+    internal static string LabelOf(Button button)
+    {
+        ArgumentNullException.ThrowIfNull(button);
+        return button.Content switch
+        {
+            TextBlock text => text.Text ?? string.Empty,
+            string s => s,
+            _ => string.Empty,
+        };
+    }
+
     /// <summary>Every button currently offered, for the audit tests.</summary>
     internal IReadOnlyList<Button> ButtonsForTest =>
         _content.Children.OfType<Button>().Concat(
@@ -134,6 +150,21 @@ internal sealed class ActionPanel : Border
         }
     }
 
+    /// <summary>
+    /// One full-width panel button. The label is a wrapping <see cref="TextBlock"/>: a button's
+    /// default presenter does not wrap, so "Wrap text around this  (Ctrl+Shift+W)" was clipped
+    /// mid-shortcut against the panel's fixed 320px width, and a shortcut you can only half read
+    /// is worse than none.
+    /// </summary>
+    private static Button PanelButton(string label) => new()
+    {
+        Content = new TextBlock { Text = label, TextWrapping = TextWrapping.Wrap },
+        FontSize = 16,
+        MinHeight = 44,
+        HorizontalAlignment = HorizontalAlignment.Stretch,
+        HorizontalContentAlignment = HorizontalAlignment.Left,
+    };
+
     private static TextBlock GroupHeading(string text) => new()
     {
         Text = text,
@@ -150,14 +181,7 @@ internal sealed class ActionPanel : Border
     private static Control BuildOffer(ActionOffer offer, Action<string, Control?> invoke)
     {
         string gesture = offer.Action.DisplayGesture is { } g ? $"  ({g})" : string.Empty;
-        var button = new Button
-        {
-            Content = offer.Action.Title + gesture,
-            FontSize = 16,
-            MinHeight = 44,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            HorizontalContentAlignment = HorizontalAlignment.Left,
-        };
+        Button button = PanelButton(offer.Action.Title + gesture);
         AutomationProperties.SetName(button, offer.Action.Title);
         AutomationProperties.SetHelpText(
             button,
@@ -203,14 +227,7 @@ internal sealed class ActionPanel : Border
 
             if (step.ActionId is { } actionId)
             {
-                var button = new Button
-                {
-                    Content = step.Title,
-                    FontSize = 16,
-                    MinHeight = 44,
-                    HorizontalAlignment = HorizontalAlignment.Stretch,
-                    HorizontalContentAlignment = HorizontalAlignment.Left,
-                };
+                Button button = PanelButton(step.Title);
                 AutomationProperties.SetName(button, step.Title);
                 AutomationProperties.SetHelpText(button, step.Why);
                 button.Click += (_, _) => invoke(actionId, button);

@@ -219,6 +219,17 @@ README says so plainly instead, which makes the gap visible rather than merely a
   elderly users is actively harmful.*
 - The shots show **Windows chrome**, deliberately: this audience installs on Windows
   overwhelmingly, and mixing operating-system chrome across one README looks broken.
-- Two cosmetic things the shots make visible in the app itself, neither in this milestone's scope:
-  the action panel clips long button labels with their shortcut ("Change what this says…
-  (Ctrl+Shift+…"), and `WidgetGridWindow`'s docked button bar overlaps the last visible row.
+- Two cosmetic things the shots made visible in the app itself, neither in this milestone's scope
+  when it shipped — **both fixed 2026-07-27**, and the four affected images regenerated with
+  `--only`:
+  - The action panel clipped long button labels with their shortcut ("Wrap text around this
+    (Ctrl+Shift+W)" ran off the 320px panel). A button's default content presenter does not wrap,
+    so panel buttons now carry a wrapping `TextBlock` instead of a bare string, built by one
+    `ActionPanel.PanelButton` factory. `ActionPanel.LabelOf` reads the label back for the audit
+    tests, which previously cast `Content` to `string`. A half-readable shortcut is worse than
+    none — the user cannot tell which key it ends in.
+  - `WidgetGridWindow`'s docked button bar appeared to overlap the last visible row. The layout was
+    right — a `DockPanel` with the `ScrollViewer` filling — but the bar had no background, so the
+    row the scroller clipped read as being sat on. The bar is now a `Border` carrying
+    `SystemControlBackgroundChromeMediumLowBrush` by reference, matching the toolbar and status
+    bar, so the clip reads as a footer and stays correct in High Contrast.

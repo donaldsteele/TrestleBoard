@@ -1285,11 +1285,21 @@ unscheduled *by decision* — treat starting one as needing the owner's word fir
 - [!] **The real-world test** (§12 item 4): recreate the July 2026 issue in the app and have a
       committee member compare it against `Examples/July 2026.pdf` side by side. Needs the user.
 
-Three known defects are recorded but deliberately unscheduled, because closing them means opening a
-milestone rather than finishing one: the `quote` / `body-italic` attribute collision
-(`docs/M14-spec.md` §11 — pre-existing, exposed rather than caused, cheap to fix by giving `quote` a
-distinguishing size); the action panel clipping long button labels with their shortcut; and
-`WidgetGridWindow`'s docked button bar overlapping the last visible row (both `docs/M15-spec.md` §9).
+Of the three known defects recorded here, **the two cosmetic ones are fixed (2026-07-27)** — they
+turned out to be App-only chrome fixes that re-bake no snapshot baseline, so closing them opened no
+milestone after all:
+
+- [x] **The action panel clipped long button labels with their shortcut.** Panel buttons now carry a
+      wrapping `TextBlock` rather than a bare string; `ActionPanel.LabelOf` reads the label back for
+      the audit tests. `docs/M15-spec.md` §9.
+- [x] **`WidgetGridWindow`'s docked button bar appeared to overlap the last visible row.** The bar is
+      now a shaded `Border` using the same themed brush as the toolbar and status bar, so the
+      scroller's clip reads as a footer. `docs/M15-spec.md` §9.
+
+The third stays unscheduled and needs the owner's word, because it is the one that genuinely opens a
+milestone: the `quote` / `body-italic` attribute collision (`docs/M14-spec.md` §11 — pre-existing,
+exposed rather than caused, cheap to fix by giving `quote` a distinguishing size, but the fix moves
+rendered pixels and therefore needs snapshot baselines re-baked on all three operating systems).
 
 ## Flagged uncertainties (verify early, all covered by M1/M3 spikes)
 - SkiaSharp 3.x `SKShaper`/HarfBuzzSharp packaging and PDF text-embedding behavior → M1.
