@@ -70,6 +70,11 @@
         <MenuItem Header="_Birthdays" Tag="insert.birthdayList"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Insert the birthday list" />
+        <!-- M13: the address book fills the birthday list in. It sits beside "Birthdays" because
+             that is where a user looks for it; the panel offers it beside the selected list. -->
+        <MenuItem Header="Brin_g in birthdays from the address book…" Tag="item.syncBirthdays"
+                  InputGesture="Ctrl+Shift+U" Click="OnActionClicked"
+                  AutomationProperties.Name="Bring in birthdays from the address book" />
         <MenuItem Header="_Committees" Tag="insert.committeeList"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Insert the committee list" />

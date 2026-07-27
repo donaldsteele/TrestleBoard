@@ -115,8 +115,15 @@ public sealed record ActionContext
     /// <summary>The address book is empty while a widget that names people is on the page (M12).</summary>
     public bool RosterEmptyButNeeded { get; init; }
 
-    /// <summary>A generated birthday list was made for a month that is no longer the issue month (M13).</summary>
+    /// <summary>
+    /// A generated birthday list on the page no longer matches the address book — either the issue
+    /// has moved to another month, or somebody's details changed (M13). Saying so is all this does:
+    /// staleness never mutates the document.
+    /// </summary>
     public bool BirthdayListIsStale { get; init; }
+
+    /// <summary>How many people in the address book have a birthday in this issue's month (M13).</summary>
+    public int RosterBirthdaysThisMonth { get; init; }
 
     // ---- The address book (M12) ---------------------------------------------------------------
 

@@ -28,6 +28,10 @@ public sealed class ActionCatalogTests
         yield return Document() with { PageIndex = 2, PageCount = 3 };
         yield return Document() with { PageCount = 1 };
         yield return Document() with { CanUndo = true, CanRedo = true };
+        yield return BirthdayList();
+        yield return BirthdayList() with { RosterCount = 0, RosterBirthdaysThisMonth = 0 };
+        yield return BirthdayList() with { RosterBirthdaysThisMonth = 0 };
+        yield return Document() with { BirthdayListIsStale = true, RosterCount = 40, RosterBirthdaysThisMonth = 7 };
     }
 
     private static ActionContext Document() => new()
@@ -67,6 +71,74 @@ public sealed class ActionCatalogTests
         WidgetDisplayName = "Lodge officers",
         CanEditWidget = true,
     };
+
+    private static ActionContext BirthdayList() => Widget() with
+    {
+        WidgetTypeId = "birthdayList",
+        WidgetDisplayName = "Birthdays",
+        RosterCount = 40,
+        RosterBirthdaysThisMonth = 7,
+    };
+
+    // ---- bringing in birthdays (M13) -----------------------------------------------------------
+
+    [Fact]
+    public void BringingInBirthdaysIsAboutTheBirthdayListAndNothingElse()
+    {
+        Assert.True(ActionCatalog.Evaluate(ActionId.SyncBirthdays, BirthdayList()).IsAvailable);
+
+        // Another widget is not "blocked" here — it is simply not what this action is about, so the
+        // panel leaves it out entirely rather than greying it (PLAN.md §6).
+        Assert.Equal(
+            ActionAvailabilityKind.NotApplicable,
+            ActionCatalog.Evaluate(ActionId.SyncBirthdays, Widget()).Kind);
+        Assert.Equal(
+            ActionAvailabilityKind.NotApplicable,
+            ActionCatalog.Evaluate(ActionId.SyncBirthdays, Photo()).Kind);
+    }
+
+    [Fact]
+    public void AStaleBirthdayListCanBeUpdatedFromTheWhatsNextCardWithNothingSelected()
+    {
+        // The card is the no-selection state, so the action has to be reachable there or the one
+        // row that tells the user their list is out of date would lead nowhere.
+        ActionContext nothingSelected = Document() with
+        {
+            BirthdayListIsStale = true,
+            RosterCount = 40,
+            RosterBirthdaysThisMonth = 7,
+        };
+
+        Assert.True(ActionCatalog.Evaluate(ActionId.SyncBirthdays, nothingSelected).IsAvailable);
+        Assert.Contains(
+            WhatsNext.Suggestions(nothingSelected),
+            step => step.ActionId == ActionId.SyncBirthdays);
+    }
+
+    [Fact]
+    public void AnEmptyAddressBookAndAQuietMonthAreDifferentRefusalsWithDifferentWaysOut()
+    {
+        ActionAvailability empty = ActionCatalog.Evaluate(
+            ActionId.SyncBirthdays, BirthdayList() with { RosterCount = 0, RosterBirthdaysThisMonth = 0 });
+        Assert.Equal(ActionAvailabilityKind.Blocked, empty.Kind);
+        Assert.Equal(ActionId.ImportPeople, empty.RemedyId);
+
+        ActionAvailability quiet = ActionCatalog.Evaluate(
+            ActionId.SyncBirthdays, BirthdayList() with { RosterBirthdaysThisMonth = 0 });
+        Assert.Equal(ActionAvailabilityKind.Blocked, quiet.Kind);
+        Assert.Equal(ActionId.ShowPeople, quiet.RemedyId);
+        Assert.NotEqual(empty.Reason, quiet.Reason);
+    }
+
+    [Fact]
+    public void ABirthdayListFromANewerTrestleBoardIsRefusedBeforeTheAddressBookIsEvenConsulted()
+    {
+        ActionAvailability availability = ActionCatalog.Evaluate(
+            ActionId.SyncBirthdays, BirthdayList() with { CanEditWidget = false });
+
+        Assert.Equal(ActionAvailabilityKind.Blocked, availability.Kind);
+        Assert.Contains("newer TrestleBoard", availability.Reason, StringComparison.Ordinal);
+    }
 
     [Fact]
     public void EveryActionHasAnAvailabilityRuleInEverySituation()

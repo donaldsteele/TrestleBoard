@@ -32,6 +32,17 @@ public static class ActionCatalog
         "This is about the lists TrestleBoard fills in for you, like the officers table. "
         + "Choose one on the page first.";
 
+    private const string NeedsBirthdayList =
+        "This is about the birthday list. Choose one on the page first, or add one from the Insert menu.";
+
+    /// <summary>
+    /// The one widget type id this project knows by name (M13). <c>TrestleBoard.Widgets</c> is
+    /// deliberately above this layer, so the birthday list is recognised by its stable id — the same
+    /// string the document itself stores — rather than by a type reference that would invert the
+    /// dependency.
+    /// </summary>
+    private const string BirthdayListTypeId = "birthdayList";
+
     private static readonly EditorAction[] AllActions =
     [
         // ---- The newsletter itself ------------------------------------------------------------
@@ -88,6 +99,9 @@ public static class ActionCatalog
             ActionGroup.Item, "Ctrl+Shift+G"),
         new(ActionId.FitToContents, "Fit to contents", "Makes the box exactly as tall as what is in it.",
             ActionGroup.Item, "Ctrl+Shift+Y"),
+        new(ActionId.SyncBirthdays, "Bring in birthdays from the address book",
+            "Fills the birthday list in from your address book, showing you the changes first.",
+            ActionGroup.Item, "Ctrl+Shift+U"),
 
         // ---- Pictures ---------------------------------------------------------------------------
         new(ActionId.FixPhoto, "Fix this picture", "Crops it to the frame and brightens it in one step.",
@@ -260,6 +274,16 @@ public static class ActionCatalog
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(NeedsListItem),
 
+            // Reachable two ways (M13): with the list selected, and — because that is where the
+            // user is actually standing when they are told the list has gone stale — from the
+            // "what's next" card with nothing selected at all. The shell finds the stale list.
+            ActionId.SyncBirthdays =>
+                context.WidgetTypeId == BirthdayListTypeId
+                    ? EvaluateWidget(context, EvaluateBirthdaySync(context))
+                    : context.BirthdayListIsStale
+                        ? EvaluateBirthdaySync(context)
+                        : ActionAvailability.NotApplicable(NeedsBirthdayList),
+
             // ---- Pictures -------------------------------------------------------------------------
             ActionId.FixPhoto or ActionId.AdjustPhoto => context.Selection == SelectionKind.Photo
                 ? ActionAvailability.Available
@@ -399,6 +423,32 @@ public static class ActionCatalog
         ActionGroup.People => "Your address book",
         _ => "Help",
     };
+
+    /// <summary>
+    /// Whether the address book has anything to contribute to this month (M13). Both refusals name
+    /// the door out: an empty book wants importing, and a book with nobody born this month is not
+    /// broken — it is simply a quiet month, and saying so is better than a grey button.
+    /// </summary>
+    private static ActionAvailability EvaluateBirthdaySync(ActionContext context)
+    {
+        if (context.RosterCount == 0)
+        {
+            return ActionAvailability.Blocked(
+                "Your address book is empty, so there are no birthdays to bring in. Import your "
+                + "member list first, or type the birthdays in yourself.",
+                ActionId.ImportPeople);
+        }
+
+        if (context.RosterBirthdaysThisMonth == 0)
+        {
+            return ActionAvailability.Blocked(
+                "Nobody in your address book has a birthday in this issue's month. You can still "
+                + "type a birthday in yourself, or add the missing dates in the People window.",
+                ActionId.ShowPeople);
+        }
+
+        return ActionAvailability.Available;
+    }
 
     private static ActionAvailability RequiresDocument(ActionContext context) =>
         context.HasDocument

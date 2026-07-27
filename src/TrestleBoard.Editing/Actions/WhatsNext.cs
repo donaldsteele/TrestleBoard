@@ -36,8 +36,9 @@ public static class WhatsNext
         {
             steps.Add(new NextStep(
                 "Update the birthday list",
-                "The birthday list was made for a different month from this issue.",
-                Actions.ActionId.EditWidget));
+                "The birthday list no longer matches your address book — either this issue has moved "
+                + "to another month, or somebody's details have changed.",
+                Actions.ActionId.SyncBirthdays));
         }
 
         if (context.RosterEmptyButNeeded)

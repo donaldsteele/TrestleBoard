@@ -62,6 +62,7 @@ internal static class KeyboardMap
         new(Key.E, CtrlShift, ActionId.EditWidget),
         new(Key.G, CtrlShift, ActionId.EditWidgetList),
         new(Key.Y, CtrlShift, ActionId.FitToContents),
+        new(Key.U, CtrlShift, ActionId.SyncBirthdays),
 
         // ---- Pictures ---------------------------------------------------------------------------
         new(Key.F, CtrlShift, ActionId.FixPhoto),

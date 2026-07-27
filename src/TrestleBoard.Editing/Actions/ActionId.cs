@@ -45,6 +45,9 @@ public static class ActionId
     public const string EditWidgetList = "item.editList";
     public const string FitToContents = "item.fitToContents";
 
+    /// <summary>M13: fill the birthday list in from the lodge address book.</summary>
+    public const string SyncBirthdays = "item.syncBirthdays";
+
     // ---- Pictures -----------------------------------------------------------------------------
     public const string FixPhoto = "picture.fix";
     public const string AdjustPhoto = "picture.adjust";

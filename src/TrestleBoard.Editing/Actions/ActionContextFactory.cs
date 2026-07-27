@@ -17,7 +17,8 @@ namespace TrestleBoard.Editing.Actions;
 /// </param>
 /// <param name="SelectedWidgetDisplayName">What the selected widget is called in the interface.</param>
 /// <param name="RosterEmptyButNeeded">M12: a people widget is on the page and the address book is empty.</param>
-/// <param name="BirthdayListIsStale">M13: a generated birthday list was made for another month.</param>
+/// <param name="BirthdayListIsStale">M13: a generated birthday list no longer matches the address book.</param>
+/// <param name="RosterBirthdaysThisMonth">M13: how many people are born in this issue's month.</param>
 /// <param name="CoverDateMissing">The cover heading has no meeting date filled in.</param>
 /// <param name="RosterCount">M12: how many people the address book holds.</param>
 /// <param name="RosterCanUndo">M12: there is one address-book change to take back.</param>
@@ -29,6 +30,7 @@ public readonly record struct ShellFacts(
     string? SelectedWidgetDisplayName = null,
     bool RosterEmptyButNeeded = false,
     bool BirthdayListIsStale = false,
+    int RosterBirthdaysThisMonth = 0,
     bool CoverDateMissing = false,
     int RosterCount = 0,
     bool RosterCanUndo = false,
@@ -115,6 +117,7 @@ public static class ActionContextFactory
             CoverDateMissing = shell.CoverDateMissing,
             RosterEmptyButNeeded = shell.RosterEmptyButNeeded,
             BirthdayListIsStale = shell.BirthdayListIsStale,
+            RosterBirthdaysThisMonth = shell.RosterBirthdaysThisMonth,
 
             RosterCount = shell.RosterCount,
             RosterCanUndo = shell.RosterCanUndo,

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -23,6 +24,8 @@ using TrestleBoard.Layout.Fonts;
 using TrestleBoard.Rendering;
 using TrestleBoard.Roster;
 using TrestleBoard.Widgets;
+using TrestleBoard.Widgets.Builtins.BirthdayList;
+using TrestleBoard.Widgets.Roster;
 using TrestleBoard.Widgets.Wizards;
 
 namespace TrestleBoard.App;
@@ -239,6 +242,11 @@ public partial class MainWindow : Window
                 SelectedWidgetDisplayName: displayName,
                 CoverDateMissing: CoverHeadingNeedsADate(),
                 RosterEmptyButNeeded: RosterEmptyButNeeded(),
+                BirthdayListIsStale: BirthdayListNeedsUpdating(),
+                RosterBirthdaysThisMonth: _session is null
+                    ? 0
+                    : BirthdayRosterProjection.CountFor(
+                        Roster.Book.Members, _session.Document.Metadata.IssueMonth),
 
                 // Reading the book here means the first refresh loads it, which is near enough to
                 // eager — and that is the right trade: "Save as a spreadsheet…" greyed with the
@@ -1026,6 +1034,19 @@ public partial class MainWindow : Window
         return service;
     }
 
+    /// <summary>
+    /// Points this window at a book of its own. Tests use it so a fictional roster never has to be
+    /// written to the shared app-state root and cannot leak into the next test — the roster is the
+    /// one file in the app that holds real people, and a fixture sitting in its place is exactly the
+    /// confusion PLAN.md §0 rule 5 is trying to prevent.
+    /// </summary>
+    internal void UseRosterForTest(RosterService roster)
+    {
+        _roster = roster ?? throw new ArgumentNullException(nameof(roster));
+        _roster.Changed += (_, _) => RefreshActions();
+        RefreshActions();
+    }
+
     internal async Task ShowPeopleAsync()
     {
         var window = new PeopleWindow(Roster);
@@ -1125,6 +1146,241 @@ public partial class MainWindow : Window
         return false;
     }
 
+    // ---- Birthdays from the address book (PLAN.md §11 M13) -----------------------------------
+
+    /// <summary>The one widget type the shell fills in from the address book.</summary>
+    private const string BirthdayListTypeId = "birthdayList";
+
+    /// <summary>
+    /// Does a generated birthday list on the page disagree with the address book? Asking is all this
+    /// does. PLAN.md §11 M13 makes it a hard rule that staleness never mutates the document:
+    /// auto-applying on open would dirty a newsletter the user opened only to look at, trip the
+    /// 60-second autosave and grow the recovery snapshot. The nudge is a caption and nothing more.
+    /// </summary>
+    private bool BirthdayListNeedsUpdating()
+    {
+        if (_session is null)
+        {
+            return false;
+        }
+
+        int month = _session.Document.Metadata.IssueMonth;
+        foreach (string blockId in BirthdayListBlockIds())
+        {
+            if (TryReadBirthdayList(blockId, out BirthdayListData data)
+                && BirthdayRosterProjection.IsStale(data, Roster.Book.Members, month))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private IEnumerable<string> BirthdayListBlockIds()
+    {
+        if (_session is null)
+        {
+            yield break;
+        }
+
+        foreach (Core.Model.Page page in _session.Document.Pages)
+        {
+            foreach (Core.Model.Block block in page.Blocks)
+            {
+                if (block is Core.Model.WidgetBlock { WidgetType: BirthdayListTypeId } widget)
+                {
+                    yield return widget.Id;
+                }
+            }
+        }
+    }
+
+    private bool TryReadBirthdayList(string blockId, out BirthdayListData data)
+    {
+        data = null!;
+        if (_session is null
+            || !_widgetProvider.Registry.TryGet(BirthdayListTypeId, out IWidgetDefinition? definition)
+            || !_session.Document.TryFindBlock(blockId, out _, out Core.Model.Block? block)
+            || block is not Core.Model.WidgetBlock widget
+            || widget.WidgetType != BirthdayListTypeId
+            || !definition.TryReadData(widget.Data, widget.DataVersion, out object typed)
+            || typed is not BirthdayListData typedData)
+        {
+            return false;
+        }
+
+        data = typedData;
+        return true;
+    }
+
+    /// <summary>
+    /// Fills the selected birthday list in from the address book, showing the three-way diff first.
+    /// One sync is ONE undo step labelled in the user's words, because it commits through the same
+    /// <see cref="WidgetController.ApplyWidgetData"/> the wizard uses — no new command type, so
+    /// Ctrl+Z restores exactly what was printed before (PLAN.md §11 M13).
+    /// </summary>
+    internal async Task SyncBirthdaysAsync()
+    {
+        if (_session is null || _widgets is null)
+        {
+            return;
+        }
+
+        // The panel offers this beside a selected list; the "what's next" card offers it with
+        // nothing selected at all, and then the shell finds the list and shows the user where it is.
+        string? blockId = _frames?.SelectedBlockId;
+        if (blockId is null || _widgets.GetWidgetType(blockId) != BirthdayListTypeId)
+        {
+            blockId = BirthdayListBlockIds().FirstOrDefault(
+                id => TryReadBirthdayList(id, out BirthdayListData d)
+                    && BirthdayRosterProjection.IsStale(d, Roster.Book.Members, _session.Document.Metadata.IssueMonth));
+            if (blockId is null)
+            {
+                Announce("There is no birthday list on this newsletter yet. Add one from the Insert menu.");
+                return;
+            }
+
+            _frames?.Select(blockId);
+            GoToPage(PageOf(blockId));
+        }
+
+        if (!_widgets.CanEdit(blockId))
+        {
+            Announce(WidgetController.NewerVersionMessage);
+            return;
+        }
+
+        if (!TryReadBirthdayList(blockId, out BirthdayListData current))
+        {
+            Announce("TrestleBoard could not read what is in this birthday list, so it left it alone.");
+            return;
+        }
+
+        int month = _session.Document.Metadata.IssueMonth;
+        BirthdayProjection plan = BirthdayRosterProjection.Plan(current, Roster.Book.Members, month);
+
+        // Nothing to show is not nothing to do: the list may still be recorded against last month,
+        // and leaving that behind would nag from the "what's next" card forever. The user pressed
+        // the button, so the provenance is brought up to date without a dialog nobody needs.
+        if (!plan.ChangesAnything)
+        {
+            ApplyBirthdayPlan(blockId, plan);
+            Announce("The birthday list already matches your address book.");
+            return;
+        }
+
+        if (!await ConfirmBirthdaysAsync(plan, month, inserting: false))
+        {
+            Announce("The birthday list was left exactly as it was.");
+            return;
+        }
+
+        ApplyBirthdayPlan(blockId, plan);
+        Announce(Describe(plan, month));
+    }
+
+    /// <summary>
+    /// At insert time only: the extra first screen. With an empty address book — or a month nobody
+    /// was born in — the wizard is exactly what it has always been, and the user is asked nothing.
+    /// </summary>
+    private async Task<System.Text.Json.JsonElement?> OfferBirthdaysFromRosterAsync()
+    {
+        if (_session is null || Roster.Book.Count == 0)
+        {
+            return null;
+        }
+
+        int month = _session.Document.Metadata.IssueMonth;
+        BirthdayProjection plan = BirthdayRosterProjection.Plan(new BirthdayListData(), Roster.Book.Members, month);
+        if (plan.Additions.Count == 0)
+        {
+            return null;
+        }
+
+        return await ConfirmBirthdaysAsync(plan, month, inserting: true) ? Stamped(plan) : null;
+    }
+
+    /// <summary>
+    /// Set by the headless tests, which cannot stand in front of a modal window. It answers the
+    /// dialog's question and nothing else — every rule about what the answer then does stays in the
+    /// code the user exercises.
+    /// </summary>
+    internal Func<BirthdayProjection, bool>? BirthdayConfirmForTest { get; set; }
+
+    private async Task<bool> ConfirmBirthdaysAsync(BirthdayProjection plan, int month, bool inserting) =>
+        BirthdayConfirmForTest is { } answer
+            ? answer(plan)
+            : await BirthdaySyncDialog.AskAsync(this, plan, month, inserting);
+
+    private void ApplyBirthdayPlan(string blockId, BirthdayProjection plan)
+    {
+        if (_widgets is null
+            || !_widgetProvider.Registry.TryGet(BirthdayListTypeId, out IWidgetDefinition? definition))
+        {
+            return;
+        }
+
+        _widgets.ApplyWidgetData(
+            blockId, Stamped(plan), definition.CurrentDataVersion, BirthdayRosterProjection.UndoLabel);
+    }
+
+    /// <summary>
+    /// The projection is a pure function and deliberately knows nothing about the clock, so the
+    /// "when" is stamped here, in the layer that already owns wall-clock time.
+    /// </summary>
+    private System.Text.Json.JsonElement Stamped(BirthdayProjection plan)
+    {
+        plan.Result.GeneratedUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+        _widgetProvider.Registry.TryGet(BirthdayListTypeId, out IWidgetDefinition? definition);
+        return definition!.WriteData(plan.Result);
+    }
+
+    /// <summary>Plain counts, in the status bar's polite live region — never "3 records synced".</summary>
+    private static string Describe(BirthdayProjection plan, int month)
+    {
+        var parts = new List<string>();
+        if (plan.Additions.Count > 0)
+        {
+            parts.Add(plan.Additions.Count == 1 ? "one added" : $"{plan.Additions.Count} added");
+        }
+
+        if (plan.Removals.Count > 0)
+        {
+            parts.Add(plan.Removals.Count == 1 ? "one taken away" : $"{plan.Removals.Count} taken away");
+        }
+
+        if (plan.Updates.Count > 0)
+        {
+            parts.Add(plan.Updates.Count == 1
+                ? "one brought up to date"
+                : $"{plan.Updates.Count} brought up to date");
+        }
+
+        string monthName = BirthdaySyncDialog.MonthName(month);
+        return parts.Count == 0
+            ? $"The {monthName} birthday list is up to date."
+            : $"The {monthName} birthday list now has {string.Join(", ", parts)}. Press Ctrl+Z to take it back.";
+    }
+
+    private int PageOf(string blockId)
+    {
+        if (_session is null)
+        {
+            return _pageIndex;
+        }
+
+        for (int i = 0; i < _session.Document.Pages.Count; i++)
+        {
+            if (_session.Document.Pages[i].Blocks.Any(b => b.Id == blockId))
+            {
+                return i;
+            }
+        }
+
+        return _pageIndex;
+    }
+
     // ---- Look and size (PLAN.md §6, docs/M9-spec.md §4) -------------------------------------
 
     internal async Task ShowSettingsAsync()
@@ -1222,7 +1478,15 @@ public partial class MainWindow : Window
         string blockId = _widgets.InsertWidget(_pageIndex, typeId);
         _frames?.Select(blockId);
         RefreshActions();
-        await RunWizardAsync(blockId, grid: false);
+
+        // M13: one extra screen at the front, and only when there is something to offer. The answer
+        // seeds the wizard rather than committing on its own, so filling the list in and pressing
+        // "Save it" is still a single undo step.
+        System.Text.Json.JsonElement? seeded = typeId == BirthdayListTypeId
+            ? await OfferBirthdaysFromRosterAsync()
+            : null;
+
+        await RunWizardAsync(blockId, grid: false, seeded);
     }
 
     internal async Task EditWidgetAsync(bool grid)
@@ -1245,7 +1509,7 @@ public partial class MainWindow : Window
     /// Both editors run the SAME session and commit through the SAME controller call, so "one
     /// wizard run = one undo step" holds however the user got there (docs/M7-spec.md §7.3).
     /// </summary>
-    private async Task RunWizardAsync(string blockId, bool grid)
+    private async Task RunWizardAsync(string blockId, bool grid, System.Text.Json.JsonElement? seeded = null)
     {
         if (_widgets is null || _session is null || !_widgets.CanEdit(blockId))
         {
@@ -1253,7 +1517,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (CreateSession(blockId) is not { } wizard)
+        if (CreateSession(blockId, seeded) is not { } wizard)
         {
             return;
         }
@@ -1285,8 +1549,12 @@ public partial class MainWindow : Window
         RefreshActions();
     }
 
-    /// <summary>Pre-filled from whatever is already on the block — that IS the re-edit path (§7.1).</summary>
-    private WizardSession? CreateSession(string blockId)
+    /// <summary>
+    /// Pre-filled from whatever is already on the block — that IS the re-edit path (§7.1).
+    /// <paramref name="seeded"/> stands in for it exactly once, when a freshly inserted birthday
+    /// list has been projected from the address book and the user is about to check it over (M13).
+    /// </summary>
+    private WizardSession? CreateSession(string blockId, System.Text.Json.JsonElement? seeded = null)
     {
         if (_widgets?.GetWidgetType(blockId) is not { } typeId
             || _session is null
@@ -1298,7 +1566,10 @@ public partial class MainWindow : Window
         (_, Core.Model.Block block) = _session.Document.FindBlock(blockId);
         var widget = (Core.Model.WidgetBlock)block;
         return WizardSession.Create(
-            definition, widget.Data, widget.DataVersion, WidgetController.SeedFrom(_session.Document));
+            definition,
+            seeded ?? widget.Data,
+            seeded is null ? widget.DataVersion : definition.CurrentDataVersion,
+            WidgetController.SeedFrom(_session.Document));
     }
 
     // ---- Navigation / zoom ------------------------------------------------------------------

@@ -62,6 +62,7 @@ internal sealed class ActionRunner
             [ActionId.EditWidget] = _ => window.EditWidgetAsync(grid: false),
             [ActionId.EditWidgetList] = _ => window.EditWidgetAsync(grid: true),
             [ActionId.FitToContents] = Sync(window.FitWidgetToContents),
+            [ActionId.SyncBirthdays] = _ => window.SyncBirthdaysAsync(),
 
             // ---- Pictures --------------------------------------------------------------------------
             [ActionId.FixPhoto] = Sync(window.FixPhoto),
