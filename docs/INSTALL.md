@@ -41,6 +41,11 @@ TrestleBoard.
 
 ## macOS
 
+> **The 0.1.0 release has no Mac files on it.** A packaging fault stopped the two Mac builds from
+> being published; it is fixed, but the fix only takes effect the next time a release is made. If the
+> newest release has no `.pkg` file under **Assets**, there is nothing to download yet — this is not
+> something you are doing wrong.
+
 1. Go to **https://github.com/donaldsteele/TrestleBoard/releases** and open the newest release.
 2. Under **Assets**, download the file that matches your Mac:
    - **TrestleBoard-osx-arm64-Setup.pkg** — Macs from late 2020 onward (Apple M1, M2, M3, M4).

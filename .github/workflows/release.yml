@@ -110,6 +110,10 @@ jobs:
             --runtime ${{ matrix.rid }} \
             --outputDir Releases
 
+      # --mainExe is NOT optional here even though the bundle carries a CFBundleExecutable key:
+      # vpk looks for Contents/MacOS/<packId> and the published binary is TrestleBoard.App, so
+      # without it both osx jobs fail with "Could not find main application executable" and the
+      # release publishes Windows and Linux only. That is exactly how v0.1.0 shipped.
       - name: Pack (macOS)
         if: startsWith(matrix.rid, 'osx')
         run: |
@@ -119,6 +123,7 @@ jobs:
             --packDir bundle/TrestleBoard.app \
             --packTitle "TrestleBoard" \
             --packAuthors "Indian Land Masonic Lodge 414" \
+            --mainExe TrestleBoard.App \
             --channel ${{ matrix.rid }} \
             --runtime ${{ matrix.rid }} \
             --outputDir Releases

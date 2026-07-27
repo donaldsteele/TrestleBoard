@@ -121,12 +121,41 @@ maintainer's two-line release procedure, which belongs in the same file as the t
 
 ## 6. Open items
 
-- [ ] Clean-machine install on fresh Windows and macOS, following only `docs/INSTALL.md` (PLAN
-      §11-M10 acceptance, §12 item 6). Needs machines and a person.
-- [ ] Screenshots of the SmartScreen and Gatekeeper warnings for `docs/INSTALL.md`.
-- [ ] End-to-end auto-update round trip: install `v0.1.0`, publish `v0.1.1`, confirm an installed
-      copy takes it. Needs the first two real tags.
-- [ ] The macOS and Linux asset filenames quoted in `docs/INSTALL.md`
-      (`TrestleBoard-osx-arm64-Setup.pkg`, `TrestleBoard-linux-x64.AppImage`) follow the Windows
-      naming Velopack produced locally; confirm them against the first real release and correct the
-      document if they differ.
+- [!] Clean-machine install on fresh Windows and macOS, following only `docs/INSTALL.md` (PLAN
+      §11-M10 acceptance, §12 item 6). Needs machines and a person. **The macOS half is doubly
+      blocked** until a release actually carries a `.pkg` — see the packaging fault below.
+- [!] Screenshots of the SmartScreen and Gatekeeper warnings for `docs/INSTALL.md`. Needs machines
+      and a person; reserved but deliberately unlinked in `docs/images/README.md` (M15 §9).
+- [!] End-to-end auto-update round trip: install `v0.1.0`, publish `v0.1.1`, confirm an installed
+      copy takes it. Needs the first two real tags; only `v0.1.0` exists.
+- [x] The macOS and Linux asset filenames quoted in `docs/INSTALL.md` — **checked against the real
+      `v0.1.0` release, 2026-07-27, and it found a packaging fault rather than a naming one.**
+      `TrestleBoard-linux-x64.AppImage` is correct exactly as written, and so is
+      `TrestleBoard-win-x64-Setup.exe`. **Neither `.pkg` exists, because both macOS jobs failed.**
+
+### The macOS packaging fault (found and fixed 2026-07-27)
+
+`vpk pack` on `osx-x64` and `osx-arm64` both ended:
+
+```
+[FTL] Could not find main application executable (the one that runs 'VelopackApp.Build().Run()').
+I searched the following paths and none exist:
+  .../bundle/TrestleBoard.app/Contents/MacOS/TrestleBoard
+```
+
+The macOS `vpk pack` invocation did not pass `--mainExe`, so Velopack looked for the pack id
+(`TrestleBoard`) while `dotnet publish` produces `TrestleBoard.App`. The Windows and Linux
+invocation passed `--mainExe TrestleBoard.App` all along; the macOS one was written without it, and
+the `CFBundleExecutable` key in `build/macos/Info.plist` — which *is* correct — does not feed
+Velopack's search. `fail-fast: false` meant the two failures published nothing and blocked nothing,
+so `v0.1.0` shipped as a Windows-and-Linux release that looked complete.
+
+The fix is one argument in `.github/workflows/release.yml`. **It does not retrofit `v0.1.0`** —
+republishing into a release the public already has was not done unattended, and re-running the
+workflow would also re-pack and re-upload the Windows and Linux packages that people may already be
+updating from. The Mac installers therefore arrive with the next tag, and `docs/INSTALL.md` says so
+in the macOS section rather than sending a Mac owner to look for a file that is not there.
+
+- [!] Confirm the two `.pkg` filenames against the first release that actually builds them. The
+      channel-shaped names (`TrestleBoard-osx-arm64-Setup.pkg`) match the pattern Velopack used for
+      both RIDs that did publish, so they are expected to be right — but they are still unverified.

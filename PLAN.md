@@ -367,6 +367,12 @@ hardware-bound and stay open there (§6): the clean-machine install runs on fres
 machines, and the SmartScreen/Gatekeeper screenshots for `docs/INSTALL.md`. Everything else ships —
 Velopack packaging for the four RIDs, the tag-triggered release workflow, background auto-update
 applied on close, and the `.tboard` association on all three platforms.
+**Correction (2026-07-27):** checking the asset names against the real `v0.1.0` release found that
+**the release has no macOS assets at all** — `vpk pack` failed on both Mac RIDs because the macOS
+invocation omitted `--mainExe` and Velopack looked for `Contents/MacOS/TrestleBoard` rather than the
+published `TrestleBoard.App`. `fail-fast: false` let the release publish Windows and Linux and look
+complete. The workflow is fixed and `docs/INSTALL.md` states the gap for Mac owners, but **`v0.1.0`
+is not retrofitted** — the Mac installers arrive with the next tag. Details in `docs/M10-spec.md` §6.
 **Goal:** installable by an 80-year-old.
 **Deliverables:** Velopack packaging for 4 RIDs; GH Actions release workflow on tag; auto-update wired to GitHub Releases; `.tboard` file association; plain-language install instructions with SmartScreen/Gatekeeper screenshots (no code signing — documented workarounds).
 **Acceptance:** on fresh Windows and macOS machines: download → install → open template → export PDF following only the written instructions; pushing a new tag produces an update an installed copy picks up automatically.
