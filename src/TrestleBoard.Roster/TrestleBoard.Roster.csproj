@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The lodge address book (PLAN.md §9, M12): member store, spreadsheet import/export, name
+       matching, backup ring. A leaf — BCL plus ClosedXML, and deliberately no reference to Core.
+
+       This is the only project in the solution that touches real people's details, which is the
+       point of giving it its own assembly: a reviewer can point at one folder and know where §0's
+       privacy rules apply. -->
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Roster.Tests" />
+  </ItemGroup>
+</Project>

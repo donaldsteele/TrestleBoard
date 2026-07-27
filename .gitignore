@@ -5,6 +5,15 @@ wiki/
 raw/
 graphify-out/
 
+# The address book is real personal data (PLAN.md §0 rule 5, M12). It lives in %AppData%, which
+# cannot be committed — but "Save as a spreadsheet…" writes wherever the user browses to, and that
+# can be this folder. Roster fixtures are fictional and live only in tests/Roster.Tests, which is
+# why those names are excluded below rather than swept up here.
+roster*.json
+roster*.xlsx
+*.roster.bak.json
+!tests/Roster.Tests/Fixtures/**
+
 # ── Build output ─────────────────────────────────────────────────
 bin/
 obj/

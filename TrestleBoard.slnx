@@ -7,6 +7,7 @@
     <Project Path="src/TrestleBoard.Imaging/TrestleBoard.Imaging.csproj" />
     <Project Path="src/TrestleBoard.Layout/TrestleBoard.Layout.csproj" />
     <Project Path="src/TrestleBoard.Rendering/TrestleBoard.Rendering.csproj" />
+    <Project Path="src/TrestleBoard.Roster/TrestleBoard.Roster.csproj" />
     <Project Path="src/TrestleBoard.Widgets/TrestleBoard.Widgets.csproj" />
   </Folder>
   <Folder Name="/tests/">
@@ -16,6 +17,7 @@
     <Project Path="tests/Imaging.Tests/Imaging.Tests.csproj" />
     <Project Path="tests/Layout.Tests/Layout.Tests.csproj" />
     <Project Path="tests/Rendering.SnapshotTests/Rendering.SnapshotTests.csproj" />
+    <Project Path="tests/Roster.Tests/Roster.Tests.csproj" />
     <Project Path="tests/Widgets.Tests/Widgets.Tests.csproj" />
   </Folder>
 </Solution>

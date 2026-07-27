@@ -39,6 +39,14 @@
     <PackageVersion Include="Velopack" Version="1.2.0" />
   </ItemGroup>
 
+  <!-- Pinned at M12. The owner's call (PLAN.md §1) is to take this dependency rather than hand-roll
+       OOXML: pure managed, no native assets, identical behaviour on the four RIDs. It pulls
+       DocumentFormat.OpenXml and SixLabors.Fonts transitively — knowingly accepted, measured against
+       §9's self-contained budget in docs/M12-spec.md §1, and confined to TrestleBoard.Roster. -->
+  <ItemGroup>
+    <PackageVersion Include="ClosedXML" Version="0.105.1" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
