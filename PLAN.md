@@ -475,6 +475,12 @@ the user can see and puts the whole headless suite at risk. The action catalog i
 `CommunityToolkit.Mvvm` stays unused and its reference is removed (see §1).
 
 **Post-milestone:** `/graphify . --update`; ingest the M11 decisions into llm-wiki.
+**Post-milestone status (2026-07-27):** done. graphify updated to 3298 nodes / 7069 edges; as at M10
+the incremental pass was **AST-only**, so the changed docs and the 33 baseline images stay unstamped
+in the manifest and are still queued for the next semantic run. llm-wiki has `m11-decisions`, with
+`carry-forward-workflow` updated — the "what's next" card is the first surface that says out loud
+what a carried-forward issue still needs. `/wiki:lint` not run: the cadence is even-numbered
+milestones, so it falls to M12.
 **Agents:** **Opus** for the action model, panel and keyboard dispatch — this is the risky one, touching
 every menu item, the dispatcher and two constraining tests; **Sonnet** for the menu restructure and
 toolbar trim; **cavecrew-reviewer (Sonnet)**.
