@@ -464,6 +464,60 @@ nothing at all over the canvas.
 **What you should see:** the panel folding away to a single "What can I do? ▸" button, rather than
 squeezing the page into a strip. Widen it again and the panel comes back.
 
+## 12. The address book, keyboard-only (M12)
+
+> PLAN.md §11-M12's acceptance ends *"all of it completable keyboard-only"*. Every screen is built
+> from list boxes, combo boxes and buttons with nothing to drag, and the headless suite drives the
+> import session end to end — but "operable" and "usable without a mouse by somebody who is not the
+> person who built it" are different claims, and only this section can settle the second.
+>
+> **Do not run this section with the real lodge roster loaded.** Import the fictional
+> `tests/Roster.Tests/Fixtures/members-100.csv` into a copy of the app first, or run it on a machine
+> whose address book is empty. Everything you write down here may be read by somebody else
+> (PLAN.md §0 rule 5).
+
+**12.1** With no mouse, press **Alt** and then **L** to open the People menu.
+**What you should hear:** "People menu", then its five items. Note whether "Save as a spreadsheet"
+is announced as dimmed, and whether the reason — "Your address book is empty, so there is nothing to
+save yet…" — is spoken with it.
+
+**12.2** Press **Ctrl+Shift+R**.
+**What you should see and hear:** the People window opening with the focus already in the search box,
+and the box announced as "Search for a person by name".
+
+**12.3** Type three letters of a surname.
+**What you should hear:** the result count spoken without you moving focus — "7 people match
+"pla"." This is a live region, and it is the one thing in this window that must be validated by ear.
+If you hear nothing until you Tab to the list, write down exactly that.
+
+**12.4** Tab to the list and move through it with the arrow keys.
+**What you should hear:** each row as one phrase — "A. Placeholder — Worshipful Master — 7/4" —
+rather than a name alone.
+
+**12.5** Tab on into the form, change the telephone number, and press the **Save this person**
+button with Space.
+**What you should hear:** "A. Placeholder was saved." Write down whether you heard it without
+hunting for it.
+
+**12.6** Press the **Remove this person…** button.
+**What you should hear:** the confirm, including the sentence "Newsletters you already made will not
+change." Choose **No, keep them** with the keyboard and confirm nothing was removed.
+
+**12.7** Close the window, then use People ▸ **Import from a file…** and walk the whole flow with
+the keyboard alone, using the fictional 100-person fixture. At each screen, write down whether the
+heading was spoken when it changed (it is a live region) and whether Tab reached every control.
+The mapping screen is the one to watch: seven questions, each a combo box, each item reading as
+"C — Phone (555-0101, 555-0102)".
+
+**12.8** On the review screen, read what it says aloud into your notes. It should say in plain
+counts what will happen, and the button should say **Add these people** rather than OK.
+
+**12.9** Finish the import. **What you should hear:** "Your address book now has 100 people."
+
+**12.10** Use People ▸ **Undo the last change**. Note whether the menu item named what it would take
+back before you pressed it ("Undo Import people from a file"), and whether the address book went
+back to what it was.
+
 ---
 
 ## Results table
@@ -529,6 +583,16 @@ step numbers from above so the full "what you should hear" text doesn't need to 
 | 11.7 | | | | |
 | 11.8 | | | | |
 | 11.9 | | | | |
+| 12.1 | | | | |
+| 12.2 | | | | |
+| 12.3 | | | | |
+| 12.4 | | | | |
+| 12.5 | | | | |
+| 12.6 | | | | |
+| 12.7 | | | | |
+| 12.8 | | | | |
+| 12.9 | | | | |
+| 12.10 | | | | |
 
 Add rows for anything else you notice along the way, even if it isn't in a numbered step.
 
