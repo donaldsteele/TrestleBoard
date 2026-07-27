@@ -75,6 +75,10 @@ public sealed class CommandTests
             FontFamily = "Source Sans 3",
             SizePt = 10f,
         }),
+        // M14's sibling sweep: the fixture has "body" AND "body-bold" at the same family and
+        // size, so both of these genuinely touch more than one style definition.
+        ["SetCharacterStyleFont.Family"] = _ => new SetCharacterStyleFontCommand("body", "Lora", null),
+        ["SetCharacterStyleFont.SizeOnly"] = _ => new SetCharacterStyleFontCommand("body", null, 14f),
     };
 
     [Theory]
