@@ -9,6 +9,7 @@
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="avares://TrestleBoard.App/Theme/Palette.axaml" />
+        <ResourceInclude Source="avares://TrestleBoard.App/Theme/Icons.axaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>

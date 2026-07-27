@@ -1,0 +1,89 @@
+<!--
+  THE ICON SET (PLAN.md §11 M16). Twenty-four vector glyphs, and no more than twenty-four.
+
+  Three rules, and each of them is checked by IconTests rather than remembered:
+
+  1. EVERY GEOMETRY IS A CLOSED FILL ON A 0-24 GRID, NEVER A STROKE. Strokes thin out under the
+     Viewbox scaling the chrome does at 100-200% UI scale, and they hint badly at small sizes. The
+     grid is chosen partly because it makes "does this icon fit its box" a Bounds check.
+
+  2. AN ICON NEVER APPEARS WITHOUT ITS LABEL (PLAN.md §6). Nothing here is expected to be
+     self-explanatory to a seventy-year-old who has used a computer for email and nothing else,
+     which is why the milestone that adds icons also adds the test that forbids an icon-only button.
+
+  3. NO GEOMETRY IS UNREFERENCED. Actions/ActionIcons.cs maps action ids and widget IconKeys to
+     these keys, and the test walks the relationship in both directions — the house style set by
+     DocsTests.EveryCommittedImageIsReferenced.
+
+  Twenty-four is the eight toolbar commands, the six widget keys — exactly the six values
+  IWidgetDefinition.IconKey has returned since M7, so one dictionary closes M7's deferral and serves
+  the Insert group at the same time — and ten primary or item-level actions. THE MAP IS DELIBERATELY
+  PARTIAL AND THE OMISSIONS ARE A DESIGN RECORD, NOT A BACKLOG: see the reasons listed one by one in
+  Actions/ActionIcons.cs. An action with no entry renders text-only, exactly as it did before M16.
+
+  Several glyphs use the F0 (even-odd) fill rule to carry a counter — the hole in a picture frame,
+  the bowl of an A. That is still a fill; it is not a stroke drawn as an outline.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ==== The eight toolbar commands ==== -->
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.open-folder">M2,5 L10,5 L12,8 L22,8 L22,20 L2,20 Z</StreamGeometry>
+
+  <!-- The arrow ↶ used to be a Unicode character rendered in whatever fallback font happened to
+       carry it, which is also why the wizard's footer buttons never shared a baseline. -->
+  <StreamGeometry x:Key="TrestleBoard.Icon.undo">M4,12 L11,5 L11,9 C16,9 20,12 20,20 C18,15 15,13 11,13 L11,19 Z</StreamGeometry>
+  <StreamGeometry x:Key="TrestleBoard.Icon.redo">M20,12 L13,5 L13,9 C8,9 4,12 4,20 C6,15 9,13 13,13 L13,19 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.chevron-left">M15,3 L18,6 L12,12 L18,18 L15,21 L6,12 Z</StreamGeometry>
+  <StreamGeometry x:Key="TrestleBoard.Icon.chevron-right">M9,3 L6,6 L12,12 L6,18 L9,21 L18,12 Z</StreamGeometry>
+
+  <!-- "− Smaller" and "+ Bigger" on the toolbar. The catalog's titles keep their literal − and +
+       characters: the toolbar labels are hard-coded separately and nothing binds the two. -->
+  <StreamGeometry x:Key="TrestleBoard.Icon.minus-circle">F0 M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 Z M6,10 L18,10 L18,14 L6,14 Z</StreamGeometry>
+  <StreamGeometry x:Key="TrestleBoard.Icon.plus-circle">F0 M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 Z M10,6 L14,6 L14,10 L18,10 L18,14 L14,14 L14,18 L10,18 L10,14 L6,14 L6,10 L10,10 Z</StreamGeometry>
+
+  <!-- Two corner brackets: "make the whole thing fit inside the window". -->
+  <StreamGeometry x:Key="TrestleBoard.Icon.fit-page">M3,3 L11,3 L11,6 L6,6 L6,11 L3,11 Z M21,21 L13,21 L13,18 L18,18 L18,13 L21,13 Z</StreamGeometry>
+
+  <!-- ==== The six widget keys ==== -->
+  <!-- These keys are EXACTLY the six values IWidgetDefinition.IconKey returns. docs/M7-spec.md
+       deferred drawing them to "M9 chrome work"; M9 shipped without them and so did M10-M15. -->
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.officers">M2,4 L22,4 L22,8 L2,8 Z M2,10 L10,10 L10,20 L2,20 Z M12,10 L22,10 L22,20 L12,20 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.birthdays">M4,14 L20,14 L20,21 L4,21 Z M6,8 L8,8 L8,13 L6,13 Z M11,8 L13,8 L13,13 L11,13 Z M16,8 L18,8 L18,13 L16,13 Z M6,3 L8,3 L8,7 L6,7 Z M11,3 L13,3 L13,7 L11,7 Z M16,3 L18,3 L18,7 L16,7 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.committees">M8,3 A3.2,3.2 0 1 0 8,9.4 A3.2,3.2 0 1 0 8,3 Z M17,4 A2.6,2.6 0 1 0 17,9.2 A2.6,2.6 0 1 0 17,4 Z M2,21 C2,15.5 4.7,11.5 8,11.5 C11.3,11.5 14,15.5 14,21 Z M15.5,11.5 C18.6,11.5 22,15 22,21 L16,21 C16,16.5 15.2,13.6 13.6,11.9 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.district-calendar">M6,2 L8,2 L8,6 L6,6 Z M16,2 L18,2 L18,6 L16,6 Z M3,4 L21,4 L21,8 L3,8 Z M3,9 L21,9 L21,22 L3,22 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.announcement">M3,10 L11,10 L18,5 L18,19 L11,14 L3,14 Z M5,15 L9,15 L10,21 L6,21 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.cover-banner">M3,3 L21,3 L21,9 L3,9 Z M6,12 L18,12 L18,14 L6,14 Z M8,17 L16,17 L16,19 L8,19 Z</StreamGeometry>
+
+  <!-- ==== Ten primary or item-level actions ==== -->
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.export-pdf">M5,2 L14,2 L14,8 L20,8 L20,13 L5,13 Z M15,2.4 L19.6,7 L15,7 Z M11,14 L13,14 L13,18 L16,18 L12,22 L8,18 L11,18 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.bold">F0 M6,4 L14,4 C17.2,4 19.2,6 19.2,8.7 C19.2,10.5 18.3,11.5 17,12 C18.8,12.5 20,13.9 20,15.9 C20,18.6 17.8,20 14.6,20 L6,20 Z M9.6,7 L9.6,10.6 L13.6,10.6 C14.9,10.6 15.6,10 15.6,8.8 C15.6,7.6 14.9,7 13.6,7 Z M9.6,13.4 L9.6,17 L14,17 C15.4,17 16.2,16.3 16.2,15.2 C16.2,14.1 15.4,13.4 14,13.4 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.italic">M9,4 L20,4 L20,7 L16,7 L12,17 L15,17 L15,20 L4,20 L4,17 L8,17 L12,7 L9,7 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.font">F0 M13,3 L21,21 L17,21 L15.6,17.6 L10.4,17.6 L9,21 L5,21 Z M11.6,14.2 L14.4,14.2 L13,10.6 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.text-frame">F0 M3,4 L21,4 L21,20 L3,20 Z M5,6 L19,6 L19,18 L5,18 Z M7,8 L17,8 L17,10 L7,10 Z M7,12 L17,12 L17,14 L7,14 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.photo">F0 M3,5 L21,5 L21,19 L3,19 Z M5,7 L19,7 L19,17 L5,17 Z M6,16.5 L10,10 L13,14 L15,11.6 L18,16.5 Z M15.4,8 A1.6,1.6 0 1 0 15.4,11.2 A1.6,1.6 0 1 0 15.4,8 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.edit">M3,17 L14,6 L18,10 L7,21 L3,21 Z M15,5 L17,3 L21,7 L19,9 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.wand">M3,19 L14,8 L16,10 L5,21 Z M17,3 L18.3,5.7 L21,7 L18.3,8.3 L17,11 L15.7,8.3 L13,7 L15.7,5.7 Z</StreamGeometry>
+
+  <!-- Text flowing round a block, which is the one thing "wrap" has to say. -->
+  <StreamGeometry x:Key="TrestleBoard.Icon.wrap">M13,4 L21,4 L21,12 L13,12 Z M3,4 L11,4 L11,6 L3,6 Z M3,8 L11,8 L11,10 L3,10 Z M3,14 L21,14 L21,16 L3,16 Z M3,18 L21,18 L21,20 L3,20 Z</StreamGeometry>
+
+  <StreamGeometry x:Key="TrestleBoard.Icon.people">F0 M4,2 L20,2 L20,22 L4,22 Z M6,4 L18,4 L18,20 L6,20 Z M12,6.6 A2.7,2.7 0 1 0 12,12 A2.7,2.7 0 1 0 12,6.6 Z M7.4,18 C7.4,14.6 9.6,13.2 12,13.2 C14.4,13.2 16.6,14.6 16.6,18 Z</StreamGeometry>
+
+</ResourceDictionary>

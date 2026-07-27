@@ -360,4 +360,44 @@ public sealed class ActionCatalogTests
         Assert.Contains(ActionId.InsertOfficers, ids);
         Assert.Contains(ActionId.AddTextFrame, ids);
     }
+
+    /// <summary>
+    /// <b>No panel action's title outgrows the panel</b> (PLAN.md §12 item 13).
+    ///
+    /// <para><b>This is a character count, and it is deliberately a proxy.</b> The real question is
+    /// how wide the shaped text is at 16pt inside a 360px panel, and answering it properly would
+    /// couple this project — which references the BCL and nothing else — to the font stack, the
+    /// shaper and the App layer's panel metrics. A ceiling on characters is cheap, is checkable
+    /// here, and fails in the same direction as the real constraint.</para>
+    ///
+    /// <para>The ceiling is two comfortable lines. About 37 characters of 16pt text fit across the
+    /// panel once the padding, the glyph box and the button's own padding are taken out, so 44 is a
+    /// title that wraps to a second line and stops — not one that runs to a third. Wrapping is not
+    /// the failure this guards against: <b>the M15 fix that made panel buttons wrap was the right
+    /// fix</b>, and M16 only moved the shortcut onto its own line so that wrapping became rare. What
+    /// this guards against is a title nobody measured.</para>
+    ///
+    /// <para>The longest today is "Bring in birthdays from the address book" at 40, which names both
+    /// ends of an operation whose whole difficulty is that people do not expect it to touch the
+    /// address book. It is long on purpose.</para>
+    /// </summary>
+    [Fact]
+    public void NoPanelTitleOutgrowsThePanel()
+    {
+        const int ceiling = 44;
+
+        List<string> tooLong = ActionCatalog.All
+            .Where(a => a.Title.Length > ceiling)
+            .Select(a => $"{a.Id} ({a.Title.Length}): {a.Title}")
+            .ToList();
+
+        Assert.True(
+            tooLong.Count == 0,
+            $"titles longer than {ceiling} characters: " + string.Join("; ", tooLong));
+
+        // Guard against the ceiling being raised until it stops meaning anything: if the longest
+        // title in the catalog is nowhere near it, the check has quietly stopped checking.
+        int longest = ActionCatalog.All.Max(a => a.Title.Length);
+        Assert.True(longest > ceiling - 12, $"the longest title is only {longest} characters — is this ceiling still real?");
+    }
 }

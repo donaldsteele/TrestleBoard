@@ -58,7 +58,16 @@ public enum ActionGroup
 /// <param name="ShortDescription">One sentence saying what will happen; shown under the title in the panel.</param>
 /// <param name="Group">Which part of the panel and which submenu it belongs to.</param>
 /// <param name="DisplayGesture">The shortcut as the user would type it, or null if it has none.</param>
-/// <param name="IsPrimary">Primary actions sort first in their group and are drawn larger.</param>
+/// <param name="IsPrimary">
+/// The one offer in this group most people came for. From M16 the panel draws a primary offer with
+/// the accent fill, a taller minimum and a gold left bar — three signals, so colour is never the
+/// only one (PLAN.md §6). Ten actions have been marked this way since M11 and nothing read the flag
+/// until then.
+/// <para>This field used to promise that primary actions "sort first in their group" as well.
+/// <b>That half is deliberately not implemented and the promise is withdrawn rather than left
+/// lying:</b> declaration order in <see cref="ActionCatalog"/> already agrees with it, so a sort
+/// would be a near-no-op carrying real risk of reordering a group a test depends on.</para>
+/// </param>
 public sealed record EditorAction(
     string Id,
     string Title,

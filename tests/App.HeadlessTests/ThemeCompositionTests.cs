@@ -251,6 +251,13 @@ public sealed class ThemeCompositionTests
 
                     foreach ((string windowName, Window window) in AccessibilityTests.EveryWindow())
                     {
+                        // Set on the window as well as the application: a headless window that is
+                        // never shown does not necessarily pick the application's variant up, and a
+                        // walk that silently measured Light three times would prove nothing. The
+                        // assertion below is what stops that being a silent condition.
+                        window.RequestedThemeVariant = variant;
+                        Assert.Equal(variant, window.ActualThemeVariant);
+
                         window.Measure(new Size(1280, 900));
                         window.Arrange(new Rect(0, 0, 1280, 900));
 

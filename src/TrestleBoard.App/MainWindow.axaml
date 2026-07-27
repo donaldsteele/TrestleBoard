@@ -240,24 +240,24 @@
         <Button x:Name="OpenButton" FontSize="16" MinHeight="44" Tag="newsletter.open" Click="OnActionClicked"
                 AutomationProperties.Name="Open a newsletter">Open</Button>
         <Button x:Name="UndoButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="edit.undo" Click="OnActionClicked"
-                AutomationProperties.Name="Undo">↶ Undo</Button>
+                AutomationProperties.Name="Undo">Undo</Button>
         <Button x:Name="RedoButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="edit.redo" Click="OnActionClicked"
-                AutomationProperties.Name="Redo">↷ Redo</Button>
+                AutomationProperties.Name="Redo">Redo</Button>
         <Separator Width="12" Background="Transparent" />
         <Button x:Name="PrevPageButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="page.previous" Click="OnActionClicked"
-                AutomationProperties.Name="Previous page">◀ Back</Button>
+                AutomationProperties.Name="Previous page">Back</Button>
         <TextBlock x:Name="PageLabel" FontSize="16" VerticalAlignment="Center" MinWidth="110"
                    TextAlignment="Center" Text="No newsletter"
                    AutomationProperties.Name="Current page" AutomationProperties.LiveSetting="Polite" />
         <Button x:Name="NextPageButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="page.next" Click="OnActionClicked"
-                AutomationProperties.Name="Next page">Next ▶</Button>
+                AutomationProperties.Name="Next page">Next</Button>
         <Button x:Name="ZoomOutButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="view.zoomOut" Click="OnActionClicked"
-                AutomationProperties.Name="Zoom out">− Smaller</Button>
+                AutomationProperties.Name="Zoom out">Smaller</Button>
         <TextBlock x:Name="ZoomLabel" FontSize="16" VerticalAlignment="Center" MinWidth="64"
                    TextAlignment="Center" Text="100%"
                    AutomationProperties.Name="Current zoom" AutomationProperties.LiveSetting="Polite" />
         <Button x:Name="ZoomInButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="view.zoomIn" Click="OnActionClicked"
-                AutomationProperties.Name="Zoom in">+ Bigger</Button>
+                AutomationProperties.Name="Zoom in">Bigger</Button>
         <Button x:Name="FitButton" FontSize="16" MinHeight="44" Tag="view.fitPage" Click="OnActionClicked"
                 AutomationProperties.Name="Fit the whole page in the window">Fit page</Button>
       </StackPanel>

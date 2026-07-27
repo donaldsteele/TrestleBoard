@@ -11,6 +11,7 @@ using TrestleBoard.App.Canvas;
 using TrestleBoard.App.Dialogs;
 using TrestleBoard.App.Settings;
 using TrestleBoard.App.Startup;
+using TrestleBoard.App.Theme;
 using TrestleBoard.App.Updates;
 using TrestleBoard.Core.Commands;
 using TrestleBoard.Core.Container;
@@ -51,8 +52,17 @@ public partial class MainWindow : Window
 {
     private static readonly double[] ZoomSteps = [0.5, 0.65, 0.8, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0];
 
-    /// <summary>Below this much window width the panel folds away rather than squeezing the page out.</summary>
-    private const double PanelFoldWidth = 900d;
+    /// <summary>
+    /// Below this much window width the panel folds away rather than squeezing the page out.
+    ///
+    /// <para><b>Derived from the panel width, not written beside it.</b> Until M16 this was a
+    /// hard-coded 900 sitting next to a hard-coded 320, and widening one without the other would
+    /// have changed the fold behaviour §11.9 of <c>docs/accessibility-test-script.md</c> tests by
+    /// hand without anybody deciding to change it. The rule the original number encoded is "fold
+    /// when the panel would take more than about a third of the window", and that is what this
+    /// expression says.</para>
+    /// </summary>
+    private const double PanelFoldWidth = ActionPanel.PanelWidth * 2.5;
 
     /// <summary>
     /// The app is the one place where "the newsletter must still open" outranks "fail loudly", so
@@ -97,6 +107,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        DressToolbar();
         _actions = new ActionRunner(this);
         ActionPanelHost.Content = _panel;
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
@@ -1603,6 +1614,40 @@ public partial class MainWindow : Window
         _settings.Save();
         ApplySettings(_settings);
         Announce("Saved. You can change this again from View, How things look.");
+    }
+
+    /// <summary>
+    /// Gives every toolbar button its glyph (PLAN.md §11 M16).
+    ///
+    /// <para>Done here rather than in the markup so that the label a button shows and the glyph it
+    /// carries cannot disagree: the label stays in <c>MainWindow.axaml</c> where a reader expects it,
+    /// and the glyph is looked up from the same <c>Tag</c> the click handler dispatches on. A button
+    /// whose action has no entry in <see cref="ActionIcons"/> is left exactly as the markup wrote
+    /// it — text only, which is what most of the application still is.</para>
+    ///
+    /// <para><b>No toolbar button is added or removed.</b> M11 trimmed the toolbar from eighteen
+    /// controls to nine and M14 recorded that it must not grow back. What changes is that
+    /// <c>↶ ↷ ◀ ▶ − +</c> stop being Unicode characters rendered in whatever fallback font happens
+    /// to carry them — which is also why those six buttons never shared a baseline with the other
+    /// three — and become geometry that scales with the chrome. Every
+    /// <c>AutomationProperties.Name</c> is untouched, so nothing a screen reader says changes.</para>
+    /// </summary>
+    private void DressToolbar()
+    {
+        foreach (Button button in ToolbarScale.GetLogicalDescendants().OfType<Button>())
+        {
+            if (button is not { Tag: string actionId, Content: string label })
+            {
+                continue;
+            }
+
+            if (ActionIcons.ForAction(actionId) is not { } glyph)
+            {
+                continue;
+            }
+
+            button.Content = new IconText(glyph, label, labelSize: 16);
+        }
     }
 
     /// <summary>
