@@ -113,3 +113,50 @@ in a document does not prevent that; not being able to see the file does.
 
 The default path is unchanged, so an existing installation finds its settings and its recovery
 snapshots exactly where M9 and M10 left them.
+
+---
+
+## 4. Reading the file the committee already keeps
+
+Everything the import flow does after this point works on a `TableWorkbook` — sheets of plain text,
+and nothing that knows what a member is. That is what makes the acceptance criterion *"import the
+same list as CSV and as XLSX and get identical results"* a property of the design rather than a
+coincidence: after the reader there is only one problem left.
+
+PLAN.md lists the hazards; each is a committed fixture, and each is something a real file does:
+
+| Hazard | Fixture | What would happen without it |
+|---|---|---|
+| UTF-8 BOM | `members-hazards.csv` | The first header reads `﻿Name` and matches nothing |
+| CRLF, embedded newlines, doubled quotes, quoted commas | same | Rows split in the wrong places |
+| Excel's `="555-0100"` idiom | same | The phone number is stored with its equals sign and quotes |
+| Semicolon delimiter (European Excel) | `members-semicolon.csv` | The whole file reads as one column |
+| No header row, no final newline | `members-headerless.csv` | The last person is dropped |
+| **Real date cells** | `excel-dates.xlsx` | A birthday is stored as `45123` |
+| Old binary `.xls` | `old-format.xls` | An obscure failure instead of "save it as .xlsx" |
+| Password-protected `.xlsx` | `password-protected.xlsx` | The same obscure failure |
+
+The last two are the same eight bytes — both are OLE compound files — and get **different
+sentences**, because the user's next action differs.
+
+**The date-serial hazard is the one PLAN.md singles out, and it is worth being exact about.** A
+spreadsheet's Birthday column is usually a real date cell: it stores days since 1899-12-30 and merely
+*shows* `7/4`. Reading the displayed text would make the import depend on the reader's locale;
+reading the number would print `45123` in the newsletter. So a date cell is converted once, in the
+reader, to an ISO string, and everything downstream sees text. `FieldValues.TryReadBirthday` then
+also accepts a bare serial, because that is what lands in a CSV exported from such a column.
+
+Excel's 1900 leap-year mistake is handled rather than ignored: serial 60 is a day that never
+existed, so serials below it use an epoch one day later. The test table includes 59, 60 and 61.
+
+**The XLSX fixtures are produced by real tools**, per PLAN.md: `members-100.xlsx` by LibreOffice,
+and `excel-dates.xlsx` hand-written as OOXML in the shape Excel writes (a shared-string table and
+numeric cells carrying a date number format). Round-tripping our own writer would prove nothing
+about the reader. *Open, honestly:* no fixture has yet been produced by Excel itself — no machine
+here has it — so "Excel *and* LibreOffice" is half met, with the hand-written OOXML standing in for
+the other half.
+
+**A phone number is kept exactly as it was written.** Reformatting somebody's phone number is not
+the app's business, and a number that reads differently from the sheet it came from is a number the
+user stops trusting. The one exception is scientific notation, which is a spreadsheet's damage
+rather than the user's writing.
