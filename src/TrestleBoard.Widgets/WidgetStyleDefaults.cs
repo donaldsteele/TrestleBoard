@@ -30,9 +30,9 @@ public sealed record WidgetStyleDefaults(
         Heading: new CharacterStyle(BundledFonts.SansFamily, FontWeight.Bold, FontStyleSlant.Normal, 12f, InkArgb),
         Body: new CharacterStyle(BundledFonts.BodyFamily, FontWeight.Regular, FontStyleSlant.Normal, 10f, InkArgb),
         Emphasis: new CharacterStyle(BundledFonts.BodyFamily, FontWeight.Bold, FontStyleSlant.Normal, 10f, InkArgb),
-        // Serif italic, not sans italic: BundledFonts ships no italic Source Sans face, and a
-        // bundled-fonts-only engine has no system fallback to rescue it (PLAN.md §1).
-        Small: new CharacterStyle(BundledFonts.BodyFamily, FontWeight.Regular, FontStyleSlant.Italic, 8.5f, InkArgb),
+        // Sans italic since M14 bundled the Source Sans 3 italics. Small sits under headings and
+        // beside table rows, so it belongs to the sans family the headings use, not the serif body.
+        Small: new CharacterStyle(BundledFonts.SansFamily, FontWeight.Regular, FontStyleSlant.Italic, 8.5f, InkArgb),
         LineSpacing: 1.15f,
         RuleArgb: 0xFF8A8A8A,
         RuleWidthPt: 0.5f,

@@ -752,9 +752,10 @@ container, which is Ubuntu 24.04 exactly as `ubuntu-latest` is — regenerating 
 macOS baselines come from `.github/workflows/bake-baselines.yml`, a `workflow_dispatch`-only job that
 regenerates on a runner and uploads them for a maintainer to promote. It commits nothing itself.
 
-- [!] `WidgetStyleDefaults.Small` → Source Sans 3 Italic — implemented and reverted; it moves
-  `widgets-gallery-page1`, `issue-page3` and `issue-page4`. Two-line change plus
-  `TRESTLEBOARD_UPDATE_BASELINES=1` on all three operating systems.
+- [x] `WidgetStyleDefaults.Small` → Source Sans 3 Italic — **done 2026-07-27.** Two lines of code
+  and the re-bake of the three baselines it moves — `widgets-gallery-page1`, `issue-page3`,
+  `issue-page4` — on all three operating systems. Each OS moved exactly those three and nothing
+  else, which is the confirmation that the change is as contained as M14 predicted.
 - [x] `font-catalog-sampler` Linux and macOS baselines — **done 2026-07-27.** The Windows one was
   committed at M14, the Linux one is baked in the container, and the macOS one was promoted from a
   bake run. Both bakes reproduced every previously committed baseline for their OS byte-for-byte,

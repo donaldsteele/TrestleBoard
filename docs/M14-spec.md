@@ -247,8 +247,8 @@ thing to cut, and it stays cut.
 `SnapshotInfra.AlignmentSampler` is untouched. A **new** `font-catalog-sampler` fixture renders one
 line per family at 12pt.
 
-**Deviation from the plan, and the one place this milestone is incomplete.** The plan asked for
-three new baselines. Only the Windows one could be produced here — this machine is Windows, and
+**Deviation from the plan, since closed — see §15.** The plan asked for three new baselines. At the
+time only the Windows one could be produced here — this machine is Windows, and
 Skia rasterises glyphs through the platform scaler backend, so a Linux or macOS baseline has to be
 generated on Linux or macOS. Rather than commit a fixture that would fail CI on two of three
 runners, `FontCatalogSnapshotTests` puts the real guarantee in assertions that need no baseline and
@@ -260,6 +260,10 @@ therefore run everywhere:
 - `TheSamplerRendersEveryFamilyOnItsOwnLine` — 20 distinct families, not overset.
 - `FontCatalogSamplerMatchesBaseline` — compares where a baseline for this OS exists, and **skips
   with an explicit reason** where one does not.
+
+All three baselines exist as of 2026-07-27, so that last test now compares on every runner. The
+four assertions stay as they are: the three that need no baseline are the ones that keep working on
+a machine nobody has baked for yet, which is the situation any new OS starts in.
 
 `PdfParityTests` no longer hard-codes `Assert.Contains("SourceSerif4", …)`. It derives the expected
 families and the expected row count from the fixture's own faces, which keeps the original intent,
@@ -281,13 +285,11 @@ strictly worse by adding a second place a family name can live.
 
 ## 14. Open items
 
-1. **`WidgetStyleDefaults.Small` is still serif italic.** The plan asked for it to move to Source
-   Sans 3 Italic now that the face exists, as its own final commit whose entire diff is the re-bake.
-   It was implemented and reverted: the change moves three snapshot baselines
-   (`widgets-gallery-page1`, `issue-page3`, `issue-page4`) and only the **Windows** third of those
-   could be re-baked here. Committing it would have broken CI on ubuntu and macos. It is a two-line
-   change plus `TRESTLEBOARD_UPDATE_BASELINES=1` on each of the three operating systems, and it is
-   recorded in PLAN.md as `- [!]`.
+1. ~~**`WidgetStyleDefaults.Small` is still serif italic.**~~ **Closed 2026-07-27.** It is sans
+   italic now, in its own commit whose entire diff beyond two lines is the re-bake of
+   `widgets-gallery-page1`, `issue-page3` and `issue-page4` — Windows locally, Linux in the
+   container, macOS from a bake run (§15). Each operating system moved exactly those three files
+   and nothing else.
 2. ~~**`font-catalog-sampler` has no Linux or macOS baseline.**~~ **Closed 2026-07-27** by §15: the
    Linux baseline was baked in the container and the macOS one promoted from a bake run. All three
    exist, so `FontCatalogSamplerMatchesBaseline` compares everywhere and skips nowhere. The per-face
