@@ -408,6 +408,64 @@ recovery dialog appeared and did something wrong, and that is not what's being o
 
 ---
 
+## 11. The panel of things you can do, at 200% and in High Contrast (M11)
+
+> **Do this whole section twice**: once with the app as it comes, and once after setting
+> View ▸ How things look… to **High contrast** and the size to **200%**. PLAN.md §11-M11 names
+> two things here as the ones that must be validated by ear rather than by test — the panel
+> heading as a live region, and greyed menu items that carry a spoken reason — so please be
+> especially exact about what you hear in 11.3 and 11.6.
+
+**11.1** Open the sample newsletter (File ▸ Open the sample newsletter). Look at the right-hand
+side of the window.
+**What you should see:** a panel headed "Nothing is selected", listing what this newsletter still
+needs ("What's next") and the ways of putting something new on the page.
+
+**11.2** Press **F6** repeatedly.
+**What you should hear:** the focus moving between the page, the panel, the toolbar and the menus,
+and the status line saying "Moved to the panel of things you can do", and so on. Shift+F6 goes the
+other way. Write down whether the screen reader announces the move at all, or only the control
+that received focus.
+
+**11.3** Put the focus on the page and press **Tab** until a photo is selected.
+**What you should hear:** the panel's heading changing to **"A photo is selected"**, spoken
+without you having to go looking for it. This is the live region. If you hear nothing until you
+Tab into the panel, that is the finding — write down exactly that.
+
+**11.4** With the photo still selected, move through the panel with Tab.
+**What you should hear:** "Fix this picture", "Adjust the picture", "Wrap text around this",
+"Delete this", and the front-and-back actions. **You should not hear the word "dimmed" or
+"unavailable" anywhere in this panel.** If you do, that is a failure — nothing in the panel is
+allowed to be greyed.
+
+**11.5** Select a text frame instead of the photo.
+**What you should hear:** the heading becomes "A text frame is selected", and the picture actions
+are **gone from the panel entirely** rather than dimmed. That absence is deliberate: the panel is
+headed with what is selected, so an action that is missing reads as "not about text frames".
+
+**11.6** Now open the **This item** menu with nothing selected on the page (press Escape on the
+canvas first).
+**What you should hear:** several items announced as dimmed or unavailable — that part is normal
+and deliberate in a menu. What is being tested is whether your screen reader also reads the
+**reason**, which is attached to each item as help text, for example "This needs a picture. Choose
+one on the page first." Write down verbatim whether the reason is spoken, and whether you had to
+do anything extra to hear it (NVDA: object navigation, or the "report object description" key).
+
+**11.7** With nothing selected, press **Ctrl+Shift+F** (Fix this picture).
+**What you should hear:** the status line saying "This needs a picture. Choose one on the page
+first." Nothing should happen to the newsletter. Silence here is a failure.
+
+**11.8** Put the focus on the canvas, select any block, and press the **Applications key** (or
+Shift+F10).
+**What you should hear:** a menu of the things you can do to that block. Before M11 this key did
+nothing at all over the canvas.
+
+**11.9** Make the window narrower than about 900 pixels wide.
+**What you should see:** the panel folding away to a single "What can I do? ▸" button, rather than
+squeezing the page into a strip. Widen it again and the panel comes back.
+
+---
+
 ## Results table
 
 Copy this table (or the row shape) into a spreadsheet or a copy of this file as you go. Use the
@@ -462,6 +520,15 @@ step numbers from above so the full "what you should hear" text doesn't need to 
 | 9.4 | | | | |
 | 10.1 | | | | |
 | 10.2 | | | | mark "Not implemented" — see Finding 3 |
+| 11.1 | | | | |
+| 11.2 | | | | |
+| 11.3 | | | | the panel heading as a live region — PLAN.md §11-M11 flags this as needing real-screen-reader validation |
+| 11.4 | | | | |
+| 11.5 | | | | |
+| 11.6 | | | | greyed menu + spoken reason — the other flagged uncertainty |
+| 11.7 | | | | |
+| 11.8 | | | | |
+| 11.9 | | | | |
 
 Add rows for anything else you notice along the way, even if it isn't in a numbered step.
 

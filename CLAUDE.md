@@ -64,6 +64,13 @@ screenshots are documentation, generated on demand on a maintainer's machine.
   SHA-256) and the family's licence file; static instances only, never variable fonts.
 - Accessibility is first-class (elderly users): 16pt+ UI fonts, full keyboard paths,
   screen-reader peers, plain-language dialogs. See PLAN.md §6 before touching UI.
+- **From M11, never write `IsEnabled =` in the shell.** Every command is declared once in
+  `TrestleBoard.Editing/Actions/ActionCatalog`, which answers "can I, and if not, why not, in
+  plain English"; `TrestleBoard.App/Actions/ActionRunner` answers "how". A new command means a new
+  `ActionId`, a catalog entry, an availability rule, a runner handler and (if it has a shortcut) a
+  `KeyboardMap` row — the tests fail otherwise. `ActionAvailability` refuses an empty reason at
+  construction: nothing in the app may become unavailable without saying why. Nothing in the action
+  panel is ever greyed; the menu bar greys but carries the reason in `AutomationProperties.HelpText`.
 
 ## Mandatory knowledge tooling (PLAN.md §10)
 

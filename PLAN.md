@@ -392,7 +392,17 @@ satisfy the linter.
 > a paste — the wizard is the entry path". That deferral is void as of M12; it is marked so in the M7
 > spec. Do not re-defer it.
 
-### M11 — Contextual action panel (M)
+### M11 — Contextual action panel (M) — **delivered 2026-07-27**
+**Status:** implemented; design, decisions and open items in `docs/M11-spec.md`. Everything ships —
+the action catalog in `TrestleBoard.Editing/Actions/`, the right-docked panel, the context flyout,
+F6 region cycling, the "This item" menu restructure, the toolbar trim from 18 controls to 9, the
+keyboard dispatch table, the "what's next" card, and the `CommunityToolkit.Mvvm` removal. Two
+things stay open there (§7), both needing a person rather than a machine: **the manual NVDA pass at
+200% UI scale in High Contrast**, and the **chrome-budget measurement** at that scale. One
+deliberate deviation is recorded in `docs/M11-spec.md` §3: the keyboard audit's replacement landed
+in the same commit as the switch's removal rather than one commit earlier, with
+`ControlShiftYFitsToContentsRatherThanRedoing` and `ControlYStillRedoes` kept verbatim as the
+guard the sequencing rule existed to provide.
 
 **Goal:** you click a thing, and what you can do to it is right there beside it — not hunted for in a menu.
 
