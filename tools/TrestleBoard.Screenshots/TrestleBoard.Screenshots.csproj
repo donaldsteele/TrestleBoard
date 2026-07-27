@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- M15's documentation screenshot harness. It is in the solution so CI COMPILES it and it cannot
+       rot, but CI never RUNS it: screenshots are documentation, not a regression gate (PLAN.md §11
+       M15). It is not shipped either — the second of exactly two non-shipped projects allowed to
+       reference Avalonia (PLAN.md §9, "the Avalonia rule, stated precisely"). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- `dotnet test TrestleBoard.slnx` must not try to run this exe as a test assembly. -->
+    <IsTestProject>false</IsTestProject>
+    <AssemblyName>TrestleBoard.Screenshots</AssemblyName>
+    <RootNamespace>TrestleBoard.Screenshots</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Headless" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TrestleBoard.App\TrestleBoard.App.csproj" />
+  </ItemGroup>
+
+  <!-- Linked, never copied. PLAN.md §0 rule 5 says a roster fixture exists in exactly ONE place in
+       the repository, and that place is tests/Roster.Tests/Fixtures. -->
+  <ItemGroup>
+    <None Include="..\..\tests\Roster.Tests\Fixtures\members-100.csv"
+          Link="Fixtures\members-100.csv" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

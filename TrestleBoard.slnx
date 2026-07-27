@@ -10,6 +10,10 @@
     <Project Path="src/TrestleBoard.Roster/TrestleBoard.Roster.csproj" />
     <Project Path="src/TrestleBoard.Widgets/TrestleBoard.Widgets.csproj" />
   </Folder>
+  <!-- Compiled by CI so it cannot rot; never run by CI (PLAN.md §11 M15). -->
+  <Folder Name="/tools/">
+    <Project Path="tools/TrestleBoard.Screenshots/TrestleBoard.Screenshots.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/App.HeadlessTests/App.HeadlessTests.csproj" />
     <Project Path="tests/Core.Tests/Core.Tests.csproj" />

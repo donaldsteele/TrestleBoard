@@ -1763,7 +1763,7 @@ public partial class MainWindow : Window
     /// is PLAN.md §5's projection rule applied to the second way people's names could have got into
     /// <c>TrestleBoard.Widgets</c>.
     /// </summary>
-    private IReadOnlyList<PersonSuggestion> PeopleForWizards() =>
+    internal IReadOnlyList<PersonSuggestion> PeopleForWizards() =>
         [.. Roster.Book.InListOrder().Select(m => new PersonSuggestion(m.Id, m.DisplayName, m.Phone))];
 
     /// <summary>
@@ -1799,7 +1799,7 @@ public partial class MainWindow : Window
     /// <paramref name="seeded"/> stands in for it exactly once, when a freshly inserted birthday
     /// list has been projected from the address book and the user is about to check it over (M13).
     /// </summary>
-    private WizardSession? CreateSession(string blockId, System.Text.Json.JsonElement? seeded = null)
+    internal WizardSession? CreateSession(string blockId, System.Text.Json.JsonElement? seeded = null)
     {
         if (_widgets?.GetWidgetType(blockId) is not { } typeId
             || _session is null
@@ -1925,7 +1925,7 @@ public partial class MainWindow : Window
         PageCanvas.BringIntoView(target);
     }
 
-    private void GoToPage(int index)
+    internal void GoToPage(int index)
     {
         if (_source is null || index < 0 || index >= _source.PageCount)
         {

@@ -40,5 +40,8 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="App.HeadlessTests" />
+    <!-- M15's documentation harness drives the real windows the same way the headless tests do.
+         Neither is shipped (PLAN.md §9, "the Avalonia rule, stated precisely"). -->
+    <InternalsVisibleTo Include="TrestleBoard.Screenshots" />
   </ItemGroup>
 </Project>

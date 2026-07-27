@@ -117,6 +117,7 @@ internal sealed class ActionRunner
             [ActionId.CheckForUpdates] = _ => window.CheckForUpdatesForTest(userAsked: true),
             [ActionId.About] = _ => window.ShowAboutAsync(),
             [ActionId.FontLicences] = _ => window.ShowFontLicencesAsync(),
+            [ActionId.ShowExampleIssue] = Sync(window.OpenIssueSample),
         };
 
         foreach ((string actionId, string widgetTypeId) in WidgetInserts)

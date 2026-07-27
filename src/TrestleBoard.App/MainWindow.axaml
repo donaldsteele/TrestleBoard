@@ -211,6 +211,11 @@
         <MenuItem Header="_Check for an update" Tag="help.checkForUpdates"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Check for an update" />
+        <!-- M15: the five-page example issue used to be a fixture only the tests could reach. -->
+        <MenuItem Header="_Show me an example newsletter" Tag="help.exampleIssue"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Show me an example newsletter" />
+        <Separator />
         <MenuItem Header="_Fonts and licences" Tag="help.fontLicences"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Fonts and licences" />

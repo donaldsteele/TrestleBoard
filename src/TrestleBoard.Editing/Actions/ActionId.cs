@@ -105,4 +105,11 @@ public static class ActionId
 
     /// <summary>M14: the OFL text for every bundled family, as the licence requires we ship it.</summary>
     public const string FontLicences = "help.fontLicences";
+
+    /// <summary>
+    /// M15: the five-page example issue. It has been the richest fixture in the repository since M8
+    /// and was reachable from no menu item at all — a whole finished newsletter nobody could look
+    /// at, which is exactly what someone opening this app for the first time wants to see.
+    /// </summary>
+    public const string ShowExampleIssue = "help.exampleIssue";
 }

@@ -189,6 +189,9 @@ public static class ActionCatalog
         new(ActionId.FontLicences, "Fonts and licences",
             "Lists the typefaces that came with TrestleBoard and the licence each one is used under.",
             ActionGroup.Help),
+        new(ActionId.ShowExampleIssue, "Show me an example newsletter",
+            "Opens a finished five-page newsletter you can look around in and change without saving.",
+            ActionGroup.Help),
     ];
 
     private static readonly Dictionary<string, EditorAction> ById =
@@ -219,7 +222,7 @@ public static class ActionCatalog
             ActionId.Open or ActionId.OpenSample or ActionId.NewFromTemplate or ActionId.Exit
                 or ActionId.Settings or ActionId.NextRegion or ActionId.PreviousRegion
                 or ActionId.ToggleActionPanel or ActionId.CheckForUpdates or ActionId.About
-                or ActionId.FontLicences
+                or ActionId.FontLicences or ActionId.ShowExampleIssue
                 or ActionId.ShowPeople or ActionId.ImportPeople =>
                 ActionAvailability.Available,
 
