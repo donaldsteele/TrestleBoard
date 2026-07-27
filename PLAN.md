@@ -194,6 +194,16 @@ IWidgetDefinition { TypeId, DisplayName, IconKey, DataType (POCO), WizardDefinit
   is a `− Smaller` / `+ Bigger` stepper on a fixed ladder, never a free-entry box. Changing a font or
   size announces its scope before it applies ("This changes every paragraph that uses Body text") and
   any resulting page-count change afterwards, through the status bar's polite live region.
+- **Colour is a token, never a literal (from M16).** Every chrome colour comes from a named
+  `TrestleBoard*` brush resolved per theme; a hard-coded brush is a bug, because it survives the High
+  Contrast swap and lands unreadable text on a black ground. Tokens are named for the **role** they
+  play, not the colour they hold — the accent is navy on a light ground and a pale tint on a dark
+  one, and no name that meant "navy" could do that. Contrast floors are 4.5:1 for text, 3:1 for
+  non-text boundaries, 7:1 in High Contrast, and each pair carries its measured ratio beside it. Two
+  rules bind absolutely: **colour is never the only signal** (the High Contrast overlay changes a
+  border wherever it changes a colour), and **an icon never appears without its label** — the
+  icon+text rule above, now with icons that actually exist. One measured trap is written into the
+  palette itself: the lodge gold is 2.4:1 on white and may never be used as text on a light surface.
 
 ---
 
@@ -1196,6 +1206,257 @@ from 5 long-standing self-loop edges. llm-wiki has `m15-decisions` plus one new 
 **Agents:** **Opus** for the harness spike and the privacy guard; **Sonnet** for the shot list and the
 README; **cavecrew-reviewer (Sonnet)**.
 
+---
+
+> **M16 was added 2026-07-27**, from the owner's review of the screenshots M15 committed: *"our UI is
+> starting to shape up but it still feels clunky and ugly"*, with two specifics — the side panel's
+> actions want grouping and labelling, and several panel buttons wrap their text. **M15's heading
+> above says "final milestone"; that was true when it was written and is not any more.** It is left
+> standing rather than edited, because M15 *was* the last of the milestones that build the
+> application, and M16 is the first that only changes how it looks.
+>
+> **The case is not taste, and it should not be argued as taste. High Contrast is broken today, and
+> `docs/images/high-contrast.png` shows it.** The toolbar, the status bar and the area around the
+> page all stay mid-grey when the theme is on, because those four sites bind
+> `SystemControlBackgroundChromeMediumLowBrush` and `#FF6B6B6B` and `HighContrastTheme.axaml`
+> overrides **neither** — its `Style Selector="Border"` sets `BorderBrush` alone. A black button on
+> `#6B6B6B` is **3.96:1** against §6's 7:1 requirement, so the overlay's own header claim that
+> "every accent below is checked against black at 7:1 or better" is false for about a third of the
+> window. That is a standing regression against §12 item 5, and fixing it is why this milestone
+> earns its place rather than merely improving on it.
+>
+> The rest of the evidence is equally concrete. `App.axaml` is eight lines with no resources at all;
+> the colour surface of the shipped app is one Fluent brush, one hard-coded grey, and five literal
+> `Brushes.*` values in dialogs — each of the five the same bug in miniature, a colour that survives
+> the theme swap. Three mechanisms are already in the tree waiting for this milestone and are
+> currently dead: the four `TrestleBoard*` brush keys at `Settings/HighContrastTheme.axaml:16-21`
+> that nothing consumes; `IWidgetDefinition.IconKey`, implemented by all six widgets and never drawn;
+> and **`EditorAction.IsPrimary`, which ten catalog entries set and nothing reads** — its own summary
+> promises "primary actions sort first in their group and are drawn larger", which is not implemented
+> anywhere. M16 either honours that sentence or corrects it; leaving the record lying is not an
+> option.
+>
+> **M16 overturns `docs/M7-spec.md`'s deferral** of "Per-widget icons beyond an `IconKey` string —
+> the icon set itself is M9 chrome work". M9 shipped without it and so did M10–M15. That deferral is
+> void as of M16; it is marked so in the M7 spec. Do not re-defer it.
+
+### M16 — Colour, icons and visual polish (M)
+**Goal:** the app looks like something somebody made on purpose. Today every button is the same grey
+slab, so nothing tells an elderly user which action is the important one.
+
+**Three scope decisions, settled by the owner before the work starts.** **Icons are vector
+`StreamGeometry` in XAML** — no new package, no icon font, no bitmap assets. *Rejected: an icon font*
+— it would have to enter `assets-src/fonts/fonts.json` with a SHA-256 and a licence file or fail
+`FontManifestTests.EveryTtfOnDiskAppearsInTheManifest` and `FontCatalogTests`' two-way set equality,
+and M14's rules were written for text families, not glyph sets. *Rejected: PNG/SVG assets* — they
+need a second set for Dark and High Contrast, do not scale at 200%, and never delta in git.
+**Chrome only: the page never themes** — nothing in `Core`, `Layout`, `Rendering` or `Export.Pdf`
+changes and **no snapshot baseline is re-baked**, which is what keeps this milestone cheap.
+**The palette is derived from the application icon** — navy `#1E335C`, gold `#C8A24B`, rule grey
+`#9AA5B8`, already documented in `assets-src/icons/README.md` and until now reaching only the Windows
+installer. *Derived*, not adopted wholesale: two of the three fail their contrast floors on white and
+are constrained accordingly below.
+
+**Deliverables**
+
+- **`Theme/Palette.axaml`**, a `ResourceDictionary` carrying **all three** variants as
+  `ThemeDictionaries`, merged from `App.axaml`, with `Settings/HighContrastTheme.axaml` **deleted**
+  and High Contrast declared as a custom `ThemeVariant("HighContrast", inheritVariant: Dark)`.
+  *Rejected: keeping the runtime `StyleInclude` overlay.* It can express only one non-default
+  variant, so Light and Dark would need a second mechanism; `Styles.Resources` resolves after
+  `Application.Resources`, so a token declared in both places would mean different things depending
+  on whether High Contrast is on; and it forces bare-element selectors like `Style Selector="Button"`,
+  which today survives only because the overlay sets colours alone — the moment M16 adds a `Padding`
+  or `MinHeight` setter, the `ComboBox` drop-down toggle and the `ScrollBar` repeat buttons deform
+  with it. Structural rules go in `ControlTheme`s and explicit `Classes`, never bare element
+  selectors. The overlay's two non-colour rules survive as **resources** rather than styles —
+  `Border.Thickness` and `Focus.Thickness`, 1/2 in Light and Dark, 2/3 in High Contrast — so
+  "every rule also changes a border, not only a colour" stays mechanical.
+  Tokens are named by **role, not by colour** (`Accent` / `Accent.Foreground` / `Chrome.Muted` /
+  `Chrome.Border` / `Chrome.Divider` / `Ornament.OnAccent` / `Page.Backdrop`), because the accent has
+  to flip from navy `#1E335C` to a pale `#8FB4E8` in Dark — navy is 1.68:1 on black and structurally
+  unusable there — and a token called "navy" could not do that. Every pair carries its measured
+  ratio: 4.5:1 text, 3:1 non-text, 7:1 throughout High Contrast, whose values are lifted verbatim
+  from the overlay's header comment, which had already done that arithmetic.
+  > **Two of the three brand colours cannot be used as the README states them.** Gold `#C8A24B` is
+  > **2.41:1** on white and rule grey `#9AA5B8` is **2.49:1** — neither can carry text, and the grey
+  > cannot carry a boundary that must be perceived (WCAG 1.4.11 wants 3:1). So the gold is renamed
+  > `Ornament.OnAccent`, **the token name stating its only legal background** (5.18:1 on navy, 8.72:1
+  > on black), and the rule grey is walked darker to `#6E7A8F` for real boundaries with the original
+  > kept only as a decorative `Chrome.Divider`. "Masonic blue" works as a chrome palette; "masonic
+  > blue *and gold*" on white chrome does not, and pretending otherwise ships a theme that fails its
+  > own gate.
+  > **`Chrome.Muted` collapses to full white in High Contrast.** There is no de-emphasised text at
+  > 7:1; size and weight carry the hierarchy instead. Written down because a reviewer will otherwise
+  > "fix" it.
+- **All twelve untokenised colour sites are tokenised** — the four that bind
+  `SystemControlBackgroundChromeMediumLowBrush` (toolbar, status bar, action panel, grid window),
+  the `#FF6B6B6B` desk in both the places it is written, three `Brushes.Firebrick`, two
+  `Brushes.LightGray`, one `Brushes.Gray`, and `StartDialog`'s `Opacity = 0.8`, which is the same
+  defect in another form. **`MainWindow.axaml:290` and `PageCanvasControl.cs:728` must move
+  together** — they paint the same backdrop from two places, and changing one leaves the canvas
+  two-tone at every window size where the page does not fill the scroller. Neither is the document:
+  both fill the area *around* the sheet, which is App chrome, and `Rendering` is untouched.
+- **`Theme/Icons.axaml`** — 24 `StreamGeometry` resources in pass one, geometry only, no colour and no
+  size — and **`Actions/ActionIcons.cs`**, mapping `ActionId` strings and `IWidgetDefinition.IconKey`
+  values to geometry keys. **`EditorAction` gains no icon field.** `docs/M7-spec.md:129` already says
+  the App maps keys to glyphs; inventing a second mechanism for actions when a documented one exists
+  for widgets is the worse outcome, and a seventh positional field would touch all 67 catalog entries
+  in a diff where the real change is invisible. **The map is deliberately partial, and the omissions
+  are a design record, not a backlog** — each of the ~43 actions without an icon is listed with its
+  one-line reason. `ActionGroup.Arrange` gets none in pass one because four near-identical stacking
+  arrows add visual noise and no discrimination whatever; cut/copy/paste get none because they are
+  universally recognised and barely used on a layout canvas. An action with no entry renders
+  text-only, exactly as today. The 24 that do get one are the eight toolbar commands, the six widget
+  keys — which are **exactly** the six values `IWidgetDefinition.IconKey` already returns, so one
+  dictionary closes M7's deferral and serves the Insert group at the same time — and ten primary or
+  item-level actions. Every geometry is a **closed fill on a 0–24 grid,
+  never a stroke** — strokes thin out under `Viewbox` scaling and hint badly at small sizes, and the
+  rule is chosen partly because `Bounds` makes it checkable.
+  **An icon inside a button binds its fill to that button's own `Foreground`**, not to a theme
+  resource — a `DynamicResource` fill would paint a dark icon on the navy primary button, and it
+  would not follow hover, press or disabled either. Standalone icons outside a button use the token.
+  One `IconText` templated control owns the fill binding, the `Viewbox` and the wrap behaviour, which
+  is what makes §6's icon+text rule a single assertion rather than a thing reviewers must remember.
+  Vector geometry needs no per-scale handling, because the chrome already sits inside the
+  `LayoutTransformControl`s that carry the 100–200% scale.
+- **The Unicode glyphs go, but not all of them.** `↶ ↷ ◀ ▶` become real geometry — they are the ones
+  that render in whatever fallback font happens to have them, which is also why the wizard's footer
+  buttons do not share a baseline. `−` and `+` become minus- and plus-circle icons on the toolbar
+  while **`ActionCatalog`'s `− Smaller` / `+ Bigger` titles stay verbatim**, since the toolbar labels
+  are hard-coded separately and nothing binds the two. **`▸` stays**: it means "this opens a further
+  choice", which is a different signal from an action icon and a platform convention. Every
+  `AutomationProperties.Name` is unchanged throughout, so nothing a screen reader says changes.
+  **No toolbar button is added or removed** — M14 says M11 trimmed it to nine and not to re-add.
+- **Menu items get no icons, and this is a non-goal rather than deferred work.** Fluent reserves an
+  icon gutter for a whole menu as soon as one sibling has an icon, so icons on the dozen commands
+  that have them would make the other thirty-five look broken; and §6 already divides the labour —
+  the menu bar is the complete index, the panel is where you discover what you can do.
+- **Primary emphasis cashes `EditorAction.IsPrimary`**, which already marks the right ten actions and
+  which nothing reads today. A primary offer gets the accent fill, a larger minimum height and a gold
+  left bar — three signals, so colour is never the only one. **The "sort first in their group" half
+  of that field's summary is deliberately not implemented:** declaration order in `ActionCatalog`
+  already agrees with it, so a sort would be a near-no-op carrying real risk of reordering a group a
+  test depends on. The summary is amended to describe what M16 actually does instead. That single
+  change is most of the answer to "eight identical slabs".
+- **The side panel, which is where the owner's two specifics land.** The grouping he asked for
+  **already exists** — `ActionCatalog.PanelGroups` orders groups per selection and `DescribeGroup`
+  gives each a plain-language heading ("This picture", "How text flows", "Front and back"). Nothing
+  in the catalog changes; the headings simply do not read as headings, being 16pt SemiBold above 16pt
+  buttons. They get accent colour, a hairline rule and real space. **Static, never collapsible:** a
+  collapse control would make absence from the panel ambiguous for the first time, and absence
+  meaning "not about photos" is the rule M11 exists to enforce.
+- **The wrapping fix, in order of effect.** The cause is `ActionPanel.BuildOffer`, which concatenates
+  the gesture into the label — "Wrap text around this" + "  (Ctrl+Shift+W)" is 37 characters in a
+  320px panel. (1) **The shortcut moves to its own 14pt line** in the muted colour, which removes
+  14–16 characters from most buttons and changes nothing a screen reader hears, since
+  `AutomationProperties.Name` already carries the title alone; 14pt secondary text is already the
+  convention in that file for blocked-action reasons. **The button's content must be a `DockPanel`,
+  never a horizontal `StackPanel`** — a horizontal `StackPanel` measures its children with infinite
+  width, so the label would never wrap and the clipping bug of 2026-07-27 would come straight back.
+  (2) **The panel widens 320 → 360.** (3) A few titles shorten, sparingly, each checked against the
+  menu bar and `ActionCatalogTests`.
+  ***Smaller text is rejected outright*** — §6 sets a 16pt floor for interactive chrome and this
+  audience is the reason it exists. **Wrapping is not eliminated and should not be:** the M15 change
+  that introduced the wrapping `TextBlock` fixed *clipping*, and a half-readable shortcut is worse
+  than two lines. The goal is that wrapping becomes rare and looks deliberate.
+  > **Widening the panel spends part of a budget nobody has measured.** At 200% UI scale a 360px
+  > panel occupies **720px of a 1280px window**, up from 640px, and M11's chrome-budget measurement
+  > at that scale is still open (§13). `PanelFoldWidth = 900d` is hard-coded beside it and must be
+  > **derived from the panel width**, or the two drift and the fold behaviour §11.9 of the
+  > accessibility script tests by hand changes without anyone deciding to change it.
+- **Hierarchy and spacing** — the other half of "clunky", and the wizard turns out to have one
+  systematic bug rather than sloppiness. `wizard-officers-step.png` shows five different left edges on
+  one screen — x = 24, 62, 68, 24, 170 — because **`Width`/`MaxWidth` on a child of a vertical
+  `StackPanel` under the default `HorizontalAlignment.Stretch` makes Avalonia centre that child.**
+  The arithmetic accounts for every edge exactly: 900px window less the 24px gutters is 852px of
+  content, so the 780-wide header lands at 24 + (852−780)/2 = 60, the 760-wide help text at 70, and
+  the 560-wide input at 170, while the uncapped label and progress line stay at 24. **The fix is
+  `HorizontalAlignment.Left` at each capped site, and `MaxWidth` in place of `Width` so the field
+  grows with the window instead of stranding 292px of white space.** Roughly nine lines, and the
+  largest single visible gain in the milestone. The wizard footer is also the one button bar that
+  never got the shaded `Border` treatment `WidgetGridWindow` received on 2026-07-27, and its
+  `new Panel { Width = 40 }` spacer becomes a `DockPanel`. Dialog footers, default-button emphasis
+  and margins standardise. The status bar gains a top border; today it floats against the canvas.
+  `Opacity` as a de-emphasis mechanism goes everywhere it appears — it multiplies against whatever
+  is behind it and is invisible to the contrast test, which is the whole objection.
+- **A window icon.** There is no `Icon=` anywhere in `src/` and no `AvaloniaResource` item in any
+  `.csproj`; `trestleboard.png` reaches the installer and never the running app.
+- **Tests**, most of them built on `AccessibilityTests.EveryWindow()`, which already constructs all
+  nine windows with fictional data and should be reused rather than re-derived:
+  - **the palette gate** — parses `Palette.axaml` as a file, recomputes every declared pair, and also
+    asserts that a key present in one `ThemeDictionary` is present in all three, since a token
+    missing from High Contrast falls through to Dark and quietly breaks 7:1;
+  - **the live-tree contrast walk**, with its limits declared (see below);
+  - **`AnIconIsNeverTheOnlyContent`** — any button whose content holds a `Path` must also hold a
+    `TextBlock` with text. Unconditional: §6 grants no size exemption. This is the strongest evidence
+    that M16 is a net accessibility gain rather than a cosmetic risk, and §6's new bullet cites it;
+  - **`EveryIconKeyResolvesToGeometry`**, in both directions — every mapped key resolves, every
+    widget `IconKey` resolves, every geometry fits the 0–24 grid, and **no geometry is unreferenced**,
+    mirroring `DocsTests.EveryCommittedImageIsReferenced`, which is the house style for "the artefact
+    and its index agree both ways";
+  - **`EveryActionEitherHasAnIconOrIsListedAsIconLess`** — the two sets partition `ActionCatalog.All`
+    exactly, so a new action cannot silently arrive without an icon decision being made about it;
+  - **`EveryPanelButtonStillReportsItsLabel`** — non-optional. `LabelOf` returning `""` after the
+    content change fails **nothing** today: only one assertion reads it for a value, the rest use it
+    for failure messages, so the suite would stay green while the audit quietly stopped auditing;
+  - **`NoPanelTitleOutgrowsThePanel`** in `Editing.Tests`, a character-count ceiling that says so in
+    its own summary — a cheap proxy for a text-measurement problem, chosen because measuring shaped
+    text in a unit test would couple the action catalog to the font stack.
+
+**The single biggest unverified assumption, and it is task one: that a custom
+`ThemeVariant("HighContrast", inheritVariant: ThemeVariant.Dark)` correctly resolves FluentTheme's own
+Dark control resources on the pinned Avalonia 11.3.18.** Collapsing the overlay into
+`ThemeDictionaries` rests entirely on it, and nothing in the tree exercises it today. **Spike it
+before a single icon is drawn.** *Fallback if it does not hold:* keep `ThemeManager`'s existing
+High-Contrast→Dark plus `StyleInclude` mapping and move the tokens into the overlay's
+`Styles.Resources` block, which already exists and would at last be consumed — one extra mechanism,
+not a redesign. Two further unknowns belong to the same spike, because each decides how much of the
+work is worth writing: whether Fluent's `SystemControl*` control interiors need overriding for the
+palette to look designed rather than bolted on, and whether a `Viewbox` inside a
+`LayoutTransformControl` lands on half-pixels at 200% and blurs.
+
+**A second thing the spike settles: how much the automated contrast test can honestly claim.** The
+authoritative gate parses `Palette.axaml` **as a file** and recomputes every declared pair, so the
+test cannot drift from the artefact and emits the very ratios that go in its header comment — the
+discipline the old overlay header practised by hand, mechanised. A live-tree walk over
+`AccessibilityTests.EveryWindow()` is worth adding on top, but it sees **what the styling system
+resolved, not what the compositor painted**: a `TextBlock` has no background of its own, so the walk
+climbs to the nearest ancestor that has one, and that answer is simply wrong wherever a control
+template paints a layer the logical tree does not expose — popup menu items and the `ComboBox`
+dropdown among them. It ships with that limit written into its own summary, skips disabled controls
+(Fluent dims them and WCAG exempts them), and carries a vacuity guard like the one at
+`AccessibilityTests:68`. **It is worth writing anyway, because it is the test that would have caught
+the High Contrast defect above.**
+
+**Screenshot cost, stated up front:** **17 of the 18 committed images must be regenerated** — every
+window and dialog shot carries chrome, and only `pdf-page-spread` is untouched, being a pure
+`RenderPageToPng` composite with no Avalonia in it. M15's warning applies in full: PNGs do not delta,
+so this adds a complete second copy (~1.4 MB) to history. Land all the visual work first and re-bake
+**once**, in its own commit at the very end.
+> **Every iteration before that one renders with `--out <somewhere outside the repo>`.** The harness
+> already takes the flag. `.git` is about 12 MB with 1.4 MB of images in it; a second full
+> regeneration that nobody meant to keep is a permanent tax on every clone, and it cannot be undone
+> without rewriting history.
+
+Then read all seventeen by eye before committing them. If any shot's content shifted — the panel
+growing past the window and scrolling is the likely one, since primary buttons get taller — the alt
+text in `ShotList.cs` is now describing something the image no longer shows, and
+`DocsTests.EveryImageReferenceCarriesRealAltText` checks that alt text exists, not that it is true.
+
+**Acceptance:** every declared token pair meets its floor in Light, Dark and High Contrast; no chrome
+control carries a brush of its own; every mapped icon key resolves to geometry and every widget's
+`IconKey` has a mapping; no button is icon-only; no panel action's title outgrows the panel; the
+panel's group headings read as headings and its buttons do not wrap at 360px; the fold threshold
+follows the panel width at both 100% and 200%; **no snapshot baseline changes and `git status` shows
+17 regenerated PNGs, not 18** — if `pdf-page-spread` moved, something reached the rendering pipeline
+that should not have.
+
+**Post-milestone:** `/graphify . --update`; ingest the M16 decisions into llm-wiki; `/wiki:lint`
+(even-numbered milestone).
+**Agents:** **Opus** for the theming-composition spike and the palette; **Sonnet** for the icon set,
+the panel and the spacing work; **cavecrew-reviewer (Sonnet)**.
+
 ### Sizing & sequencing notes
 - L milestones to watch: **M1, M4, M7** — each gets a Plan-agent spec pass and Fable/Opus implementation.
 - Hard ordering: M1 before everything UI (retires the existential risk); M2 before M3; M4 before M5; M7 needs M4+M5; M8 needs M4; M9 needs M7+M8.
@@ -1207,12 +1468,19 @@ README; **cavecrew-reviewer (Sonnet)**.
   no new dependency and no migration, and it builds the surface M13 hangs its buttons on. It is also the
   riskiest of the three (every menu item, the keyboard dispatcher, two constraining tests) — hence Opus
   and a full manual NVDA run before it is called done.
-- **Full post-release order: M11 → (M12 ∥ M14) → M13 → M15.** M14's only dependency is M11, and even
+- **Full post-release order: M11 → (M12 ∥ M14) → M13 → M15 → M16.** M14's only dependency is M11, and even
   that is soft — without the action panel the font controls could live in the Format menu alone. M14 is
   fully independent of M12 and M13, so it parallelizes with M12 as cleanly as M11 does.
-- **M15 is last** and depends on M11 (panel shots and the 1280×860 default window), M12 (the roster
-  shots and, decisively, the `AppPaths` guard) and M14 (the font-picker shot). Screenshotting a UI
-  that is about to change is pure waste.
+- **M15 is last of the building milestones** and depends on M11 (panel shots and the 1280×860 default
+  window), M12 (the roster shots and, decisively, the `AppPaths` guard) and M14 (the font-picker
+  shot). Screenshotting a UI that is about to change is pure waste.
+- **M16 comes after M15, for M15's own reason turned around.** It depends on M11 (the panel it
+  restyles), M14 (the font picker it recolours) and M15 (the harness that re-bakes the images and the
+  screenshots that made the case for the milestone in the first place). It is the one milestone that
+  *is* the UI change M15 warned about, so it re-bakes 17 of the 18 images once, at the end, rather
+  than per phase. It also has a hard internal ordering: **the theming-composition spike answers
+  first, and nothing else starts until it does** — every icon and every restyled control depends on
+  which of the two theme mechanisms wins.
 - **If a milestone slips, M15 degrades rather than blocks — and this should be mechanised.** Declare
   the shot list in the harness as data, each entry tagged with the milestone it needs; a missing
   milestone skips the entry with a printed reason and omits the README section rather than leaving a
@@ -1237,20 +1505,22 @@ README; **cavecrew-reviewer (Sonnet)**.
 10. **Roster-to-widget gate (M13):** birthday re-sync is one undo step and Ctrl+Z restores the prior payload byte-for-byte; hand-edited rows survive a re-sync; deliberately removed members are not resurrected; `TemplateTests` passes unchanged.
 11. **Font gate (M14):** every bundled face parses and rasterizes on all three OSes (`font-catalog-sampler`); the font-manifest hash check passes and no TTF exists outside the manifest; changing a style's font or size keeps its `-bold`/`-italic` siblings in sync and bold still finds its pair; a document naming an unbundled family opens with a plain-language warning and saves back byte-unchanged; the OFL/Apache licence text is present **inside the installer**, not merely in the repo.
 12. **Documentation gate (M15):** every image referenced from a doc exists and every committed image is referenced; no committed PNG carries ancillary text chunks; no screenshot shows a real name, phone number, email, or user-name-bearing path.
+13. **Visual gate (M16):** every declared token pair meets its floor in Light, Dark and High Contrast; no chrome control carries a locally-set brush of its own; every mapped icon key resolves to geometry and every widget `IconKey` has a mapping; no button is icon-only; no panel action's title outgrows the panel; **no snapshot baseline moves and exactly 17 of the 18 screenshots regenerate** — `pdf-page-spread` changing means something reached the rendering pipeline. Then, by eye, because no test settles it: Light, Dark and High Contrast at 100% **and 200%**, confirming the toolbar, panel, status bar and canvas are distinguishable from one another, focus is unmistakable, and the panel folds and unfolds sensibly at both scales.
 
 ## 13. Remaining open items (status as at 2026-07-27)
 
-**Every milestone M0–M15 is delivered, and no work in this plan remains that a machine can do
-unattended.** The suite is green on Windows (933 passed, 12 skipped — the `pdftoppm` parity tests,
-which are Linux-CI-only by design; re-verified 2026-07-27). What is left is listed here so a future
-session does not have to re-derive it from six spec documents. Each item is blocked on a person, a
-machine, or a decision that is the owner's to make; each is owned by its milestone's spec, which
-stays the authority.
+**Every milestone M0–M15 is delivered. M16 is scheduled and not started** — it was added 2026-07-27
+from the owner's review of the M15 screenshots, and it is the one piece of work in this plan a
+machine can do unattended, starting with its spike. The suite is green on Windows (933 passed, 12
+skipped — the `pdftoppm` parity tests, which are Linux-CI-only by design; re-verified 2026-07-27).
+What is left besides M16 is listed here so a future session does not have to re-derive it from six
+spec documents. Each of those items is blocked on a person, a machine, or a decision that is the
+owner's to make; each is owned by its milestone's spec, which stays the authority.
 
-**To a future unattended session: this list is the answer, not the starting point.** Every entry
-below is `- [!]`, and each names what unblocks it. Re-checking them costs a run and changes nothing.
-The only work here a machine could take on is the three defects named after the list, and those are
-unscheduled *by decision* — treat starting one as needing the owner's word first.
+**To a future unattended session: M16 is the work; this list is not.** Every entry below is `- [!]`,
+and each names what unblocks it. Re-checking them costs a run and changes nothing. Besides M16, the
+only work here a machine could take on is the one remaining defect named after the list, and it is
+unscheduled *by decision* — treat starting it as needing the owner's word first.
 
 - [!] **Clean-machine install on fresh Windows and macOS**, following only `docs/INSTALL.md`
       (§12 item 6) — needs the machines and a person. `docs/M10-spec.md` §6. The macOS half is
@@ -1296,8 +1566,15 @@ milestone after all:
       now a shaded `Border` using the same themed brush as the toolbar and status bar, so the
       scroller's clip reads as a footer. `docs/M15-spec.md` §9.
 
-The third stays unscheduled and needs the owner's word, because it is the one that genuinely opens a
-milestone: the `quote` / `body-italic` attribute collision (`docs/M14-spec.md` §11 — pre-existing,
+A fourth defect was found on 2026-07-27 while planning M16, and is **scheduled rather than open**:
+**High Contrast does not reach the toolbar, the status bar or the area around the page.** Those four
+sites bind `SystemControlBackgroundChromeMediumLowBrush` and `#FF6B6B6B`, and
+`HighContrastTheme.axaml` overrides neither, so roughly a third of the window stays mid-grey with the
+theme on — a black button on `#6B6B6B` is 3.96:1 against §6's 7:1. `docs/images/high-contrast.png`
+shows it. This is a standing regression against §12 item 5 and it is M16's leading justification.
+
+The third of the original defects stays unscheduled and needs the owner's word, because it is the one
+that genuinely opens a milestone: the `quote` / `body-italic` attribute collision (`docs/M14-spec.md` §11 — pre-existing,
 exposed rather than caused, cheap to fix by giving `quote` a distinguishing size, but the fix moves
 rendered pixels and therefore needs snapshot baselines re-baked on all three operating systems).
 
