@@ -5,6 +5,8 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using TrestleBoard.Editing;
 
+using TrestleBoard.App.Theme;
+
 namespace TrestleBoard.App.Dialogs;
 
 /// <summary>
@@ -92,11 +94,11 @@ public sealed class RestoreDialog : Window
             AutomationProperties.SetName(image, "A picture of the first page of your recovered work");
             panel.Children.Add(new Border
             {
-                BorderThickness = new Avalonia.Thickness(1),
-                BorderBrush = Brushes.Gray,
                 Child = image,
                 HorizontalAlignment = HorizontalAlignment.Left,
-            });
+            }
+                .Token(Border.BorderBrushProperty, Tokens.ChromeBorder)
+                .Token(Border.BorderThicknessProperty, Tokens.BorderThickness));
         }
 
         panel.Children.Add(new StackPanel

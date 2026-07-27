@@ -5,6 +5,8 @@ using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using TrestleBoard.Widgets.Wizards;
 
+using TrestleBoard.App.Theme;
+
 namespace TrestleBoard.App.Dialogs;
 
 /// <summary>
@@ -105,8 +107,9 @@ public sealed class WidgetGridWindow : Window
 
         // By reference, like the toolbar and status bar: High Contrast swaps the brush out and a
         // hard-coded colour would survive the swap and stop meeting the contrast rule.
-        bar[!BackgroundProperty] =
-            new DynamicResourceExtension("SystemControlBackgroundChromeMediumLowBrush");
+        bar.Token(BackgroundProperty, Tokens.ChromeBackground)
+           .Token(Border.BorderBrushProperty, Tokens.ChromeBorder)
+           .Token(Border.BorderThicknessProperty, Tokens.RuleTop);
         return bar;
     }
 
@@ -245,11 +248,11 @@ public sealed class WidgetGridWindow : Window
 
             _body.Children.Add(new Border
             {
-                BorderThickness = new Avalonia.Thickness(0, 0, 0, 1),
-                BorderBrush = Brushes.LightGray,
                 Padding = new Avalonia.Thickness(0, 0, 0, 10),
                 Child = panel,
-            });
+            }
+                .Token(Border.BorderBrushProperty, Tokens.ChromeDivider)
+                .Token(Border.BorderThicknessProperty, Tokens.RuleBottom));
         }
 
         if (list.FixedRows is null)
@@ -389,8 +392,7 @@ public sealed class WidgetGridWindow : Window
                 FontSize = 18,
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 780,
-                Foreground = Brushes.Firebrick,
-            });
+            }.Token(TextBlock.ForegroundProperty, Tokens.Warning));
         }
     }
 

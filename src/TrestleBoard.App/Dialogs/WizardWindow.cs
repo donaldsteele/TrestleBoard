@@ -5,6 +5,8 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using TrestleBoard.Widgets.Wizards;
 
+using TrestleBoard.App.Theme;
+
 namespace TrestleBoard.App.Dialogs;
 
 /// <summary>
@@ -30,7 +32,8 @@ public sealed class WizardWindow : Window
         MaxWidth = 780,
     };
 
-    private readonly TextBlock _progress = new() { FontSize = 16, Opacity = 0.8 };
+    private readonly TextBlock _progress =
+        new TextBlock { FontSize = 16 }.Token(TextBlock.ForegroundProperty, Tokens.ChromeMuted);
     private readonly TextBlock _help = new()
     {
         FontSize = 18,
@@ -347,8 +350,7 @@ public sealed class WizardWindow : Window
                 FontSize = 18,
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 760,
-                Foreground = Brushes.Firebrick,
-            });
+            }.Token(TextBlock.ForegroundProperty, Tokens.Warning));
         }
     }
 
@@ -434,11 +436,11 @@ public sealed class WizardWindow : Window
 
         return new Border
         {
-            BorderThickness = new Avalonia.Thickness(0, 0, 0, 1),
-            BorderBrush = Brushes.LightGray,
             Padding = new Avalonia.Thickness(0, 0, 0, 12),
             Child = panel,
-        };
+        }
+            .Token(Border.BorderBrushProperty, Tokens.ChromeDivider)
+            .Token(Border.BorderThicknessProperty, Tokens.RuleBottom);
     }
 
     private StackPanel BuildField(WizardField field, int rowIndex, double? labelWidth)
@@ -561,10 +563,9 @@ public sealed class WizardWindow : Window
             {
                 Text = helpText,
                 FontSize = 16,
-                Opacity = 0.75,
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 560,
-            });
+            }.Token(TextBlock.ForegroundProperty, Tokens.ChromeMuted));
         }
 
         return panel;

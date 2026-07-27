@@ -2,6 +2,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TrestleBoard.App.App"
              RequestedThemeVariant="Default">
+  <Application.Resources>
+    <!-- Every chrome colour in the application, in all three variants (PLAN.md §6, §11 M16).
+         Application.Resources rather than Styles.Resources on purpose: a token declared in both
+         places would mean different things depending on which styles happened to be loaded. -->
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://TrestleBoard.App/Theme/Palette.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
   <Application.Styles>
     <FluentTheme />
   </Application.Styles>

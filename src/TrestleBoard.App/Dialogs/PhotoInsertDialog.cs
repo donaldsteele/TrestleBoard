@@ -2,6 +2,8 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 
+using TrestleBoard.App.Theme;
+
 namespace TrestleBoard.App.Dialogs;
 
 /// <summary>
@@ -49,9 +51,8 @@ public sealed class PhotoInsertDialog : Window
             FontSize = 16,
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 460,
-            Foreground = Brushes.Firebrick,
             IsVisible = false,
-        };
+        }.Token(TextBlock.ForegroundProperty, Tokens.Warning);
 
         var insert = new Button
         {

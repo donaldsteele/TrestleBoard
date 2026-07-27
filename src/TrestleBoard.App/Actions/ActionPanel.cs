@@ -6,6 +6,8 @@ using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using TrestleBoard.Editing.Actions;
 
+using TrestleBoard.App.Theme;
+
 namespace TrestleBoard.App.Actions;
 
 /// <summary>
@@ -29,8 +31,7 @@ internal sealed class ActionPanel : Border
 
         // Themed by reference, not by value: High Contrast swaps these brushes out from under us
         // and a hard-coded colour would survive the swap and stop meeting the contrast rule.
-        this[!BackgroundProperty] =
-            new DynamicResourceExtension("SystemControlBackgroundChromeMediumLowBrush");
+        this.Token(BackgroundProperty, Tokens.ChromeBackground);
 
         _heading = new TextBlock
         {

@@ -1,0 +1,140 @@
+<!--
+  THE PALETTE (PLAN.md §6 "Colour is a token, never a literal", §11 M16).
+
+  Every chrome colour in the application comes from a key in this file. A hard-coded brush anywhere
+  in src/ is a bug, because it survives the theme swap: that is exactly how the toolbar, the status
+  bar and the area around the page stayed mid-grey with High Contrast on until M16, putting a black
+  button on #6B6B6B at 3.96:1 against §6's 7:1 requirement.
+
+  Tokens are named for the ROLE they play, never for the colour they hold. The accent is navy on a
+  light ground and a pale blue on a dark one — navy is 1.68:1 on black and structurally unusable
+  there — and no key called "Navy" could have done that.
+
+  DERIVED FROM THE APPLICATION ICON, NOT ADOPTED FROM IT. assets-src/icons/README.md states three
+  brand colours: navy #1E335C, gold #C8A24B, rule grey #9AA5B8. Two of the three cannot be used as
+  written. The gold is 2.41:1 on white and the rule grey 2.49:1 — neither can carry text, and the
+  grey cannot carry a boundary that has to be perceived (WCAG 1.4.11 asks 3:1). So:
+    * the gold became Ornament.OnAccent, THE KEY NAME STATING ITS ONLY LEGAL BACKGROUND;
+    * the rule grey was walked darker to #6E7A8F wherever a boundary must be seen, and the original
+      survives only as Chrome.Divider, which is decorative and declared as such below.
+  "Masonic blue" works as a chrome palette. "Masonic blue AND GOLD" on white chrome does not.
+
+  CHROME.MUTED COLLAPSES TO FULL WHITE IN HIGH CONTRAST. There is no de-emphasised text at 7:1;
+  size and weight carry the hierarchy instead. Written down because a reviewer will otherwise
+  helpfully "fix" it back to a grey.
+
+  FOCUS IS TWO TOKENS, not one. A single ring colour cannot clear 3:1 against both a near-white
+  chrome background and the navy accent fill at once — 3:1 on near-white needs a relative luminance
+  below about 0.17, 3:1 on navy needs one above about 0.20. So the ring is drawn the way Fluent's
+  own is: Focus outside, Focus.Inner inside, each contrasting with the other. Whatever the ring
+  lands on, one of the two is visible against it.
+
+  THE PAGE NEVER THEMES. Page.Sheet is #FFFFFF in all three variants: the user is laying out
+  something that will be printed on paper (docs/M9-spec.md §4). It is declared here — though no
+  control paints with it — so that Page.Backdrop has something its floor can be measured against.
+
+  ==== CONTRAST ====
+  ThemeCompositionTests parses the block below OUT OF THIS FILE, recomputes every ratio from the
+  hex values above it, and fails if a number here is wrong or a floor is missed. The ratios are not
+  documentation that can rot; they are the test's expected values. Floors are WCAG: 4.5 for text,
+  3 for a boundary that must be perceived. IN HIGH CONTRAST EVERY FLOOR IS RAISED TO 7 (§6),
+  except for pairs declared `decorative`, which have no floor anywhere.
+
+  PAIR Chrome.Foreground on Chrome.Background >= 4.5 : Light 15.45  Dark 14.98  HighContrast 21.00
+  PAIR Chrome.Muted on Chrome.Background >= 4.5 : Light 6.54  Dark 7.72  HighContrast 21.00
+  PAIR Chrome.Border on Chrome.Background >= 3 : Light 3.76  Dark 5.39  HighContrast 21.00
+  PAIR Chrome.Divider on Chrome.Background >= decorative : Light 2.16  Dark 1.61  HighContrast 21.00
+  PAIR Accent on Chrome.Background >= 3 : Light 10.83  Dark 7.74  HighContrast 16.75
+  PAIR Accent.Foreground on Accent >= 4.5 : Light 12.48  Dark 8.31  HighContrast 16.75
+  PAIR Ornament.OnAccent on Accent >= 3 : Light 5.18  Dark 5.36  HighContrast 16.75
+  PAIR Page.Backdrop on Page.Sheet >= 3 : Light 4.34  Dark 13.58  HighContrast 21.00
+  PAIR Focus on Chrome.Background >= 3 : Light 15.45  Dark 14.98  HighContrast 19.56
+  PAIR Focus.Inner on Focus >= 3 : Light 17.79  Dark 16.08  HighContrast 19.56
+  PAIR Focus.Inner on Accent >= 3 : Light 12.48  Dark 8.31  HighContrast 16.75
+  PAIR Warning on Chrome.Background >= 4.5 : Light 6.81  Dark 8.35  HighContrast 10.64
+  ==== END CONTRAST ====
+
+  Two rules bind absolutely and both are tested: colour is never the only signal (Border.Thickness
+  and Focus.Thickness step up in High Contrast, so every rule that changes a colour also changes a
+  border), and an icon never appears without its label.
+-->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:theme="clr-namespace:TrestleBoard.App.Theme">
+  <ResourceDictionary.ThemeDictionaries>
+
+    <!-- ============================ LIGHT ============================ -->
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Background" Color="#EDEFF2" />
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Foreground" Color="#14181F" />
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Muted" Color="#4A5567" />
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Border" Color="#6E7A8F" />
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Divider" Color="#9AA5B8" />
+      <SolidColorBrush x:Key="TrestleBoard.Accent" Color="#1E335C" />
+      <SolidColorBrush x:Key="TrestleBoard.Accent.Foreground" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TrestleBoard.Ornament.OnAccent" Color="#C8A24B" />
+      <SolidColorBrush x:Key="TrestleBoard.Page.Backdrop" Color="#6E7A8F" />
+      <SolidColorBrush x:Key="TrestleBoard.Page.Sheet" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TrestleBoard.Focus" Color="#14181F" />
+      <SolidColorBrush x:Key="TrestleBoard.Focus.Inner" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TrestleBoard.Warning" Color="#A31515" />
+      <Thickness x:Key="TrestleBoard.Border.Thickness">1</Thickness>
+      <Thickness x:Key="TrestleBoard.Focus.Thickness">2</Thickness>
+      <Thickness x:Key="TrestleBoard.Rule.Top">0,1,0,0</Thickness>
+      <Thickness x:Key="TrestleBoard.Rule.Bottom">0,0,0,1</Thickness>
+    </ResourceDictionary>
+
+    <!-- ============================ DARK ============================= -->
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Background" Color="#1C1F26" />
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Foreground" Color="#F2F4F8" />
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Muted" Color="#A8B2C4" />
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Border" Color="#8A94A6" />
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Divider" Color="#3A4150" />
+      <!-- Navy is 1.68:1 on this background. The accent has to become light when the ground does. -->
+      <SolidColorBrush x:Key="TrestleBoard.Accent" Color="#8FB4E8" />
+      <SolidColorBrush x:Key="TrestleBoard.Accent.Foreground" Color="#10182A" />
+      <!-- Gold on a PALE accent is 1.6:1, so the ornament darkens with its background. The key
+           name promised only that it works on the accent, and here that means a deep bronze. -->
+      <SolidColorBrush x:Key="TrestleBoard.Ornament.OnAccent" Color="#4A3708" />
+      <SolidColorBrush x:Key="TrestleBoard.Page.Backdrop" Color="#2A2E38" />
+      <SolidColorBrush x:Key="TrestleBoard.Page.Sheet" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TrestleBoard.Focus" Color="#F2F4F8" />
+      <SolidColorBrush x:Key="TrestleBoard.Focus.Inner" Color="#10182A" />
+      <SolidColorBrush x:Key="TrestleBoard.Warning" Color="#FF9E9E" />
+      <Thickness x:Key="TrestleBoard.Border.Thickness">1</Thickness>
+      <Thickness x:Key="TrestleBoard.Focus.Thickness">2</Thickness>
+      <Thickness x:Key="TrestleBoard.Rule.Top">0,1,0,0</Thickness>
+      <Thickness x:Key="TrestleBoard.Rule.Bottom">0,0,0,1</Thickness>
+    </ResourceDictionary>
+
+    <!-- ========================= HIGH CONTRAST ======================= -->
+    <!-- Inherits Dark (Theme/AppTheme.cs), so every FluentTheme control resource this file does not
+         name resolves to its Dark value instead of going missing. The accents are the overlay's
+         own, which had already checked them against black: cyan 16.75:1, yellow 19.56:1,
+         red 10.64:1. Focus and selection are yellow because they must be unmistakable at a glance,
+         and because yellow on black is the highest-contrast pairing available after plain white. -->
+    <ResourceDictionary x:Key="{x:Static theme:AppTheme.HighContrast}">
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Background" Color="#000000" />
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Foreground" Color="#FFFFFF" />
+      <!-- Deliberately white: there is no de-emphasised text at 7:1. See the header. -->
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Muted" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Border" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Divider" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TrestleBoard.Accent" Color="#00FFFF" />
+      <SolidColorBrush x:Key="TrestleBoard.Accent.Foreground" Color="#000000" />
+      <SolidColorBrush x:Key="TrestleBoard.Ornament.OnAccent" Color="#000000" />
+      <SolidColorBrush x:Key="TrestleBoard.Page.Backdrop" Color="#000000" />
+      <SolidColorBrush x:Key="TrestleBoard.Page.Sheet" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TrestleBoard.Focus" Color="#FFFF00" />
+      <SolidColorBrush x:Key="TrestleBoard.Focus.Inner" Color="#000000" />
+      <SolidColorBrush x:Key="TrestleBoard.Warning" Color="#FF9E9E" />
+      <!-- The non-colour half of "colour is never the only signal". -->
+      <Thickness x:Key="TrestleBoard.Border.Thickness">2</Thickness>
+      <Thickness x:Key="TrestleBoard.Focus.Thickness">3</Thickness>
+      <Thickness x:Key="TrestleBoard.Rule.Top">0,2,0,0</Thickness>
+      <Thickness x:Key="TrestleBoard.Rule.Bottom">0,0,0,2</Thickness>
+    </ResourceDictionary>
+
+  </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

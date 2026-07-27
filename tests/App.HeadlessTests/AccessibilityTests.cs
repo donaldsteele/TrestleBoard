@@ -304,8 +304,11 @@ public sealed class AccessibilityTests
     /// <summary>
     /// Every window the app can put in front of the user. Built with fictional placeholder data
     /// only (PLAN.md §0 rule 2).
+    ///
+    /// <para>Internal from M16 so <c>ThemeCompositionTests</c>'s contrast walk runs over the same
+    /// nine windows rather than deriving its own list, which would drift.</para>
     /// </summary>
-    private static IEnumerable<(string Name, Window Window)> EveryWindow()
+    internal static IEnumerable<(string Name, Window Window)> EveryWindow()
     {
         var main = new MainWindow();
         main.OpenSample();

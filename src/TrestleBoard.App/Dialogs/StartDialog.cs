@@ -4,6 +4,8 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using TrestleBoard.Core.Templates;
 
+using TrestleBoard.App.Theme;
+
 namespace TrestleBoard.App.Dialogs;
 
 /// <summary>What the user picked on the start screen.</summary>
@@ -134,8 +136,7 @@ public sealed class StartDialog : Window
                         FontSize = 16,
                         TextWrapping = TextWrapping.Wrap,
                         MaxWidth = 620,
-                        Opacity = 0.8,
-                    },
+                    }.Token(TextBlock.ForegroundProperty, Tokens.ChromeMuted),
                 },
             },
         };

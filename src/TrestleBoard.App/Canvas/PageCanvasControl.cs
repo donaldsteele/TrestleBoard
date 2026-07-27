@@ -64,6 +64,10 @@ public sealed class PageCanvasControl : Control
         };
         TextInputOptions.SetContentType(this, TextInputContentType.Normal);
         TextInputOptions.SetMultiline(this, true);
+
+        // The desk around the sheet is a themed colour from M16, so a theme change has to repaint
+        // it. The page inside it does not change: it is a piece of paper (docs/M9-spec.md §4).
+        ActualThemeVariantChanged += (_, _) => InvalidateVisual();
     }
 
     public double Zoom
@@ -257,8 +261,29 @@ public sealed class PageCanvasControl : Control
 
         context.Custom(new PageDrawOperation(
             new Rect(Bounds.Size), _source, PageIndex, Zoom, PagePaddingPx, selection, caret,
-            frameOverlay, pageFrames, fontOverrides));
+            frameOverlay, pageFrames, fontOverrides, BackdropColour()));
     }
+
+    /// <summary>
+    /// The colour of the desk the sheet lies on (PLAN.md §11 M16). It is CHROME, not the document —
+    /// the page itself never themes — so it comes from the palette like every other chrome colour,
+    /// and it must stay the same value <c>MainWindow.axaml</c> gives <c>CanvasScroller</c>, because
+    /// the two meet wherever the page does not fill the scroller.
+    /// </summary>
+    private SKColor BackdropColour()
+    {
+        if (this.TryFindResource("TrestleBoard.Page.Backdrop", ActualThemeVariant, out object? value)
+            && value is ISolidColorBrush brush)
+        {
+            Color c = brush.Color;
+            return new SKColor(c.R, c.G, c.B, c.A);
+        }
+
+        // Only reachable if the palette failed to merge, which ThemeCompositionTests would have
+        // caught. Mid-grey keeps the sheet visible rather than drawing it on black.
+        return new SKColor(0xFF, 0x6B, 0x6B, 0x6B);
+    }
+
 
     /// <summary>Every laid-out text frame on one page, for the font-change overlay.</summary>
     private List<FrameLayout> FramesOnPage(int pageIndex)
@@ -695,7 +720,8 @@ public sealed class PageCanvasControl : Control
         CaretGeometry? caret,
         FrameOverlay frameOverlay,
         IReadOnlyList<FrameLayout> pageFrames,
-        IReadOnlyList<SourceSpan> fontOverrides) : ICustomDrawOperation
+        IReadOnlyList<SourceSpan> fontOverrides,
+        SKColor backdrop) : ICustomDrawOperation
     {
         public Rect Bounds => bounds;
 
@@ -724,8 +750,8 @@ public sealed class PageCanvasControl : Control
                 float pageW = (float)(size.Width * zoom);
                 float pageH = (float)(size.Height * zoom);
 
-                // Neutral backdrop; the white sheet with a soft edge sits centered inside it.
-                canvas.DrawColor(new SKColor(0xFF6B6B6B));
+                // Themed backdrop; the white sheet with a soft edge sits centered inside it.
+                canvas.DrawColor(backdrop);
                 var page = SKRect.Create((float)padding, (float)padding, pageW, pageH);
                 using (var shadow = new SKPaint { Color = new SKColor(0x55000000), IsAntialias = true })
                 {
