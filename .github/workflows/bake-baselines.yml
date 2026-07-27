@@ -1,0 +1,48 @@
+name: Bake snapshot baselines
+
+# Run by hand only. Snapshot baselines are per-OS, because Skia rasterises glyphs through the
+# platform scaler backend (DirectWrite / FreeType / CoreText), so a macOS baseline can only be
+# produced on macOS. This workflow is the way a maintainer without that hardware gets one: it
+# regenerates the baselines on a runner and uploads them, and the maintainer promotes the files
+# they actually wanted into the repo. It never commits anything itself.
+#
+# The snapshot tests already tell you this: "run with TRESTLEBOARD_UPDATE_BASELINES=1 or promote
+# the CI artifact".
+
+on:
+  workflow_dispatch:
+    inputs:
+      os:
+        description: Which runner to bake on
+        type: choice
+        default: macos-latest
+        options:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+
+jobs:
+  bake:
+    name: ${{ inputs.os }}
+    runs-on: ${{ inputs.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET (pinned by global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Regenerate baselines
+        env:
+          TRESTLEBOARD_UPDATE_BASELINES: "1"
+        run: dotnet test tests/Rendering.SnapshotTests/Rendering.SnapshotTests.csproj -c Release
+
+      - name: Show what moved
+        run: git status --porcelain tests/Rendering.SnapshotTests/Baselines
+
+      - name: Upload baselines
+        uses: actions/upload-artifact@v4
+        with:
+          name: baselines-${{ inputs.os }}
+          path: tests/Rendering.SnapshotTests/Baselines

@@ -744,15 +744,21 @@ the app cannot keep; and `head.created`/`head.modified` pinning needs `recalcTim
 well as the assignment, without which fontTools overwrites `modified` on save and the manifest's
 hashes are theatre.
 
-Two items are blocked on hardware rather than design, both because Skia rasterises through the
-platform scaler backend and a per-OS baseline must be produced on that OS:
+Two items were blocked on hardware rather than design, both because Skia rasterises through the
+platform scaler backend and a per-OS baseline must be produced on that OS. **Both routes around
+that are now open (2026-07-27):** Linux baselines are produced in a `mcr.microsoft.com/dotnet/sdk:10.0`
+container, which is Ubuntu 24.04 exactly as `ubuntu-latest` is — regenerating there reproduced all
+14 committed Linux baselines byte-for-byte, which is what makes a *new* one from it trustworthy; and
+macOS baselines come from `.github/workflows/bake-baselines.yml`, a `workflow_dispatch`-only job that
+regenerates on a runner and uploads them for a maintainer to promote. It commits nothing itself.
 
 - [!] `WidgetStyleDefaults.Small` → Source Sans 3 Italic — implemented and reverted; it moves
-  `widgets-gallery-page1`, `issue-page3` and `issue-page4`, and only the Windows baselines could be
-  re-baked on this machine. Two-line change plus `TRESTLEBOARD_UPDATE_BASELINES=1` on all three.
-- [!] `font-catalog-sampler` Linux and macOS baselines — the Windows one is committed; the fixture's
-  per-face assertions carry the guarantee on every OS and the pixel comparison skips with a reason
-  where no baseline exists yet.
+  `widgets-gallery-page1`, `issue-page3` and `issue-page4`. Two-line change plus
+  `TRESTLEBOARD_UPDATE_BASELINES=1` on all three operating systems.
+- [!] `font-catalog-sampler` Linux and macOS baselines — the Windows one was committed at M14 and
+  the Linux one is now baked in the container; **macOS remains, awaiting a promoted bake artifact.**
+  The fixture's per-face assertions carry the guarantee on every OS meanwhile, and the pixel
+  comparison skips with a reason where no baseline exists yet.
 
 **Goal:** the committee can pick a typeface and a text size, and the app has enough good print faces
 to make that worth doing. Today the entire typographic surface is Bold, Italic, and a paragraph-style

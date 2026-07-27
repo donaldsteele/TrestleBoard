@@ -288,7 +288,8 @@ strictly worse by adding a second place a family name can live.
    could be re-baked here. Committing it would have broken CI on ubuntu and macos. It is a two-line
    change plus `TRESTLEBOARD_UPDATE_BASELINES=1` on each of the three operating systems, and it is
    recorded in PLAN.md as `- [!]`.
-2. **`font-catalog-sampler` has no Linux or macOS baseline**, for the same reason. The per-face
+2. **`font-catalog-sampler` has no macOS baseline yet.** The Linux one was baked after the fact —
+   see §15 — leaving macOS, which needs `.github/workflows/bake-baselines.yml`. The per-face
    assertions cover the guarantee meanwhile, and the comparison skips with a message telling the
    next maintainer exactly what to run.
 3. **A keyboard-only run of the font picker by a person** is section 14 of
@@ -297,3 +298,37 @@ strictly worse by adding a second place a family name can live.
    headings are announced at all.
 4. **The `quote` / `body-italic` attribute collision** described in §11. Pre-existing, exposed
    rather than caused, and cheap to fix later by giving `quote` a distinguishing size.
+
+---
+
+## 15. Baking a baseline for an operating system you do not own (2026-07-27)
+
+§12 called the missing Linux and macOS baselines a hardware problem. Two thirds of it was not.
+
+**Linux, in a container.** `mcr.microsoft.com/dotnet/sdk:10.0` is Ubuntu 24.04, which is what
+`ubuntu-latest` is. Cloning the repo inside it and running the snapshot suite with
+`TRESTLEBOARD_UPDATE_BASELINES=1` reproduced **all 14 committed Linux baselines byte-for-byte** and
+wrote the one that was missing. That reproduction is the whole argument: it says the container's
+FreeType rasterisation is the same rasterisation the committed baselines came from, so the new file
+is a CI-truthful baseline rather than a plausible-looking one. Bind-mount the repo read-only and
+clone it inside, so a Windows `obj/` never reaches the Linux build:
+
+```
+docker run --rm -v C:\code\TrestleBoard:/src:ro -v <out>:/out \
+  -e TRESTLEBOARD_UPDATE_BASELINES=1 mcr.microsoft.com/dotnet/sdk:10.0 \
+  bash -c "git clone -q /src /work && cd /work && \
+           dotnet test tests/Rendering.SnapshotTests/Rendering.SnapshotTests.csproj -c Release && \
+           git status --porcelain && cp -r tests/Rendering.SnapshotTests/Baselines/linux /out/"
+```
+
+The `git status --porcelain` line is not decoration — it is the check. Anything other than the one
+expected file means the container does not match CI and nothing from it should be promoted.
+
+**macOS, on a runner.** There is no container trick for CoreText. `.github/workflows/bake-baselines.yml`
+is `workflow_dispatch`-only, takes the runner as an input, regenerates, prints what moved and uploads
+`tests/Rendering.SnapshotTests/Baselines` as an artifact. It **commits nothing** — a maintainer
+promotes the file. Dispatch it on the branch that carries the change being re-baked, or it bakes the
+old pixels.
+
+This is the same "promote the CI artifact" idiom the snapshot failure messages have always
+suggested; it just has a job behind it now.
