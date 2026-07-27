@@ -1003,6 +1003,14 @@ fully operable keyboard-only; licence text ships inside the installer.
 
 **Post-milestone:** `/graphify . --update`; ingest the M14 decisions into llm-wiki; `/wiki:lint`
 (even-numbered milestone).
+**Post-milestone status (2026-07-27):** done. graphify updated to 4213 nodes / 9021 edges (+318 nodes,
++730 edges); as at M10–M13 the incremental pass was **AST-only**, so the 38 changed docs and 34 baseline
+images stay unstamped in the manifest and are still queued for the next semantic run. llm-wiki has
+`m14-decisions` plus one new concept page, `bundled-font-pipeline` — the supply-chain half of this
+milestone is genuinely reusable knowledge and did not belong buried in a decisions page. `/wiki:lint`
+run for the even-numbered cadence: 27 pages, no broken links, no oversized pages, no missing
+frontmatter, graph extract clean at 27 nodes / 174 edges. The four monthly-issue source pages remain
+the only orphans, unchanged and deliberately so since M10.
 **Agents:** **Opus** for the catalog, the substitution policy and the sibling command; **Sonnet** for
 the styles window and the build script; **cavecrew-reviewer (Sonnet)**.
 
