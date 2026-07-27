@@ -40,8 +40,11 @@ public sealed record RosterFieldInfo(
             ["email", "e-mail", "mail"]),
         new(RosterField.Office, "Lodge office — which column has it?", "Office", false,
             ["office", "title", "position", "station", "rank"]),
+        // "raised or initiated" first, and deliberately: it is what our own export writes as a
+        // header, and without it that column matches the DegreeDate hint "raised" instead — which
+        // would store the word "Raised" as somebody's degree date on a re-import of our own file.
         new(RosterField.DegreeKind, "Raised or initiated — which column says which?", "Raised or initiated", false,
-            ["degree", "status", "kind"]),
+            ["raised or initiated", "degree", "status", "kind"]),
         new(RosterField.DegreeDate, "The date he was raised or initiated — which column has it?", "Date", false,
             ["raised", "initiated", "degree date", "date"]),
     ];

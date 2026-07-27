@@ -221,3 +221,29 @@ so bending the widget wizard to fit would make both worse.
    toggle, the duplicate questions, and the unusable rows with a **Save these to a file** button so
    nothing is silently lost.
 6. **"Done."** — *"Your address book now has 100 people."*
+
+---
+
+## 6. Export, and the round trip it exists for
+
+`Lodge-address-book-YYYY-MM-DD.xlsx`, one sheet named "People", nine columns.
+
+**Every cell is written as text.** A real date cell forces a year onto a birthday that has none and
+shows it as `7/4/1900`; a numeric phone number becomes `8.03555E+09`. Both are damage the user would
+have to undo by hand in a file they opened only to check a phone number. ClosedXML's
+`SetValue(string)` is not enough on its own — a string that parses as a date is converted on the way
+in unless the cell's number format says `@` — so both are set.
+
+**The ID column is written**, which is what makes export → edit in Excel → re-import lossless even
+when a name changed in between. That is the workflow a lodge secretary will actually use, and it is
+why the importer recognises "TrestleBoard ID" wherever it sits and never offers it as one of the
+user's own fields.
+
+One bug worth recording, because the round-trip test is what caught it: our own "Raised or
+initiated" header matched the *degree date* hint `raised` before the degree-kind row was reached, so
+re-importing our own export stored the word "Raised" as somebody's degree date. The hint list now
+names the full header first. A round trip through one's own writer proves little about a reader, but
+it proves a great deal about a writer and a guesser together.
+
+Export writes only to a path the user browsed to (PLAN.md §0 rule 5). There is no default location
+beside the repository or the newsletter.
