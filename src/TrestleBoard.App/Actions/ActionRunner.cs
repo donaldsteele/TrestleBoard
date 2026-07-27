@@ -53,6 +53,13 @@ internal sealed class ActionRunner
             [ActionId.Italic] = Sync(window.ToggleItalic),
             [ActionId.ParagraphStyle] = source => { window.ShowParagraphStyles(source); return Task.CompletedTask; },
 
+            // ---- Fonts and sizes (M14) --------------------------------------------------------------
+            [ActionId.FontsAndStyles] = _ => window.ShowTextStylesAsync(),
+            [ActionId.BiggerText] = Sync(() => window.StepTextSize(+1)),
+            [ActionId.SmallerText] = Sync(() => window.StepTextSize(-1)),
+            [ActionId.FontJustHere] = _ => window.UseFontJustHereAsync(),
+            [ActionId.ClearFontOverride] = Sync(window.ClearFontOverrideHere),
+
             // ---- Putting things on the page --------------------------------------------------------
             [ActionId.AddTextFrame] = Sync(window.AddTextFrame),
             [ActionId.InsertPhoto] = _ => window.InsertPhotoAsync(),
@@ -97,6 +104,7 @@ internal sealed class ActionRunner
             [ActionId.NextRegion] = Sync(() => window.CycleRegion(forward: true)),
             [ActionId.PreviousRegion] = Sync(() => window.CycleRegion(forward: false)),
             [ActionId.ToggleActionPanel] = Sync(window.ToggleActionPanel),
+            [ActionId.ShowFontChanges] = Sync(window.ToggleShowFontChanges),
 
             // ---- The address book (M12) --------------------------------------------------------------
             [ActionId.ShowPeople] = _ => window.ShowPeopleAsync(),
@@ -108,6 +116,7 @@ internal sealed class ActionRunner
             // ---- Help ------------------------------------------------------------------------------
             [ActionId.CheckForUpdates] = _ => window.CheckForUpdatesForTest(userAsked: true),
             [ActionId.About] = _ => window.ShowAboutAsync(),
+            [ActionId.FontLicences] = _ => window.ShowFontLicencesAsync(),
         };
 
         foreach ((string actionId, string widgetTypeId) in WidgetInserts)

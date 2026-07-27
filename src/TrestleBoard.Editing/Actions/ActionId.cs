@@ -29,6 +29,13 @@ public static class ActionId
     public const string Italic = "text.italic";
     public const string ParagraphStyle = "text.paragraphStyle";
 
+    // ---- Fonts and sizes (M14) ------------------------------------------------------------------
+    public const string FontsAndStyles = "text.fontsAndStyles";
+    public const string BiggerText = "text.bigger";
+    public const string SmallerText = "text.smaller";
+    public const string FontJustHere = "text.fontJustHere";
+    public const string ClearFontOverride = "text.clearFontOverride";
+
     // ---- Putting things on the page -----------------------------------------------------------
     public const string AddTextFrame = "insert.textFrame";
     public const string InsertPhoto = "insert.photo";
@@ -82,6 +89,9 @@ public static class ActionId
     public const string PreviousRegion = "view.previousRegion";
     public const string ToggleActionPanel = "view.toggleActionPanel";
 
+    /// <summary>M14: underline the text whose font was changed by hand. Off by default.</summary>
+    public const string ShowFontChanges = "view.showFontChanges";
+
     // ---- The address book (M12) ---------------------------------------------------------------
     public const string ShowPeople = "people.show";
     public const string ImportPeople = "people.import";
@@ -92,4 +102,7 @@ public static class ActionId
     // ---- Help ---------------------------------------------------------------------------------
     public const string CheckForUpdates = "help.checkForUpdates";
     public const string About = "help.about";
+
+    /// <summary>M14: the OFL text for every bundled family, as the licence requires we ship it.</summary>
+    public const string FontLicences = "help.fontLicences";
 }

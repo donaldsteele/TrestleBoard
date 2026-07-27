@@ -76,6 +76,21 @@ public sealed record ActionContext
     /// <summary>There is somewhere for the overflowing text of the selected frame to go.</summary>
     public bool CanAutoFlow { get; init; }
 
+    // ---- Fonts (M14) --------------------------------------------------------------------------
+
+    /// <summary>The writing at the caret carries a "just here" font rather than its role's.</summary>
+    public bool SelectionUsesFontOverride { get; init; }
+
+    /// <summary>
+    /// "This text uses EB Garamond instead of the Body text font." Null when there is nothing to
+    /// say. One of the three ways the user can tell text has been overridden — the other two are
+    /// the View overlay and the styles window's footer.
+    /// </summary>
+    public string? FontOverrideNote { get; init; }
+
+    /// <summary>How many pieces of text in the whole newsletter carry a "just here" font.</summary>
+    public int FontOverrideCount { get; init; }
+
     // ---- Widgets ------------------------------------------------------------------------------
 
     /// <summary>The widget type id, e.g. "officersTable"; null when the selection is not a widget.</summary>

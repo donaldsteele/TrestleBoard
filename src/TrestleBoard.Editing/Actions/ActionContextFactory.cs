@@ -102,6 +102,10 @@ public static class ActionContextFactory
             SelectionIsOverset = frames?.IsSelectionOverset == true,
             CanAutoFlow = pages?.CanAutoFlow(textBlockId) == true,
 
+            SelectionUsesFontOverride = editing && editor!.SelectionUsesFontOverride,
+            FontOverrideNote = editing ? editor!.DescribeFontOverride() : null,
+            FontOverrideCount = editor?.CountFontOverrides() ?? 0,
+
             WidgetTypeId = selection == SelectionKind.Widget ? widgets?.GetWidgetType(blockId) : null,
             WidgetDisplayName = shell.SelectedWidgetDisplayName,
             CanEditWidget = selection == SelectionKind.Widget && widgets?.CanEdit(blockId) == true,

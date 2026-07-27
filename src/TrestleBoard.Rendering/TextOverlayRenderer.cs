@@ -35,8 +35,23 @@ public static class TextOverlayRenderer
         uint argb = 0x88606060,
         float thicknessPt = 0.9f)
     {
-        ArgumentNullException.ThrowIfNull(canvas);
         ArgumentNullException.ThrowIfNull(result);
+        DrawFontOverrides(canvas, result.Frames, spans, argb, thicknessPt);
+    }
+
+    /// <summary>
+    /// The same marks, for a caller that has the page's frames rather than a whole
+    /// <see cref="LayoutResult"/> — which is the editor canvas's situation.
+    /// </summary>
+    public static void DrawFontOverrides(
+        SKCanvas canvas,
+        IReadOnlyList<FrameLayout> frames,
+        IReadOnlyCollection<SourceSpan> spans,
+        uint argb = 0x88606060,
+        float thicknessPt = 0.9f)
+    {
+        ArgumentNullException.ThrowIfNull(canvas);
+        ArgumentNullException.ThrowIfNull(frames);
         ArgumentNullException.ThrowIfNull(spans);
         if (spans.Count == 0)
         {
@@ -44,7 +59,7 @@ public static class TextOverlayRenderer
         }
 
         using var paint = new SKPaint { Color = new SKColor(argb), Style = SKPaintStyle.Fill };
-        foreach (FrameLayout frame in result.Frames)
+        foreach (FrameLayout frame in frames)
         {
             foreach (LineBox line in frame.Lines)
             {

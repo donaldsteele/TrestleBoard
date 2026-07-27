@@ -9,6 +9,7 @@ using Avalonia.Skia;
 using Avalonia.Threading;
 using SkiaSharp;
 using TrestleBoard.Editing;
+using TrestleBoard.Layout;
 using TrestleBoard.Layout.Editing;
 using TrestleBoard.Rendering;
 
@@ -75,6 +76,25 @@ public sealed class PageCanvasControl : Control
     {
         get => GetValue(PageIndexProperty);
         set => SetValue(PageIndexProperty, value);
+    }
+
+    /// <summary>
+    /// M14's View → "Show where fonts were changed". Off by default: a mark the user did not ask
+    /// for is noise, and this one is only useful while hunting down a stray font.
+    /// </summary>
+    public bool ShowFontChanges
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            InvalidateVisual();
+        }
     }
 
     /// <summary>The laid-out document; not an AvaloniaProperty because it is set wholesale on open.</summary>
@@ -222,8 +242,42 @@ public sealed class PageCanvasControl : Control
 
         FrameOverlay frameOverlay = _frames?.BuildOverlay(currentPage) ?? FrameOverlay.Empty;
 
+        // M14's "show where fonts were changed": an EDITOR overlay, gathered on the UI thread like
+        // the caret and the selection. It never goes through PageRenderer, or it would print.
+        IReadOnlyList<SourceSpan> fontOverrides = [];
+        IReadOnlyList<FrameLayout> pageFrames = [];
+        if (ShowFontChanges && _editor is not null)
+        {
+            fontOverrides = _editor.FontOverrideSpans();
+            if (fontOverrides.Count > 0)
+            {
+                pageFrames = FramesOnPage(currentPage);
+            }
+        }
+
         context.Custom(new PageDrawOperation(
-            new Rect(Bounds.Size), _source, PageIndex, Zoom, PagePaddingPx, selection, caret, frameOverlay));
+            new Rect(Bounds.Size), _source, PageIndex, Zoom, PagePaddingPx, selection, caret,
+            frameOverlay, pageFrames, fontOverrides));
+    }
+
+    /// <summary>Every laid-out text frame on one page, for the font-change overlay.</summary>
+    private List<FrameLayout> FramesOnPage(int pageIndex)
+    {
+        if (_source is null)
+        {
+            return [];
+        }
+
+        var frames = new List<FrameLayout>();
+        foreach ((string blockId, string _) in _source.DescribeBlocks(pageIndex))
+        {
+            if (_source.TryGetFrameLayout(blockId, out FrameLayout? layout))
+            {
+                frames.Add(layout);
+            }
+        }
+
+        return frames;
     }
 
     private bool BlockIsOnPage(string blockId, int pageIndex) =>
@@ -639,7 +693,9 @@ public sealed class PageCanvasControl : Control
         double padding,
         IReadOnlyList<SelectionRect> selection,
         CaretGeometry? caret,
-        FrameOverlay frameOverlay) : ICustomDrawOperation
+        FrameOverlay frameOverlay,
+        IReadOnlyList<FrameLayout> pageFrames,
+        IReadOnlyList<SourceSpan> fontOverrides) : ICustomDrawOperation
     {
         public Rect Bounds => bounds;
 
@@ -690,6 +746,11 @@ public sealed class PageCanvasControl : Control
                 if (caret is { } c)
                 {
                     TextOverlayRenderer.DrawCaret(canvas, c);
+                }
+
+                if (fontOverrides.Count > 0)
+                {
+                    TextOverlayRenderer.DrawFontOverrides(canvas, pageFrames, fontOverrides);
                 }
 
                 // Frame chrome on top of everything, sized in screen points.

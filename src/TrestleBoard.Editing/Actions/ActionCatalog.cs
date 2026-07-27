@@ -74,6 +74,19 @@ public static class ActionCatalog
             IsPrimary: true),
         new(ActionId.ParagraphStyle, "Paragraph style ▸",
             "Chooses what kind of paragraph this is, such as a heading.", ActionGroup.Text),
+        new(ActionId.FontsAndStyles, "Change the font for this style ▸",
+            "Chooses the typeface and size for every piece of writing of this kind.",
+            ActionGroup.Text, "Ctrl+Shift+D", IsPrimary: true),
+        new(ActionId.BiggerText, "+ Bigger", "Makes this kind of writing one step larger everywhere.",
+            ActionGroup.Text, "Ctrl+Shift+."),
+        new(ActionId.SmallerText, "− Smaller", "Makes this kind of writing one step smaller everywhere.",
+            ActionGroup.Text, "Ctrl+Shift+,"),
+        new(ActionId.FontJustHere, "Use a different font just here…",
+            "Changes the typeface of the highlighted words only, leaving the rest alone.",
+            ActionGroup.Text),
+        new(ActionId.ClearFontOverride, "Put it back to the usual font",
+            "Returns the highlighted words to the font the rest of this kind of writing uses.",
+            ActionGroup.Text),
 
         // ---- Putting things on the page ---------------------------------------------------------
         new(ActionId.AddTextFrame, "Add a text frame", "Puts an empty box on the page for you to write in.",
@@ -153,6 +166,9 @@ public static class ActionCatalog
             "Moves the other way round the window.", ActionGroup.View, "Shift+F6"),
         new(ActionId.ToggleActionPanel, "Show what I can do",
             "Shows or hides the panel of things you can do to what you have chosen.", ActionGroup.View),
+        new(ActionId.ShowFontChanges, "Show where fonts were changed",
+            "Underlines, on screen only, any writing whose font was changed by hand.",
+            ActionGroup.View),
 
         // ---- The address book (M12) ---------------------------------------------------------------
         new(ActionId.ShowPeople, "People…", "Opens your lodge address book.",
@@ -170,6 +186,9 @@ public static class ActionCatalog
         new(ActionId.CheckForUpdates, "Check for an update", "Asks whether a newer TrestleBoard exists.",
             ActionGroup.Help),
         new(ActionId.About, "About TrestleBoard", "Shows which version this is.", ActionGroup.Help),
+        new(ActionId.FontLicences, "Fonts and licences",
+            "Lists the typefaces that came with TrestleBoard and the licence each one is used under.",
+            ActionGroup.Help),
     ];
 
     private static readonly Dictionary<string, EditorAction> ById =
@@ -200,6 +219,7 @@ public static class ActionCatalog
             ActionId.Open or ActionId.OpenSample or ActionId.NewFromTemplate or ActionId.Exit
                 or ActionId.Settings or ActionId.NextRegion or ActionId.PreviousRegion
                 or ActionId.ToggleActionPanel or ActionId.CheckForUpdates or ActionId.About
+                or ActionId.FontLicences
                 or ActionId.ShowPeople or ActionId.ImportPeople =>
                 ActionAvailability.Available,
 
@@ -252,6 +272,23 @@ public static class ActionCatalog
             ActionId.Bold or ActionId.Italic or ActionId.ParagraphStyle => context.IsEditingText
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(NeedsText),
+
+            // ---- Fonts and sizes (M14) ------------------------------------------------------------
+            // Style-first: these three act on the kind of writing the caret is in, so they need a
+            // caret but not a highlight. The font picker itself only needs a newsletter, because it
+            // is a whole-document sheet the user can open to look at.
+            ActionId.FontsAndStyles => RequiresDocument(context),
+            ActionId.BiggerText or ActionId.SmallerText or ActionId.FontJustHere =>
+                context.IsEditingText
+                    ? ActionAvailability.Available
+                    : ActionAvailability.NotApplicable(NeedsText),
+            ActionId.ClearFontOverride => !context.IsEditingText
+                ? ActionAvailability.NotApplicable(NeedsText)
+                : context.SelectionUsesFontOverride
+                    ? ActionAvailability.Available
+                    : ActionAvailability.NotApplicable(
+                        "This writing already uses the font its kind of writing normally uses."),
+            ActionId.ShowFontChanges => RequiresDocument(context),
 
             // ---- Putting things on the page -----------------------------------------------------
             ActionId.AddTextFrame or ActionId.InsertPhoto or ActionId.InsertOfficers

@@ -52,6 +52,13 @@ internal static class KeyboardMap
         new(Key.B, Ctrl, ActionId.Bold, KeyScope.WhileTyping),
         new(Key.I, Ctrl, ActionId.Italic, KeyScope.WhileTyping),
 
+        // ---- Fonts and sizes (M14) ------------------------------------------------------------
+        // Ctrl+Shift+T would have been the mnemonic choice, but M11 already gave it to "add a text
+        // frame" and a promise the app cannot keep is worse than an unmemorable one.
+        new(Key.D, CtrlShift, ActionId.FontsAndStyles),
+        new(Key.OemPeriod, CtrlShift, ActionId.BiggerText, KeyScope.WhileTyping),
+        new(Key.OemComma, CtrlShift, ActionId.SmallerText, KeyScope.WhileTyping),
+
         // ---- Putting things on the page -------------------------------------------------------
         new(Key.T, CtrlShift, ActionId.AddTextFrame),
         new(Key.P, CtrlShift, ActionId.InsertPhoto),
@@ -154,6 +161,8 @@ internal static class KeyboardMap
             Key.OemMinus => "-",
             Key.OemOpenBrackets => "[",
             Key.OemCloseBrackets => "]",
+            Key.OemPeriod => ".",
+            Key.OemComma => ",",
             Key.D0 => "0",
             Key.D1 => "1",
             _ => shortcut.Key.ToString(),

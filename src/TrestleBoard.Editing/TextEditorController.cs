@@ -1,6 +1,7 @@
 using TrestleBoard.Core.Commands;
 using TrestleBoard.Core.Model;
 using TrestleBoard.Core.Text;
+using TrestleBoard.Layout;
 using TrestleBoard.Layout.Editing;
 using TrestleBoard.Rendering;
 
@@ -574,6 +575,222 @@ public sealed class TextEditorController
 
     public IReadOnlyList<string> AvailableParagraphStyles =>
         _session.Document.StyleSheet.ParagraphStyles.Select(s => s.Name).ToList();
+
+    // ---- Fonts and sizes (PLAN.md M14) ---------------------------------------------------------
+
+    /// <summary>The character style in force where the caret is, or null when not editing.</summary>
+    public CharacterStyleDef? CurrentCharacterStyle
+    {
+        get
+        {
+            if (!IsActive)
+            {
+                return null;
+            }
+
+            string? reference = CurrentCharacterStyleRef;
+            return reference is null ? null : _session.Document.StyleSheet.GetCharacterStyle(reference);
+        }
+    }
+
+    /// <summary>
+    /// The style name in force. For a selection this is the FIRST span's style — the styles window
+    /// and the size stepper both act on a group, and a group has to be chosen from somewhere.
+    /// </summary>
+    public string? CurrentCharacterStyleRef
+    {
+        get
+        {
+            if (!IsActive)
+            {
+                return null;
+            }
+
+            if (_selection.IsEmpty)
+            {
+                return _pendingCharacterStyleRef
+                    ?? EffectiveRefAt(_selection.Caret.ParagraphIndex, _selection.Caret.Offset);
+            }
+
+            List<(int Paragraph, int Offset, int Length, string EffectiveRef)> spans =
+                EnumerateStyleSpans(_selection.Range);
+            return spans.Count > 0 ? spans[0].EffectiveRef : null;
+        }
+    }
+
+    /// <summary>True when the text here carries a "just here" font, rather than its role's font.</summary>
+    public bool SelectionUsesFontOverride =>
+        CurrentCharacterStyleRef is { } reference && StyleOverrides.IsOverride(reference);
+
+    /// <summary>
+    /// "This text uses EB Garamond instead of the Body text font." Null when the text is using its
+    /// role's own font, which is the ordinary case and needs no sentence.
+    /// </summary>
+    public string? DescribeFontOverride()
+    {
+        if (CurrentCharacterStyle is not { } style || !StyleOverrides.IsOverride(style.Name))
+        {
+            return null;
+        }
+
+        string roleName = StyleOverrides.RoleOf(style.Name);
+        CharacterStyleDef? role = _session.Document.StyleSheet.CharacterStyles
+            .Find(s => s.Name == roleName);
+        return role is null ? null : StyleOverrides.Describe(style, role);
+    }
+
+    /// <summary>How many pieces of text in the whole newsletter carry a "just here" font.</summary>
+    public int CountFontOverrides() => FontOverrideSpans().Count;
+
+    /// <summary>
+    /// Where every "just here" font sits, for the View overlay and for "Show me". Whole-document,
+    /// because the styles window's footer offers to put them all back.
+    /// </summary>
+    public IReadOnlyList<SourceSpan> FontOverrideSpans()
+    {
+        var spans = new List<SourceSpan>();
+        foreach (Story story in _session.Document.Stories)
+        {
+            for (int p = 0; p < story.Paragraphs.Count; p++)
+            {
+                int offset = 0;
+                foreach (StoryRun run in story.Paragraphs[p].Runs)
+                {
+                    if (run.CharacterStyleRef is { } reference && StyleOverrides.IsOverride(reference))
+                    {
+                        spans.Add(new SourceSpan(story.Id, p, offset, offset + run.Text.Length));
+                    }
+
+                    offset += run.Text.Length;
+                }
+            }
+        }
+
+        return spans;
+    }
+
+    /// <summary>
+    /// Applies a font (and optionally a size) to THIS text only, by minting a derived style and
+    /// applying it by reference. Runs never carry direct formatting in v1 and this does not change
+    /// that — it is the same machinery bold and italic already use, so no new command type is
+    /// needed, just EnsureCharacterStyle + ApplyCharacterStyle.
+    /// </summary>
+    public void UseFontJustHere(string fontFamily, float? sizePt)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(fontFamily);
+        RetargetSpans(
+            "Use a different font here",
+            (sheet, effectiveRef) =>
+            {
+                CharacterStyleDef from = sheet.GetCharacterStyle(effectiveRef);
+                string roleName = StyleOverrides.RoleOf(effectiveRef);
+                CharacterStyleDef role = sheet.CharacterStyles.Find(s => s.Name == roleName) ?? from;
+                float size = sizePt ?? from.SizePt;
+                string overrideBase = StyleOverrides.NameFor(roleName, fontFamily, size, role.SizePt);
+                string name = CharacterStyleResolver.VariantName(overrideBase, from.Weight, from.Slant);
+                CharacterStyleDef? existing = sheet.CharacterStyles.Find(s => s.Name == name);
+                if (existing is not null)
+                {
+                    return (name, null);
+                }
+
+                CharacterStyleDef derived =
+                    CharacterStyleResolver.Derive(from, name, from.Weight, from.Slant);
+                derived.FontFamily = fontFamily;
+                derived.SizePt = size;
+                return (name, derived);
+            });
+    }
+
+    /// <summary>Puts overridden text back on its role's own font, leaving bold and italic alone.</summary>
+    public void ClearFontOverride()
+    {
+        RetargetSpans(
+            "Put the font back",
+            (sheet, effectiveRef) =>
+            {
+                if (!StyleOverrides.IsOverride(effectiveRef))
+                {
+                    return (effectiveRef, null);
+                }
+
+                CharacterStyleDef from = sheet.GetCharacterStyle(effectiveRef);
+                string roleName = StyleOverrides.RoleOf(effectiveRef);
+                string name = CharacterStyleResolver.VariantName(roleName, from.Weight, from.Slant);
+                CharacterStyleDef? existing = sheet.CharacterStyles.Find(s => s.Name == name);
+                if (existing is not null)
+                {
+                    return (name, null);
+                }
+
+                CharacterStyleDef role = sheet.CharacterStyles.Find(s => s.Name == roleName) ?? from;
+                return (name, CharacterStyleResolver.Derive(role, name, from.Weight, from.Slant));
+            });
+    }
+
+    /// <summary>
+    /// Retargets every span in the selection (or the caret's pending style) at a style chosen per
+    /// span. Factored out because "use a different font here" and "put it back" differ only in how
+    /// they name the target.
+    /// </summary>
+    private void RetargetSpans(
+        string description,
+        Func<StyleSheet, string, (string Name, CharacterStyleDef? ToEnsure)> chooseTarget)
+    {
+        if (!IsActive)
+        {
+            return;
+        }
+
+        StyleSheet sheet = _session.Document.StyleSheet;
+        if (_selection.IsEmpty)
+        {
+            string? reference = _pendingCharacterStyleRef
+                ?? EffectiveRefAt(_selection.Caret.ParagraphIndex, _selection.Caret.Offset);
+            if (reference is null)
+            {
+                return;
+            }
+
+            (string name, CharacterStyleDef? toEnsure) = chooseTarget(sheet, reference);
+            if (toEnsure is not null)
+            {
+                _session.Execute(new EnsureCharacterStyleCommand(toEnsure));
+            }
+
+            _pendingCharacterStyleRef = name;
+            RaiseChanged();
+            return;
+        }
+
+        List<(int Paragraph, int Offset, int Length, string EffectiveRef)> spans =
+            EnumerateStyleSpans(_selection.Range);
+        if (spans.Count == 0)
+        {
+            return;
+        }
+
+        var children = new List<IDocumentCommand>();
+        var ensured = new HashSet<string>(StringComparer.Ordinal);
+        string storyId = _selection.StoryId;
+        foreach ((int paragraph, int offset, int length, string effectiveRef) in spans)
+        {
+            (string target, CharacterStyleDef? toEnsure) = chooseTarget(sheet, effectiveRef);
+            if (toEnsure is not null && ensured.Add(toEnsure.Name))
+            {
+                children.Insert(0, new EnsureCharacterStyleCommand(toEnsure));
+            }
+
+            string? applied = target == ParagraphDefaultRef(paragraph) ? null : target;
+            children.Add(new ApplyCharacterStyleCommand(storyId, paragraph, offset, length, applied));
+        }
+
+        _session.Execute(new CompositeCommand(
+            description,
+            new ChangeScope(ChangeKind.Text, StoryId: storyId),
+            children));
+        RaiseChanged();
+    }
 
     public void ApplyParagraphStyle(string paragraphStyleRef)
     {

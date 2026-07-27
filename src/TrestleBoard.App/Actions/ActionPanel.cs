@@ -90,6 +90,22 @@ internal sealed class ActionPanel : Border
 
         _content.Children.Clear();
 
+        // M14: one of the three ways the user can tell this text carries a font of its own. The
+        // other two are the View overlay and the styles window's footer — all three are needed,
+        // because each answers the question from a different place.
+        if (context.FontOverrideNote is { Length: > 0 } note)
+        {
+            var line = new TextBlock
+            {
+                Text = note,
+                FontSize = 15,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Avalonia.Thickness(0, 0, 0, 8),
+            };
+            AutomationProperties.SetLiveSetting(line, AutomationLiveSetting.Polite);
+            _content.Children.Add(line);
+        }
+
         if (!context.HasFrameSelection && !context.IsEditingText && nextSteps.Count > 0)
         {
             _content.Children.Add(BuildWhatsNext(nextSteps, invoke));

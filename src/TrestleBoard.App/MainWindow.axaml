@@ -60,6 +60,20 @@
         <Separator />
         <MenuItem x:Name="ParagraphStyleMenu" Header="Paragraph _style" Tag="text.paragraphStyle"
                   AutomationProperties.Name="Paragraph style" />
+        <Separator />
+        <!-- M14. The primary path to the font picker: §6 requires every command to have a menu
+             item, and this one is the whole milestone. -->
+        <MenuItem Header="_Fonts and text styles…" Tag="text.fontsAndStyles" InputGesture="Ctrl+Shift+D"
+                  Click="OnActionClicked" AutomationProperties.Name="Fonts and text styles" />
+        <MenuItem Header="Make text bi_gger" Tag="text.bigger" InputGesture="Ctrl+Shift+OemPeriod"
+                  Click="OnActionClicked" AutomationProperties.Name="Make text bigger" />
+        <MenuItem Header="Make text small_er" Tag="text.smaller" InputGesture="Ctrl+Shift+OemComma"
+                  Click="OnActionClicked" AutomationProperties.Name="Make text smaller" />
+        <Separator />
+        <MenuItem Header="Use a different font just _here…" Tag="text.fontJustHere"
+                  Click="OnActionClicked" AutomationProperties.Name="Use a different font just here" />
+        <MenuItem Header="Put it back to the _usual font" Tag="text.clearFontOverride"
+                  Click="OnActionClicked" AutomationProperties.Name="Put it back to the usual font" />
       </MenuItem>
       <!-- Insert menu: the six widgets each get their own item so a keyboard user never has to
            go through a picker (docs/M7-spec.md §8.1). -->
@@ -145,6 +159,9 @@
         <Separator />
         <MenuItem Header="Show what I can _do" Tag="view.toggleActionPanel"
                   Click="OnActionClicked" AutomationProperties.Name="Show or hide the panel of things you can do" />
+        <MenuItem Header="Show _where fonts were changed" Tag="view.showFontChanges"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Show where fonts were changed" />
         <MenuItem Header="Move to the _next part of the window" Tag="view.nextRegion" InputGesture="F6"
                   Click="OnActionClicked" AutomationProperties.Name="Move to the next part of the window" />
         <Separator />
@@ -194,6 +211,9 @@
         <MenuItem Header="_Check for an update" Tag="help.checkForUpdates"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Check for an update" />
+        <MenuItem Header="_Fonts and licences" Tag="help.fontLicences"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Fonts and licences" />
         <MenuItem Header="_About TrestleBoard" Tag="help.about"
                   Click="OnActionClicked"
                   AutomationProperties.Name="About TrestleBoard" />

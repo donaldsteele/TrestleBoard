@@ -16,6 +16,7 @@ using TrestleBoard.Core.Commands;
 using TrestleBoard.Core.Container;
 using TrestleBoard.Core.Samples;
 using TrestleBoard.Core.Templates;
+using TrestleBoard.Core.Text;
 using TrestleBoard.Core.Workflow;
 using TrestleBoard.Editing;
 using TrestleBoard.Editing.Actions;
@@ -53,7 +54,13 @@ public partial class MainWindow : Window
     /// <summary>Below this much window width the panel folds away rather than squeezing the page out.</summary>
     private const double PanelFoldWidth = 900d;
 
-    private readonly FontStore _fonts = BundledFonts.CreateDefaultStore();
+    /// <summary>
+    /// The app is the one place where "the newsletter must still open" outranks "fail loudly", so
+    /// unlike the engine default this store substitutes rather than throwing when a document names
+    /// a family this build does not bundle. The user is told once, at open, by DocumentFontAudit —
+    /// never by a crash in the paint pass. Still never a system font (PLAN.md §1).
+    /// </summary>
+    private readonly FontStore _fonts = CreateAppFontStore();
     private readonly ActionPanel _panel = new();
     private readonly ActionRunner _actions;
     private TboardPackage? _package;
@@ -78,6 +85,14 @@ public partial class MainWindow : Window
     private bool _fitToWindow = true;
     private bool _exportedThisSession;
     private int _regionIndex;
+    private TextStylesWindow? _textStylesForTest;
+
+    private static FontStore CreateAppFontStore()
+    {
+        FontStore store = BundledFonts.CreateDefaultStore();
+        store.SubstituteFamily = BundledFonts.BodyFamily;
+        return store;
+    }
 
     public MainWindow()
     {
@@ -804,6 +819,20 @@ public partial class MainWindow : Window
 
     internal PageCanvasControl CanvasForTest => PageCanvas;
 
+    /// <summary>The last font sheet this window opened, for the M14 headless tests.</summary>
+    internal TextStylesWindow? TextStylesForTest => _textStylesForTest;
+
+    /// <summary>Builds the font sheet without showing it, so the tests can drive its contents.</summary>
+    internal TextStylesWindow BuildTextStylesWindowForTest() => new(
+        _fonts,
+        _session!.Document.StyleSheet,
+        _editor?.CurrentCharacterStyleRef,
+        FontPreviewRenderer.SampleFrom(FirstWordsOfDocument(), "The Trestle Board"),
+        _editor?.CountFontOverrides() ?? 0,
+        darkTheme: false);
+
+    internal FontStore FontsForTest => _fonts;
+
     internal void GoToNextPageForTest() => GoToPage(_pageIndex + 1);
 
     // ---- Edit / Format ------------------------------------------------------------------------
@@ -870,6 +899,184 @@ public partial class MainWindow : Window
 
         flyout.ShowAt(source);
     }
+
+    // ---- Fonts and sizes (PLAN.md M14) ---------------------------------------------------------
+
+    /// <summary>
+    /// The font-and-size assignment sheet. Style-first: it changes a whole kind of writing, which
+    /// is why the reflow warning and the "nothing changes until Apply" line are both in the sheet
+    /// rather than in a confirmation afterwards.
+    /// </summary>
+    internal async Task ShowTextStylesAsync()
+    {
+        if (_session is null)
+        {
+            return;
+        }
+
+        var window = new TextStylesWindow(
+            _fonts,
+            _session.Document.StyleSheet,
+            _editor?.CurrentCharacterStyleRef,
+            FontPreviewRenderer.SampleFrom(FirstWordsOfDocument(), "The Trestle Board"),
+            _editor?.CountFontOverrides() ?? 0,
+            _settings.Theme is ThemeChoice.Dark or ThemeChoice.HighContrast);
+        _textStylesForTest = window;
+        await window.ShowDialog(this);
+
+        if (window.ShowOverridesRequested)
+        {
+            SetShowFontChanges(true);
+            return;
+        }
+
+        if (window.ClearOverridesRequested)
+        {
+            ClearEveryFontOverride();
+            return;
+        }
+
+        if (window.Result is { } choice)
+        {
+            ApplyTextStyleChoice(choice);
+        }
+    }
+
+    /// <summary>Applies the sheet's answer, and says afterwards if the page count moved.</summary>
+    internal void ApplyTextStyleChoice(TextStyleChoice choice)
+    {
+        ArgumentNullException.ThrowIfNull(choice);
+        if (_session is null || _source is null)
+        {
+            return;
+        }
+
+        int pagesBefore = _source.PageCount;
+        _session.Execute(new SetCharacterStyleFontCommand(choice.StyleName, choice.FontFamily, choice.SizePt));
+
+        string what = choice.FontFamily is null
+            ? $"{StyleLabels.Describe(choice.StyleName)} is now {StyleOverrides.Size(choice.SizePt ?? 0f)}."
+            : $"{StyleLabels.Describe(choice.StyleName)} now uses {choice.FontFamily}.";
+        int pagesAfter = _source.PageCount;
+        Announce(pagesAfter == pagesBefore
+            ? what + " Press Ctrl+Z to put it back."
+            : what + $" The newsletter is now {pagesAfter} pages instead of {pagesBefore}. "
+                + "Press Ctrl+Z to put it back.");
+        RefreshActions();
+    }
+
+    /// <summary>Format → "Make text bigger" / "Make text smaller": one rung of the fixed ladder.</summary>
+    internal void StepTextSize(int direction)
+    {
+        if (_session is null || _editor?.CurrentCharacterStyle is not { } style)
+        {
+            return;
+        }
+
+        float? next = FontSizeLadder.Step(style.SizePt, direction);
+        if (next is null)
+        {
+            Announce(direction > 0
+                ? "This writing is already as large as TrestleBoard goes."
+                : "This writing is already as small as TrestleBoard goes.");
+            return;
+        }
+
+        ApplyTextStyleChoice(new TextStyleChoice(
+            CharacterStyleResolver.BaseName(style.Name), null, next.Value));
+    }
+
+    /// <summary>
+    /// "Use a different font just here…": the same picker, applied as a derived style to the
+    /// highlighted words only. No new command type — EnsureCharacterStyle plus ApplyCharacterStyle,
+    /// exactly as bold and italic already work.
+    /// </summary>
+    internal async Task UseFontJustHereAsync()
+    {
+        if (_session is null || _editor is null)
+        {
+            return;
+        }
+
+        var window = new TextStylesWindow(
+            _fonts,
+            _session.Document.StyleSheet,
+            _editor.CurrentCharacterStyleRef,
+            FontPreviewRenderer.SampleFrom(FirstWordsOfDocument(), "The Trestle Board"),
+            _editor.CountFontOverrides(),
+            _settings.Theme is ThemeChoice.Dark or ThemeChoice.HighContrast)
+        {
+            Title = "Use a different font just here",
+        };
+        _textStylesForTest = window;
+        await window.ShowDialog(this);
+
+        if (window.Result is { } choice)
+        {
+            _editor.UseFontJustHere(choice.FontFamily ?? CurrentFamily(), choice.SizePt);
+            Announce("Those words now use their own font. Press Ctrl+Z to put them back.");
+            RefreshActions();
+        }
+    }
+
+    internal void ClearFontOverrideHere()
+    {
+        _editor?.ClearFontOverride();
+        Announce("Put back to the usual font.");
+        RefreshActions();
+    }
+
+    /// <summary>Puts every "just here" font in the newsletter back, in one undo step.</summary>
+    internal void ClearEveryFontOverride()
+    {
+        if (_session is null || _editor is null)
+        {
+            return;
+        }
+
+        int count = _editor.CountFontOverrides();
+        if (count == 0)
+        {
+            Announce("Nothing in this newsletter uses a font of its own.");
+            return;
+        }
+
+        _editor.SelectAll();
+        _editor.ClearFontOverride();
+        Announce(count == 1
+            ? "One piece of text was put back to its usual font. Press Ctrl+Z to undo."
+            : $"{count} pieces of text were put back to their usual fonts. Press Ctrl+Z to undo.");
+        RefreshActions();
+    }
+
+    internal void ToggleShowFontChanges() => SetShowFontChanges(!PageCanvas.ShowFontChanges);
+
+    private void SetShowFontChanges(bool show)
+    {
+        PageCanvas.ShowFontChanges = show;
+        int count = _editor?.CountFontOverrides() ?? 0;
+        Announce(show
+            ? count == 0
+                ? "Nothing in this newsletter has had its font changed by hand."
+                : $"Writing whose font was changed by hand is now underlined on screen. "
+                  + $"There {(count == 1 ? "is 1 piece" : $"are {count} pieces")}. This never prints."
+            : "The underlines are hidden again.");
+        RefreshActions();
+    }
+
+    /// <summary>Help → "Fonts and licences": the OFL text the licence requires we ship (OFL §II(3)).</summary>
+    internal Task ShowFontLicencesAsync() =>
+        ShowScrollingTextAsync("Fonts and licences", BundledFonts.ReadLicenceText());
+
+    private string? FirstWordsOfDocument() =>
+        _session?.Document.Stories
+            .SelectMany(s => s.Paragraphs)
+            .SelectMany(p => p.Runs)
+            .Select(r => r.Text)
+            .FirstOrDefault(t => !string.IsNullOrWhiteSpace(t));
+
+    private string CurrentFamily() =>
+        _editor?.CurrentCharacterStyle?.FontFamily ?? BundledFonts.BodyFamily;
 
     // ---- Frames (docs/M5-spec.md §9) ----------------------------------------------------------
 
@@ -1656,6 +1863,11 @@ public partial class MainWindow : Window
 
     private void ShowPackage(TboardPackage package)
     {
+        // Before the first paint, not during it (PLAN.md M14). The document is never rewritten —
+        // the unknown family stays in styles.json, so a round trip through this build is lossless
+        // and a newer TrestleBoard will render it properly.
+        WarnAboutUnknownFonts(package.Document);
+
         var session = new DocumentSession(package.Document);
         DocumentRenderSource source = DocumentRenderSource.CreateEditable(
             package.Document, package.Assets, _fonts, session, options: null, widgets: _widgetProvider);
@@ -1799,6 +2011,65 @@ public partial class MainWindow : Window
     private sealed class PackageAssetStore(TboardPackage package) : IPhotoAssetStore
     {
         public void Register(string assetRef, byte[] bytes) => package.Assets[assetRef] = bytes;
+    }
+
+    /// <summary>
+    /// Says, in plain language, that this build cannot draw one of the newsletter's fonts. The
+    /// status bar rather than a modal: the newsletter is perfectly usable, and a dialog in front of
+    /// it on open would be a bigger interruption than the problem deserves.
+    /// </summary>
+    private void WarnAboutUnknownFonts(Core.Model.Document document)
+    {
+        IReadOnlyList<UnknownFontUse> unknown =
+            DocumentFontAudit.FindUnknownFamilies(document, BundledFontCatalog.FamilyNames);
+        if (DocumentFontAudit.DescribeWarning(unknown, BundledFonts.BodyFamily) is { } warning)
+        {
+            Announce(warning);
+        }
+    }
+
+    /// <summary>A read-only wall of text with a scrollbar — the font licences, and nothing else yet.</summary>
+    private async Task ShowScrollingTextAsync(string title, string body)
+    {
+        var close = new Button
+        {
+            Content = "Close",
+            FontSize = 18,
+            MinHeight = 44,
+            MinWidth = 120,
+            IsDefault = true,
+            IsCancel = true,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+        };
+        Avalonia.Automation.AutomationProperties.SetName(close, "Close");
+
+        var text = new TextBox
+        {
+            Text = body,
+            IsReadOnly = true,
+            AcceptsReturn = true,
+            FontSize = 14,
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            Height = 520,
+        };
+        Avalonia.Automation.AutomationProperties.SetName(text, title);
+
+        var dialog = new Window
+        {
+            Title = title,
+            Width = 760,
+            Height = 640,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = new StackPanel
+            {
+                Margin = new Avalonia.Thickness(24),
+                Spacing = 16,
+                Children = { text, close },
+            },
+        };
+        Avalonia.Automation.AutomationProperties.SetName(dialog, title);
+        close.Click += (_, _) => dialog.Close();
+        await dialog.ShowDialog(this);
     }
 
     private async Task ShowErrorAsync(string title, string message)
