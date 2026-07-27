@@ -1,0 +1,1083 @@
+{
+  "$comment": [
+    "One entry per FACE. The generated .ttf files are produced by tools/build-fonts.py and",
+    "checked in; CI never runs Python, so Layout.Tests/FontManifestTests is the guarantee",
+    "that what is on disk is what this file describes. See docs/M14-spec.md.",
+    "'frozen': true means the bytes are upstream-verbatim and MUST NOT be re-subset —",
+    "subsetting renumbers glyph ids and WidgetDrawListDump records them, which would",
+    "re-bake every snapshot baseline and every widget golden."
+  ],
+  "schemaVersion": 1,
+  "sources": {
+    "google-fonts": {
+      "repo": "https://github.com/google/fonts",
+      "commit": "7ff85c87f93ea6cca5f41c69f2e4edcb90240f26",
+      "kind": "git-raw"
+    },
+    "adobe-source-serif": {
+      "repo": "https://github.com/adobe-fonts/source-serif",
+      "tag": "4.005R",
+      "asset": "source-serif-4.005_Desktop.zip",
+      "kind": "release-zip"
+    },
+    "adobe-source-sans": {
+      "repo": "https://github.com/adobe-fonts/source-sans",
+      "tag": "3.052R",
+      "asset": "TTF-source-sans-3.052R.zip",
+      "kind": "release-zip"
+    }
+  },
+  "subsets": {
+    "text-latin": {
+      "unicodes": "U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+0160-0161,U+0178,U+017D-017E,U+0192,U+02C6,U+02C7,U+02D8-02DD,U+2010-2015,U+2018-201A,U+201C-201E,U+2020-2022,U+2026,U+2030,U+2032-2033,U+2039-203A,U+2044,U+20AC,U+2113,U+2122,U+2126,U+212E,U+2212,U+2215",
+      "layoutFeatures": "ccmp,locl,mark,mkmk,rlig,liga,kern,calt",
+      "$comment": "layoutFeatures is exactly what HarfBuzzShaper can turn on. It explicitly disables dlig and hlig, so retaining those would be dead weight."
+    }
+  },
+  "headEpoch": 3660681600,
+  "$headEpochComment": "2020-01-01T00:00:00Z in TrueType epoch seconds (since 1904-01-01). head.created and head.modified are pinned to this, without which every run produces different bytes and the hashes below would be theatre.",
+  "families": [
+    {
+      "family": "Source Serif 4",
+      "folder": "source-serif-4",
+      "category": "SerifText",
+      "designer": "Frank Grießhammer",
+      "licenceFile": "source-serif-4/LICENSE.md",
+      "licence": "SIL Open Font License 1.1",
+      "source": "adobe-source-serif",
+      "upstreamDir": null,
+      "description": "The newsletter's usual reading face. Calm, roomy, easy on tired eyes.",
+      "sampleText": "Stated Communication, second Tuesday",
+      "sortOrder": 10
+    },
+    {
+      "family": "EB Garamond",
+      "folder": "eb-garamond",
+      "category": "SerifText",
+      "designer": "Georg Duffner, Octavio Pardo",
+      "licenceFile": "eb-garamond/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "ebgaramond",
+      "description": "An old-style book face. Warm and traditional — close to what a printed lodge notice used to look like.",
+      "sampleText": "Brethren of Indian Land Lodge 414",
+      "sortOrder": 20
+    },
+    {
+      "family": "Crimson Pro",
+      "folder": "crimson-pro",
+      "category": "SerifText",
+      "designer": "Jacques Le Bailly",
+      "licenceFile": "crimson-pro/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "crimsonpro",
+      "description": "A slim book serif. Fits more words on a page without feeling cramped.",
+      "sampleText": "Minutes of the previous communication",
+      "sortOrder": 30
+    },
+    {
+      "family": "Libre Baskerville",
+      "folder": "libre-baskerville",
+      "category": "SerifText",
+      "designer": "Impallari Type",
+      "licenceFile": "libre-baskerville/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "librebaskerville",
+      "description": "A sturdy, wide serif made for screens as well as paper. Very legible at small sizes.",
+      "sampleText": "Fellowcraft degree at seven",
+      "sortOrder": 40
+    },
+    {
+      "family": "Lora",
+      "folder": "lora",
+      "category": "SerifText",
+      "designer": "Cyreal",
+      "licenceFile": "lora/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "lora",
+      "description": "A serif with brushed, calligraphic edges. Friendly without being informal.",
+      "sampleText": "Widows and orphans committee report",
+      "sortOrder": 60
+    },
+    {
+      "family": "Libre Caslon Text",
+      "folder": "libre-caslon-text",
+      "category": "SerifText",
+      "designer": "Pablo Impallari",
+      "licenceFile": "libre-caslon-text/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "librecaslontext",
+      "description": "The classic Caslon, cut for continuous reading. A very English, very old printing-house look.",
+      "sampleText": "By order of the Worshipful Master",
+      "sortOrder": 70
+    },
+    {
+      "family": "PT Serif",
+      "folder": "pt-serif",
+      "category": "SerifText",
+      "designer": "ParaType",
+      "licenceFile": "pt-serif/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "ptserif",
+      "description": "A newspaper serif. Plain, even-coloured, and it never draws attention to itself.",
+      "sampleText": "Refreshment at half past six",
+      "sortOrder": 50
+    },
+    {
+      "family": "Source Sans 3",
+      "folder": "source-sans-3",
+      "category": "SansText",
+      "designer": "Paul D. Hunt",
+      "licenceFile": "source-sans-3/LICENSE.md",
+      "licence": "SIL Open Font License 1.1",
+      "source": "adobe-source-sans",
+      "upstreamDir": null,
+      "description": "The plain, no-nonsense face used for captions and small print.",
+      "sampleText": "Photographs by the Trestle Board committee",
+      "sortOrder": 110
+    },
+    {
+      "family": "Open Sans",
+      "folder": "open-sans",
+      "category": "SansText",
+      "designer": "Steve Matteson",
+      "licenceFile": "open-sans/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "opensans",
+      "description": "A wide, open sans-serif. Probably the most familiar face on this list.",
+      "sampleText": "Please bring a covered dish",
+      "sortOrder": 120
+    },
+    {
+      "family": "Libre Franklin",
+      "folder": "libre-franklin",
+      "category": "SansText",
+      "designer": "Impallari Type",
+      "licenceFile": "libre-franklin/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "librefranklin",
+      "description": "An American gothic sans with a printed, slightly condensed feel. Good for headings.",
+      "sampleText": "Notice to all members",
+      "sortOrder": 140
+    },
+    {
+      "family": "Lato",
+      "folder": "lato",
+      "category": "SansText",
+      "designer": "Łukasz Dziedzic",
+      "licenceFile": "lato/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "lato",
+      "description": "A humanist sans with soft, rounded shapes. Reads as warm rather than corporate.",
+      "sampleText": "Fraternal greetings from the East",
+      "sortOrder": 130
+    },
+    {
+      "family": "PT Sans",
+      "folder": "pt-sans",
+      "category": "SansText",
+      "designer": "ParaType",
+      "licenceFile": "pt-sans/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "ptsans",
+      "description": "A compact, businesslike sans. Useful when a table has more columns than room.",
+      "sampleText": "Dues are payable in December",
+      "sortOrder": 150
+    },
+    {
+      "family": "Cinzel",
+      "folder": "cinzel",
+      "category": "Display",
+      "designer": "Natanael Gama",
+      "licenceFile": "cinzel/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "cinzel",
+      "description": "Roman inscription capitals. The masthead face this newsletter already uses.",
+      "sampleText": "TRESTLE BOARD",
+      "sortOrder": 210
+    },
+    {
+      "family": "Playfair Display",
+      "folder": "playfair-display",
+      "category": "Display",
+      "designer": "Claus Eggers Sørensen",
+      "licenceFile": "playfair-display/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "playfairdisplay",
+      "description": "High-contrast headline serif. Elegant, and best kept large.",
+      "sampleText": "Annual Communication",
+      "sortOrder": 220
+    },
+    {
+      "family": "Cormorant Garamond",
+      "folder": "cormorant-garamond",
+      "category": "Display",
+      "designer": "Christian Thalmann",
+      "licenceFile": "cormorant-garamond/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "cormorantgaramond",
+      "description": "A delicate display Garamond. Beautiful in a title, too fine for body text.",
+      "sampleText": "Indian Land Lodge No. 414",
+      "sortOrder": 230
+    },
+    {
+      "family": "Bitter",
+      "folder": "bitter",
+      "category": "Display",
+      "designer": "Sol Matas",
+      "licenceFile": "bitter/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "bitter",
+      "description": "A slab serif with square, solid ends. Headings that hold up on a photocopy.",
+      "sampleText": "This Month at the Lodge",
+      "sortOrder": 240
+    },
+    {
+      "family": "Marcellus",
+      "folder": "marcellus",
+      "category": "Display",
+      "designer": "Astigmatic",
+      "licenceFile": "marcellus/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "marcellus",
+      "description": "Carved Roman letterforms with lowercase. Formal, and it has only one weight.",
+      "sampleText": "Officers for the Ensuing Year",
+      "sortOrder": 250
+    },
+    {
+      "family": "Cinzel Decorative",
+      "folder": "cinzel-decorative",
+      "category": "Accent",
+      "designer": "Natanael Gama",
+      "licenceFile": "cinzel-decorative/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "cinzeldecorative",
+      "description": "Cinzel with flourishes on the capitals. For a certificate line, not a paragraph.",
+      "sampleText": "Fifty Year Award",
+      "sortOrder": 310
+    },
+    {
+      "family": "Great Vibes",
+      "folder": "great-vibes",
+      "category": "Accent",
+      "designer": "Robert Leuschke",
+      "licenceFile": "great-vibes/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "greatvibes",
+      "description": "A formal joined script. Use it for a compliments line and nothing else.",
+      "sampleText": "With fraternal regards",
+      "sortOrder": 320
+    },
+    {
+      "family": "UnifrakturMaguntia",
+      "folder": "unifraktur-maguntia",
+      "category": "Accent",
+      "designer": "j. 'mach' wust",
+      "licenceFile": "unifraktur-maguntia/OFL.txt",
+      "licence": "SIL Open Font License 1.1",
+      "source": "google-fonts",
+      "upstreamDir": "unifrakturmaguntia",
+      "description": "Blackletter, as seen on old charters and certificates. Hard to read in quantity — keep it short.",
+      "sampleText": "Chartered 1948",
+      "sortOrder": 330
+    }
+  ],
+  "faces": [
+    {
+      "family": "Source Serif 4",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "source-serif-4/SourceSerif4-Regular.ttf",
+      "source": "adobe-source-serif",
+      "upstreamPath": "TTF/SourceSerif4-Regular.ttf",
+      "axisPins": null,
+      "subset": null,
+      "frozen": true,
+      "sha256": "e5a4ee6a3d87bb9024796be390c6771e2a0eb1883dae25effaf57ca01668e24b"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "source-serif-4/SourceSerif4-Bold.ttf",
+      "source": "adobe-source-serif",
+      "upstreamPath": "TTF/SourceSerif4-Bold.ttf",
+      "axisPins": null,
+      "subset": null,
+      "frozen": true,
+      "sha256": "7cf4f4e1ad74f45058d5bc61716b82560442fbdcd9d3654d2dea96bf6c683d86"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "Regular",
+      "slant": "Italic",
+      "file": "source-serif-4/SourceSerif4-It.ttf",
+      "source": "adobe-source-serif",
+      "upstreamPath": "TTF/SourceSerif4-It.ttf",
+      "axisPins": null,
+      "subset": null,
+      "frozen": true,
+      "sha256": "9d2950a8f1da66e21502c35d646a1d2148e79f9ea43fd2158cf02f5232e7f430"
+    },
+    {
+      "family": "Source Serif 4",
+      "weight": "Bold",
+      "slant": "Italic",
+      "file": "source-serif-4/SourceSerif4-BoldIt.ttf",
+      "source": "adobe-source-serif",
+      "upstreamPath": "TTF/SourceSerif4-BoldIt.ttf",
+      "axisPins": null,
+      "subset": null,
+      "frozen": true,
+      "sha256": "7b215b37f8873f5579f3f8d2ded3ca7c588e2f435cd996605ebfc5befe2cd5eb"
+    },
+    {
+      "family": "EB Garamond",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "eb-garamond/EBGaramond-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/ebgaramond/EBGaramond[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "1df6d8b5106b975a57334ebcce836e02560bf6b4e4e8dc8a5a2d9fa4fb06189f"
+    },
+    {
+      "family": "EB Garamond",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "eb-garamond/EBGaramond-Bold.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/ebgaramond/EBGaramond[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "cfdb3cc27ed48f080035b6d2d404908ed2c0f2a19f701f25f08996b39ba5059d"
+    },
+    {
+      "family": "EB Garamond",
+      "weight": "Regular",
+      "slant": "Italic",
+      "file": "eb-garamond/EBGaramond-Italic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/ebgaramond/EBGaramond-Italic[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "f69ee2c903888e23dcb00cd2d8eaee2063dc2af39571f7c2911edb16125974a0"
+    },
+    {
+      "family": "EB Garamond",
+      "weight": "Bold",
+      "slant": "Italic",
+      "file": "eb-garamond/EBGaramond-BoldItalic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/ebgaramond/EBGaramond-Italic[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "ff5c5fd5674907c4c3283597080dc9d530d55494c689dbcdc42bfd1455f7b691"
+    },
+    {
+      "family": "Crimson Pro",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "crimson-pro/CrimsonPro-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/crimsonpro/CrimsonPro[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "7831aafc3822a4bb62c8288b641e82344a20b97ea0cc1bcee6fd141492e1a9dc"
+    },
+    {
+      "family": "Crimson Pro",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "crimson-pro/CrimsonPro-Bold.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/crimsonpro/CrimsonPro[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "e6fc74c25fa45a7c68b18b8080228246aca7b36b19e10b0e20b5a0ab35f8b816"
+    },
+    {
+      "family": "Crimson Pro",
+      "weight": "Regular",
+      "slant": "Italic",
+      "file": "crimson-pro/CrimsonPro-Italic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/crimsonpro/CrimsonPro-Italic[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "06314f3298bfe6d26f8705a4fbe93104df7860207ebf08cd9737d4290324b70a"
+    },
+    {
+      "family": "Crimson Pro",
+      "weight": "Bold",
+      "slant": "Italic",
+      "file": "crimson-pro/CrimsonPro-BoldItalic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/crimsonpro/CrimsonPro-Italic[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "deed91325c5dad37016448f86b4fda07b0494e0cf4c2c79661e510a320bc36ad"
+    },
+    {
+      "family": "Libre Baskerville",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "libre-baskerville/LibreBaskerville-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/librebaskerville/LibreBaskerville[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "e8361c411f9c8a008f643bc894741bba5b0cc362bceebc8190753ce490a12d18"
+    },
+    {
+      "family": "Libre Baskerville",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "libre-baskerville/LibreBaskerville-Bold.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/librebaskerville/LibreBaskerville[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "2b41d53413df86ea2d2c2ee8f7b583872a831e8468613e72963d7a8d87c9737e"
+    },
+    {
+      "family": "Libre Baskerville",
+      "weight": "Regular",
+      "slant": "Italic",
+      "file": "libre-baskerville/LibreBaskerville-Italic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/librebaskerville/LibreBaskerville-Italic[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "0ce89dc8b651bda1bf5bbda19a2dda03c88d25772e8222d9cb6825b40da60e07"
+    },
+    {
+      "family": "Lora",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "lora/Lora-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/lora/Lora[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "1aed00c1a08b0f36385527b855dac163ad337847c4cdbbdcc6abb820f06b6eee"
+    },
+    {
+      "family": "Lora",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "lora/Lora-Bold.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/lora/Lora[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "f5bb06f34cdda0609f7c67386e4dd3c8b85244d6f36b8529350a6ad8f4dc2f35"
+    },
+    {
+      "family": "Lora",
+      "weight": "Regular",
+      "slant": "Italic",
+      "file": "lora/Lora-Italic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/lora/Lora-Italic[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "f08a7e8dc312a51918dab395f0af2d2df2310938779ac93f0f50bc7d67621e5a"
+    },
+    {
+      "family": "Lora",
+      "weight": "Bold",
+      "slant": "Italic",
+      "file": "lora/Lora-BoldItalic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/lora/Lora-Italic[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "043df12c708df55fac9f5e9a733e8fd90655b2026672f1ee14b780b2dbcc0ea0"
+    },
+    {
+      "family": "Libre Caslon Text",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "libre-caslon-text/LibreCaslonText-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/librecaslontext/LibreCaslonText[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "10e06e8309cbc4e9894c39b34197c5577ed7e0b6fdda6fe952d6a1ea8c7125ee"
+    },
+    {
+      "family": "Libre Caslon Text",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "libre-caslon-text/LibreCaslonText-Bold.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/librecaslontext/LibreCaslonText[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "b7d85d2fb4fcf2bce0d2adf9768487d4e800a79b0293bf0632848d6d31d59d06"
+    },
+    {
+      "family": "Libre Caslon Text",
+      "weight": "Regular",
+      "slant": "Italic",
+      "file": "libre-caslon-text/LibreCaslonText-Italic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/librecaslontext/LibreCaslonText-Italic[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "2820d8fb71e792958935d98c38cfb48f9437301834087487d6a71e32b7817c74"
+    },
+    {
+      "family": "Libre Caslon Text",
+      "weight": "Bold",
+      "slant": "Italic",
+      "file": "libre-caslon-text/LibreCaslonText-BoldItalic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/librecaslontext/LibreCaslonText-Italic[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "aa5515a44a7f88013bcb146807f913d364c0a55039ee0a3858374634f567ea9b"
+    },
+    {
+      "family": "PT Serif",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "pt-serif/PTSerif-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/ptserif/PT_Serif-Web-Regular.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "4db84d03a4db763819ccb4db668bcaa75725a0d7039febb074e26fa4e055ec92"
+    },
+    {
+      "family": "PT Serif",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "pt-serif/PTSerif-Bold.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/ptserif/PT_Serif-Web-Bold.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "749c52ec6f8d4b7d6e8ba14c4b60c1bf29ceb8bcaa9b4a59baed7894736a95b7"
+    },
+    {
+      "family": "PT Serif",
+      "weight": "Regular",
+      "slant": "Italic",
+      "file": "pt-serif/PTSerif-Italic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/ptserif/PT_Serif-Web-Italic.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "5cec272cb172b335c0f8ef7d5a3387e9e872010d7426ab54d95ea1b858a1df4d"
+    },
+    {
+      "family": "PT Serif",
+      "weight": "Bold",
+      "slant": "Italic",
+      "file": "pt-serif/PTSerif-BoldItalic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/ptserif/PT_Serif-Web-BoldItalic.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "afb11c6e2cf9c5ab737a11397e9a8592fdbea6fcf6844e74a8e81ee9d85c9e7b"
+    },
+    {
+      "family": "Source Sans 3",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "source-sans-3/SourceSans3-Regular.ttf",
+      "source": "adobe-source-sans",
+      "upstreamPath": "TTF/SourceSans3-Regular.ttf",
+      "axisPins": null,
+      "subset": null,
+      "frozen": true,
+      "sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f"
+    },
+    {
+      "family": "Source Sans 3",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "source-sans-3/SourceSans3-Bold.ttf",
+      "source": "adobe-source-sans",
+      "upstreamPath": "TTF/SourceSans3-Bold.ttf",
+      "axisPins": null,
+      "subset": null,
+      "frozen": true,
+      "sha256": "9214b9d95e4231c609802815c2646c98174e2102d0d37f88978a7f8e71006e6a"
+    },
+    {
+      "family": "Source Sans 3",
+      "weight": "Regular",
+      "slant": "Italic",
+      "file": "source-sans-3/SourceSans3-It.ttf",
+      "source": "adobe-source-sans",
+      "upstreamPath": "TTF/SourceSans3-It.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "931bc4b31c1d93626097ebc2cde12d05c6621bc929b0e39c2282925df8ff0b6c"
+    },
+    {
+      "family": "Source Sans 3",
+      "weight": "Bold",
+      "slant": "Italic",
+      "file": "source-sans-3/SourceSans3-BoldIt.ttf",
+      "source": "adobe-source-sans",
+      "upstreamPath": "TTF/SourceSans3-BoldIt.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "283c8ae1894c5e1def124204236f9e91e187080446f987589d158f74e89b411f"
+    },
+    {
+      "family": "Open Sans",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "open-sans/OpenSans-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/opensans/OpenSans[wdth,wght].ttf",
+      "axisPins": {
+        "wght": 400,
+        "wdth": 100
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "f5ab841884f0993d30538737f41a3254aa6f9bd37cf92a9fc4d90cb2032ff724"
+    },
+    {
+      "family": "Open Sans",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "open-sans/OpenSans-Bold.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/opensans/OpenSans[wdth,wght].ttf",
+      "axisPins": {
+        "wght": 700,
+        "wdth": 100
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "0f92f7195641377ed43444920b72fdf7606205b75b5eff8b5ba44d555245f9db"
+    },
+    {
+      "family": "Open Sans",
+      "weight": "Regular",
+      "slant": "Italic",
+      "file": "open-sans/OpenSans-Italic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/opensans/OpenSans-Italic[wdth,wght].ttf",
+      "axisPins": {
+        "wght": 400,
+        "wdth": 100
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "00edde1b0200ced924bef541b510da304e15226e263d5cb66b76f62704267a3d"
+    },
+    {
+      "family": "Open Sans",
+      "weight": "Bold",
+      "slant": "Italic",
+      "file": "open-sans/OpenSans-BoldItalic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/opensans/OpenSans-Italic[wdth,wght].ttf",
+      "axisPins": {
+        "wght": 700,
+        "wdth": 100
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "284b9f76dca87236a03e3355eb4e3ca587a23f68ba8dea55bb6c975e33db201e"
+    },
+    {
+      "family": "Libre Franklin",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "libre-franklin/LibreFranklin-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/librefranklin/LibreFranklin[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "4a17350c30ab9a1aafc0ff35e60a7c89001c370171fda1ae1ef3824d85594442"
+    },
+    {
+      "family": "Libre Franklin",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "libre-franklin/LibreFranklin-Bold.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/librefranklin/LibreFranklin[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "e4ba57e502a8b51737735219b159f436313083abe910ae618175f435c55b993f"
+    },
+    {
+      "family": "Libre Franklin",
+      "weight": "Regular",
+      "slant": "Italic",
+      "file": "libre-franklin/LibreFranklin-Italic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/librefranklin/LibreFranklin-Italic[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "f771865865afa558f4c45c564b12dba2b93d2732b60b1064b057c5fb220109b3"
+    },
+    {
+      "family": "Libre Franklin",
+      "weight": "Bold",
+      "slant": "Italic",
+      "file": "libre-franklin/LibreFranklin-BoldItalic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/librefranklin/LibreFranklin-Italic[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "ad4b5e9529f4d2f30f5aa64fa5b8bb1bb7bd255e3c4c79fd42c2ba817bb4fdbe"
+    },
+    {
+      "family": "Lato",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "lato/Lato-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/lato/Lato-Regular.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "96c0598c5bd950f0967ed1c1c562f9fa9873af4d0b8d4c26b807d0761a25fe20"
+    },
+    {
+      "family": "Lato",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "lato/Lato-Bold.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/lato/Lato-Bold.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "4607959ceaeca1d473f00aa26e255181666ba20fec2e8ae96ae95bf716d96672"
+    },
+    {
+      "family": "Lato",
+      "weight": "Regular",
+      "slant": "Italic",
+      "file": "lato/Lato-Italic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/lato/Lato-Italic.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "7eba6d0659bd0483045638a2bd3a00acb4530462cc8cc5d428e1b780b68270f5"
+    },
+    {
+      "family": "Lato",
+      "weight": "Bold",
+      "slant": "Italic",
+      "file": "lato/Lato-BoldItalic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/lato/Lato-BoldItalic.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "eba53eec7d61526eff5bbf796b02938075f9bb2ca638b154c6e3b28c5140fcef"
+    },
+    {
+      "family": "PT Sans",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "pt-sans/PTSans-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/ptsans/PT_Sans-Web-Regular.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "c70f99c7c5fc27c5556fb6d92cb50d47875edd2c9cdb7245e58900903b307979"
+    },
+    {
+      "family": "PT Sans",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "pt-sans/PTSans-Bold.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/ptsans/PT_Sans-Web-Bold.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "87646c1669a31f996fb4adabb2bb5d531ba9850cc9d0760d517af3417755d707"
+    },
+    {
+      "family": "PT Sans",
+      "weight": "Regular",
+      "slant": "Italic",
+      "file": "pt-sans/PTSans-Italic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/ptsans/PT_Sans-Web-Italic.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "0be8aa9b467bee1ae13bb8f6cb86ad053a62f81ef2a291880d97e43366a33570"
+    },
+    {
+      "family": "PT Sans",
+      "weight": "Bold",
+      "slant": "Italic",
+      "file": "pt-sans/PTSans-BoldItalic.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/ptsans/PT_Sans-Web-BoldItalic.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "90f192934705f5a498d3d8b7e6bf249657ba3045e5069e3c948535034077feaa"
+    },
+    {
+      "family": "Cinzel",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "cinzel/Cinzel-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/cinzel/Cinzel[wght].ttf",
+      "axisPins": null,
+      "subset": null,
+      "frozen": true,
+      "sha256": "372ed84936434146473f182cdfe2475d576b1acdcc4262194aefc2e50a6fe99c"
+    },
+    {
+      "family": "Cinzel",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "cinzel/Cinzel-Bold.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/cinzel/Cinzel[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "2eea50202b35ebeb9fb1337897865a2f35133414c5fc9a3d730c2d3cd08d4d6c"
+    },
+    {
+      "family": "Playfair Display",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "playfair-display/PlayfairDisplay-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/playfairdisplay/PlayfairDisplay[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "9bc3b9af162c45989ca8f522a2632c705cb99cfb05e942005ce02602e3c053e1"
+    },
+    {
+      "family": "Playfair Display",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "playfair-display/PlayfairDisplay-Bold.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/playfairdisplay/PlayfairDisplay[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "e2212e5f0af5bcf7b046d68b58eef58529670d72dd002aca94e9a4cde1dda8fd"
+    },
+    {
+      "family": "Cormorant Garamond",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "cormorant-garamond/CormorantGaramond-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/cormorantgaramond/CormorantGaramond[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "a2c175e9d00c00759b65feb812ff39d74def195cef7580a81ea8eea98988baf1"
+    },
+    {
+      "family": "Cormorant Garamond",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "cormorant-garamond/CormorantGaramond-Bold.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/cormorantgaramond/CormorantGaramond[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "e29716ad2c99d3830e2ba833401c1dba832d3bb996a965717ba72585f863f60f"
+    },
+    {
+      "family": "Bitter",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "bitter/Bitter-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/bitter/Bitter[wght].ttf",
+      "axisPins": {
+        "wght": 400
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "78b1703d096cf3638048e63679918aaed2be28f960776c7fdeb851e50e6af432"
+    },
+    {
+      "family": "Bitter",
+      "weight": "Bold",
+      "slant": "Normal",
+      "file": "bitter/Bitter-Bold.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/bitter/Bitter[wght].ttf",
+      "axisPins": {
+        "wght": 700
+      },
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "03bccb97edfbb05a6392676b81734ec15e12806bc0c4761760dbf5560b0b3c37"
+    },
+    {
+      "family": "Marcellus",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "marcellus/Marcellus-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/marcellus/Marcellus-Regular.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "5106976029934580f81ba8dc7e4731b43a994e436f5ab3cdf206d6604c4c24e4"
+    },
+    {
+      "family": "Cinzel Decorative",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "cinzel-decorative/CinzelDecorative-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/cinzeldecorative/CinzelDecorative-Regular.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "a97dd2a44a080765cbf5a8c2d4e63d6da741b67b2b26fcbc04d1bbad4e11d71e"
+    },
+    {
+      "family": "Great Vibes",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "great-vibes/GreatVibes-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/greatvibes/GreatVibes-Regular.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "b317b18cdd03195da8c21976597cfce128e20e87a79f471d1ca2414caa3d0339"
+    },
+    {
+      "family": "UnifrakturMaguntia",
+      "weight": "Regular",
+      "slant": "Normal",
+      "file": "unifraktur-maguntia/UnifrakturMaguntia-Regular.ttf",
+      "source": "google-fonts",
+      "upstreamPath": "ofl/unifrakturmaguntia/UnifrakturMaguntia-Book.ttf",
+      "axisPins": null,
+      "subset": "text-latin",
+      "frozen": false,
+      "sha256": "03f9c647d31d41d6eb80ef0703c18cbf5ef8568c2d70b02326e03ac5221e1e9f"
+    }
+  ]
+}

@@ -12,12 +12,14 @@
     <PackageReference Include="HarfBuzzSharp.NativeAssets.Linux" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="..\..\assets-src\fonts\source-serif-4\SourceSerif4-Regular.ttf" Link="Assets\Fonts\SourceSerif4-Regular.ttf" LogicalName="TrestleBoard.Layout.Fonts.SourceSerif4-Regular.ttf" />
-    <EmbeddedResource Include="..\..\assets-src\fonts\source-serif-4\SourceSerif4-Bold.ttf" Link="Assets\Fonts\SourceSerif4-Bold.ttf" LogicalName="TrestleBoard.Layout.Fonts.SourceSerif4-Bold.ttf" />
-    <EmbeddedResource Include="..\..\assets-src\fonts\source-serif-4\SourceSerif4-It.ttf" Link="Assets\Fonts\SourceSerif4-It.ttf" LogicalName="TrestleBoard.Layout.Fonts.SourceSerif4-It.ttf" />
-    <EmbeddedResource Include="..\..\assets-src\fonts\source-serif-4\SourceSerif4-BoldIt.ttf" Link="Assets\Fonts\SourceSerif4-BoldIt.ttf" LogicalName="TrestleBoard.Layout.Fonts.SourceSerif4-BoldIt.ttf" />
-    <EmbeddedResource Include="..\..\assets-src\fonts\source-sans-3\SourceSans3-Regular.ttf" Link="Assets\Fonts\SourceSans3-Regular.ttf" LogicalName="TrestleBoard.Layout.Fonts.SourceSans3-Regular.ttf" />
-    <EmbeddedResource Include="..\..\assets-src\fonts\source-sans-3\SourceSans3-Bold.ttf" Link="Assets\Fonts\SourceSans3-Bold.ttf" LogicalName="TrestleBoard.Layout.Fonts.SourceSans3-Bold.ttf" />
-    <EmbeddedResource Include="..\..\assets-src\fonts\cinzel\Cinzel-Regular.ttf" Link="Assets\Fonts\Cinzel-Regular.ttf" LogicalName="TrestleBoard.Layout.Fonts.Cinzel-Regular.ttf" />
+    <!-- One glob, but LogicalName is still written out explicitly, so FontStore.LoadResource's
+         contract ("TrestleBoard.Layout.Fonts." + filename) is unchanged. The glob's one hidden
+         coupling is that TTF filenames must be globally unique across the family folders — which
+         is exactly what Layout.Tests/FontManifestTests enforces. Which faces exist, where they
+         came from and what their bytes hash to lives in assets-src/fonts/fonts.json. -->
+    <EmbeddedResource Include="..\..\assets-src\fonts\**\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)" LogicalName="TrestleBoard.Layout.Fonts.%(Filename)%(Extension)" />
+    <!-- OFL §II(3): the licence must accompany the fonts in any distribution. Before M14 these
+         lived in the repo only and never reached the installer. -->
+    <EmbeddedResource Include="..\..\assets-src\fonts\THIRD-PARTY-FONTS.txt" Link="Assets\Fonts\THIRD-PARTY-FONTS.txt" LogicalName="TrestleBoard.Layout.Fonts.THIRD-PARTY-FONTS.txt" />
   </ItemGroup>
 </Project>

@@ -92,16 +92,68 @@ public sealed class ResolvedFont : IDisposable
 public sealed class FontStore : IDisposable
 {
     private readonly Lock _lock = new();
-    private readonly Dictionary<FontKey, byte[]> _bytes = new();
+    private readonly Dictionary<FontKey, Lazy<byte[]>> _bytes = new();
     private readonly Dictionary<FontKey, ResolvedFont> _resolved = new();
     private bool _disposed;
 
+    /// <summary>Registers face bytes that are already in hand. Kept for tests and callers
+    /// that build a store from a byte[] they own.</summary>
     public void Register(FontKey key, ReadOnlyMemory<byte> fontBytes)
+    {
+        byte[] copy = fontBytes.ToArray();
+        Register(key, () => copy);
+    }
+
+    /// <summary>
+    /// Registers a face whose bytes are fetched on first use. With 59 bundled faces, eagerly
+    /// materialising every one costs ~4 MB of managed arrays at startup to serve the three or
+    /// four a newsletter actually uses.
+    /// </summary>
+    public void Register(FontKey key, Func<byte[]> provider)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        lock (_lock)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            _bytes[key] = new Lazy<byte[]>(provider, LazyThreadSafetyMode.ExecutionAndPublication);
+        }
+    }
+
+    /// <summary>Every face this store can resolve, whether or not it has been materialised.</summary>
+    public IReadOnlyCollection<FontKey> RegisteredKeys
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _bytes.Keys.ToArray();
+            }
+        }
+    }
+
+    /// <summary>
+    /// The family to fall back to when a document names a face this build does not bundle.
+    /// <para>
+    /// Null — the engine default — is M7's intended loud failure: fixtures, snapshots, widget
+    /// goldens and PDF export must never silently paper over a missing face. The app sets this
+    /// to the body family, because there "the newsletter must still open" outranks "fail
+    /// loudly", and warns the user once at open time instead (see DocumentFontAudit).
+    /// </para>
+    /// Never a system font, under any setting — that is what PLAN.md §1 forbids.
+    /// </summary>
+    public string? SubstituteFamily { get; set; }
+
+    /// <summary>
+    /// The key whose bytes would actually be used for <paramref name="requested"/>. Equal to
+    /// the request when the exact face is bundled; otherwise the nearest face this store will
+    /// degrade to, or null when it will refuse.
+    /// </summary>
+    public FontKey? ResolveKey(FontKey requested)
     {
         lock (_lock)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            _bytes[key] = fontBytes.ToArray();
+            return FindKey(requested);
         }
     }
 
@@ -115,12 +167,13 @@ public sealed class FontStore : IDisposable
                 return font;
             }
 
-            if (!_bytes.TryGetValue(key, out byte[]? bytes))
+            FontKey? actual = FindKey(key);
+            if (actual is null)
             {
                 throw new KeyNotFoundException($"Font not registered: {key}. Bundled fonts only — no system fallback.");
             }
 
-            font = new ResolvedFont(key, bytes);
+            font = Materialise(actual.Value);
             _resolved[key] = font;
             return font;
         }
@@ -136,16 +189,77 @@ public sealed class FontStore : IDisposable
                 return true;
             }
 
-            if (!_bytes.TryGetValue(key, out byte[]? bytes))
+            FontKey? actual = FindKey(key);
+            if (actual is null)
             {
                 font = null;
                 return false;
             }
 
-            font = new ResolvedFont(key, bytes);
+            font = Materialise(actual.Value);
             _resolved[key] = font;
             return true;
         }
+    }
+
+    /// <summary>Caller must hold the lock. Never allocates a ResolvedFont.</summary>
+    private FontKey? FindKey(FontKey requested)
+    {
+        foreach (FontKey candidate in Ladder(requested.Family, requested))
+        {
+            if (_bytes.ContainsKey(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        string? substitute = SubstituteFamily;
+        if (substitute is null || string.Equals(substitute, requested.Family, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        foreach (FontKey candidate in Ladder(substitute, requested))
+        {
+            if (_bytes.ContainsKey(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Nearest-face degradation within one family: exact, then drop the slant, then drop the
+    /// weight, then plain. Generalises the ladder WidgetStyleResolver already walks.
+    /// </summary>
+    private static IEnumerable<FontKey> Ladder(string family, FontKey requested)
+    {
+        yield return new FontKey(family, requested.Weight, requested.Slant);
+        if (requested.Slant != FontStyleSlant.Normal)
+        {
+            yield return new FontKey(family, requested.Weight, FontStyleSlant.Normal);
+        }
+
+        if (requested.Weight != FontWeight.Regular)
+        {
+            yield return new FontKey(family, FontWeight.Regular, requested.Slant);
+            yield return new FontKey(family, FontWeight.Regular, FontStyleSlant.Normal);
+        }
+    }
+
+    /// <summary>Caller must hold the lock.</summary>
+    private ResolvedFont Materialise(FontKey actual)
+    {
+        if (_resolved.TryGetValue(actual, out ResolvedFont? existing))
+        {
+            return existing;
+        }
+
+        var font = new ResolvedFont(actual, _bytes[actual].Value);
+        _resolved[actual] = font;
+        return font;
     }
 
     public void Dispose()
@@ -175,36 +289,48 @@ public static class BundledFonts
     public const string SansFamily = "Source Sans 3";
     public const string DisplayFamily = "Cinzel";
 
-    private static readonly (FontKey Key, string Resource)[] Faces =
-    [
-        (new FontKey(BodyFamily, FontWeight.Regular, FontStyleSlant.Normal), "SourceSerif4-Regular.ttf"),
-        (new FontKey(BodyFamily, FontWeight.Bold, FontStyleSlant.Normal), "SourceSerif4-Bold.ttf"),
-        (new FontKey(BodyFamily, FontWeight.Regular, FontStyleSlant.Italic), "SourceSerif4-It.ttf"),
-        (new FontKey(BodyFamily, FontWeight.Bold, FontStyleSlant.Italic), "SourceSerif4-BoldIt.ttf"),
-        (new FontKey(SansFamily, FontWeight.Regular, FontStyleSlant.Normal), "SourceSans3-Regular.ttf"),
-        (new FontKey(SansFamily, FontWeight.Bold, FontStyleSlant.Normal), "SourceSans3-Bold.ttf"),
-        (new FontKey(DisplayFamily, FontWeight.Regular, FontStyleSlant.Normal), "Cinzel-Regular.ttf"),
-    ];
+    /// <summary>Resource name of the concatenated OFL text that ships inside the installer.</summary>
+    public const string LicenceResource = "THIRD-PARTY-FONTS.txt";
 
-    /// <summary>Loads the embedded OFL faces into a new store. Caller owns the store's lifetime.</summary>
+    /// <summary>
+    /// Loads every embedded OFL face into a new store. Caller owns the store's lifetime.
+    /// <para>
+    /// Registration is lazy: 59 faces is ~4 MB of managed arrays, and a newsletter touches
+    /// three or four of them. Which faces exist is <see cref="BundledFontCatalog"/>'s business.
+    /// </para>
+    /// </summary>
     public static FontStore CreateDefaultStore()
     {
         var store = new FontStore();
-        foreach ((FontKey key, string resource) in Faces)
+        foreach (BundledFace face in BundledFontCatalog.Faces)
         {
-            store.Register(key, LoadResource(resource));
+            string resource = face.Resource;
+            store.Register(face.Key, () => LoadResource(resource));
         }
 
         return store;
     }
 
+    /// <summary>The bundled families' licence text, as shown by Help → About → Fonts and licences.</summary>
+    public static string ReadLicenceText()
+    {
+        using Stream stream = OpenResource(LicenceResource);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
     private static byte[] LoadResource(string name)
     {
-        string logicalName = "TrestleBoard.Layout.Fonts." + name;
-        using Stream stream = typeof(BundledFonts).Assembly.GetManifestResourceStream(logicalName)
-            ?? throw new InvalidOperationException($"Embedded font resource missing: {logicalName}");
+        using Stream stream = OpenResource(name);
         using var buffer = new MemoryStream(capacity: (int)stream.Length);
         stream.CopyTo(buffer);
         return buffer.ToArray();
+    }
+
+    private static Stream OpenResource(string name)
+    {
+        string logicalName = "TrestleBoard.Layout.Fonts." + name;
+        return typeof(BundledFonts).Assembly.GetManifestResourceStream(logicalName)
+            ?? throw new InvalidOperationException($"Embedded font resource missing: {logicalName}");
     }
 }

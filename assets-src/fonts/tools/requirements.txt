@@ -1,0 +1,6 @@
+# Pinned so that two maintainers on two machines produce byte-identical faces.
+# Bumping fonttools generally changes the produced bytes: re-run
+#   python build-fonts.py --write-hashes
+# and commit both the new .ttf files and the new hashes in fonts.json in ONE commit.
+fonttools==4.60.1
+brotli==1.1.0

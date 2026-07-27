@@ -37,3 +37,7 @@ coverage/
 # ── OS noise ─────────────────────────────────────────────────────
 Thumbs.db
 .DS_Store
+
+# Font build tooling (M14) — the venv and the upstream download cache are local aids.
+assets-src/fonts/tools/.venv/
+assets-src/fonts/tools/.cache/
