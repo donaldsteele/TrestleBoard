@@ -19,6 +19,12 @@ The `Examples/*.pdf` files contain **real people's names, phone numbers, and ema
 3. llm-wiki (`wiki/`, `raw/`) and graphify (`graphify-out/`) outputs absorb real data from
    the example PDFs — they are local development aids, never repo artifacts.
 4. Before pushing: confirm `git log -p` for new commits contains no real names/phones.
+5. **The roster file is real personal data (from M12).** `%AppData%/TrestleBoard/roster.json` and
+   its `roster-backups/` ring hold real member names, birthdays, phone numbers and emails. Never
+   paste its contents into a commit, a test, a fixture, an issue, or a graphify/llm-wiki run.
+   Roster fixtures exist **only** in `tests/Roster.Tests` and are fictional — never in
+   `assets-src/`, templates, or `docs/`. `roster*.json`, `roster*.xlsx` and `*.roster.bak.json`
+   are gitignored; roster export goes only to a user-chosen path via the save dialog.
 
 ## Build & test
 
@@ -38,6 +44,8 @@ must be green; snapshot determinism across OSes is a core guarantee.
 - Avalonia is chrome only: **`TrestleBoard.App` is the ONLY project referencing Avalonia.**
 - `TrestleBoard.Core` references BCL only. Dependency flow:
   Core ← Layout ← Rendering ← Export.Pdf; Core+Layout ← Widgets; Imaging standalone.
+  From M12: `TrestleBoard.Roster` is a leaf (ClosedXML only); `Widgets ← Roster` for the birthday
+  projection. **`TrestleBoard.Editing` must NOT reference `Roster`** — App invokes the projection.
 - Documents are `.tboard` zip containers (manifest/document/styles JSON + original image
   assets); all mutations go through `IDocumentCommand` (full undo/redo).
 - Package versions are centrally managed in `Directory.Packages.props`; SDK pinned in
