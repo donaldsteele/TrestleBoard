@@ -418,7 +418,7 @@ public partial class MainWindow : Window
         _recovery?.SaveNow();
         _recovery?.Complete();
         _recovery?.Dispose();
-        _recoveryStore ??= new FileRecoveryStore();
+        _recoveryStore ??= new FileRecoveryStore(AppPaths.RecoveryDirectory);
 
         _recovery = new RecoveryService(
             _session!,
@@ -513,7 +513,7 @@ public partial class MainWindow : Window
     /// <summary>Offers back anything that survived a previous run (docs/M9-spec.md §1.5).</summary>
     internal async Task<bool> OfferRecoveryAsync()
     {
-        _recoveryStore ??= new FileRecoveryStore();
+        _recoveryStore ??= new FileRecoveryStore(AppPaths.RecoveryDirectory);
         IReadOnlyList<RecoverySnapshot> survivors = _recoveryStore.FindRecoverable();
         if (survivors.Count == 0)
         {

@@ -62,9 +62,13 @@ public sealed record Member
     /// <summary>
     /// Anything a newer TrestleBoard wrote that this one does not know about, preserved verbatim —
     /// the same forward-compatibility contract the document model keeps (PLAN.md §2).
+    ///
+    /// <c>set</c> rather than <c>init</c>, alone among these properties: System.Text.Json refuses an
+    /// extension-data property it cannot bind outside a constructor, and on a record every
+    /// init-only property is a constructor parameter.
     /// </summary>
     [JsonExtensionData]
-    public Dictionary<string, JsonElement>? ExtraProperties { get; init; }
+    public Dictionary<string, JsonElement>? ExtraProperties { get; set; }
 
     /// <summary>Has this person a birthday the newsletter could print?</summary>
     [JsonIgnore]

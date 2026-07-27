@@ -48,10 +48,11 @@ public sealed record AppSettings
         Theme = Enum.IsDefined(Theme) ? Theme : ThemeChoice.System,
     };
 
-    public static string DefaultPath() => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "TrestleBoard",
-        "settings.json");
+    /// <summary>
+    /// From M12 this comes through <see cref="AppPaths"/> rather than building the AppData path
+    /// itself, so a harness that redirects the root redirects this too.
+    /// </summary>
+    public static string DefaultPath() => AppPaths.SettingsFile;
 
     /// <summary>
     /// Never throws. A settings file that is missing, unreadable or garbage yields the defaults —

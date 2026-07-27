@@ -59,3 +59,57 @@ deal under §0.
 
 `tests/Roster.Tests` is the only place a roster fixture may exist, and every person in one is
 fictional.
+
+---
+
+## 3. The file, and what protects it
+
+`%AppData%/TrestleBoard/roster.json`, beside the settings file, plus a `roster-backups/` ring of ten.
+Velopack installs to `%LocalAppData%` — a different root — so an auto-update cannot touch any of it.
+
+Three properties, each with a test:
+
+- **Loading never throws.** A missing, unreadable or garbage file yields an empty book. This is
+  `AppSettings.Load`'s contract copied deliberately: refusing to start is never the better failure,
+  and that goes double for the file holding the whole lodge.
+- **Saving is temp-then-rename**, and *does* throw. A save the user asked for that silently did not
+  happen is how an address book gets lost.
+- **Every save keeps the version it replaced.** This file's contents exist nowhere else — no
+  `.tboard` carries them, no command stack spans sessions — so the ring is the only protection there
+  is. Ten copies, named by UTC timestamp so the ring survives a copy that loses file times.
+
+`Member` has seven fields the user ever types and three deliberate absences: **no birth year**
+(matching the month/day-only rule the birthday widget already keeps), **one date plus a kind**
+rather than separate raised/initiated fields, and **`office` as free text rather than an enum**,
+because titles drift and a value the app refuses to store is a value the user retypes somewhere
+worse. `[JsonExtensionData]` on both `Member` and `RosterBook` preserves whatever a newer
+TrestleBoard wrote.
+
+**Ids are highest-plus-one, never lowest-free.** A reused id would let a spreadsheet exported last
+month re-import onto whoever now holds that number, and the ID column is exactly what makes
+export → edit in Excel → re-import lossless.
+
+### Undo, and the boundary it must not cross
+
+> **Ctrl+Z never crosses the roster/document boundary.**
+
+`RosterService` keeps one snapshot and offers one "Undo the last change"; anything older is
+"Restore an earlier version…" over the ring. PLAN §11-M12 gives four reasons this is not an
+`IDocumentCommand`, and the decisive one is behavioural rather than architectural: sharing
+`DocumentSession` would make Ctrl+Z in the newsletter undo an address-book edit — precisely the
+class of surprise M11 exists to eliminate.
+
+Restoring is itself an ordinary save, so restoring the wrong version is undoable too.
+
+### `AppPaths`, and why it lands here rather than in M15
+
+M15's screenshot harness runs on the maintainer's own machine, where the roster is real, and a
+single capture of the People window would put real personal data in a public repository. PLAN.md
+says plainly that the guard belongs to the milestone that *creates* the hazard, not the one that
+trips over it. So `src/TrestleBoard.App/Settings/AppPaths.cs` arrives with the roster: one place
+naming the settings file, the recovery folder and the roster file, with a **settable root**. A
+harness pointed at a temporary folder is structurally unable to read the real address book. A rule
+in a document does not prevent that; not being able to see the file does.
+
+The default path is unchanged, so an existing installation finds its settings and its recovery
+snapshots exactly where M9 and M10 left them.
