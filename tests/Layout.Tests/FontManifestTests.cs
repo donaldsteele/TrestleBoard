@@ -116,7 +116,9 @@ public sealed class FontManifestTests
         Manifest manifest = Loaded.Value;
         string path = Path.Combine(manifest.FontsDir, "THIRD-PARTY-FONTS.txt");
         Assert.True(File.Exists(path), "THIRD-PARTY-FONTS.txt is missing — run build-fonts.py.");
-        Assert.Equal(ComposeLicenceBundle(manifest), Normalise(File.ReadAllText(path)));
+        // Both sides are normalised. The expected side is composed partly from raw string literals
+        // in THIS file, so without it the assertion depends on how git checked the source out.
+        Assert.Equal(Normalise(ComposeLicenceBundle(manifest)), Normalise(File.ReadAllText(path)));
     }
 
     [Fact]
@@ -125,7 +127,7 @@ public sealed class FontManifestTests
         Manifest manifest = Loaded.Value;
         string path = Path.Combine(manifest.RepoRoot, "docs", "FONTS.md");
         Assert.True(File.Exists(path), "docs/FONTS.md is missing — run build-fonts.py.");
-        Assert.Equal(ComposeFontsDoc(manifest), Normalise(File.ReadAllText(path)));
+        Assert.Equal(Normalise(ComposeFontsDoc(manifest)), Normalise(File.ReadAllText(path)));
     }
 
     [Fact]

@@ -1,3 +1,24 @@
+# Text files are LF in the working tree on every operating system. This repo's whole claim is that
+# the same bytes produce the same page everywhere, and a checkout that rewrites line endings breaks
+# that claim in two measured places: a test comparing a generated string (built partly from raw
+# string literals in a .cs file) against a file on disk, and the CSV hazard fixture below.
+* text=auto eol=lf
+
 # Shell scripts must keep LF endings: the release workflow runs build/macos/make-app-bundle.sh
 # on a macOS runner, where a CRLF shebang line fails with "bad interpreter".
 *.sh text eol=lf
+
+# The roster import fixtures are byte-exact hazard cases, not ordinary text. members-hazards.csv
+# carries a CRLF inside a quoted field — that IS the hazard under test, and normalising it on
+# checkout deletes the thing the test is checking. Left as text, the assertion passed on the
+# machine that authored the file and failed on every CI runner.
+tests/Roster.Tests/Fixtures/*.csv -text
+
+# Binaries git should never inspect or transform. Snapshot baselines and font files in particular:
+# a single byte changed is a failed test, which is the point of them.
+*.png binary
+*.jpg binary
+*.ttf binary
+*.xlsx binary
+*.tboard binary
+*.pdf binary
