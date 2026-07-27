@@ -579,6 +579,67 @@ three letters, and add somebody, all from the keyboard.
 **What you should hear:** the spoken result count as you type, and the name appearing as a new line
 in the members box.
 
+## 14. Choosing a font, keyboard-only (M14)
+
+Have a newsletter open with some writing in it. Everything in this section must be reachable
+without a mouse.
+
+**14.1** Press `Ctrl+Shift+D`, or reach **Format → Fonts and text styles…** with Alt.
+**What you should hear:** the window's name, "Fonts and text styles", and then the first list.
+
+**14.2** Tab to the list on the left. Arrow down it.
+**What you should hear:** plain role names — "Body text", "Headings", "Photo captions" — followed by
+the font and size each one uses. **You must never hear `body-bold-italic` or any other raw style
+name.** If you do, that is a failure, not a curiosity.
+
+**14.3** Tab to the search box and type three letters of a family, e.g. `gar`.
+**What you should hear:** the number of matching fonts spoken as you type. Clear the box again and
+confirm the full count comes back.
+
+**14.4** Tab into the font list and arrow through it.
+**What you should hear:** the family name, then its one-sentence description. The group headings
+("Fonts for reading", "Fonts for titles", …) should be reachable or announced in some form — write
+down which.
+
+**14.5** Tab to **− Smaller** and **+ Bigger** and press each once.
+**What you should hear:** the new size, in points, each time. The buttons walk a fixed ladder, so you
+should never hear a size like "11.3 pt".
+
+**14.6** Tab on to the reflow warning and read it.
+**What you should hear:** a sentence naming the kind of writing that will change, and saying the page
+count may move and that Ctrl+Z puts it back. Then the sentence "Nothing changes until you press
+Apply."
+
+**14.7** Press **Apply**.
+**What you should hear:** a sentence in the status line saying what changed, and — if the newsletter
+is now a different length — how many pages it has now.
+
+**14.8** Press Ctrl+Z **once**.
+**What you should confirm:** everything goes back, in one step. Bold and italic writing must go back
+too, not just the plain text.
+
+**14.9** Click (or Tab) into some writing, highlight a few words, and use **Format → Use a different
+font just here…**. Choose a different family and Apply.
+**What you should hear:** a sentence saying those words now use their own font.
+
+**14.10** With the caret still in those words, listen to the panel of things you can do (F6).
+**What you should hear:** the sentence "This text uses <family> instead of the <role> font", and a
+button offering to put it back. Press it and confirm the words go back.
+
+**14.11** Turn on **View → Show where fonts were changed**.
+**What you should hear:** how many pieces of text are marked, and that the marks never print. Turn it
+off again and confirm you are told.
+
+**14.12** Open **Help → Fonts and licences**.
+**What you should confirm:** the licence text is readable, scrollable and selectable from the
+keyboard, and the window can be closed with Escape. **This is a licence obligation, not a
+nicety** — the fonts ship with the app and the OFL requires their licence to ship with them.
+
+**14.13** Open a newsletter made by a build with more fonts than this one, if you have one.
+**What you should hear:** one plain sentence at open saying a font is missing, what will be shown
+instead, that the newsletter itself is not changed, and that a newer TrestleBoard will show it
+properly. No dialog, no error, no stack trace.
+
 ---
 
 ## Results table
@@ -666,6 +727,19 @@ step numbers from above so the full "what you should hear" text doesn't need to 
 | 13.10 | | | | |
 | 13.11 | | | | |
 | 13.12 | | | | |
+| 14.1 | | | | |
+| 14.2 | | | | |
+| 14.3 | | | | |
+| 14.4 | | | | |
+| 14.5 | | | | |
+| 14.6 | | | | |
+| 14.7 | | | | |
+| 14.8 | | | | |
+| 14.9 | | | | |
+| 14.10 | | | | |
+| 14.11 | | | | |
+| 14.12 | | | | |
+| 14.13 | | | | |
 
 Add rows for anything else you notice along the way, even if it isn't in a numbered step.
 

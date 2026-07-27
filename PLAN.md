@@ -731,7 +731,28 @@ even-numbered milestones, so it falls to M14.
 **Agents:** **Opus** for the projection and re-sync semantics; **Sonnet** for the wizard field kind and
 pickers; **cavecrew-reviewer (Sonnet)**.
 
-### M14 — More fonts, and choosing them (L)
+### M14 — More fonts, and choosing them (L) — **delivered 2026-07-27**
+**Status:** implemented; design, decisions and open items in `docs/M14-spec.md`. 20 families ship,
+59 faces rather than the 58 predicted here — Libre Caslon Text does have a bold italic upstream.
+The three existing families are frozen and **nothing re-baked**: every test that existed before M14
+passes untouched. The manifest, the build script, the licence bundle, `docs/FONTS.md`, the catalog,
+lazy registration, opt-in substitution, `DocumentFontAudit`, `SetCharacterStyleFontCommand`, the
+`~` override, `StyleLabels`, the size ladder, `TextStylesWindow`, `FontPreviewRenderer`, the View
+overlay and Help → Fonts and licences are all in. Two deliberate deviations: the picker's shortcut
+is `Ctrl+Shift+D`, because M11 already owns `Ctrl+Shift+T` and the keyboard audit refuses a promise
+the app cannot keep; and `head.created`/`head.modified` pinning needs `recalcTimestamp=False` as
+well as the assignment, without which fontTools overwrites `modified` on save and the manifest's
+hashes are theatre.
+
+Two items are blocked on hardware rather than design, both because Skia rasterises through the
+platform scaler backend and a per-OS baseline must be produced on that OS:
+
+- [!] `WidgetStyleDefaults.Small` → Source Sans 3 Italic — implemented and reverted; it moves
+  `widgets-gallery-page1`, `issue-page3` and `issue-page4`, and only the Windows baselines could be
+  re-baked on this machine. Two-line change plus `TRESTLEBOARD_UPDATE_BASELINES=1` on all three.
+- [!] `font-catalog-sampler` Linux and macOS baselines — the Windows one is committed; the fixture's
+  per-face assertions carry the guarantee on every OS and the pixel comparison skips with a reason
+  where no baseline exists yet.
 
 **Goal:** the committee can pick a typeface and a text size, and the app has enough good print faces
 to make that worth doing. Today the entire typographic surface is Bold, Italic, and a paragraph-style
