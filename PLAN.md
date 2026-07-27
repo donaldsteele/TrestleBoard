@@ -1331,8 +1331,13 @@ rendered pixels and therefore needs snapshot baselines re-baked on all three ope
 - ~~**Does headless Skia expose `ISkiaSharpApiLeaseFeature`?**~~ — **answered at M15, 2026-07-27:
   yes.** With `.UseSkia()` and `UseHeadlessDrawing = false` the lease is handed over and the page
   area is drawn by the real engine. The composite fallback was not written (`docs/M15-spec.md` §1).
-- **The OFL licence text does not ship in the installer today** — the fonts do, the licences do not.
-  A pre-existing compliance gap that M14 must close.
+- ~~**The OFL licence text does not ship in the installer today** — the fonts do, the licences do not.
+  A pre-existing compliance gap that M14 must close.~~ — **closed at M14, re-verified 2026-07-27.**
+  `assets-src/fonts/THIRD-PARTY-FONTS.txt` (all 20 licences) is an `<EmbeddedResource>` in
+  `TrestleBoard.Layout`, so it ships wherever the faces do, and Help → "Fonts and licences"
+  (`ActionId.FontLicences`) shows it. Guarded on both sides: `FontCatalogTests` asserts the resource
+  is in the assembly's embedded set, `FontManifestTests` recomposes its text from `fonts.json` and
+  fails on drift. §12 item 11's installer clause is therefore machine-checked, not merely claimed.
 - **Subsetting renumbers glyph IDs**, and the widget golden dumps record them — which is why M14
   freezes the bytes of the three existing families rather than re-subsetting for consistency.
 - **Font substitution changes pagination** relative to the machine that authored the document.
