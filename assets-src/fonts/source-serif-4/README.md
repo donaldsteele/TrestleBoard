@@ -11,3 +11,10 @@ shaping and rendering byte-deterministic across OSes (PLAN.md §3 determinism re
 These files are embedded as resources in the rendering/layout stack and loaded via
 `SKTypeface.FromStream` — never from system font directories. Do not re-download a
 different version without re-generating every snapshot baseline.
+
+**Frozen from M14 onward.** M14 adds seventeen more families, all subset to a fixed Latin
+range and tracked in `assets-src/fonts/fonts.json`. These bytes — and Source Sans 3's and
+Cinzel's — are deliberately **left alone**: subsetting renumbers glyph IDs, which the widget
+golden dumps record, so re-subsetting the original three would re-bake all 42 snapshot
+baselines and every widget golden to save about 1.2 MB. That freeze is what makes M14
+additive. See PLAN.md §11-M14 for the acquisition pipeline and the safe-update procedure.
