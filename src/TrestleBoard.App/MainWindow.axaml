@@ -11,7 +11,9 @@
        reason it is unavailable, and the code that performs it all come from one place (M11). -->
   <DockPanel>
     <LayoutTransformControl x:Name="MenuScale" DockPanel.Dock="Top">
-    <Menu FontSize="16">
+    <!-- The menu bar takes the same chrome as the toolbar under it. Fluent leaves a Menu
+         transparent, which read as a white strip above a grey one in Light. -->
+    <Menu FontSize="16" Background="{DynamicResource TrestleBoard.Chrome.Background}">
       <MenuItem Header="_File" AutomationProperties.Name="File menu">
         <MenuItem Header="_Open a newsletter…" Tag="newsletter.open"
                   InputGesture="Ctrl+O" Click="OnActionClicked"
