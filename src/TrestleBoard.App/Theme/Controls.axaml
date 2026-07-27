@@ -1,0 +1,68 @@
+<!--
+  The two control rules M16 adds, and the reason they are here rather than in a Style Selector on a
+  bare element (PLAN.md §11 M16).
+
+  The High Contrast overlay this milestone deleted was built from bare element selectors —
+  Style Selector="Button", Style Selector="Border" — which survived only because it set colours and
+  nothing else. The moment a Padding or a MinHeight joined them, the ComboBox drop-down toggle and
+  the ScrollBar repeat buttons would have deformed with them, because those are Buttons too.
+  Structural rules therefore go in a ControlTheme, which applies to the controls that ASK for it.
+
+  PRIMARY BUTTON. A Setter on Background alone would not have survived a mouse: Fluent's own
+  :pointerover and :pressed rules target the template's ContentPresenter, so the accent would vanish
+  the instant the pointer touched it and come back when it left. The states are therefore restated
+  here, each keeping the accent and each carrying its measured foreground.
+-->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+
+    <ControlTheme x:Key="TrestleBoard.PrimaryButton"
+                  TargetType="Button"
+                  BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Background" Value="{DynamicResource TrestleBoard.Accent}" />
+      <Setter Property="Foreground" Value="{DynamicResource TrestleBoard.Accent.Foreground}" />
+      <!-- The gold bar. A shape as well as a colour, so the emphasis survives a user who cannot
+           tell the two fills apart (PLAN.md §6: colour is never the only signal). -->
+      <Setter Property="BorderBrush" Value="{DynamicResource TrestleBoard.Ornament.OnAccent}" />
+      <Setter Property="BorderThickness" Value="5,0,0,0" />
+
+      <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TrestleBoard.Accent}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TrestleBoard.Ornament.OnAccent}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TrestleBoard.Accent.Foreground}" />
+      </Style>
+
+      <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TrestleBoard.Accent}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TrestleBoard.Focus}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TrestleBoard.Accent.Foreground}" />
+      </Style>
+    </ControlTheme>
+
+  </Styles.Resources>
+
+  <!--
+    DEFAULT-BUTTON EMPHASIS, STANDARDISED. Thirteen dialogs set IsDefault and every one of them then
+    looked exactly like the button beside it, which is most of what "every button is the same grey
+    slab" meant. A property-qualified selector reaches all thirteen at once and cannot miss the
+    fourteenth; doing it by hand at each call site could, and did.
+  -->
+  <Style Selector="Button[IsDefault=True]">
+    <Setter Property="Theme" Value="{DynamicResource TrestleBoard.PrimaryButton}" />
+  </Style>
+
+  <!--
+    THE WINDOW ICON. There was no Icon= anywhere in src/ and no AvaloniaResource item in any .csproj:
+    trestleboard.png reached the Windows installer, the AppImage and the .icns, and never the running
+    application, which showed the platform's generic placeholder on all thirteen windows.
+
+    This is the one bare element selector in the file, and it is safe for the reason the others are
+    not: a Window is never nested inside another control's template, so there is no ComboBox toggle
+    or ScrollBar repeat button that will quietly inherit it. It also sets an icon, not a metric.
+  -->
+  <Style Selector="Window">
+    <Setter Property="Icon" Value="avares://TrestleBoard.App/Theme/trestleboard.png" />
+  </Style>
+
+</Styles>

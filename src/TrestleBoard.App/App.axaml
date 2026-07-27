@@ -15,5 +15,8 @@
   </Application.Resources>
   <Application.Styles>
     <FluentTheme />
+    <!-- After FluentTheme, so the primary-button theme can restate the states Fluent's own
+         :pointerover and :pressed rules would otherwise win. -->
+    <StyleInclude Source="avares://TrestleBoard.App/Theme/Controls.axaml" />
   </Application.Styles>
 </Application>

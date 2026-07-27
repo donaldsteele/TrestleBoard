@@ -39,6 +39,14 @@
     <ProjectReference Include="..\TrestleBoard.Export.Pdf\TrestleBoard.Export.Pdf.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <!-- M16: the application had no window icon at all. Every window showed the platform's generic
+         placeholder while the very same PNG was being compiled into the Windows installer, the
+         AppImage and the .icns. Linked rather than copied, so there is still exactly one drawing of
+         this icon in the repository (assets-src/icons/README.md says how to redraw it). -->
+    <AvaloniaResource Include="..\..\assets-src\icons\trestleboard.png" Link="Theme\trestleboard.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="App.HeadlessTests" />
     <!-- M15's documentation harness drives the real windows the same way the headless tests do.
          Neither is shipped (PLAN.md §9, "the Avalonia rule, stated precisely"). -->

@@ -50,6 +50,10 @@ internal sealed class IconText : ContentControl
     /// its own line rather than into the label because "Wrap text around this  (Ctrl+Shift+W)" is
     /// thirty-seven characters, and the gesture is what pushed the button to two lines.
     /// </param>
+    /// <param name="glyphSide">
+    /// Which side of the words the glyph sits on. Left for everything except a "Next" button, where
+    /// an arrow pointing forward has to be on the side it points towards or it reads as "Back".
+    /// </param>
     /// <param name="mutedSecondary">
     /// Whether the second line takes the muted token. False on an accent-filled button, where
     /// muted-on-accent is 1.66:1 — the live-tree contrast walk caught exactly that on the day this
@@ -62,7 +66,8 @@ internal sealed class IconText : ContentControl
         string label,
         double labelSize,
         string? secondary = null,
-        bool mutedSecondary = true)
+        bool mutedSecondary = true,
+        Dock glyphSide = Dock.Left)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
 
@@ -116,7 +121,10 @@ internal sealed class IconText : ContentControl
                 Mode = BindingMode.OneWay,
             };
 
-            DockPanel.SetDock(Glyph, Dock.Left);
+            Glyph.Margin = glyphSide == Dock.Left
+                ? new Thickness(0, 0, 10, 0)
+                : new Thickness(10, 0, 0, 0);
+            DockPanel.SetDock(Glyph, glyphSide);
             dock.Children.Add(Glyph);
         }
 

@@ -203,10 +203,7 @@ internal sealed class ActionPanel : Border
 
         if (isPrimary)
         {
-            button.Token(BackgroundProperty, Tokens.Accent)
-                  .Token(TemplatedControl.ForegroundProperty, Tokens.AccentForeground)
-                  .Token(BorderBrushProperty, Tokens.OrnamentOnAccent);
-            button.BorderThickness = new Avalonia.Thickness(5, 0, 0, 0);
+            button.Primary();
         }
 
         return button;

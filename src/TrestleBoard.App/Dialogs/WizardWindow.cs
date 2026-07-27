@@ -24,12 +24,20 @@ public sealed class WizardWindow : Window
     private readonly IReadOnlyList<PersonSuggestion> _people;
     private readonly List<PersonPick> _picks = [];
     private readonly HashSet<string> _writeBackIds = new(StringComparer.Ordinal);
+    // Every capped control on this window carries HorizontalAlignment.Left, and the reason is one
+    // bug repeated: a Width or MaxWidth on a child of a VERTICAL StackPanel, under the default
+    // HorizontalAlignment.Stretch, makes Avalonia centre that child. wizard-officers-step.png shows
+    // five different left edges on one screen — x = 24, 62, 68, 24, 170 — and the arithmetic
+    // accounts for every one of them: 900px of window less the 24px gutters is 852px of content, so
+    // the 780-wide header landed at 24 + (852-780)/2 = 60, the 760-wide help text at 70 and the
+    // 560-wide input at 170, while the two uncapped children stayed honestly at 24.
     private readonly TextBlock _header = new()
     {
         FontSize = 24,
         FontWeight = FontWeight.Bold,
         TextWrapping = TextWrapping.Wrap,
         MaxWidth = 780,
+        HorizontalAlignment = HorizontalAlignment.Left,
     };
 
     private readonly TextBlock _progress =
@@ -39,6 +47,7 @@ public sealed class WizardWindow : Window
         FontSize = 18,
         TextWrapping = TextWrapping.Wrap,
         MaxWidth = 760,
+        HorizontalAlignment = HorizontalAlignment.Left,
     };
 
     private readonly StackPanel _errorPanel = new() { Spacing = 4, IsVisible = false };
@@ -66,8 +75,12 @@ public sealed class WizardWindow : Window
         Height = 720;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
-        _back = MakeButton("◀ Back", OnBack);
-        _next = MakeButton("Next ▶", OnNext);
+        // The chevrons are geometry now, not ◀ and ▶ rendered in whatever fallback font happens to
+        // carry them — which is why these two buttons never shared a baseline with Cancel.
+        _back = MakeButton("Back", OnBack, "TrestleBoard.Icon.chevron-left");
+        _next = MakeButton("Next", OnNext, "TrestleBoard.Icon.chevron-right", Dock.Right);
+        // IsDefault carries the emphasis now: Theme/Controls.axaml gives every default button in
+        // the application the primary treatment, so no dialog can forget to ask for it.
         _next.IsDefault = true;
         _showAll = MakeButton("Show all at once", OnShowAll);
         Button cancel = MakeButton("Cancel", (_, _) => CancelWithConfirmation());
@@ -79,13 +92,27 @@ public sealed class WizardWindow : Window
             Content = _body,
         };
 
-        var footer = new StackPanel
+        // Back and "Show all at once" belong to the wizard; Cancel and Next belong to the decision
+        // the user is making, so they sit at the other end. A DockPanel says that; the 40px spacer
+        // Panel this replaces only said it at one window width.
+        var footer = new DockPanel { Margin = new Avalonia.Thickness(24, 12, 24, 16) };
+
+        var leftButtons = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 12,
-            Margin = new Avalonia.Thickness(24, 12, 24, 24),
-            Children = { _back, _showAll, new Panel { Width = 40 }, cancel, _next },
+            Children = { _back, _showAll },
         };
+        DockPanel.SetDock(leftButtons, Dock.Left);
+        footer.Children.Add(leftButtons);
+
+        footer.Children.Add(new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 12,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Children = { cancel, _next },
+        });
 
         Content = new DockPanel
         {
@@ -98,11 +125,16 @@ public sealed class WizardWindow : Window
                     Spacing = 6,
                     Children = { _header, _progress, _help, _errorPanel },
                 },
+                // Shaded, like the toolbar, the status bar and WidgetGridWindow's own bar: the
+                // scroller's clip then reads as a footer rather than as content cut off.
                 new Border
                 {
                     [DockPanel.DockProperty] = Dock.Bottom,
                     Child = footer,
-                },
+                }
+                    .Token(Border.BackgroundProperty, Tokens.ChromeBackground)
+                    .Token(Border.BorderBrushProperty, Tokens.ChromeBorder)
+                    .Token(Border.BorderThicknessProperty, Tokens.RuleTop),
                 new Border { Margin = new Avalonia.Thickness(24, 0, 24, 0), Child = _scroller },
             },
         };
@@ -203,6 +235,7 @@ public sealed class WizardWindow : Window
                         FontSize = 20,
                         TextWrapping = TextWrapping.Wrap,
                         MaxWidth = 460,
+                        HorizontalAlignment = HorizontalAlignment.Left,
                     },
                     new StackPanel
                     {
@@ -310,7 +343,14 @@ public sealed class WizardWindow : Window
         RenderErrors(errors ?? _session.Errors);
 
         _back.IsEnabled = !_session.IsFirstScreen;
-        _next.Content = _session.IsReviewScreen ? "Save it" : "Next ▶";
+        // Rebuilt rather than assigned a string, because the content is an IconText and "Save it"
+        // is the one screen where the forward chevron would be a lie: it does not go forward, it
+        // finishes. AutomationProperties.Name follows, so the screen reader agrees with the button.
+        string nextLabel = _session.IsReviewScreen ? "Save it" : "Next";
+        _next.Content = _session.IsReviewScreen
+            ? new IconText(null, nextLabel, labelSize: 20)
+            : new IconText("TrestleBoard.Icon.chevron-right", nextLabel, labelSize: 20, glyphSide: Dock.Right);
+        AutomationProperties.SetName(_next, nextLabel);
         _showAll.IsVisible = _session.CurrentRowIndex >= 0;
 
         _body.Children.Clear();
@@ -350,6 +390,7 @@ public sealed class WizardWindow : Window
                 FontSize = 18,
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 760,
+                HorizontalAlignment = HorizontalAlignment.Left,
             }.Token(TextBlock.ForegroundProperty, Tokens.Warning));
         }
     }
@@ -373,6 +414,7 @@ public sealed class WizardWindow : Window
                 FontSize = 18,
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 760,
+                HorizontalAlignment = HorizontalAlignment.Left,
             });
         }
 
@@ -458,6 +500,7 @@ public sealed class WizardWindow : Window
             FontSize = 18,
             Width = labelWidth ?? double.NaN,
             TextWrapping = TextWrapping.Wrap,
+            HorizontalAlignment = HorizontalAlignment.Left,
         };
         panel.Children.Add(label);
 
@@ -468,7 +511,9 @@ public sealed class WizardWindow : Window
             {
                 FontSize = 20,
                 MinHeight = 44,
-                Width = 560,
+                MinWidth = 560,
+                MaxWidth = 760,
+                HorizontalAlignment = HorizontalAlignment.Left,
                 ItemsSource = choices.Select(c => c.Label).ToList(),
                 SelectedIndex = Math.Max(0, IndexOfChoice(choices, _session.GetValue(owner, field.Key, rowIndex))),
             };
@@ -490,7 +535,9 @@ public sealed class WizardWindow : Window
             {
                 FontSize = 20,
                 MinHeight = 44,
-                Width = 560,
+                MinWidth = 560,
+                MaxWidth = 760,
+                HorizontalAlignment = HorizontalAlignment.Left,
                 ItemsSource = _people.Select(p => p.Name).ToList(),
                 FilterMode = AutoCompleteFilterMode.ContainsOrdinal,
                 MinimumPrefixLength = 1,
@@ -518,7 +565,9 @@ public sealed class WizardWindow : Window
             {
                 FontSize = 20,
                 MinHeight = multiLine ? 260 : 44,
-                Width = 560,
+                MinWidth = 560,
+                MaxWidth = 760,
+                HorizontalAlignment = HorizontalAlignment.Left,
                 Text = _session.GetValue(owner, field.Key, rowIndex),
                 AcceptsReturn = multiLine,
                 TextWrapping = multiLine ? TextWrapping.Wrap : TextWrapping.NoWrap,
@@ -565,6 +614,7 @@ public sealed class WizardWindow : Window
                 FontSize = 16,
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 560,
+                HorizontalAlignment = HorizontalAlignment.Left,
             }.Token(TextBlock.ForegroundProperty, Tokens.ChromeMuted));
         }
 
@@ -687,6 +737,7 @@ public sealed class WizardWindow : Window
                         FontSize = 18,
                         TextWrapping = TextWrapping.Wrap,
                         Width = 560,
+                        HorizontalAlignment = HorizontalAlignment.Left,
                         VerticalAlignment = VerticalAlignment.Center,
                     },
                     change,
@@ -805,11 +856,17 @@ public sealed class WizardWindow : Window
         return -1;
     }
 
-    private static Button MakeButton(string text, EventHandler<Avalonia.Interactivity.RoutedEventArgs> click)
+    private static Button MakeButton(
+        string text,
+        EventHandler<Avalonia.Interactivity.RoutedEventArgs> click,
+        string? glyphKey = null,
+        Dock glyphSide = Dock.Left)
     {
         var button = new Button
         {
-            Content = text,
+            Content = glyphKey is null
+                ? text
+                : new IconText(glyphKey, text, labelSize: 20, glyphSide: glyphSide),
             FontSize = 20,
             MinHeight = 44,
             MinWidth = 160,

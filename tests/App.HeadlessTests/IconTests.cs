@@ -235,6 +235,42 @@ public sealed class IconTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>
+    /// Every window carries the application icon. There was no <c>Icon=</c> anywhere in <c>src/</c>
+    /// until M16 and no <c>AvaloniaResource</c> item in any <c>.csproj</c>: the same PNG was being
+    /// compiled into the Windows installer, the AppImage and the <c>.icns</c>, and the running
+    /// application showed the platform's generic placeholder on all thirteen windows.
+    /// </summary>
+    [Fact]
+    public async Task EveryWindowCarriesTheApplicationIcon()
+    {
+        await Session.Dispatch(() =>
+        {
+            var without = new List<string>();
+            int seen = 0;
+
+            foreach ((string windowName, Window window) in AccessibilityTests.EveryWindow())
+            {
+                seen++;
+
+                // Shown, because that is when a Window has the application's styles applied to it
+                // — and it is also the only moment an icon means anything. A window nobody opened
+                // has no title bar to put one in.
+                window.Show();
+
+                if (window.Icon is null)
+                {
+                    without.Add(windowName);
+                }
+
+                window.Close();
+            }
+
+            Assert.True(seen >= 9, $"only {seen} windows were examined");
+            Assert.True(without.Count == 0, "windows with no icon: " + string.Join(", ", without));
+        }, TestContext.Current.CancellationToken);
+    }
+
     private static HashSet<string> DeclaredGeometryKeys()
     {
         XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";

@@ -110,6 +110,24 @@ public sealed class StartDialog : Window
 
     private Button Tile(string heading, string detail, StartChoice choice, bool primary, bool enabled)
     {
+        var detailLine = new TextBlock
+        {
+            Text = detail,
+            FontSize = 16,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 620,
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+
+        // Muted only on a tile that is NOT the primary one. On the accent fill the muted token is
+        // 1.66:1 in Light and 1.00:1 in Dark — the live-tree contrast walk caught exactly that the
+        // day default buttons started taking the accent. There the detail inherits the button's own
+        // foreground and the size difference alone carries the hierarchy.
+        if (!primary)
+        {
+            detailLine.Token(TextBlock.ForegroundProperty, Tokens.ChromeMuted);
+        }
+
         var button = new Button
         {
             FontSize = 20,
@@ -130,13 +148,7 @@ public sealed class StartDialog : Window
                         FontSize = 22,
                         FontWeight = primary ? FontWeight.Bold : FontWeight.Normal,
                     },
-                    new TextBlock
-                    {
-                        Text = detail,
-                        FontSize = 16,
-                        TextWrapping = TextWrapping.Wrap,
-                        MaxWidth = 620,
-                    }.Token(TextBlock.ForegroundProperty, Tokens.ChromeMuted),
+                    detailLine,
                 },
             },
         };

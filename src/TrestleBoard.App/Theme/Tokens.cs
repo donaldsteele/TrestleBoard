@@ -45,6 +45,28 @@ internal static class Tokens
     internal const string RuleTop = "TrestleBoard.Rule.Top";
     internal const string RuleBottom = "TrestleBoard.Rule.Bottom";
 
+    /// <summary>The ControlTheme in <c>Theme/Controls.axaml</c> that <see cref="Primary{T}"/> applies.</summary>
+    internal const string PrimaryButtonTheme = "TrestleBoard.PrimaryButton";
+
+    /// <summary>
+    /// The one visual treatment for "this is the offer you probably came for" (PLAN.md §11 M16):
+    /// the accent fill, its measured foreground, and a gold left bar. <b>Three signals, so colour is
+    /// never the only one</b> — the bar is a shape as well as a colour, and the caller sets a taller
+    /// minimum height on top.
+    ///
+    /// <para>Used both by the action panel, where <c>EditorAction.IsPrimary</c> chooses, and by
+    /// dialog footers, where <c>IsDefault</c> does. Before M16 those two ideas looked identical to
+    /// every other button on the screen, which is most of what "every button is the same grey slab"
+    /// meant.</para>
+    /// </summary>
+    internal static T Primary<T>(this T button)
+        where T : Avalonia.Controls.Button
+    {
+        ArgumentNullException.ThrowIfNull(button);
+
+        return button.Token(Avalonia.StyledElement.ThemeProperty, PrimaryButtonTheme);
+    }
+
     /// <summary>
     /// Binds a property to a palette key by reference, so it re-resolves when the variant changes.
     /// Assigning the brush by value would work exactly once, at the moment the control was built.
