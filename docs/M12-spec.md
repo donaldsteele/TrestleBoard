@@ -160,3 +160,64 @@ the other half.
 the app's business, and a number that reads differently from the sheet it came from is a number the
 user stops trusting. The one exception is scientific notation, which is a spreadsheet's damage
 rather than the user's writing.
+
+---
+
+## 5. The merge policy, which is the milestone
+
+Everything else here is plumbing. This is the part that can quietly ruin an address book.
+
+**Match in strict order:** exact `TrestleBoard ID` → exact normalised email → exact normalised name
+→ otherwise a new person. Names are normalised the way people actually write them: trimmed,
+whitespace collapsed, case-folded, punctuation dropped, `Jr`/`Sr`/`II`/`III` removed, and
+`Last, First` turned round into `First Last`.
+
+Then:
+
+- **Update by match; never replace the file; never delete.** An import has no code path that removes
+  anybody. A list missing this year's new members is a perfectly ordinary thing to import, and it
+  must not empty the book. Deletion is a deliberate per-person act in the People window.
+- **Mapped columns overwrite; unmapped fields are left alone** — so a phone-only import cannot wipe
+  everyone's birthdays (PLAN §12 gate 9). **An empty cell in a mapped column also leaves the value
+  alone**, which is the same rule one level down: a column of blanks is not an instruction to clear
+  a field for the whole lodge.
+- **Auto-merge on exact match only.** Anything merely similar becomes a question —
+  *"Are these the same person?"* with **[Same person] / [Different person]** — and until it is
+  answered, that row does nothing at all.
+
+**Idempotence is the key test**, and it is written against the hundred-person fixture: import,
+import again, assert `ChangesAnything` is false and the member list is equal. That single property
+guards the whole rule set, because every way of getting the matching wrong shows up as a second
+import doing something.
+
+**The near-match rule is deliberately generous**, since its only cost is a question the user answers
+once. Two names count as worth asking about when they share a family name and a compatible first
+name (`A. Placeholder` against `Aaron Placeholder` — half a lodge's records are written that way),
+or when they are within two edits of each other. That second clause is loose enough that two
+*fictional surnames* two edits apart would trip it, which is why the 100-person fixture's five
+surnames are deliberately unlike one another: the fixture should exercise the merge policy, not the
+question-asking.
+
+### The screens
+
+`RosterImportSession` holds every piece of state and the window merely renders it, which is the one
+architectural trick borrowed from `WizardSession` — and the reason every sentence a user reads
+during an import is asserted in `tests/Roster.Tests` without an Avalonia session. It does **not**
+go through `WizardDefinition`: the mapping step is discovered at runtime and the preview is a table,
+so bending the widget wizard to fit would make both worse.
+
+1. **"Where is the list?"** — and the promise the whole flow rests on: *"Nothing changes until you
+   say so at the end."*
+2. **"Which sheet?"** — skipped when there is only one, because a screen with one possible answer
+   wastes the user's time.
+3. **"Which row has the column titles?"** — the first eight rows, one big radio each, plus "There
+   are no column titles". Guessed by how title-like a row is rather than by assuming row one:
+   guessing wrong on a headerless list quietly loses the first person.
+4. **"Match up the columns."** — inverted from the usual import grid: one question per *lodge*
+   field, in the user's words, each dropdown item showing column letter, title **and the first two
+   values**, so the user recognises their data instead of decoding a header. Only Name is required,
+   and the reason is said out loud rather than leaving a dead Next button.
+5. **"Have a look before we add these."** — the plan in plain counts, the "Leave them alone instead"
+   toggle, the duplicate questions, and the unusable rows with a **Save these to a file** button so
+   nothing is silently lost.
+6. **"Done."** — *"Your address book now has 100 people."*
