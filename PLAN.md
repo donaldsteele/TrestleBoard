@@ -1171,6 +1171,14 @@ ancillary text chunks; no screenshot contains a real name, phone number, email, 
 path.
 
 **Post-milestone:** `/graphify . --update`; ingest the M15 decisions into llm-wiki.
+**Post-milestone status (2026-07-27):** done. graphify updated to 4304 nodes / 9131 edges (+91 nodes,
++110 edges); as at M10–M14 the incremental pass was **AST-only**, so the 40 changed docs and the 52
+images — now including the 18 committed screenshots, which a semantic pass would read with vision —
+stay unstamped in the manifest and are queued for the next semantic run. Graph health clean apart
+from 5 long-standing self-loop edges. llm-wiki has `m15-decisions` plus one new concept page,
+`documentation-screenshot-pipeline` — the harness half of this milestone is genuinely reusable and is
+`bundled-font-pipeline`'s sibling, which now links back to it. Graph extract clean at 29 nodes /
+187 edges. `/wiki:lint` not run: the cadence is even-numbered milestones, and M14's pass was clean.
 **Agents:** **Opus** for the harness spike and the privacy guard; **Sonnet** for the shot list and the
 README; **cavecrew-reviewer (Sonnet)**.
 
