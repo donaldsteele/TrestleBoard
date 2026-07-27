@@ -1505,22 +1505,22 @@ the panel and the spacing work; **cavecrew-reviewer (Sonnet)**.
 10. **Roster-to-widget gate (M13):** birthday re-sync is one undo step and Ctrl+Z restores the prior payload byte-for-byte; hand-edited rows survive a re-sync; deliberately removed members are not resurrected; `TemplateTests` passes unchanged.
 11. **Font gate (M14):** every bundled face parses and rasterizes on all three OSes (`font-catalog-sampler`); the font-manifest hash check passes and no TTF exists outside the manifest; changing a style's font or size keeps its `-bold`/`-italic` siblings in sync and bold still finds its pair; a document naming an unbundled family opens with a plain-language warning and saves back byte-unchanged; the OFL/Apache licence text is present **inside the installer**, not merely in the repo.
 12. **Documentation gate (M15):** every image referenced from a doc exists and every committed image is referenced; no committed PNG carries ancillary text chunks; no screenshot shows a real name, phone number, email, or user-name-bearing path.
-13. **Visual gate (M16):** every declared token pair meets its floor in Light, Dark and High Contrast; no chrome control carries a locally-set brush of its own; every mapped icon key resolves to geometry and every widget `IconKey` has a mapping; no button is icon-only; no panel action's title outgrows the panel; **no snapshot baseline moves and exactly 17 of the 18 screenshots regenerate** — `pdf-page-spread` changing means something reached the rendering pipeline. Then, by eye, because no test settles it: Light, Dark and High Contrast at 100% **and 200%**, confirming the toolbar, panel, status bar and canvas are distinguishable from one another, focus is unmistakable, and the panel folds and unfolds sensibly at both scales.
+13. **Visual gate (M16):** every declared token pair meets its floor in Light, Dark and High Contrast; no chrome control carries a locally-set brush of its own; every mapped icon key resolves to geometry and every widget `IconKey` has a mapping; no button is icon-only; no panel action's title outgrows the panel; **no snapshot baseline moves and exactly 17 of the 18 screenshots regenerate** — `pdf-page-spread` changing means something reached the rendering pipeline. *(Outcome, 2026-07-27: no baseline moved, but sixteen images regenerated and `pdf-page-spread` was one of them. It was not M16 — building the harness from `53dbf07`, the commit before any M16 code, produces the new bytes exactly, because the committed image was baked at `4031d13` and `ed45280` landed after it. Two shots, `people-window` and `import-columns`, came out byte-identical: they declare no `IsDefault` button and paint no chrome surface of their own. `docs/M16-spec.md` §10.)* Then, by eye, because no test settles it: Light, Dark and High Contrast at 100% **and 200%**, confirming the toolbar, panel, status bar and canvas are distinguishable from one another, focus is unmistakable, and the panel folds and unfolds sensibly at both scales.
 
 ## 13. Remaining open items (status as at 2026-07-27)
 
-**Every milestone M0–M15 is delivered. M16 is scheduled and not started** — it was added 2026-07-27
-from the owner's review of the M15 screenshots, and it is the one piece of work in this plan a
-machine can do unattended, starting with its spike. The suite is green on Windows (933 passed, 12
-skipped — the `pdftoppm` parity tests, which are Linux-CI-only by design; re-verified 2026-07-27).
-What is left besides M16 is listed here so a future session does not have to re-derive it from six
-spec documents. Each of those items is blocked on a person, a machine, or a decision that is the
-owner's to make; each is owned by its milestone's spec, which stays the authority.
+**Every milestone M0–M16 is delivered.** M16 landed on 2026-07-27, the same day it was scheduled;
+`docs/M16-spec.md` is its record and stays the authority for what it decided. The suite is green on
+Windows (946 passed, 12 skipped — the `pdftoppm` parity tests, which are Linux-CI-only by design).
 
-**To a future unattended session: M16 is the work; this list is not.** Every entry below is `- [!]`,
-and each names what unblocks it. Re-checking them costs a run and changes nothing. Besides M16, the
-only work here a machine could take on is the one remaining defect named after the list, and it is
-unscheduled *by decision* — treat starting it as needing the owner's word first.
+What is left is listed here so a future session does not have to re-derive it from seven spec
+documents. Each item is blocked on a person, a machine, or a decision that is the owner's to make;
+each is owned by its milestone's spec.
+
+**To a future unattended session: this list is the answer, not the starting point.** Every entry
+below is `- [!]`, and each names what unblocks it. Re-checking them costs a run and changes nothing.
+The one item a machine could take on is the last defect named after the list, and it is unscheduled
+*by decision* — treat starting it as needing the owner's word first.
 
 - [!] **Clean-machine install on fresh Windows and macOS**, following only `docs/INSTALL.md`
       (§12 item 6) — needs the machines and a person. `docs/M10-spec.md` §6. The macOS half is
@@ -1554,6 +1554,17 @@ unscheduled *by decision* — treat starting it as needing the owner's word firs
       to copy, modify or redistribute. `docs/M15-spec.md` §9.
 - [!] **The real-world test** (§12 item 4): recreate the July 2026 issue in the app and have a
       committee member compare it against `Examples/July 2026.pdf` side by side. Needs the user.
+- [!] **M16's by-eye pass** (§12 item 13): Light, Dark and High Contrast at 100% **and 200%**,
+      confirming the toolbar, panel, status bar and canvas are distinguishable from one another,
+      focus is unmistakable, and the panel folds and unfolds sensibly at both scales. The automated
+      half is done and is stronger than the plan asked for — a palette gate that recomputes every
+      declared ratio out of the file, a live-tree contrast walk in all three variants, a source scan
+      for literal brushes, and the icon-and-label partition — but **no test settles whether the
+      result looks designed.** `docs/M16-spec.md` §11. The three committed screenshots that come
+      closest are `high-contrast.png`, `scale-200.png` and `wizard-officers-step.png`.
+- [!] **The chrome-budget measurement at 200%** matters slightly more than it did: a 360px panel
+      occupies 720px of a 1280px window at 200%, up from 640px. It is part of the NVDA item above
+      and blocked on the same person.
 
 Of the three known defects recorded here, **the two cosmetic ones are fixed (2026-07-27)** — they
 turned out to be App-only chrome fixes that re-bake no snapshot baseline, so closing them opened no

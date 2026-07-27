@@ -251,12 +251,37 @@ repository.
 when a `Window` has the application's styles applied to it — and it is also the only moment an icon
 means anything.
 
-## 9. What is still open
+## 10. The re-bake, and the one image that was not supposed to move
+
+**Sixteen of the eighteen images changed.** The plan predicted seventeen and named the one that must
+not: `pdf-page-spread`, a pure `RenderPageToPng` composite with no Avalonia in it, whose changing
+would mean something had reached the rendering pipeline.
+
+**It changed, and it is not M16.** Building the harness from `53dbf07` — the commit before any M16
+code — produces the new bytes exactly (md5 `1674b142…` from both trees). The committed image was
+baked at `4031d13`, and `ed45280` "small text is sans italic, and the three baselines it moves"
+landed after it. The caption lines under the committee list and the birthday note have therefore
+been stale in the repository since M14's tail; M16 re-bakes what was already wrong rather than
+making it wrong. No snapshot baseline moved, which is the check that actually guards the renderer.
+
+**Two came out byte-identical**, which is also correct rather than suspicious: `people-window` and
+`import-columns` declare no `IsDefault` button and paint no chrome surface of their own, so nothing
+in this milestone reaches them. Making "Save this person" the default would have given that window
+the accent, but it also changes what the Enter key does in a window full of real members' details,
+which is not a visual-polish decision.
+
+Everything was rendered with `--out` to a scratch directory until the work was finished, and baked
+into `docs/images/` exactly once. PNGs do not delta, so a regeneration nobody meant to keep is a
+permanent tax on every clone.
+
+## 11. What is still open
 
 - **The by-eye pass.** The gate settles contrast, tokens, icons and labels; it settles nothing about
   whether the result looks *designed*. PLAN.md §12 item 13 asks for Light, Dark and High Contrast at
   100% **and 200%**, confirming the toolbar, panel, status bar and canvas are distinguishable, focus
-  is unmistakable, and the panel folds sensibly at both scales. **A machine cannot close this.**
+  is unmistakable, and the panel folds sensibly at both scales. **A machine cannot close this.** The
+  three committed images that come closest to answering it are `high-contrast.png`, `scale-200.png`
+  and `wizard-officers-step.png`.
 - **The chrome-budget measurement at 200%** (§13, open since M11) now matters slightly more than it
   did: a 360px panel occupies 720px of a 1280px window at 200%, up from 640px.
 - Everything else in PLAN.md §13 is unchanged by this milestone.
