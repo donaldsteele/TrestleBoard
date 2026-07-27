@@ -1242,9 +1242,15 @@ README; **cavecrew-reviewer (Sonnet)**.
 
 **Every milestone M0–M15 is delivered, and no work in this plan remains that a machine can do
 unattended.** The suite is green on Windows (933 passed, 12 skipped — the `pdftoppm` parity tests,
-which are Linux-CI-only by design). What is left is listed here so a future session does not have to
-re-derive it from six spec documents. Each item is blocked on a person, a machine, or a decision that
-is the owner's to make; each is owned by its milestone's spec, which stays the authority.
+which are Linux-CI-only by design; re-verified 2026-07-27). What is left is listed here so a future
+session does not have to re-derive it from six spec documents. Each item is blocked on a person, a
+machine, or a decision that is the owner's to make; each is owned by its milestone's spec, which
+stays the authority.
+
+**To a future unattended session: this list is the answer, not the starting point.** Every entry
+below is `- [!]`, and each names what unblocks it. Re-checking them costs a run and changes nothing.
+The only work here a machine could take on is the three defects named after the list, and those are
+unscheduled *by decision* — treat starting one as needing the owner's word first.
 
 - [!] **Clean-machine install on fresh Windows and macOS**, following only `docs/INSTALL.md`
       (§12 item 6) — needs the machines and a person. `docs/M10-spec.md` §6. The macOS half is
@@ -1270,6 +1276,9 @@ is the owner's to make; each is owned by its milestone's spec, which stays the a
       all). Sections 12–14 of `docs/accessibility-test-script.md` are written and waiting.
 - [!] **An XLSX fixture produced by Excel itself.** LibreOffice and hand-written OOXML cover the
       reader paths; Excel is different evidence. Needs a machine with Excel. `docs/M12-spec.md` §9.
+      Checked 2026-07-27 on the maintainer's Windows box: no Excel COM registration
+      (`REGDB_E_CLASSNOTREG`), so Excel is not installed here either. This item cannot be closed
+      from this machine — a future session should not spend time re-probing for it.
 - [!] **The application has no licence file.** Choosing one is the owner's call, so M15 documented
       the absence rather than inventing a licence; until one exists the README grants no permission
       to copy, modify or redistribute. `docs/M15-spec.md` §9.
