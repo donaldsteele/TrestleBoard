@@ -69,6 +69,10 @@ public sealed class WidgetGridWindow : Window
                             FontSize = 18,
                             TextWrapping = TextWrapping.Wrap,
                             MaxWidth = 780,
+                            // Without this the 780-wide subtitle is CENTRED under a 912-wide
+                            // heading and starts 64px to its right — the same Avalonia behaviour
+                            // that gave wizard-officers-step.png five left edges.
+                            HorizontalAlignment = HorizontalAlignment.Left,
                         },
                         _errorPanel,
                     },
@@ -392,6 +396,7 @@ public sealed class WidgetGridWindow : Window
                 FontSize = 18,
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 780,
+                HorizontalAlignment = HorizontalAlignment.Left,
             }.Token(TextBlock.ForegroundProperty, Tokens.Warning));
         }
     }
