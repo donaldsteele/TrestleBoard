@@ -1238,6 +1238,50 @@ README; **cavecrew-reviewer (Sonnet)**.
 11. **Font gate (M14):** every bundled face parses and rasterizes on all three OSes (`font-catalog-sampler`); the font-manifest hash check passes and no TTF exists outside the manifest; changing a style's font or size keeps its `-bold`/`-italic` siblings in sync and bold still finds its pair; a document naming an unbundled family opens with a plain-language warning and saves back byte-unchanged; the OFL/Apache licence text is present **inside the installer**, not merely in the repo.
 12. **Documentation gate (M15):** every image referenced from a doc exists and every committed image is referenced; no committed PNG carries ancillary text chunks; no screenshot shows a real name, phone number, email, or user-name-bearing path.
 
+## 13. Remaining open items (status as at 2026-07-27)
+
+**Every milestone M0–M15 is delivered, and no work in this plan remains that a machine can do
+unattended.** The suite is green on Windows (933 passed, 12 skipped — the `pdftoppm` parity tests,
+which are Linux-CI-only by design). What is left is listed here so a future session does not have to
+re-derive it from six spec documents. Each item is blocked on a person, a machine, or a decision that
+is the owner's to make; each is owned by its milestone's spec, which stays the authority.
+
+- [!] **Clean-machine install on fresh Windows and macOS**, following only `docs/INSTALL.md`
+      (§12 item 6) — needs the machines and a person. `docs/M10-spec.md` §6. The macOS half is
+      doubly blocked until a release carries a `.pkg`: `v0.1.0` has no Mac assets and is not
+      retrofitted, so the first tag after `5de310b` is the earliest this can run.
+- [!] **SmartScreen and Gatekeeper screenshots** for `docs/INSTALL.md` — operating-system security
+      dialogs the harness cannot render. Reserved and deliberately unlinked in
+      `docs/images/README.md`; `TheReservedInstallShotsAreNamedButNotLinked` fails if someone links
+      one early. `docs/M10-spec.md` §6, `docs/M15-spec.md` §9. Rendering imitations was rejected
+      outright.
+- [!] **Auto-update round trip** — install `v0.1.0`, publish `v0.1.1`, confirm an installed copy
+      takes it. Needs a second real tag. `docs/M10-spec.md` §6.
+- [!] **Confirm the two `.pkg` filenames** against the first release that actually builds them.
+      `docs/M10-spec.md` §6.
+- [!] **Manual NVDA pass at 200% UI scale in High Contrast** (§12 item 8), and the **chrome-budget
+      measurement** at that scale. Needs a person with a real screen reader.
+      `docs/accessibility-test-script.md` §11, `docs/M11-spec.md` §7. This is the item PLAN flags as
+      most in need of validation: if the polite panel heading and the greyed-with-`HelpText` menu
+      read badly together, the stated fallback is explained refusal in the menu too.
+- [!] **Keyboard-only runs by a person** of the roster import flow (`docs/M12-spec.md` §9), the
+      birthday sync and officers picker (`docs/M13-spec.md` §9, the `AutoCompleteBox`), and the font
+      picker (`docs/M14-spec.md` §14, whether the grouped `ListBox`'s headings are announced at
+      all). Sections 12–14 of `docs/accessibility-test-script.md` are written and waiting.
+- [!] **An XLSX fixture produced by Excel itself.** LibreOffice and hand-written OOXML cover the
+      reader paths; Excel is different evidence. Needs a machine with Excel. `docs/M12-spec.md` §9.
+- [!] **The application has no licence file.** Choosing one is the owner's call, so M15 documented
+      the absence rather than inventing a licence; until one exists the README grants no permission
+      to copy, modify or redistribute. `docs/M15-spec.md` §9.
+- [!] **The real-world test** (§12 item 4): recreate the July 2026 issue in the app and have a
+      committee member compare it against `Examples/July 2026.pdf` side by side. Needs the user.
+
+Three known defects are recorded but deliberately unscheduled, because closing them means opening a
+milestone rather than finishing one: the `quote` / `body-italic` attribute collision
+(`docs/M14-spec.md` §11 — pre-existing, exposed rather than caused, cheap to fix by giving `quote` a
+distinguishing size); the action panel clipping long button labels with their shortcut; and
+`WidgetGridWindow`'s docked button bar overlapping the last visible row (both `docs/M15-spec.md` §9).
+
 ## Flagged uncertainties (verify early, all covered by M1/M3 spikes)
 - SkiaSharp 3.x `SKShaper`/HarfBuzzSharp packaging and PDF text-embedding behavior → M1.
 - Avalonia `ISkiaSharpApiLeaseFeature` under heavy per-frame redraw → M3 (WriteableBitmap fallback ready).
