@@ -136,6 +136,7 @@ public sealed class RecordListStep<TData, TRow> : WizardStepBase, IWizardListSte
     private readonly IReadOnlyList<(WizardField Field, WizardFieldBinding<TRow> Binding)> _bound;
     private readonly Func<TRow, string>? _rowLabel;
     private readonly Func<TData, bool>? _isActive;
+    private readonly Action<TData, TRow>? _onRemoveRow;
 
     public RecordListStep(
         string title,
@@ -149,7 +150,8 @@ public sealed class RecordListStep<TData, TRow> : WizardStepBase, IWizardListSte
         Func<TRow, string>? rowLabel = null,
         string addButtonText = "Add another",
         string emptyText = "Nothing here yet. Press “Add another” to start.",
-        Func<TData, bool>? isActive = null)
+        Func<TData, bool>? isActive = null,
+        Action<TData, TRow>? onRemoveRow = null)
         : base(title, helpText, (fields ?? throw new ArgumentNullException(nameof(fields))).Select(f => f.Field).ToArray())
     {
         _getRows = getRows ?? throw new ArgumentNullException(nameof(getRows));
@@ -157,6 +159,7 @@ public sealed class RecordListStep<TData, TRow> : WizardStepBase, IWizardListSte
         _bound = fields;
         _rowLabel = rowLabel;
         _isActive = isActive;
+        _onRemoveRow = onRemoveRow;
         FixedRows = fixedRows;
         Pagination = pagination;
         AllowReorder = allowReorder && fixedRows is null;
@@ -240,6 +243,10 @@ public sealed class RecordListStep<TData, TRow> : WizardStepBase, IWizardListSte
             return false;
         }
 
+        // The one thing removal can be asked to remember. The birthday list uses it to record that
+        // this brother was taken off deliberately, so the next sync does not put him straight back
+        // (PLAN.md §11 M13). Both editors remove rows through here, so both are covered.
+        _onRemoveRow?.Invoke((TData)data, rows[rowIndex]);
         rows.RemoveAt(rowIndex);
         return true;
     }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using TrestleBoard.Core.Model;
 using TrestleBoard.Layout.Widgets;
@@ -41,10 +42,44 @@ public sealed class BirthdayListDefinition : WidgetDefinition<BirthdayListData>
 
     public override IWidgetLayouter Layouter { get; } = new BirthdayListLayouter();
 
+    /// <summary>
+    /// 2 since M13: the list gained where-it-came-from fields, purely additive. A v2 payload opened
+    /// in a pre-M13 build is move/resize/delete-only, which is designed behaviour rather than an
+    /// accident (PLAN.md §11 M13, "rollout note").
+    /// </summary>
+    public override int CurrentDataVersion => 2;
+
     protected override JsonTypeInfo<BirthdayListData> TypeInfo =>
         BirthdayListJsonContext.Default.BirthdayListData;
 
+    /// <summary>
+    /// Empty, and — this is the part PLAN.md §5's projection rule protects — empty with no reference
+    /// to the address book. The roster reaches this widget only through
+    /// <see cref="Roster.BirthdayRosterProjection"/>, which takes the member list as a parameter and
+    /// is invoked by a user-confirmed action. Never from here, and never from <see cref="WidgetSeed"/>.
+    /// </summary>
     public override BirthdayListData CreateEmpty(WidgetSeed seed) => new();
+
+    /// <summary>
+    /// v1 → v2. Everything new is optional, so the whole upgrade is "say out loud that this list was
+    /// typed by hand", which is what every v1 list was. Entries need nothing: a row with no
+    /// <c>memberId</c> is a typed row by definition, and that is exactly what the projection leaves
+    /// alone (PLAN.md §11 M13).
+    /// </summary>
+    public override bool TryMigrateStep(JsonNode data, int fromVersion, out JsonNode upgraded, out int toVersion)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        upgraded = data;
+        toVersion = fromVersion;
+        if (fromVersion != 1)
+        {
+            return false;
+        }
+
+        data["source"] = BirthdayListSource.Manual;
+        toVersion = 2;
+        return true;
+    }
 
     protected override WizardDefinition BuildWizard() => new(
         DisplayName,
@@ -72,7 +107,7 @@ public sealed class BirthdayListDefinition : WidgetDefinition<BirthdayListData>
                             "Name",
                             ExampleText: "A. Placeholder"),
                         new WizardFieldBinding<BirthdayEntry>(
-                            "name", r => r.Name, (r, v) => r.Name = v)),
+                            "name", r => r.Name, SetName)),
                     (new WizardField(
                             "date",
                             "Birthday (month and day)",
@@ -88,7 +123,8 @@ public sealed class BirthdayListDefinition : WidgetDefinition<BirthdayListData>
                 // Reordering rows would not change anything printed — the layouter always sorts by
                 // date — so offering "move up/down" here would just puzzle an elderly user
                 // (docs/M7-spec.md §9.2).
-                allowReorder: false),
+                allowReorder: false,
+                onRemoveRow: RememberRemoval),
             new FieldsStep<BirthdayListData>(
                 "Anything else?",
                 "Optional. Prints after the list.",
@@ -106,6 +142,37 @@ public sealed class BirthdayListDefinition : WidgetDefinition<BirthdayListData>
         ]);
 
     /// <summary>
+    /// Taking a generated row off the list is a decision, and it has to be remembered: without this
+    /// the next "Bring in birthdays from the address book" would put the brother the user just
+    /// deleted straight back (PLAN.md §11 M13). A typed row has no id and needs nothing remembered.
+    /// </summary>
+    private static void RememberRemoval(BirthdayListData data, BirthdayEntry row)
+    {
+        if (row.MemberId is { Length: > 0 } id && !data.RemovedMemberIds.Contains(id, StringComparer.Ordinal))
+        {
+            data.RemovedMemberIds.Add(id);
+        }
+    }
+
+    /// <summary>
+    /// Provenance is captured here, in the setter both editors already share (PLAN.md §11 M13): the
+    /// step wizard and <c>WidgetGridWindow</c> drive the same field bindings, so one line per bound
+    /// field marks a row as the user's without either window learning anything new.
+    ///
+    /// The equality guard is load-bearing, not tidiness. Both windows write the box's value back on
+    /// LostFocus, so tabbing through a generated list without typing a character would otherwise mark
+    /// every row manual and freeze it against every future re-sync.
+    /// </summary>
+    private static void SetName(BirthdayEntry row, string value)
+    {
+        if (!string.Equals(row.Name, value, StringComparison.Ordinal))
+        {
+            row.Name = value;
+            row.IsManual = true;
+        }
+    }
+
+    /// <summary>
     /// Splits into two numbers the same way <see cref="WizardValidators.TryParseMonthDay"/> does, but
     /// without its 1–12/1–31 range check, so an out-of-range date (e.g. "13/45") is still stored and
     /// therefore still round-trips through <see cref="WizardFieldBinding{T}.Get"/> as a non-blank,
@@ -119,10 +186,12 @@ public sealed class BirthdayListDefinition : WidgetDefinition<BirthdayListData>
         string[] parts = value.Split(['/', '-'], StringSplitOptions.TrimEntries);
         if (parts.Length == 2
             && int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out int month)
-            && int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out int day))
+            && int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out int day)
+            && (row.Month != month || row.Day != day))
         {
             row.Month = month;
             row.Day = day;
+            row.IsManual = true;
         }
     }
 }

@@ -1,7 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- IWidgetDefinition, registry, six built-in widgets. -->
+  <!-- IWidgetDefinition, registry, six built-in widgets.
+
+       The reference to TrestleBoard.Roster (M13) buys exactly one thing: the birthday projection in
+       Roster/, a pure function that takes the member list as a parameter. PLAN.md §5's roster
+       projection rule is what keeps that from spreading — there is no ambient roster accessor here,
+       so CreateEmptyData and WidgetSeed stay incapable of naming a real person. Roster is a leaf,
+       so this adds no cycle. -->
   <ItemGroup>
     <ProjectReference Include="..\TrestleBoard.Core\TrestleBoard.Core.csproj" />
     <ProjectReference Include="..\TrestleBoard.Layout\TrestleBoard.Layout.csproj" />
+    <ProjectReference Include="..\TrestleBoard.Roster\TrestleBoard.Roster.csproj" />
   </ItemGroup>
 </Project>
