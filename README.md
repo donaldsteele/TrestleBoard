@@ -13,6 +13,14 @@ elderly users as a first-class requirement.
   editor and PDF export — what you see is exactly what prints
 - **File format:** `.tboard` (zip container; originals of every photo kept losslessly)
 
+## Installing
+
+Downloads for Windows, macOS and Linux are on the
+[releases page](https://github.com/donaldsteele/TrestleBoard/releases).
+**[docs/INSTALL.md](docs/INSTALL.md)** walks through it in plain language, including the
+SmartScreen and Gatekeeper warnings that appear because the app is not code-signed. Installed
+copies update themselves from that same releases page.
+
 ## Building
 
 Requires the .NET 10 SDK (see `global.json`).

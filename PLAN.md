@@ -285,7 +285,12 @@ Model guidance: **Fable/Opus** for high-risk algorithmic work (layout engine, te
 **Post-milestone:** ~~`/graphify . --wiki` (architecture wiki for future maintenance); `/wiki:lint`~~ — **deferred to M10** (owner's call, 2026-07-26); see M10's post-milestone step.
 **Agents:** **Opus** for a11y peers + recovery flow; **Sonnet** for templates/start screen; **general-purpose (Sonnet)** to author the manual a11y test script; **cavecrew-reviewer (Sonnet)**.
 
-### M10 — Packaging & release (S/M)
+### M10 — Packaging & release (S/M) — **delivered 2026-07-26**
+**Status:** implemented; design and open items in `docs/M10-spec.md`. Two acceptance items are
+hardware-bound and stay open there (§6): the clean-machine install runs on fresh Windows/macOS
+machines, and the SmartScreen/Gatekeeper screenshots for `docs/INSTALL.md`. Everything else ships —
+Velopack packaging for the four RIDs, the tag-triggered release workflow, background auto-update
+applied on close, and the `.tboard` association on all three platforms.
 **Goal:** installable by an 80-year-old.
 **Deliverables:** Velopack packaging for 4 RIDs; GH Actions release workflow on tag; auto-update wired to GitHub Releases; `.tboard` file association; plain-language install instructions with SmartScreen/Gatekeeper screenshots (no code signing — documented workarounds).
 **Acceptance:** on fresh Windows and macOS machines: download → install → open template → export PDF following only the written instructions; pushing a new tag produces an update an installed copy picks up automatically.

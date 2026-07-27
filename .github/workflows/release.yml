@@ -1,0 +1,149 @@
+name: Release
+
+# Tag a commit `v1.2.3` and this builds, packs and publishes that version for all four RIDs
+# (docs/M10-spec.md §1). An installed copy picks the new version up by itself, because the
+# update feed IS the GitHub release this workflow writes.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build, without the leading v (e.g. 1.2.3)"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  # Kept in step with the Velopack package version in Directory.Packages.props: the CLI writes the
+  # release metadata that the library in the app reads.
+  VPK_VERSION: "1.2.0"
+  PACK_ID: TrestleBoard
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # A tag push does not run ci.yml, and shipping something that does not pass its own tests to
+  # people who cannot easily roll back is not a risk worth taking.
+  verify:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Install poppler-utils (PDF parity test)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - run: dotnet test TrestleBoard.slnx -c Release
+
+  pack:
+    name: ${{ matrix.rid }}
+    needs: verify
+    strategy:
+      fail-fast: false
+      # One at a time: all four uploads merge into the SAME GitHub release, and concurrent merges
+      # race each other.
+      max-parallel: 1
+      matrix:
+        include:
+          - { os: windows-latest, rid: win-x64 }
+          - { os: ubuntu-latest, rid: linux-x64 }
+          - { os: macos-latest, rid: osx-x64 }
+          - { os: macos-latest, rid: osx-arm64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Work out the version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            version="${{ github.event.inputs.version }}"
+            tag="v$version"
+          else
+            tag="${GITHUB_REF_NAME}"
+            version="${tag#v}"
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Install the Velopack CLI
+        run: |
+          dotnet tool install -g vpk --version "$VPK_VERSION"
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      # Self-contained, but NOT single-file: Velopack packs a folder and diffs it to build the
+      # delta updates, which a single packed executable defeats (PLAN.md §9 packaging note).
+      - name: Publish
+        run: |
+          dotnet publish src/TrestleBoard.App/TrestleBoard.App.csproj \
+            -c Release -r ${{ matrix.rid }} --self-contained \
+            -p:Version=${{ steps.version.outputs.value }} \
+            -o publish/${{ matrix.rid }}
+
+      - name: Build the .app bundle (macOS only)
+        if: startsWith(matrix.rid, 'osx')
+        run: |
+          chmod +x build/macos/make-app-bundle.sh
+          build/macos/make-app-bundle.sh publish/${{ matrix.rid }} ${{ steps.version.outputs.value }} bundle
+
+      - name: Pack (Windows and Linux)
+        if: "!startsWith(matrix.rid, 'osx')"
+        run: |
+          vpk pack \
+            --packId "$PACK_ID" \
+            --packVersion ${{ steps.version.outputs.value }} \
+            --packDir publish/${{ matrix.rid }} \
+            --packTitle "TrestleBoard" \
+            --packAuthors "Indian Land Masonic Lodge 414" \
+            --mainExe TrestleBoard.App${{ matrix.rid == 'win-x64' && '.exe' || '' }} \
+            --icon assets-src/icons/trestleboard.${{ matrix.rid == 'win-x64' && 'ico' || 'png' }} \
+            --channel ${{ matrix.rid }} \
+            --runtime ${{ matrix.rid }} \
+            --outputDir Releases
+
+      - name: Pack (macOS)
+        if: startsWith(matrix.rid, 'osx')
+        run: |
+          vpk pack \
+            --packId "$PACK_ID" \
+            --packVersion ${{ steps.version.outputs.value }} \
+            --packDir bundle/TrestleBoard.app \
+            --packTitle "TrestleBoard" \
+            --packAuthors "Indian Land Masonic Lodge 414" \
+            --channel ${{ matrix.rid }} \
+            --runtime ${{ matrix.rid }} \
+            --outputDir Releases
+
+      # Kept even when the upload fails: a release that half-published can be finished by hand
+      # from these.
+      - name: Keep the packages as build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.rid }}
+          path: Releases/*
+          if-no-files-found: error
+
+      # --merge so all four RIDs land in one release; the channel in each package is what an
+      # installed copy follows when it looks for its next update.
+      - name: Publish to the GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          vpk upload github \
+            --repoUrl "https://github.com/${{ github.repository }}" \
+            --token "$GITHUB_TOKEN" \
+            --channel ${{ matrix.rid }} \
+            --outputDir Releases \
+            --tag ${{ steps.version.outputs.tag }} \
+            --releaseName "TrestleBoard ${{ steps.version.outputs.value }}" \
+            --merge \
+            --publish

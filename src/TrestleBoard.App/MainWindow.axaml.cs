@@ -6,6 +6,8 @@ using Avalonia.Threading;
 using TrestleBoard.App.Canvas;
 using TrestleBoard.App.Dialogs;
 using TrestleBoard.App.Settings;
+using TrestleBoard.App.Startup;
+using TrestleBoard.App.Updates;
 using TrestleBoard.Core.Commands;
 using TrestleBoard.Core.Container;
 using TrestleBoard.Core.Samples;
@@ -47,6 +49,7 @@ public partial class MainWindow : Window
     private IRecoveryStore? _recoveryStore;
     private DispatcherTimer? _recoveryTimer;
     private string? _documentPath;
+    private UpdateCoordinator? _updates;
     private AppSettings _settings = AppSettings.Load();
     private readonly WidgetLayoutProvider _widgetProvider = WidgetLayoutProvider.CreateDefault();
     private int _pageIndex;
@@ -77,8 +80,15 @@ public partial class MainWindow : Window
             _recovery?.Dispose();
             _source?.Dispose();
             _fonts.Dispose();
+
+            // An update that was downloaded during the session installs itself now, with the work
+            // already safely written above (docs/M10-spec.md §2).
+            _updates?.ApplyIfReady();
         };
     }
+
+    /// <summary>What the command line asked for; set by <see cref="App"/> on a real launch.</summary>
+    public StartupOptions StartupOptions { get; init; } = StartupOptions.Empty;
 
     /// <summary>
     /// Wires autosave to the open document. One tick a second; the service decides whether a rule
@@ -151,10 +161,21 @@ public partial class MainWindow : Window
     /// </summary>
     private async Task RunStartupAsync()
     {
-        if (await OfferRecoveryAsync())
+        // Double-clicking a .tboard file is an instruction, not a suggestion: it skips both the
+        // recovery offer and the start screen (docs/M10-spec.md §3).
+        if (StartupOptions.DocumentPath is { } path && OpenDocumentFromPath(path))
         {
+            StartUpdateCheck();
             return;
         }
+
+        if (await OfferRecoveryAsync())
+        {
+            StartUpdateCheck();
+            return;
+        }
+
+        StartUpdateCheck();
 
         var start = new StartDialog(canStartFromLastMonth: false);
         await start.ShowDialog(this);
@@ -244,6 +265,84 @@ public partial class MainWindow : Window
             await ShowErrorAsync("Could not open that file", ex.Message);
         }
     }
+
+    /// <summary>
+    /// Opens a newsletter by path — the file association's landing point (docs/M10-spec.md §3).
+    /// Returns false when the file is missing or is not a newsletter, having already told the user
+    /// so in the status bar; the caller then falls through to the normal start flow rather than
+    /// leaving them looking at an empty window.
+    /// </summary>
+    internal bool OpenDocumentFromPath(string path)
+    {
+        try
+        {
+            using var buffer = new MemoryStream(File.ReadAllBytes(path));
+            _documentPath = path;
+            ShowPackage(TboardContainer.Load(buffer));
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException
+            or UnauthorizedAccessException
+            or ArgumentException
+            or NotSupportedException
+            or InvalidDataException
+            or Core.Migrations.UnsupportedFormatException)
+        {
+            _documentPath = null;
+            StatusLabel.Text = $"TrestleBoard could not open {Path.GetFileName(path)}. {ex.Message}";
+            return false;
+        }
+    }
+
+    // ---- Updates (PLAN.md §11-M10, docs/M10-spec.md §2) --------------------------------------
+
+    /// <summary>
+    /// Fire-and-forget on purpose: the check talks to GitHub, and nothing in the app may wait on
+    /// the network. The user is only told when there is something to say.
+    /// </summary>
+    private void StartUpdateCheck()
+    {
+        // SuppressStartupForTest is the headless flag: no test run ever talks to GitHub.
+        if (StartupOptions.SkipUpdateCheck || SuppressStartupForTest)
+        {
+            return;
+        }
+
+        _updates ??= new UpdateCoordinator(new VelopackUpdateChannel());
+        _ = CheckForUpdatesAsync(userAsked: false);
+    }
+
+    private async Task CheckForUpdatesAsync(bool userAsked)
+    {
+        _updates ??= new UpdateCoordinator(new VelopackUpdateChannel());
+        UpdateOutcome outcome = await _updates.CheckAsync(userAsked);
+        if (outcome.Announce)
+        {
+            StatusLabel.Text = outcome.Message;
+        }
+    }
+
+    private async void OnCheckForUpdatesClicked(object? sender, RoutedEventArgs e) =>
+        await CheckForUpdatesAsync(userAsked: true);
+
+    private async void OnAboutClicked(object? sender, RoutedEventArgs e) =>
+        await ShowErrorAsync(
+            "About TrestleBoard",
+            $"TrestleBoard {AppVersion()}\n\n"
+                + "The newsletter editor for Indian Land Masonic Lodge 414.\n\n"
+                + "Installing and updating are explained in docs/INSTALL.md, which also came with "
+                + "your download.");
+
+    internal static string AppVersion() =>
+        typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
+
+    /// <summary>Lets the headless tests drive the update wiring without a network or an installer.</summary>
+    internal void UseUpdateChannelForTest(IUpdateChannel channel) =>
+        _updates = new UpdateCoordinator(channel);
+
+    internal Task CheckForUpdatesForTest(bool userAsked) => CheckForUpdatesAsync(userAsked);
+
+    internal UpdateCoordinator? UpdatesForTest => _updates;
 
     private void OnOpenSampleClicked(object? sender, RoutedEventArgs e) => OpenSample();
 

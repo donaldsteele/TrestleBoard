@@ -166,6 +166,16 @@
         <MenuItem x:Name="MovePageDownMenuItem" Header="Move this page _later" IsEnabled="False"
                   Click="OnMovePageLaterClicked" AutomationProperties.Name="Move this page later" />
       </MenuItem>
+      <!-- Updates are automatic and quiet (docs/M10-spec.md §2); this item exists so someone who
+           wonders "am I on the newest one?" gets an answer instead of having to wonder. -->
+      <MenuItem Header="_Help" AutomationProperties.Name="Help menu">
+        <MenuItem x:Name="CheckForUpdatesMenuItem" Header="_Check for an update"
+                  Click="OnCheckForUpdatesClicked"
+                  AutomationProperties.Name="Check for an update" />
+        <MenuItem x:Name="AboutMenuItem" Header="_About TrestleBoard"
+                  Click="OnAboutClicked"
+                  AutomationProperties.Name="About TrestleBoard" />
+      </MenuItem>
     </Menu>
     </LayoutTransformControl>
 

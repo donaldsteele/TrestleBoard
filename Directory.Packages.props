@@ -31,6 +31,15 @@
     <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="8.3.1.5" />
   </ItemGroup>
 
+  <!-- Pinned at M10. Velopack 1.2.0 is the packaging/auto-update tool PLAN.md §1 locks in; the
+       `vpk` CLI used by the release workflow is the same version (kept in step deliberately —
+       the CLI writes the release metadata the runtime library reads). The Windows registry API the
+       .tboard association needs is already in the net10.0 framework reference — a
+       Microsoft.Win32.Registry package reference is rejected by NU1510 as redundant. -->
+  <ItemGroup>
+    <PackageVersion Include="Velopack" Version="1.2.0" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
