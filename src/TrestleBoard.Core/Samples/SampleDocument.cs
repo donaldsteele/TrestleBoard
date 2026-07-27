@@ -37,20 +37,25 @@ public static class SampleDocument
             },
         };
 
+        // The standard style sheet at this sample's own dimensions, plus the two roles only the
+        // sample has. The numbers are preserved exactly: they are baked into snapshot baselines.
+        Templates.StandardStyles.Add(doc, new Templates.StandardStyleMetrics
+        {
+            BodySizePt = 12f,
+            TableSizePt = 12f,
+            TableHeaderSizePt = 13f,
+            BodyLineSpacing = 1.25f,
+            BodySpaceAfterPt = 6f,
+        });
         doc.StyleSheet.CharacterStyles.AddRange(
         [
             new CharacterStyleDef { Name = "display", FontFamily = "Cinzel", SizePt = 26f },
             new CharacterStyleDef { Name = "subtitle", FontFamily = "Source Sans 3", SizePt = 14f },
-            new CharacterStyleDef { Name = "body", FontFamily = "Source Serif 4", SizePt = 12f },
-            new CharacterStyleDef { Name = "body-bold", FontFamily = "Source Serif 4", Weight = FontWeightToken.Bold, SizePt = 12f },
-            new CharacterStyleDef { Name = "table", FontFamily = "Source Sans 3", SizePt = 12f },
-            new CharacterStyleDef { Name = "table-header", FontFamily = "Source Sans 3", Weight = FontWeightToken.Bold, SizePt = 13f },
         ]);
         doc.StyleSheet.ParagraphStyles.AddRange(
         [
             new ParagraphStyleDef { Name = "display", CharacterStyleRef = "display", Align = TextAlignment.Center, LineSpacing = 1.1f, SpaceAfterPt = 4f },
             new ParagraphStyleDef { Name = "subtitle", CharacterStyleRef = "subtitle", Align = TextAlignment.Center, LineSpacing = 1.2f, SpaceAfterPt = 2f },
-            new ParagraphStyleDef { Name = "body", CharacterStyleRef = "body", LineSpacing = 1.25f, SpaceAfterPt = 6f, FirstLineIndentPt = 14f },
             new ParagraphStyleDef { Name = "table-row", CharacterStyleRef = "table", LineSpacing = 1.35f },
             new ParagraphStyleDef { Name = "table-header", CharacterStyleRef = "table-header", LineSpacing = 1.35f, SpaceAfterPt = 3f },
         ]);

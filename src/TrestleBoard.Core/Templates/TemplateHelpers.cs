@@ -19,35 +19,9 @@ internal static class TemplateHelpers
 {
     public const string DefaultParagraphStyleRef = "body";
 
-    public static void AddStandardStyles(Document document)
-    {
-        document.StyleSheet.CharacterStyles.AddRange(
-        [
-            new CharacterStyleDef { Name = "body", FontFamily = "Source Serif 4", SizePt = 11f },
-            new CharacterStyleDef { Name = "body-bold", FontFamily = "Source Serif 4", Weight = FontWeightToken.Bold, SizePt = 11f },
-            new CharacterStyleDef { Name = "table", FontFamily = "Source Sans 3", SizePt = 10f },
-            new CharacterStyleDef { Name = "table-header", FontFamily = "Source Sans 3", Weight = FontWeightToken.Bold, SizePt = 12f },
-        ]);
-        document.StyleSheet.ParagraphStyles.AddRange(
-        [
-            new ParagraphStyleDef
-            {
-                Name = DefaultParagraphStyleRef,
-                CharacterStyleRef = "body",
-                LineSpacing = 1.3f,
-                SpaceAfterPt = 7f,
-                FirstLineIndentPt = 14f,
-            },
-        ]);
-        document.StyleSheet.TableStyles.Add(new TableStyleDef
-        {
-            Name = "lodge-table",
-            HeaderCharacterStyleRef = "table-header",
-            BodyCharacterStyleRef = "table",
-            RuleArgb = 0xFF8A8A8A,
-            RuleWidthPt = 0.5f,
-        });
-    }
+    /// <summary>The standard style sheet at template dimensions. See <see cref="StandardStyles"/>
+    /// — this used to be its own near-duplicate copy of the same table.</summary>
+    public static void AddStandardStyles(Document document) => StandardStyles.Add(document);
 
     /// <summary>A story holding exactly one paragraph: the prompt. This is the whole of what a
     /// template ever puts in a story — see the M9 task brief's rule that a template ships prompts,

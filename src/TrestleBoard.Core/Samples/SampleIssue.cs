@@ -281,26 +281,6 @@ public static class SampleIssue
     private static string[] Split(string text) =>
         text.Split("  ", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private static void AddStyles(Document document)
-    {
-        document.StyleSheet.CharacterStyles.AddRange(
-        [
-            new CharacterStyleDef { Name = "body", FontFamily = "Source Serif 4", SizePt = 11f },
-            new CharacterStyleDef { Name = "body-bold", FontFamily = "Source Serif 4", Weight = FontWeightToken.Bold, SizePt = 11f },
-            new CharacterStyleDef { Name = "table", FontFamily = "Source Sans 3", SizePt = 10f },
-            new CharacterStyleDef { Name = "table-header", FontFamily = "Source Sans 3", Weight = FontWeightToken.Bold, SizePt = 12f },
-        ]);
-        document.StyleSheet.ParagraphStyles.AddRange(
-        [
-            new ParagraphStyleDef { Name = "body", CharacterStyleRef = "body", LineSpacing = 1.3f, SpaceAfterPt = 7f, FirstLineIndentPt = 14f },
-        ]);
-        document.StyleSheet.TableStyles.Add(new TableStyleDef
-        {
-            Name = "lodge-table",
-            HeaderCharacterStyleRef = "table-header",
-            BodyCharacterStyleRef = "table",
-            RuleArgb = 0xFF8A8A8A,
-            RuleWidthPt = 0.5f,
-        });
-    }
+    /// <summary>The standard style sheet, at exactly the dimensions this sample already used.</summary>
+    private static void AddStyles(Document document) => Templates.StandardStyles.Add(document);
 }
