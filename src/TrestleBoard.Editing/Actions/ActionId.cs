@@ -24,6 +24,12 @@ public static class ActionId
     public const string Paste = "edit.paste";
     public const string SelectAll = "edit.selectAll";
 
+    /// <summary>M21: look for words anywhere in the newsletter's writing.</summary>
+    public const string Find = "edit.find";
+
+    /// <summary>M21: the same window, with the box for what to put there instead.</summary>
+    public const string Replace = "edit.replace";
+
     // ---- Text ---------------------------------------------------------------------------------
     public const string Bold = "text.bold";
     public const string Italic = "text.italic";
@@ -85,6 +91,18 @@ public static class ActionId
     public const string SendBackward = "arrange.sendBackward";
     public const string BringToFront = "arrange.bringToFront";
     public const string SendToBack = "arrange.sendToBack";
+
+    // ---- Lining things up (M21) ---------------------------------------------------------------
+    // Eight commands and no keyboard chords: eight more unmemorable shortcuts would buy nothing,
+    // and the Arrange menu's own mnemonics are the keyboard path (PLAN.md §6).
+    public const string AlignLeft = "arrange.alignLeft";
+    public const string AlignCentres = "arrange.alignCentres";
+    public const string AlignRight = "arrange.alignRight";
+    public const string AlignTop = "arrange.alignTop";
+    public const string AlignMiddles = "arrange.alignMiddles";
+    public const string AlignBottom = "arrange.alignBottom";
+    public const string DistributeHorizontally = "arrange.distributeAcross";
+    public const string DistributeVertically = "arrange.distributeDown";
 
     // ---- Pages --------------------------------------------------------------------------------
     public const string NextPage = "page.next";

@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using TrestleBoard.Editing;
 using TrestleBoard.Editing.Actions;
 
 namespace TrestleBoard.App.Actions;
@@ -47,6 +48,8 @@ internal sealed class ActionRunner
             [ActionId.Copy] = _ => window.CopyAsync(),
             [ActionId.Paste] = _ => window.PasteAsync(),
             [ActionId.SelectAll] = Sync(window.SelectAllText),
+            [ActionId.Find] = Sync(() => window.ShowFind(replacing: false)),
+            [ActionId.Replace] = Sync(() => window.ShowFind(replacing: true)),
 
             // ---- Text -----------------------------------------------------------------------------
             [ActionId.Bold] = Sync(window.ToggleBold),
@@ -91,6 +94,16 @@ internal sealed class ActionRunner
             [ActionId.SendBackward] = Sync(() => window.Restack(f => f.SendBackward())),
             [ActionId.BringToFront] = Sync(() => window.Restack(f => f.BringToFront())),
             [ActionId.SendToBack] = Sync(() => window.Restack(f => f.SendToBack())),
+
+            // ---- Lining things up (M21) -------------------------------------------------------
+            [ActionId.AlignLeft] = Sync(() => window.AlignSelection(FrameAlignmentKind.Left)),
+            [ActionId.AlignCentres] = Sync(() => window.AlignSelection(FrameAlignmentKind.CentreX)),
+            [ActionId.AlignRight] = Sync(() => window.AlignSelection(FrameAlignmentKind.Right)),
+            [ActionId.AlignTop] = Sync(() => window.AlignSelection(FrameAlignmentKind.Top)),
+            [ActionId.AlignMiddles] = Sync(() => window.AlignSelection(FrameAlignmentKind.MiddleY)),
+            [ActionId.AlignBottom] = Sync(() => window.AlignSelection(FrameAlignmentKind.Bottom)),
+            [ActionId.DistributeHorizontally] = Sync(() => window.DistributeSelection(horizontal: true)),
+            [ActionId.DistributeVertically] = Sync(() => window.DistributeSelection(horizontal: false)),
 
             // ---- Pages -----------------------------------------------------------------------------
             [ActionId.NextPage] = Sync(() => window.GoToRelativePage(+1)),

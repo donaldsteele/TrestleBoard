@@ -17,6 +17,11 @@ using TrestleBoard.Rendering;
 namespace TrestleBoard.App.Canvas;
 
 /// <summary>
+/// A Ctrl+wheel turn: where the pointer was, in control pixels, and which way it went (M21).
+/// </summary>
+internal readonly record struct CanvasZoomRequest(Point Position, int Direction);
+
+/// <summary>
 /// The page canvas: draws one document page through the app's own SkiaSharp pipeline via
 /// Avalonia's <see cref="ISkiaSharpApiLeaseFeature"/> (PLAN.md §11 M3) — the exact renderer
 /// the PDF export uses, so what you see IS what prints. M4 adds focus, pointer and keyboard
@@ -32,7 +37,14 @@ namespace TrestleBoard.App.Canvas;
 public sealed class PageCanvasControl : Control
 {
     /// <summary>Empty margin around the page so the sheet reads as a sheet (points × zoom).</summary>
-    private const double PagePaddingPx = 24d;
+    internal const double PagePaddingPx = 24d;
+
+    /// <summary>
+    /// A marquee smaller than this (in page points) is a click that missed, not a drag: the user
+    /// let go where they pressed and meant "nothing", and selecting whatever the two-point box
+    /// happened to graze would be an answer to a question nobody asked.
+    /// </summary>
+    private const float MarqueeMinimumPt = 4f;
 
     public static readonly StyledProperty<double> ZoomProperty =
         AvaloniaProperty.Register<PageCanvasControl, double>(nameof(Zoom), defaultValue: 1d);
@@ -56,6 +68,14 @@ public sealed class PageCanvasControl : Control
     private bool _draggingFrame;
     private StandardCursorType _cursorType = StandardCursorType.Arrow;
     private string? _hoverBlockId;
+
+    // ---- M21: panning and the marquee ----------------------------------------------------------
+    private bool _spaceHeld;
+    private bool _panning;
+    private Point _panFrom;
+    private bool _marquee;
+    private Point _marqueeFrom;
+    private Point _marqueeTo;
 
     static PageCanvasControl()
     {
@@ -144,6 +164,19 @@ public sealed class PageCanvasControl : Control
     /// is one: an empty frame asks for a picture, a full one offers to swap it.
     /// </summary>
     internal event EventHandler<string>? PictureActivated;
+
+    /// <summary>
+    /// Ctrl+wheel (M21). The canvas reports WHERE and WHICH WAY; the shell owns the zoom ladder and
+    /// the scroll offset, because keeping the point under the pointer still is a question about the
+    /// scroller, which the canvas cannot see.
+    /// </summary>
+    internal event EventHandler<CanvasZoomRequest>? ZoomAtPointerRequested;
+
+    /// <summary>
+    /// Middle-drag or Space+drag (M21), as a delta in control pixels. Same division of labour: the
+    /// canvas knows the gesture, the shell owns the scroller.
+    /// </summary>
+    internal event EventHandler<Vector>? PanRequested;
 
     public DocumentRenderSource? Source
     {
@@ -334,6 +367,9 @@ public sealed class PageCanvasControl : Control
                 null, new Pen(hoverBrush, 1d), ToControlRect(_source.GetEffectiveRect(hovered)));
         }
 
+        DrawMultiSelection(context);
+        DrawMarquee(context);
+
         if (BrushFor(Tokens.AdornmentHint) is not { } hintBrush)
         {
             return;
@@ -360,6 +396,47 @@ public sealed class PageCanvasControl : Control
 
     /// <summary>What an empty picture frame says, in the same voice as <see cref="EmptyFrameHint"/>.</summary>
     internal const string EmptyPictureHint = "Double-click to choose a picture";
+
+    /// <summary>
+    /// The frames chosen alongside the primary one (M21), outlined in the accent colour with the
+    /// interface's own primitives.
+    ///
+    /// <para>Avalonia rather than Skia on purpose, and it is the whole reason this milestone can add
+    /// a visible thing to the page and still move no snapshot baseline: the M5 frame chrome goes
+    /// through <c>FrameOverlayRenderer</c>, which lives in <c>TrestleBoard.Rendering</c> and is
+    /// shared with the PDF, and M17–M21 may not touch that project (PLAN.md §11 M18). The primary
+    /// selection keeps its Skia handles; the others get an outline drawn here.</para>
+    /// </summary>
+    private void DrawMultiSelection(DrawingContext context)
+    {
+        if (_source is null
+            || _frames is not { HasMultiSelection: true }
+            || BrushFor(Tokens.Accent) is not { } accent)
+        {
+            return;
+        }
+
+        var pen = new Pen(accent, 2d, dashStyle: DashStyle.Dash);
+        foreach (string blockId in _frames.SelectedBlockIds.Skip(1))
+        {
+            if (BlockIsOnPage(blockId, PageIndex))
+            {
+                context.DrawRectangle(null, pen, ToControlRect(_source.GetEffectiveRect(blockId)));
+            }
+        }
+    }
+
+    /// <summary>The rubber band, while it is being dragged.</summary>
+    private void DrawMarquee(DrawingContext context)
+    {
+        if (!_marquee || BrushFor(Tokens.Accent) is not { } accent)
+        {
+            return;
+        }
+
+        var box = new Rect(_marqueeFrom, _marqueeTo);
+        context.DrawRectangle(null, new Pen(accent, 1d, dashStyle: DashStyle.Dash), box);
+    }
 
     private void DrawHint(DrawingContext context, string hint, Core.Model.RectPt rect, IBrush brush)
     {
@@ -439,6 +516,21 @@ public sealed class PageCanvasControl : Control
     {
         base.OnPointerPressed(e);
         Focus();
+
+        // M21: panning comes first, before anything asks what is under the pointer. The middle
+        // button and Space+drag are the two gestures every publishing program uses for it, and
+        // neither means anything else here.
+        PointerPointProperties pressed = e.GetCurrentPoint(this).Properties;
+        if (pressed.IsMiddleButtonPressed || (_spaceHeld && pressed.IsLeftButtonPressed))
+        {
+            _panning = true;
+            _panFrom = e.GetPosition(this);
+            e.Pointer.Capture(this);
+            Cursor = CursorFor(StandardCursorType.SizeAll);
+            e.Handled = true;
+            return;
+        }
+
         if (_editor is null || !TryToPagePoint(e.GetPosition(this), out float x, out float y))
         {
             _editor?.End();
@@ -467,6 +559,21 @@ public sealed class PageCanvasControl : Control
 
         if (TryHandleFramePress(x, y, e))
         {
+            e.Handled = true;
+            return;
+        }
+
+        // M21: a press on bare page starts a marquee. TryHandleFramePress has already cleared the
+        // selection by the time this is reached, so a marquee that selects nothing behaves exactly
+        // as a click on nothing always did.
+        if (_frames is { IsLinkModeActive: false }
+            && _source?.HitTestBlock(PageIndex, x, y) is null
+            && e.ClickCount == 1)
+        {
+            _marquee = true;
+            _marqueeFrom = e.GetPosition(this);
+            _marqueeTo = _marqueeFrom;
+            e.Pointer.Capture(this);
             e.Handled = true;
             return;
         }
@@ -561,6 +668,20 @@ public sealed class PageCanvasControl : Control
         }
 
         string? hit = _source.HitTestBlock(PageIndex, x, y);
+
+        // M21: Shift+click adds to (or takes out of) the selection. It is checked before the
+        // text-frame fall-through, because Shift+clicking a text frame means "line this one up
+        // too", not "put the caret in it".
+        if (hit is not null
+            && !_frames.IsLinkModeActive
+            && e.KeyModifiers.HasFlag(KeyModifiers.Shift)
+            && _frames.HasSelection)
+        {
+            _editor?.End();
+            _frames.AddToSelection(hit);
+            return true;
+        }
+
         if (_frames.IsLinkModeActive)
         {
             if (hit is not null)
@@ -625,6 +746,22 @@ public sealed class PageCanvasControl : Control
         Point position = e.GetPosition(this);
         bool onPage = TryToPagePoint(position, out float x, out float y);
 
+        if (_panning)
+        {
+            // The anchor deliberately does NOT move: scrolling drags the canvas out from under the
+            // pointer, so the next position measured against this control comes back to the anchor
+            // by itself. Re-anchoring each move would double every delta.
+            PanRequested?.Invoke(this, position - _panFrom);
+            return;
+        }
+
+        if (_marquee)
+        {
+            _marqueeTo = position;
+            InvalidateVisual();
+            return;
+        }
+
         if (_draggingFrame && _frames is not null)
         {
             // M17: a drag whose pointer leaves the sheet CLAMPS at the page edge. It used to
@@ -654,6 +791,31 @@ public sealed class PageCanvasControl : Control
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
+        if (_panning)
+        {
+            _panning = false;
+            Cursor = CursorFor(_spaceHeld ? StandardCursorType.Hand : _cursorType);
+            if (ReferenceEquals(e.Pointer.Captured, this))
+            {
+                e.Pointer.Capture(null);
+            }
+
+            e.Handled = true;
+            return;
+        }
+
+        if (_marquee)
+        {
+            EndMarquee();
+            if (ReferenceEquals(e.Pointer.Captured, this))
+            {
+                e.Pointer.Capture(null);
+            }
+
+            e.Handled = true;
+            return;
+        }
+
         if (_draggingFrame)
         {
             EndFrameDrag(commit: true, e.Pointer);
@@ -665,6 +827,64 @@ public sealed class PageCanvasControl : Control
         {
             e.Pointer.Capture(null);
         }
+    }
+
+    protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
+    {
+        base.OnPointerWheelChanged(e);
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.Delta.Y == 0)
+        {
+            return;
+        }
+
+        ZoomAtPointerRequested?.Invoke(
+            this, new CanvasZoomRequest(e.GetPosition(this), e.Delta.Y > 0 ? +1 : -1));
+
+        // Handled, or the scroller underneath would scroll the page away at the same time.
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// Turns the rubber-band box into a selection: everything on this page that the box touches,
+    /// in stacking order. A box too small to have been meant selects nothing at all.
+    /// </summary>
+    private void EndMarquee()
+    {
+        _marquee = false;
+        if (_frames is null || _source is null)
+        {
+            InvalidateVisual();
+            return;
+        }
+
+        (float fromX, float fromY) = ToClampedPagePoint(_marqueeFrom);
+        (float toX, float toY) = ToClampedPagePoint(_marqueeTo);
+        float left = Math.Min(fromX, toX);
+        float top = Math.Min(fromY, toY);
+        float right = Math.Max(fromX, toX);
+        float bottom = Math.Max(fromY, toY);
+        InvalidateVisual();
+
+        if (right - left < MarqueeMinimumPt && bottom - top < MarqueeMinimumPt)
+        {
+            return;
+        }
+
+        var caught = new List<string>();
+        foreach ((string blockId, string _) in _source.DescribeBlocks(PageIndex))
+        {
+            Core.Model.RectPt rect = _source.GetEffectiveRect(blockId);
+            bool overlaps = rect.X < right
+                && rect.X + rect.Width > left
+                && rect.Y < bottom
+                && rect.Y + rect.Height > top;
+            if (overlaps)
+            {
+                caught.Add(blockId);
+            }
+        }
+
+        _frames.SelectAll(caught);
     }
 
     /// <summary>Pointer feedback: resize arrows over a handle, the move cursor over a grabbable
@@ -709,6 +929,18 @@ public sealed class PageCanvasControl : Control
 
     /// <summary>Which shape the pointer currently wears, for the headless pointer tests.</summary>
     internal StandardCursorType CursorTypeForTest => _cursorType;
+
+    /// <summary>Drags a marquee between two control points and lets go — the headless equivalent.</summary>
+    internal void MarqueeForTest(Point from, Point to)
+    {
+        _marquee = true;
+        _marqueeFrom = from;
+        _marqueeTo = to;
+        EndMarquee();
+    }
+
+    /// <summary>Whether Space has armed panning, for the headless pan test.</summary>
+    internal bool PanArmedForTest => _spaceHeld;
 
     /// <summary>The block the pointer is over, or null. Drives the faint hover outline.</summary>
     internal string? HoverBlockIdForTest => _hoverBlockId;
@@ -767,6 +999,21 @@ public sealed class PageCanvasControl : Control
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
+
+        // M21: Space arms panning while the user is NOT typing — where it would otherwise do
+        // nothing at all. Inside a text session a space is a space, and always will be.
+        if (e.Key == Key.Space && _editor is not { IsActive: true } && e.KeyModifiers == KeyModifiers.None)
+        {
+            if (!_spaceHeld)
+            {
+                _spaceHeld = true;
+                Cursor = CursorFor(StandardCursorType.Hand);
+            }
+
+            e.Handled = true;
+            return;
+        }
+
         if (_editor is not { IsActive: true })
         {
             if (HandleFrameModeKey(e))
@@ -908,11 +1155,43 @@ public sealed class PageCanvasControl : Control
         return true;
     }
 
+    protected override void OnKeyUp(KeyEventArgs e)
+    {
+        base.OnKeyUp(e);
+        if (e.Key == Key.Space && _spaceHeld)
+        {
+            _spaceHeld = false;
+            if (!_panning)
+            {
+                Cursor = CursorFor(_cursorType);
+            }
+        }
+    }
+
+    /// <summary>
+    /// The text session SURVIVES losing focus (PLAN.md §11 M21). Until this it ended — "v1: focus
+    /// loss ends the session", docs/M4-spec.md §7.5 — which meant every click on the chrome threw
+    /// the caret and the highlight away: choose a menu, press a panel button, tick a box in a
+    /// dialog, and whatever you had selected in the story was gone with nothing said about it.
+    /// M17 named this as an investigation and passed it here.
+    ///
+    /// <para>The caret stops blinking and hides instead, because a caret blinking in a window that
+    /// does not have focus is a lie about where typing will go. The highlight stays: it is what
+    /// the find window, the font window and the paragraph-style flyout are all ABOUT.</para>
+    /// </summary>
     protected override void OnLostFocus(RoutedEventArgs e)
     {
         base.OnLostFocus(e);
-        // v1: focus loss ends the session — simplest and clearest (docs/M4-spec.md §7.5).
-        _editor?.End();
+        _spaceHeld = false;
+        _caretBlink.Stop();
+        _caretVisible = false;
+        InvalidateVisual();
+    }
+
+    protected override void OnGotFocus(GotFocusEventArgs e)
+    {
+        base.OnGotFocus(e);
+        ResetCaretBlink();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)

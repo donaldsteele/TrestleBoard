@@ -102,6 +102,7 @@ public static class ActionContextFactory
 
             Selection = selection,
             SelectedBlockId = blockId,
+            SelectionCount = editing ? 0 : frames?.SelectionCount ?? 0,
             IsEditingText = editing,
             HasTextSelection = editing && !editor!.Selection.IsEmpty,
             SelectionIsTextFrame = isTextFrame,

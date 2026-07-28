@@ -52,6 +52,14 @@
         <MenuItem Header="Select _all" Tag="edit.selectAll" InputGesture="Ctrl+A"
                   Click="OnActionClicked" AutomationProperties.Name="Select all" />
         <Separator />
+        <!-- M21: the two gestures every other publishing program uses, in the menu every user
+             looks in for them. -->
+        <MenuItem Header="_Find…" Tag="edit.find" InputGesture="Ctrl+F"
+                  Click="OnActionClicked" AutomationProperties.Name="Find words in this newsletter" />
+        <MenuItem Header="Fi_nd and replace…" Tag="edit.replace" InputGesture="Ctrl+H"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Find words and replace them with different ones" />
+        <Separator />
         <!-- M17: the three commands that change or remove the thing you have chosen. They used to
              live under "This item", a top-level menu named after a model concept; a user looking
              for "delete" looks under Edit. -->
@@ -179,6 +187,28 @@
                   Click="OnActionClicked" AutomationProperties.Name="Bring to front" />
         <MenuItem Header="Send to bac_k" Tag="arrange.sendToBack" InputGesture="Ctrl+Shift+OemOpenBrackets"
                   Click="OnActionClicked" AutomationProperties.Name="Send to back" />
+        <Separator />
+        <!-- M21: the eight commands that act on MORE than one thing. They live flat rather than in
+             a submenu — M17's ruling on three-deep menus — and they carry no shortcuts: eight
+             unmemorable chords would buy nothing, and these menu mnemonics are the keyboard path. -->
+        <MenuItem Header="_Line up the left edges" Tag="arrange.alignLeft"
+                  Click="OnActionClicked" AutomationProperties.Name="Line up the left edges" />
+        <MenuItem Header="Line up the c_entres, side to side" Tag="arrange.alignCentres"
+                  Click="OnActionClicked" AutomationProperties.Name="Line up the centres, side to side" />
+        <MenuItem Header="Line up the r_ight edges" Tag="arrange.alignRight"
+                  Click="OnActionClicked" AutomationProperties.Name="Line up the right edges" />
+        <MenuItem Header="Line up the _top edges" Tag="arrange.alignTop"
+                  Click="OnActionClicked" AutomationProperties.Name="Line up the top edges" />
+        <MenuItem Header="Line up the mi_ddles, top to bottom" Tag="arrange.alignMiddles"
+                  Click="OnActionClicked" AutomationProperties.Name="Line up the middles, top to bottom" />
+        <MenuItem Header="Line up the bottom ed_ges" Tag="arrange.alignBottom"
+                  Click="OnActionClicked" AutomationProperties.Name="Line up the bottom edges" />
+        <MenuItem Header="Space them out e_venly, side to side" Tag="arrange.distributeAcross"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Space them out evenly, side to side" />
+        <MenuItem Header="Space them out evenl_y, top to bottom" Tag="arrange.distributeDown"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Space them out evenly, top to bottom" />
       </MenuItem>
       <MenuItem Header="_View" AutomationProperties.Name="View menu">
         <MenuItem Header="Zoom _in" Tag="view.zoomIn" InputGesture="Ctrl+OemPlus"

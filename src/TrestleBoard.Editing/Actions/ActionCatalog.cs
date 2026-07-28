@@ -36,6 +36,14 @@ public static class ActionCatalog
         "This is about the lists TrestleBoard fills in for you, like the officers table. "
         + "Choose one on the page first.";
 
+    /// <summary>M21: the two sentences that teach Shift+click, which is the only way to get here.</summary>
+    private const string NeedsTwoThings =
+        "This lines up two things or more. Choose one, then hold Shift and click the next one.";
+
+    private const string NeedsThreeThings =
+        "This shares the space out between three things or more. Choose one, then hold Shift and "
+        + "click each of the others.";
+
     private const string NeedsBirthdayList =
         "This is about the birthday list. Choose one on the page first, or add one from the Insert menu.";
 
@@ -74,6 +82,10 @@ public static class ActionCatalog
         new(ActionId.Paste, "Paste", "Puts the copied words where the cursor is.", ActionGroup.Edit, "Ctrl+V"),
         new(ActionId.SelectAll, "Select all", "Highlights everything in this piece of writing.",
             ActionGroup.Edit, "Ctrl+A"),
+        new(ActionId.Find, "Find…", "Looks for words anywhere in this newsletter.",
+            ActionGroup.Edit, "Ctrl+F"),
+        new(ActionId.Replace, "Find and replace…",
+            "Looks for words and puts different ones in their place.", ActionGroup.Edit, "Ctrl+H"),
 
         // ---- Text -------------------------------------------------------------------------------
         new(ActionId.Bold, "Bold", "Makes the highlighted words heavier.", ActionGroup.Text, "Ctrl+B",
@@ -163,6 +175,28 @@ public static class ActionCatalog
             ActionGroup.Arrange, "Ctrl+Shift+]"),
         new(ActionId.SendToBack, "Send to back", "Puts it behind everything else.",
             ActionGroup.Arrange, "Ctrl+Shift+["),
+
+        // ---- Lining things up (M21) -------------------------------------------------------------
+        // Each one says "the things you have chosen", because that is the whole difference: these
+        // are the first commands in the app that act on more than one thing at a time.
+        new(ActionId.AlignLeft, "Line up the left edges",
+            "Moves the things you have chosen so their left edges are in a line.", ActionGroup.Arrange),
+        new(ActionId.AlignCentres, "Line up the centres, side to side",
+            "Moves them sideways until their middles are one above the other.", ActionGroup.Arrange),
+        new(ActionId.AlignRight, "Line up the right edges",
+            "Moves the things you have chosen so their right edges are in a line.", ActionGroup.Arrange),
+        new(ActionId.AlignTop, "Line up the top edges",
+            "Moves the things you have chosen so their tops are in a line.", ActionGroup.Arrange),
+        new(ActionId.AlignMiddles, "Line up the middles, top to bottom",
+            "Moves them up and down until their middles are side by side.", ActionGroup.Arrange),
+        new(ActionId.AlignBottom, "Line up the bottom edges",
+            "Moves the things you have chosen so their bottoms are in a line.", ActionGroup.Arrange),
+        new(ActionId.DistributeHorizontally, "Space them out evenly, side to side",
+            "Leaves the same gap between each one, without moving the two on the ends.",
+            ActionGroup.Arrange),
+        new(ActionId.DistributeVertically, "Space them out evenly, top to bottom",
+            "Leaves the same gap above and below each one, without moving the top and bottom ones.",
+            ActionGroup.Arrange),
 
         // ---- Pages ------------------------------------------------------------------------------
         new(ActionId.NextPage, "Next page", "Shows the following page.", ActionGroup.Page, "Ctrl+PageDown"),
@@ -322,6 +356,11 @@ public static class ActionCatalog
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(NeedsText),
 
+            // M21. Neither needs a caret: looking for words is something you do TO the newsletter,
+            // and requiring the user to click into a frame first would mean requiring them to guess
+            // which frame the words are in — the exact thing they opened this to find out.
+            ActionId.Find or ActionId.Replace => RequiresDocument(context),
+
             // ---- Text ---------------------------------------------------------------------------
             ActionId.Bold or ActionId.Italic or ActionId.ParagraphStyle => context.IsEditingText
                 ? ActionAvailability.Available
@@ -432,6 +471,19 @@ public static class ActionCatalog
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(ChooseSomething),
 
+            // M21. Lining things up is meaningless with one thing, so with one thing chosen these
+            // are ABSENT from the panel rather than greyed in it — the M11 rule, which is also why
+            // a single selection's panel looks exactly as it did before this milestone.
+            ActionId.AlignLeft or ActionId.AlignCentres or ActionId.AlignRight
+                or ActionId.AlignTop or ActionId.AlignMiddles or ActionId.AlignBottom =>
+                context.SelectionCount >= 2
+                    ? ActionAvailability.Available
+                    : ActionAvailability.NotApplicable(NeedsTwoThings),
+            ActionId.DistributeHorizontally or ActionId.DistributeVertically =>
+                context.SelectionCount >= 3
+                    ? ActionAvailability.Available
+                    : ActionAvailability.NotApplicable(NeedsThreeThings),
+
             // ---- Pages ----------------------------------------------------------------------------
             ActionId.NextPage => !context.HasDocument
                 ? RequiresDocument(context)
@@ -498,6 +550,14 @@ public static class ActionCatalog
     {
         ArgumentNullException.ThrowIfNull(context);
 
+        // M21: more than one thing chosen is its own answer. Naming the kind of the first one
+        // ("A photo is selected") while three things are highlighted would be a lie about two of
+        // them, and the panel heading is a live region a screen reader reads out.
+        if (context.SelectionCount > 1)
+        {
+            return $"{context.SelectionCount} things are selected";
+        }
+
         return context.Selection switch
         {
             SelectionKind.Text => "You are typing",
@@ -521,6 +581,15 @@ public static class ActionCatalog
     public static string? DescribeSelectionHint(ActionContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+
+        // M21: with several things chosen, the panel says what having chosen them is FOR, and how
+        // to change what is in the set. Shift+click is the only way into this state and nothing
+        // else in the app teaches it.
+        if (context.SelectionCount > 1)
+        {
+            return "Hold Shift and click to add another one, or to take one out. "
+                + "The lining-up commands below act on all of them at once.";
+        }
 
         // M18: an empty picture frame has the same problem the widgets have — clicking it does
         // something invisible — with the extra sting that the photo template ships three of them and

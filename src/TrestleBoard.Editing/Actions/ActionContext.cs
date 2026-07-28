@@ -55,6 +55,14 @@ public sealed record ActionContext
 
     public string? SelectedBlockId { get; init; }
 
+    /// <summary>
+    /// How many things are chosen on the page (M21). One for an ordinary selection, more after
+    /// Shift+click or a marquee drag, zero when nothing is chosen. It is what the align and
+    /// distribute rules are written against, and it is deliberately a count rather than a list:
+    /// nothing in the catalog needs to know WHICH blocks, only how many.
+    /// </summary>
+    public int SelectionCount { get; init; }
+
     /// <summary>The caret is in a story: typing goes somewhere.</summary>
     public bool IsEditingText { get; init; }
 

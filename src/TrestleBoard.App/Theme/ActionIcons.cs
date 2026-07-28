@@ -99,6 +99,11 @@ internal static class ActionIcons
         [ActionId.Paste] = "universally recognised, and barely used on a layout canvas",
         [ActionId.SelectAll] = "no shape distinguishes it from Copy at 20px",
 
+        // M21. A magnifying glass is the one clipboard-era glyph this audience would recognise, and
+        // it is already spoken for by zoom — where it means something else entirely.
+        [ActionId.Find] = "a magnifying glass would collide with zoom, where it means something else",
+        [ActionId.Replace] = "the same glass again, and the difference is the words, not the picture",
+
         // --- Text. Bold, italic and the font picker have glyphs; the rest are about a named style,
         //     and the name IS the discriminator.
         [ActionId.ParagraphStyle] = "opens a further choice; the ▸ is the signal, not a picture",
@@ -133,6 +138,18 @@ internal static class ActionIcons
         [ActionId.SendBackward] = "four near-identical stacking arrows discriminate nothing",
         [ActionId.BringToFront] = "four near-identical stacking arrows discriminate nothing",
         [ActionId.SendToBack] = "four near-identical stacking arrows discriminate nothing",
+
+        // M21's eight. The same argument, harder: six alignment glyphs differ from each other by
+        // which edge of a diagram is emboldened, which is a distinction nobody makes at 20px, and
+        // the two distribute ones differ from those six by even less.
+        [ActionId.AlignLeft] = "six alignment glyphs differ by one emboldened edge — not at 20px",
+        [ActionId.AlignCentres] = "six alignment glyphs differ by one emboldened edge — not at 20px",
+        [ActionId.AlignRight] = "six alignment glyphs differ by one emboldened edge — not at 20px",
+        [ActionId.AlignTop] = "six alignment glyphs differ by one emboldened edge — not at 20px",
+        [ActionId.AlignMiddles] = "six alignment glyphs differ by one emboldened edge — not at 20px",
+        [ActionId.AlignBottom] = "six alignment glyphs differ by one emboldened edge — not at 20px",
+        [ActionId.DistributeHorizontally] = "differs from the alignment six by less than they differ from each other",
+        [ActionId.DistributeVertically] = "differs from the alignment six by less than they differ from each other",
 
         // --- Pages. Next and previous have the toolbar chevrons; the rest act on the page itself
         //     and would need a second page glyph that means something different from the first.

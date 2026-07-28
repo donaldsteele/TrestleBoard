@@ -30,6 +30,13 @@ public sealed class FrameEditorController
     private readonly DocumentRenderSource _layout;
     private readonly List<SnapGuide> _snapGuides = [];
 
+    /// <summary>
+    /// The blocks chosen ALONGSIDE the primary one (M21), in the order the user added them. The
+    /// primary stays <see cref="_selectedBlockId"/> and keeps every M5 behaviour it ever had —
+    /// handles, drag, nudge, link — so multi-select adds a capability instead of rewriting one.
+    /// </summary>
+    private readonly List<string> _alsoSelected = [];
+
     private string? _selectedBlockId;
     private FrameHandle _dragHandle = FrameHandle.None;
     private RectPt _dragStartRect;
@@ -82,12 +89,13 @@ public sealed class FrameEditorController
 
     public void Select(string? blockId)
     {
-        if (_selectedBlockId == blockId)
+        if (_selectedBlockId == blockId && _alsoSelected.Count == 0)
         {
             return;
         }
 
         CancelDragIfAny();
+        _alsoSelected.Clear();
         _selectedBlockId = blockId;
         IsLinkModeActive = false;
         LinkTargetBlockId = null;
@@ -98,6 +106,168 @@ public sealed class FrameEditorController
     }
 
     public void ClearSelection() => Select(null);
+
+    // ---- Choosing more than one thing (PLAN.md §11 M21) ---------------------------------------
+
+    /// <summary>Everything chosen right now, the primary first. Empty when nothing is chosen.</summary>
+    public IReadOnlyList<string> SelectedBlockIds =>
+        _selectedBlockId is { } id ? [id, .. _alsoSelected] : [];
+
+    public int SelectionCount => _selectedBlockId is null ? 0 : _alsoSelected.Count + 1;
+
+    public bool HasMultiSelection => SelectionCount > 1;
+
+    /// <summary>
+    /// Shift+click: adds a block to the selection, or takes it out again if it was already in.
+    ///
+    /// <para>Everything chosen has to be on ONE page, and the refusal says so rather than doing
+    /// nothing: lining up two frames the user cannot see at the same time would move something
+    /// off-screen with no way to tell what happened.</para>
+    /// </summary>
+    public bool AddToSelection(string blockId)
+    {
+        ArgumentNullException.ThrowIfNull(blockId);
+
+        if (_selectedBlockId is null)
+        {
+            Select(blockId);
+            return true;
+        }
+
+        CancelDragIfAny();
+
+        if (string.Equals(blockId, _selectedBlockId, StringComparison.Ordinal))
+        {
+            // Un-choosing the primary promotes the next one rather than emptying the selection.
+            if (_alsoSelected.Count == 0)
+            {
+                ClearSelection();
+                return true;
+            }
+
+            _selectedBlockId = _alsoSelected[0];
+            _alsoSelected.RemoveAt(0);
+            Raise();
+            return true;
+        }
+
+        if (_alsoSelected.Remove(blockId))
+        {
+            Raise();
+            return true;
+        }
+
+        if (!_layout.TryGetPageIndexOfBlock(blockId, out int page) || page != SelectedPageIndex)
+        {
+            StatusMessage = "Everything you line up has to be on the same page. "
+                + "Choose things on one page at a time.";
+            Raise();
+            return false;
+        }
+
+        _alsoSelected.Add(blockId);
+        StatusMessage = null;
+        Raise();
+        return true;
+    }
+
+    /// <summary>
+    /// Chooses a whole set at once — what a marquee drag hands over. The first id becomes the
+    /// primary; ids on another page are dropped rather than refused, because a marquee is drawn on
+    /// one page by definition.
+    /// </summary>
+    public bool SelectAll(IEnumerable<string> blockIds)
+    {
+        ArgumentNullException.ThrowIfNull(blockIds);
+
+        List<string> ids = [.. blockIds];
+        if (ids.Count == 0)
+        {
+            ClearSelection();
+            return false;
+        }
+
+        CancelDragIfAny();
+        _selectedBlockId = ids[0];
+        _alsoSelected.Clear();
+        int page = SelectedPageIndex;
+        foreach (string id in ids.Skip(1))
+        {
+            if (_layout.TryGetPageIndexOfBlock(id, out int itsPage) && itsPage == page)
+            {
+                _alsoSelected.Add(id);
+            }
+        }
+
+        IsLinkModeActive = false;
+        LinkTargetBlockId = null;
+        StatusMessage = null;
+        Raise();
+        return true;
+    }
+
+    /// <summary>
+    /// Lines the chosen frames up, as ONE undo step whatever their number (PLAN.md §12 gate 18).
+    /// False when fewer than two things are chosen — the catalog has already said so in words by
+    /// the time this is reached, so this is a guard rather than the explanation.
+    /// </summary>
+    public bool Align(FrameAlignmentKind kind)
+    {
+        IReadOnlyList<string> ids = SelectedBlockIds;
+        if (ids.Count < 2 || IsDragging)
+        {
+            return false;
+        }
+
+        return ApplyMoves(
+            ids,
+            FrameAlignment.Align([.. ids.Select(_layout.GetEffectiveRect)], kind),
+            FrameAlignment.Describe(kind));
+    }
+
+    /// <summary>Equal gaps between the chosen frames, as one undo step. Needs three or more.</summary>
+    public bool Distribute(bool horizontal)
+    {
+        IReadOnlyList<string> ids = SelectedBlockIds;
+        if (ids.Count < 3 || IsDragging)
+        {
+            return false;
+        }
+
+        return ApplyMoves(
+            ids,
+            FrameAlignment.Distribute([.. ids.Select(_layout.GetEffectiveRect)], horizontal),
+            horizontal ? "Space them out side to side" : "Space them out top to bottom");
+    }
+
+    /// <summary>
+    /// One <see cref="CompositeCommand"/> of <see cref="MoveBlockCommand"/>s, with the frames that
+    /// were already in the right place left out. Returns false when there is nothing to move, so
+    /// lining up an already-lined-up selection does not put an empty step on the undo stack.
+    /// </summary>
+    private bool ApplyMoves(IReadOnlyList<string> ids, IReadOnlyList<RectPt> rects, string description)
+    {
+        var moves = new List<IDocumentCommand>();
+        for (int i = 0; i < ids.Count; i++)
+        {
+            if (rects[i] != _layout.GetEffectiveRect(ids[i]))
+            {
+                moves.Add(new MoveBlockCommand(ids[i], rects[i]));
+            }
+        }
+
+        if (moves.Count == 0)
+        {
+            StatusMessage = "They are already lined up.";
+            Raise();
+            return false;
+        }
+
+        _session.Execute(new CompositeCommand(description, new ChangeScope(ChangeKind.BlockGeometry), moves));
+        StatusMessage = $"{description} — {moves.Count} of {ids.Count} moved.";
+        Raise();
+        return true;
+    }
 
     /// <summary>Selects the topmost block under the point; returns false when the point is empty.</summary>
     public bool SelectAt(int pageIndex, float xPt, float yPt)
@@ -710,6 +880,14 @@ public sealed class FrameEditorController
 
     private void OnDocumentChanged()
     {
+        // M21: and it can remove one of the others just as easily. A stale id in the multi-selection
+        // would make "line up" throw while asking the layout for a rectangle that is not there.
+        if (_alsoSelected.Count > 0)
+        {
+            _alsoSelected.RemoveAll(also =>
+                !_session.Document.Pages.Any(p => p.Blocks.Any(b => b.Id == also)));
+        }
+
         // Undo can remove the selected block out from under us.
         if (_selectedBlockId is { } id
             && !_session.Document.Pages.Any(p => p.Blocks.Any(b => b.Id == id)))
@@ -721,7 +899,15 @@ public sealed class FrameEditorController
                 _layout.SetGeometryPreview(id, null);
             }
 
+            // With others still chosen, one of them takes over rather than the whole selection
+            // vanishing because the block that happened to be primary was the one deleted.
             _selectedBlockId = null;
+            if (_alsoSelected.Count > 0)
+            {
+                _selectedBlockId = _alsoSelected[0];
+                _alsoSelected.RemoveAt(0);
+            }
+
             _dragHandle = FrameHandle.None;
             _snapGuides.Clear();
             IsLinkModeActive = false;

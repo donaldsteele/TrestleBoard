@@ -1,4 +1,5 @@
 using System.Globalization;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
@@ -99,6 +100,10 @@ public partial class MainWindow : Window
     private int _regionIndex;
     private TextStylesWindow? _textStylesForTest;
 
+    /// <summary>M21: one find controller per open newsletter, one window at a time over it.</summary>
+    private FindController? _find;
+    private FindWindow? _findWindow;
+
     private static FontStore CreateAppFontStore()
     {
         FontStore store = BundledFonts.CreateDefaultStore();
@@ -132,6 +137,12 @@ public partial class MainWindow : Window
             RefreshActions();
             _ = _actions.RunAsync(ActionId.ReplacePicture);
         };
+
+        // M21: the two gestures every other publishing program has. Both are reported by the canvas
+        // and answered by the shell, because both are really questions about the scroller.
+        PageCanvas.ZoomAtPointerRequested += (_, request) =>
+            ZoomAtPointer(request.Position, request.Direction);
+        PageCanvas.PanRequested += (_, delta) => PanBy(delta);
         ApplySettings(_settings);
         RefreshActions();
 
@@ -148,6 +159,7 @@ public partial class MainWindow : Window
         {
             // A clean close removes the recovery file, so a file surviving startup MEANS the app
             // did not close cleanly (docs/M9-spec.md §1.4). Any unsaved work is written first.
+            _findWindow?.Close();
             _recoveryTimer?.Stop();
             _recovery?.SaveNow();
             _recovery?.Complete();
@@ -864,6 +876,9 @@ public partial class MainWindow : Window
 
     internal PageCanvasControl CanvasForTest => PageCanvas;
 
+    /// <summary>The scroller the canvas sits in — what the M21 zoom and pan tests measure.</summary>
+    internal ScrollViewer CanvasScrollerForTest => CanvasScroller;
+
     /// <summary>The last font sheet this window opened, for the M14 headless tests.</summary>
     internal TextStylesWindow? TextStylesForTest => _textStylesForTest;
 
@@ -918,6 +933,46 @@ public partial class MainWindow : Window
     }
 
     internal void SelectAllText() => _editor?.SelectAll();
+
+    // ---- Find and replace (PLAN.md §11 M21) ---------------------------------------------------
+
+    /// <summary>
+    /// Opens the find window, or brings the one already open to the front and puts it in the mode
+    /// that was asked for. One window either way: Ctrl+F and Ctrl+H are the same window with and
+    /// without its replace half, and two of them fighting over one selection would be a bug factory.
+    /// </summary>
+    internal void ShowFind(bool replacing)
+    {
+        if (_find is null)
+        {
+            return;
+        }
+
+        if (_findWindow is null)
+        {
+            _findWindow = new FindWindow(_find);
+            _findWindow.Closed += (_, _) => _findWindow = null;
+
+            // Not modal: this window exists to point at the page behind it (see FindWindow's own
+            // header), which is why M21 had to make the text session survive losing focus first.
+            _findWindow.Show(this);
+        }
+
+        _findWindow.SetMode(replacing);
+        _findWindow.Activate();
+    }
+
+    internal FindController? FindForTest => _find;
+
+    internal FindWindow? FindWindowForTest => _findWindow;
+
+    /// <summary>Builds the find window without showing it — the headless tests' way in.</summary>
+    internal FindWindow BuildFindWindowForTest(bool replacing)
+    {
+        var window = new FindWindow(_find ?? throw new InvalidOperationException("No newsletter is open."));
+        window.SetMode(replacing);
+        return window;
+    }
 
     internal void ToggleBold() => _editor?.ToggleBold();
 
@@ -1178,6 +1233,24 @@ public partial class MainWindow : Window
     }
 
     internal void UnlinkFrames() => _frames?.Unlink();
+
+    // ---- Lining things up (PLAN.md §11 M21) ---------------------------------------------------
+
+    /// <summary>
+    /// Lines the chosen frames up. The controller does the arithmetic and puts one composite command
+    /// on the undo stack; the shell's whole job is to refresh what the user is looking at.
+    /// </summary>
+    internal void AlignSelection(FrameAlignmentKind kind)
+    {
+        _frames?.Align(kind);
+        RefreshActions();
+    }
+
+    internal void DistributeSelection(bool horizontal)
+    {
+        _frames?.Distribute(horizontal);
+        RefreshActions();
+    }
 
     internal void AutoFlow()
     {
@@ -2487,6 +2560,18 @@ public partial class MainWindow : Window
         _package = package;
         _pageIndex = 0;
         _exportedThisSession = false;
+
+        // M21: a find window left open over the newsletter that has just been closed would be
+        // searching a document nobody is looking at any more.
+        _findWindow?.Close();
+        _find = new FindController(session, editor);
+        _find.Changed += (_, _) =>
+        {
+            if (_find?.StatusMessage is { } said)
+            {
+                Announce(said);
+            }
+        };
         PageCanvas.Source = source;
         PageCanvas.Editor = editor;
         PageCanvas.FrameEditor = frames;
@@ -2556,6 +2641,63 @@ public partial class MainWindow : Window
             ? ZoomSteps.FirstOrDefault(z => z > current + 0.001, ZoomSteps[^1])
             : ZoomSteps.LastOrDefault(z => z < current - 0.001, ZoomSteps[0]);
         SetZoom(next, fit: false);
+    }
+
+    /// <summary>
+    /// Ctrl+wheel zoom, anchored on the pointer (PLAN.md §11 M21): the point of the page under the
+    /// pointer is still under the pointer afterwards.
+    ///
+    /// <para>Zooming about the centre — which is what the toolbar buttons do, and what this did
+    /// before M21 — means that to look closely at something the user must zoom, hunt for what they
+    /// were reading, scroll to it, and repeat. The arithmetic is small and worth naming: the page
+    /// point under the pointer is read BEFORE the zoom changes, the same page point is worked back
+    /// into control pixels AFTER it, and the scroller is shifted by the difference.</para>
+    /// </summary>
+    internal void ZoomAtPointer(Point pointInCanvas, int direction)
+    {
+        if (_source is null)
+        {
+            return;
+        }
+
+        double before = PageCanvas.Zoom;
+        if (PageCanvas.TranslatePoint(pointInCanvas, CanvasScroller) is not { } pointerInScroller)
+        {
+            StepZoom(direction);
+            return;
+        }
+
+        double pageX = (pointInCanvas.X - PageCanvasControl.PagePaddingPx) / before;
+        double pageY = (pointInCanvas.Y - PageCanvasControl.PagePaddingPx) / before;
+
+        StepZoom(direction);
+        double after = PageCanvas.Zoom;
+        if (Math.Abs(after - before) < 0.0001)
+        {
+            return; // Already at the end of the ladder: nothing moved, so nothing to correct.
+        }
+
+        // The canvas has just changed size, and the scroller's extent with it. Without this the
+        // offsets below would be computed against the layout as it was one zoom step ago.
+        CanvasScroller.UpdateLayout();
+
+        var samePointNow = new Point(
+            (pageX * after) + PageCanvasControl.PagePaddingPx,
+            (pageY * after) + PageCanvasControl.PagePaddingPx);
+        if (PageCanvas.TranslatePoint(samePointNow, CanvasScroller) is not { } drifted)
+        {
+            return;
+        }
+
+        Vector offset = CanvasScroller.Offset + (drifted - pointerInScroller);
+        CanvasScroller.Offset = new Vector(Math.Max(0, offset.X), Math.Max(0, offset.Y));
+    }
+
+    /// <summary>Middle-drag and Space+drag (M21): the canvas reports the delta, the scroller moves.</summary>
+    internal void PanBy(Vector delta)
+    {
+        Vector offset = CanvasScroller.Offset - delta;
+        CanvasScroller.Offset = new Vector(Math.Max(0, offset.X), Math.Max(0, offset.Y));
     }
 
     private void SetZoom(double zoom, bool fit)

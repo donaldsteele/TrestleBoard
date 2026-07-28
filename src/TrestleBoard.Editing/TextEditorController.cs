@@ -141,6 +141,60 @@ public sealed class TextEditorController
         RaiseChanged();
     }
 
+    /// <summary>
+    /// Highlights a run of characters anywhere in the newsletter and asks the shell to scroll it
+    /// into view — how Find shows what it found (PLAN.md §11 M21).
+    ///
+    /// <para>This is the one way into a text session that does not start from a point on a page, and
+    /// it is what makes finding across a linked chain work: a story flows through several frames, so
+    /// the hit is a story position first and a frame second. The frame it landed in is read back
+    /// from the geometry afterwards, which is why the second frame of a chain needs no special
+    /// case.</para>
+    ///
+    /// <para>Returns false when the position is not in this document — a hit found before an undo
+    /// and selected after it, for instance — rather than throwing at the caller.</para>
+    /// </summary>
+    public bool SelectRange(string storyId, int paragraphIndex, int offset, int length)
+    {
+        if (_session.Document.Stories.Find(s => s.Id == storyId) is not { } story
+            || paragraphIndex < 0
+            || paragraphIndex >= story.Paragraphs.Count)
+        {
+            return false;
+        }
+
+        int paragraphLength = story.Paragraphs[paragraphIndex].Length;
+        if (offset < 0 || length < 0 || offset + length > paragraphLength)
+        {
+            return false;
+        }
+
+        IsActive = true;
+        _selection = new TextSelection(
+            CaretPosition.Leading(new TextPosition(storyId, paragraphIndex, offset)),
+            CaretPosition.Trailing(new TextPosition(storyId, paragraphIndex, offset + length)));
+        _xGoal = null;
+        _pendingCharacterStyleRef = null;
+        _blockId = BlockShowing(_selection.Caret) ?? FirstBlockOfStory(storyId);
+        RaiseChanged();
+        RequestReveal();
+        return true;
+    }
+
+    /// <summary>Which frame a caret position is actually laid out in, or null when it is overset.</summary>
+    private string? BlockShowing(CaretPosition caret) =>
+        _layout.TryGetStoryGeometry(caret.StoryId, out StoryTextGeometry? geometry)
+        && geometry.TryGetCaretGeometry(caret, out CaretGeometry g)
+            ? g.BlockId
+            : null;
+
+    /// <summary>The first frame showing a story — the fallback when the hit itself is overset.</summary>
+    private string? FirstBlockOfStory(string storyId) => _session.Document.Pages
+        .SelectMany(page => page.Blocks)
+        .OfType<Core.Model.TextBlock>()
+        .FirstOrDefault(b => string.Equals(b.StoryRef, storyId, StringComparison.Ordinal))
+        ?.Id;
+
     // ---- Navigation (docs/M4-spec.md §4.3) --------------------------------------------------
 
     public bool Move(CaretMotion motion, bool extend)
