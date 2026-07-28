@@ -303,7 +303,15 @@ public static class ActionCatalog
                     : ActionAvailability.Blocked(
                         "No words are highlighted. Drag across some words first, or press Ctrl+A to take them all.",
                         ActionId.SelectAll),
-            ActionId.Paste or ActionId.SelectAll => context.IsEditingText
+            // M18: paste stopped being only about words. Outside a piece of writing it puts a
+            // picture from the clipboard on the page, so it needs a newsletter rather than a caret.
+            // What is actually on the clipboard is the shell's to read — asking here would mean
+            // reading the clipboard on every refresh — and it says so out loud when there is
+            // nothing to paste.
+            ActionId.Paste => context.IsEditingText || context.HasDocument
+                ? ActionAvailability.Available
+                : ActionAvailability.NotApplicable(NeedsText),
+            ActionId.SelectAll => context.IsEditingText
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(NeedsText),
 

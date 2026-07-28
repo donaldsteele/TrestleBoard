@@ -364,6 +364,42 @@ public sealed class PhotoControllerTests : IDisposable
         Assert.Null(((ImageFrame)_session.Document.FindBlock(id).Block).Caption);
     }
 
+    /// <summary>
+    /// M18: a dropped picture lands where it was dropped. The position was in the drag event all
+    /// along and was thrown away, so every dropped photograph went to the same spot on the page.
+    /// </summary>
+    [Fact]
+    public void APictureCanBeInsertedCentredOnAPoint()
+    {
+        string id = _photos.InsertPhoto(0, PhotoBytes(), "Dropped here", caption: null, centre: (200f, 300f))
+            ?? throw new InvalidOperationException("insert failed");
+
+        RectPt rect = _session.Document.FindBlock(id).Block.FrameRect;
+        Assert.Equal(200f, rect.X + (rect.Width / 2f), 1);
+        Assert.Equal(300f, rect.Y + (rect.Height / 2f), 1);
+    }
+
+    /// <summary>Dropped at the very corner of the sheet, it is pushed back on rather than half lost.</summary>
+    [Fact]
+    public void APictureDroppedAtThePageEdgeIsClampedOntoTheSheet()
+    {
+        string id = _photos.InsertPhoto(0, PhotoBytes(), "Dropped at the edge", caption: null, centre: (0f, 0f))
+            ?? throw new InvalidOperationException("insert failed");
+
+        RectPt rect = _session.Document.FindBlock(id).Block.FrameRect;
+        SizePt page = _session.Document.GetMaster(_session.Document.Pages[0].MasterRef).Size;
+        Assert.Equal(0f, rect.X, 3);
+        Assert.Equal(0f, rect.Y, 3);
+        Assert.True(rect.Right <= page.Width + 0.01f && rect.Bottom <= page.Height + 0.01f);
+
+        // ...and with no point at all the M6 placement is untouched, which is what every keyboard
+        // path still uses.
+        string keyboard = _photos.InsertPhoto(0, PhotoBytes(), "Chosen from the menu")
+            ?? throw new InvalidOperationException("insert failed");
+        RectPt keyboardRect = _session.Document.FindBlock(keyboard).Block.FrameRect;
+        Assert.True(keyboardRect.X >= 54f);
+    }
+
     /// <summary>Trim drags are a burst like the sliders: one undo step for the whole adjustment.</summary>
     [Fact]
     public void TrimmingTheEdgesCoalescesAndClamps()

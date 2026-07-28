@@ -94,7 +94,13 @@ public sealed class PhotoController
     /// or null when the bytes are not a readable image. Alt text is required at the call site —
     /// a screen-reader user must never meet an unlabelled photo (PLAN.md §6).
     /// </summary>
-    public string? InsertPhoto(int pageIndex, byte[] bytes, string altText, string? caption = null)
+    /// <param name="centre">
+    /// M18: where the user put it. A drop lands where it was dropped rather than in the middle of
+    /// the page — the position was already in the drag event and was thrown away. Null keeps the
+    /// M6 placement, which is what every keyboard path still uses: there is no pointer to ask.
+    /// </param>
+    public string? InsertPhoto(
+        int pageIndex, byte[] bytes, string altText, string? caption = null, (float X, float Y)? centre = null)
     {
         ArgumentNullException.ThrowIfNull(bytes);
         if (pageIndex < 0 || pageIndex >= _session.Document.Pages.Count)
@@ -121,11 +127,17 @@ public sealed class PhotoController
         _assets.Register(assetRef, bytes);
         _layout.AddAsset(assetRef, bytes);
 
+        RectPt rect = DefaultRect(master, probe.Aspect);
+        if (centre is { } point)
+        {
+            rect = CentreOn(rect, point.X, point.Y, master.Size);
+        }
+
         var block = new ImageFrame
         {
             Id = blockId,
             AssetRef = assetRef,
-            FrameRect = DefaultRect(master, probe.Aspect),
+            FrameRect = rect,
             ZOrder = page.Blocks.Count == 0 ? 0 : page.Blocks.Max(b => b.ZOrder) + 1,
             WrapMode = WrapMode.Rectangle,
             WrapMarginPt = 6f,
@@ -348,6 +360,18 @@ public sealed class PhotoController
             description,
             new ChangeScope(ChangeKind.BlockContent, BlockId: blockId),
             [new SetImageRecipeCommand(blockId, recipe)]));
+
+    /// <summary>
+    /// The same rectangle, centred on a point and pushed back onto the page. Clamping rather than
+    /// refusing: a photograph dropped near the edge belongs near the edge, and half of it hanging
+    /// off the paper is not what anybody meant by that.
+    /// </summary>
+    private static RectPt CentreOn(RectPt rect, float x, float y, SizePt page)
+    {
+        float left = Math.Clamp(x - (rect.Width / 2f), 0f, Math.Max(0f, page.Width - rect.Width));
+        float top = Math.Clamp(y - (rect.Height / 2f), 0f, Math.Max(0f, page.Height - rect.Height));
+        return new RectPt(left, top, rect.Width, rect.Height);
+    }
 
     private static RectPt DefaultRect(PageMaster master, float aspect)
     {

@@ -1,6 +1,7 @@
 using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Platform.Storage;
@@ -893,12 +894,19 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Ctrl+V means "put what I copied here". Inside a piece of writing that is words; outside one
+    /// it is a picture, which from M18 goes through the same ingest path as every other picture.
+    /// </summary>
     internal async Task PasteAsync()
     {
-        if (_editor is not null)
+        if (_editor is { IsActive: true })
         {
             await _editor.PasteAsync();
+            return;
         }
+
+        await PastePictureAsync();
     }
 
     internal void SelectAllText() => _editor?.SelectAll();
@@ -1388,6 +1396,14 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    /// <summary>
+    /// A picture lands WHERE IT WAS DROPPED (PLAN.md §11 M18). The position was in the event all
+    /// along and was thrown away: every dropped photograph went to the same spot in the middle of
+    /// the page, which reads as the app ignoring the gesture it just accepted.
+    ///
+    /// <para>A drop onto a picture frame replaces what is in it — one undo step — because that is
+    /// the only thing dropping a photograph onto a photograph can sensibly mean.</para>
+    /// </summary>
     private async void OnCanvasDrop(object? sender, DragEventArgs e)
     {
         e.Handled = true;
@@ -1397,7 +1413,98 @@ public partial class MainWindow : Window
             return;
         }
 
-        await InsertPhotoFromFileAsync(file);
+        (float x, float y) = PageCanvas.ToClampedPagePoint(e.GetPosition(PageCanvas));
+        if (await ReadPictureBytesAsync(file) is not { } bytes)
+        {
+            return;
+        }
+
+        if (_source?.HitTestBlock(_pageIndex, x, y) is { } hit && _source.IsImageBlock(hit))
+        {
+            await ReplacePictureFromBytesAsync(hit, bytes, file.Name);
+            return;
+        }
+
+        await PlacePictureAsync(bytes, file.Name, (x, y));
+    }
+
+    /// <summary>
+    /// The one ingest path a picture arriving without a frame goes through, whether it was dropped
+    /// or pasted: ask for its description, then put it on the page at the point given (or at the
+    /// M6 default placement when there is no pointer to ask, as on the keyboard path).
+    /// </summary>
+    private async Task PlacePictureAsync(byte[] bytes, string fileName, (float X, float Y)? centre)
+    {
+        var dialog = new PhotoInsertDialog(fileName);
+        await dialog.ShowDialog(this);
+        if (!dialog.Confirmed)
+        {
+            return;
+        }
+
+        _editor?.End();
+        string? blockId = _photos!.InsertPhoto(_pageIndex, bytes, dialog.AltText, dialog.Caption, centre);
+        if (blockId is null)
+        {
+            await ShowErrorAsync(
+                "That file is not a picture",
+                "TrestleBoard could not read that file as a picture. JPEG and PNG files work best.");
+            return;
+        }
+
+        _frames?.Select(blockId);
+        RefreshActions();
+    }
+
+    /// <summary>
+    /// Ctrl+V outside a piece of writing (PLAN.md §11 M18). A picture on the clipboard goes on the
+    /// page through the SAME ingest path a dropped or chosen one takes — description asked for and
+    /// all — and a chosen picture frame means "put it in here" rather than "add another one".
+    ///
+    /// <para>A file on the clipboard is preferred over a bitmap on it: the file's own bytes land in
+    /// the package untouched, where a clipboard bitmap has no file behind it and must be encoded
+    /// once, here, to become one. That encode is the only one in the application, and it happens
+    /// because there is nothing else to store — not to "improve" a picture the user gave us.</para>
+    /// </summary>
+    private async Task PastePictureAsync()
+    {
+        if (_photos is null || Clipboard is not { } clipboard)
+        {
+            return;
+        }
+
+        if (await clipboard.TryGetValueAsync(DataFormat.File) is IStorageFile file)
+        {
+            if (await ReadPictureBytesAsync(file) is { } fileBytes)
+            {
+                await PastePictureBytesAsync(fileBytes, file.Name);
+            }
+
+            return;
+        }
+
+        if (await clipboard.TryGetValueAsync(DataFormat.Bitmap) is { } bitmap)
+        {
+            using var buffer = new MemoryStream();
+            bitmap.Save(buffer);
+            await PastePictureBytesAsync(buffer.ToArray(), "the picture you copied");
+            return;
+        }
+
+        Announce(
+            "There is no picture to paste. Copy a picture first, or click into some writing to "
+            + "paste words.");
+    }
+
+    private async Task PastePictureBytesAsync(byte[] bytes, string name)
+    {
+        if (_frames?.SelectedBlockId is { } selected && _photos!.IsPhoto(selected))
+        {
+            await ReplacePictureFromBytesAsync(selected, bytes, name);
+            return;
+        }
+
+        await PlacePictureAsync(bytes, name, centre: null);
     }
 
     // ---- The lodge address book (PLAN.md §11 M12) ---------------------------------------------

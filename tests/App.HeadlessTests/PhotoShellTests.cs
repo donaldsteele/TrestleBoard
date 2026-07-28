@@ -2,6 +2,7 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using SkiaSharp;
 using TrestleBoard.Core.Model;
+using TrestleBoard.Editing.Actions;
 using Xunit;
 
 namespace TrestleBoard.App.HeadlessTests;
@@ -220,6 +221,36 @@ public sealed class PhotoShellTests
 
             Assert.Contains(
                 "no picture in this frame",
+                window.StatusLabelTextForTest ?? "",
+                StringComparison.Ordinal);
+            Assert.False(window.SessionForTest!.CanUndo);
+
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M18: Ctrl+V outside a piece of writing is about pictures, so it stops being greyed with
+    /// "click into some writing first" — and when there is nothing on the clipboard to put on the
+    /// page it says so in a sentence rather than doing nothing at all.
+    /// </summary>
+    [Fact]
+    public async Task PasteWithNothingSelectedIsAboutPicturesAndSaysSoWhenThereIsNone()
+    {
+        await Session.Dispatch(async () =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenSample();
+            window.RefreshActions();
+
+            Assert.Equal(SelectionKind.None, window.CurrentActionContext.Selection);
+            Assert.True(ActionCatalog.Evaluate(ActionId.Paste, window.CurrentActionContext).IsAvailable);
+
+            await window.ActionsForTest.RunAsync(ActionId.Paste);
+
+            Assert.Contains(
+                "no picture to paste",
                 window.StatusLabelTextForTest ?? "",
                 StringComparison.Ordinal);
             Assert.False(window.SessionForTest!.CanUndo);
