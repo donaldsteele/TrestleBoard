@@ -1543,7 +1543,18 @@ widget double-click.
 **Agents:** **Opus** for the menu taxonomy and the index tests (touches every menu item — M11-like
 risk); **Sonnet** for adornments, cursors and the doc rewrite; **cavecrew-reviewer (Sonnet)**.
 
-### M18 — Pictures that can be filled, swapped and captioned (L)
+### M18 — Pictures that can be filled, swapped and captioned (L) ✅
+**Delivered 2026-07-28 — `docs/M18-spec.md` is its record.** Everything below shipped; nothing in the
+scope-cut list was cut. Three things are worth reading in the spec: `ActionCatalog.TitleFor` is the
+app's first context-dependent title (the catalog's own `Title` stays the empty-frame wording, so an
+untaught surface reads correctly rather than wrongly); captions reach the surrounding text through
+the **M5 rect-override map**, used by layout and by nothing else, which is what makes a captionless
+document lay out byte-identically; and `edit.paste` now needs a newsletter rather than a caret, with
+what is on the clipboard left to the shell because `Evaluate` is synchronous and the clipboard is
+not. **Two baselines moved on all three platforms and no others.** Two defects were found on the way
+and fixed: six picture-dialog buttons had no accessible name (two of them since M6), and the panel
+printed one refusal sentence four times under four blocked picture commands.
+
 **Goal:** every picture the photo template promises can actually be put there, and a placed picture
 can be swapped, captioned, described and pasted. Today `SixPagePhotoTemplate`'s placeholders are
 **unfillable** — there is no replace-picture command, so `DocumentRenderSource.cs:726–730` renders
@@ -1793,6 +1804,9 @@ for zoom/pan and the find UI; **cavecrew-reviewer (Sonnet)**.
   its affected screenshots by name (`--only`, iterate with `--out` outside the repo, one image
   commit — M16's rule); **M18 is the only one allowed to move rendered pixels or re-bake snapshot
   baselines** (captions), and the gates hold the others to it.
+  **M17 landed 2026-07-27 and M18 on 2026-07-28**, both to this shape. M18 spent its pixel budget on
+  exactly two baselines per platform; **M19, M20 and M21 are held to none**, and the M17 index tests
+  plus the unmoved snapshot suite are how that is checked rather than promised.
 
 ---
 
@@ -1827,6 +1841,13 @@ for zoom/pan and the find UI; **cavecrew-reviewer (Sonnet)**.
     in the `.tboard` after replace, paste and drop (item 7 re-run); a caption typed at insert prints
     in the PDF and matches the screen (parity); a captionless document lays out byte-identically to
     pre-M18; paste and drop share one ingest path.
+    **Green 2026-07-28.** `PhotoShellTests` fills a template placeholder by menu, by Ctrl+Shift+O and
+    by double-click; `PhotoControllerTests` proves the one-undo-step swap back to the old bytes, the
+    no-re-encode rule and the container round trip; `CaptionRenderTests` carries the golden line
+    boxes and the byte-for-byte captionless guard, and the PDF-vs-screen parity tests are unchanged
+    (they run on Linux CI, where `pdftoppm` exists). **Two baselines moved on all three platforms
+    and no others.** The one part a machine cannot do is looking at a printed page, which the
+    real-world test (item 4) already covers.
 16. **Officers gate (M19):** syncing twice changes nothing; a hand-edited row survives a re-sync; an
     unrecognised or ambiguous office reaches the dialog and never the page; the sync is one undo
     step, byte-for-byte; Ctrl+Z never crosses the roster/document boundary; `TemplateTests`
@@ -1855,6 +1876,12 @@ Windows (946 passed, 12 skipped — the `pdftoppm` parity tests, which are Linux
 >
 > **M17 delivered 2026-07-27** (`docs/M17-spec.md`). It leaves one new manual item, listed below
 > with the others; M18–M21 remain scheduled in that order.
+>
+> **M18 delivered 2026-07-28** (`docs/M18-spec.md`) — the genuine-gap milestone: the photo
+> template's placeholders can be filled, a picture can be swapped in one undo step, and captions
+> print. It moved two snapshot baselines on all three platforms, the only pixel movement M17–M21
+> permits, and leaves one new manual item (below). **M19, M20 and M21 remain scheduled in that
+> order**; M19 and M20 are now unblocked in either order, since M18 and M19 were always disjoint.
 
 What is left is listed here so a future session does not have to re-derive it from seven spec
 documents. Each item is blocked on a person, a machine, or a decision that is the owner's to make;
@@ -1913,6 +1940,11 @@ The one item a machine could take on is the last defect named after the list, an
 - [!] **The chrome-budget measurement at 200%** matters slightly more than it did: a 360px panel
       occupies 720px of a 1280px window at 200%, up from 640px. It is part of the NVDA item above
       and blocked on the same person.
+- [!] **A printed check of a captioned photo page** (§11 M18). The machine proves the PDF matches
+      the screen and that the caption sits where `CaptionLayout` puts it, but nobody has yet held a
+      printed page and said the words under the photograph are the right size and distance from it.
+      Needs the same person as the real-world test and can be run in the same sitting;
+      `docs/M18-spec.md` §3 records the three sizing constants to judge.
 
 Of the three known defects recorded here, **the two cosmetic ones are fixed (2026-07-27)** — they
 turned out to be App-only chrome fixes that re-bake no snapshot baseline, so closing them opened no
