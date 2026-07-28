@@ -23,6 +23,8 @@ internal static class MilestoneGate
                 "the font catalog"),
             ["M18"] = ("TrestleBoard.Core.Commands.ReplaceImageCommand, TrestleBoard.Core",
                 "putting a picture into a frame that is already on the page"),
+            ["M19"] = ("TrestleBoard.Widgets.Roster.OfficersRosterProjection, TrestleBoard.Widgets",
+                "filling the officers table in from the address book"),
         };
 
     /// <summary>

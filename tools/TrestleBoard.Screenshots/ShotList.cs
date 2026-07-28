@@ -3,6 +3,8 @@ using TrestleBoard.App.Dialogs;
 using TrestleBoard.App.Settings;
 using TrestleBoard.Editing;
 using TrestleBoard.Roster;
+using TrestleBoard.Widgets.Builtins.OfficersTable;
+using TrestleBoard.Widgets.Roster;
 using TrestleBoard.Widgets.Wizards;
 
 namespace TrestleBoard.Screenshots;
@@ -173,6 +175,28 @@ internal static class ShotList
                     new WizardWindow(session, window.PeopleForWizards()));
                 wizard.RenderForTest();
                 return Task.FromResult(Stage.Shoot(wizard));
+            }),
+
+        // M19's headline: the officers table filled in from the address book, and the two things the
+        // app refuses to decide on its own showing above the ordinary changes.
+        new("officers-sync", ShotKind.Dialog, "M19",
+            "The address book fills the officers table in — after showing you every change.",
+            "The officers window, listing each office with the name it holds now and the name the "
+            + "address book would put there, one tick box per row, an office two people claim with "
+            + "neither chosen, and the offices it could not recognise listed above them.",
+            stage =>
+            {
+                MainWindow window = stage.OpenEditor();
+                window.GoToPage(1);
+
+                OfficersTableData current = window.ReadOfficersForTest(OfficersBlockId)
+                    ?? throw new InvalidOperationException("The officers table would not open.");
+                OfficersProjection plan = OfficersRosterProjection.Plan(
+                    current, Fixtures.PeopleWithAwkwardOffices);
+
+                OfficersSyncDialog dialog = stage.OpenDialog(
+                    new OfficersSyncDialog(plan, inserting: false), height: 780);
+                return Task.FromResult(Stage.Shoot(dialog));
             }),
 
         new("grid-editor", ShotKind.Dialog, null,

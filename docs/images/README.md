@@ -112,6 +112,14 @@ Every wizard ends by showing you what it is about to write. (one dialog on its o
 
 ![The last screen of a wizard, listing back everything that was entered so it can be checked before anything is put on the page.](wizard-review.png)
 
+### `officers-sync.png`
+
+The address book fills the officers table in — after showing you every change. (one dialog on its own)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only officers-sync`
+
+![The officers window, listing each office with the name it holds now and the name the address book would put there, one tick box per row, an office two people claim with neither chosen, and the offices it could not recognise listed above them.](officers-sync.png)
+
 ### `grid-editor.png`
 
 Or edit the whole list at once, in big rows. (one dialog on its own)

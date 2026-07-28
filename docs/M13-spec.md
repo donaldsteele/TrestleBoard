@@ -25,11 +25,17 @@ Built, in the order PLAN.md's scope-cut list protects:
 - **The officers person picker**, with a blank-phone auto-fill and a review-screen write-back.
 - **The committee picker**, which needed no schema change at all.
 
-Not built, and PLAN.md says so explicitly: **full officer-table generation**. The roster has an
-`office` field, so it looks free, but matching free-text office strings ("Sr. Warden", "SW") to the
-twelve fixed positions is a real matching problem, and page 2's officers table is the most
-conspicuous place in the newsletter for a wrong name to print. The picker ships; generation waits
-until real office strings have settled over a few issues.
+Not built, and PLAN.md says so explicitly: **full officer-table generation** — *OVERTURNED 2026-07-27
+by §11-M19*. The roster has an `office` field, so it looks free, but matching free-text office
+strings ("Sr. Warden", "SW") to the twelve fixed positions is a real matching problem, and page 2's
+officers table is the most conspicuous place in the newsletter for a wrong name to print. The picker
+ships; generation waits until real office strings have settled over a few issues.
+
+> **Overturned on this deferral's own stated condition.** The picker shipped, the office strings
+> settled, and the owner asked for generation by name on 2026-07-27. M19 built it — and the sentence
+> above is *why* it was built the way it was: `OfficeMatcher` is a table with no fuzzy matching in
+> it, an unrecognised office reaches the dialog and never the page, and two claimants for one office
+> are never resolved by the app. See `docs/M19-spec.md`.
 
 ---
 

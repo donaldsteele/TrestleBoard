@@ -1614,7 +1614,17 @@ drop-position) → paste → the caption *editing* dialog (keep caption *renderi
 **Agents:** **Opus** for the caption layout and the replace-command semantics; **Sonnet** for
 paste/drop/alt plumbing and the crop controls; **cavecrew-reviewer (Sonnet)**.
 
-### M19 — The address book fills in the officers (M)
+### M19 — The address book fills in the officers (M) ✅
+**Delivered 2026-07-28 — `docs/M19-spec.md` is its record.** Everything below shipped; nothing in the
+scope-cut list was cut. Three things are worth reading in the spec: `OfficeMatcher` is a table with
+no fuzzy matching in it at all (`Past Master` has its own test, named after the reason); the contested
+row's accept box is *disabled* until the user picks between the two claimants, which is how
+"never auto-picks" became a property of the window rather than a promise; and the phone write-back
+keeps the page's number in the accepted decision as well as sending it to the book, because writing
+one number to the book while printing the other is exactly the quiet disagreement this milestone
+exists to prevent. **No snapshot baseline moved and no layouter changed** — the three officers
+screenshots re-baked byte-identically, and `officers-sync.png` is new.
+
 **Goal:** the officers table is generated from the address book with the same diff-and-confirm sync
 birthdays have, and every roster-driven widget says so on the panel. This **formally overturns
 M13's officer-generation deferral** — on the deferral's own stated condition: the picker shipped,
@@ -1852,6 +1862,14 @@ for zoom/pan and the find UI; **cavecrew-reviewer (Sonnet)**.
     unrecognised or ambiguous office reaches the dialog and never the page; the sync is one undo
     step, byte-for-byte; Ctrl+Z never crosses the roster/document boundary; `TemplateTests`
     unchanged; the privacy gate re-runs.
+    **Green 2026-07-28.** `OfficersSyncShellTests` drives the whole thing through the real shell on a
+    fictional book: one undo step whose Ctrl+Z restores the payload byte-for-byte, a second run that
+    throws if the user is asked anything, a hand-edited Treasurer that survives the address book
+    disagreeing with him, an unrecognised office that reaches the projection and not the page, and a
+    contested office that stays exactly as it was while the other eleven fill in.
+    `OfficersRosterProjectionTests` carries idempotence, the vacancy path, the fingerprint's
+    if-and-only-if, and the v1→v2 migration; `OfficeMatcherTests` tests the matcher in both
+    directions. `TemplateTests` is untouched and no baseline moved.
 17. **Font-window gate (M20):** no path discards a pending choice without applying it or explaining;
     Apply with nothing pending says so; headers are unselectable and arrow-unreachable; two roles
     changeable in one visit; "just here" shows only the selection-scoped warning; gate 11 still
@@ -1882,6 +1900,11 @@ Windows (946 passed, 12 skipped — the `pdftoppm` parity tests, which are Linux
 > print. It moved two snapshot baselines on all three platforms, the only pixel movement M17–M21
 > permits, and leaves one new manual item (below). **M19, M20 and M21 remain scheduled in that
 > order**; M19 and M20 are now unblocked in either order, since M18 and M19 were always disjoint.
+>
+> **M19 delivered 2026-07-28** (`docs/M19-spec.md`) — the officers table is generated from the
+> address book behind a per-office diff dialog, and M13's officer-generation deferral is formally
+> overturned on its own stated condition (`docs/M13-spec.md` §1 carries the marker). It moved no
+> snapshot baseline and changed no layouter. **M20 and M21 remain scheduled in that order.**
 
 What is left is listed here so a future session does not have to re-derive it from seven spec
 documents. Each item is blocked on a person, a machine, or a decision that is the owner's to make;

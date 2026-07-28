@@ -41,6 +41,20 @@ internal static class Fixtures
         return service;
     }
 
+    /// <summary>
+    /// The same fictional book with two awkward cases added, for the officers-sync shot (M19): one
+    /// brother whose office is written in words TrestleBoard does not recognise, and one who claims
+    /// an office somebody else already claims. Those two sections are the whole point of that
+    /// dialog, and neither belongs in the People window shot — which is why this is a second list
+    /// rather than two more rows in the first.
+    /// </summary>
+    public static IReadOnlyList<Member> PeopleWithAwkwardOffices =>
+    [
+        .. People,
+        Person("person-11", "Kenrick Placeholder", "Historian", 12, 12, "555-0111"),
+        Person("person-12", "Lucian Placeholder", "Senior Warden", 1, 15, "555-0112"),
+    ];
+
     private static IReadOnlyList<Member> People =>
     [
         Person("person-1", "Aaron Placeholder", "Worshipful Master", 2, 2, "555-0101"),
