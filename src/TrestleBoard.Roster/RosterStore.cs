@@ -154,9 +154,7 @@ public sealed class RosterStore
         try
         {
             Directory.CreateDirectory(BackupDirectory);
-            DateTimeOffset now = _clock();
-            string stamp = now.UtcDateTime.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture);
-            File.Copy(Path, System.IO.Path.Combine(BackupDirectory, BackupPrefix + stamp + BackupSuffix), overwrite: true);
+            File.Copy(Path, NextFreeBackupPath(_clock()), overwrite: false);
 
             foreach (RosterBackup old in Backups().Skip(BackupsKept))
             {
@@ -172,6 +170,45 @@ public sealed class RosterStore
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
         }
+    }
+
+    /// <summary>
+    /// A backup path nothing is using yet, stepping the stamp forward a millisecond at a time.
+    ///
+    /// <para>The stamp names the file to the millisecond, and two saves inside one millisecond are
+    /// perfectly possible — a fast machine, or a test. Until this existed the second copy was
+    /// written with <c>overwrite: true</c> over the first, so <b>one of the ten kept versions
+    /// silently vanished</b>: the ring reported ten entries and held nine distinct ones. It showed
+    /// up as a Linux CI flake in `RestoringAnEarlierVersionIsItselfUndoable`, where three quick
+    /// saves left two backups and the oldest one was not the version the test had kept.</para>
+    ///
+    /// <para>Stepping the stamp rather than adding a suffix keeps the file name in the one format
+    /// <see cref="TryReadStamp"/> parses, and keeps the ring's ordering monotone. The cost is that a
+    /// stamp means "when this was kept, to the nearest free millisecond", which is a truthful thing
+    /// for it to mean.</para>
+    /// </summary>
+    private string NextFreeBackupPath(DateTimeOffset now)
+    {
+        // A whole second of collisions is far past anything real; giving up and overwriting after
+        // that is better than looping in a method whose job is to be best-effort.
+        for (int i = 0; i < 1000; i++)
+        {
+            string candidate = System.IO.Path.Combine(
+                BackupDirectory,
+                BackupPrefix
+                    + now.AddMilliseconds(i).UtcDateTime.ToString(
+                        "yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture)
+                    + BackupSuffix);
+            if (!File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return System.IO.Path.Combine(
+            BackupDirectory,
+            BackupPrefix + now.UtcDateTime.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture)
+                + BackupSuffix);
     }
 
     /// <summary>The time is in the file name, so the ring survives a copy that loses file times.</summary>

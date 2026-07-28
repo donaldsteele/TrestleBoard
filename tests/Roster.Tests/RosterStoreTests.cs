@@ -120,6 +120,31 @@ public sealed class RosterStoreTests : IDisposable
         Assert.Equal(1, RosterStore.ReadBackup(kept.Path).Count);
     }
 
+    /// <summary>
+    /// Three saves inside one millisecond keep three versions (found by a Linux CI flake, 2026-07-28).
+    ///
+    /// <para>The ring names its files to the millisecond, and until this was fixed the second copy
+    /// written in the same millisecond was <c>File.Copy(overwrite: true)</c>'d over the first. The
+    /// ring then reported ten entries while holding nine distinct ones — a kept version silently
+    /// gone, which is the one thing a backup ring may never do. A fixed clock reproduces on every
+    /// machine what a fast one does by accident.</para>
+    /// </summary>
+    [Fact]
+    public void SavesInsideOneMillisecondEachKeepTheirVersion()
+    {
+        DateTimeOffset frozen = new(2026, 7, 28, 9, 0, 0, TimeSpan.Zero);
+        var store = new RosterStore(RosterPath, () => frozen);
+
+        store.Save(RosterBook.Empty.With(Placeholder("person-1", "A Placeholder")));
+        store.Save(store.Load().With(Placeholder("person-2", "B Placeholder")));
+        store.Save(store.Load().With(Placeholder("person-3", "C Placeholder")));
+
+        IReadOnlyList<RosterBackup> backups = store.Backups();
+        Assert.Equal(2, backups.Count);
+        Assert.Equal([2, 1], backups.Select(b => b.MemberCount).ToArray());
+        Assert.Equal(3, store.Load().Count);
+    }
+
     [Fact]
     public void TheRingKeepsTenAndDropsTheOldest()
     {
