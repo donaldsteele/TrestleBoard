@@ -192,10 +192,11 @@ internal static class ShotList
             }),
 
         new("fix-photo", ShotKind.Dialog, null,
-            "Behind the one-click Fix photo button: three large sliders that apply as you drag.",
-            "The photograph adjustment window: three large sliders for brighter or darker, more or "
-            + "less contrast, and more or less colour, above buttons to turn the picture a quarter "
-            + "turn or start over.",
+            "Behind the one-click Fix photo button: large sliders that apply as you drag.",
+            "The photograph adjustment window: large sliders for brighter or darker, more or "
+            + "less contrast and more or less colour, a box to brighten and balance the picture "
+            + "automatically, and four more sliders for trimming each edge, above buttons to turn "
+            + "the picture a quarter turn or start over.",
             stage =>
             {
                 MainWindow window = stage.OpenEditor();
@@ -205,6 +206,28 @@ internal static class ShotList
                 PhotoAdjustWindow adjust = stage.OpenDialog(
                     new PhotoAdjustWindow(photos, CoverPhotoBlockId));
                 return Task.FromResult(Stage.Shoot(adjust));
+            }),
+
+        // M18. The photo template shipped three of these frames from M9 and no command in the app
+        // could put a picture in one; this is the shot of them asking to be filled.
+        new("photo-template-placeholders", ShotKind.Window, "M18",
+            "A photo page waiting for its photograph, and saying so.",
+            "The editor showing a page of the six-page photo template. A large empty picture frame "
+            + "carries the words \"Double-click to choose a picture\", and the panel beside it is "
+            + "headed \"A photo is selected\" with \"Put a picture here…\" at the top of what can "
+            + "be done to it.",
+            stage =>
+            {
+                MainWindow window = stage.OpenEditor();
+                window.OpenTemplate("six-page-photos");
+                if (window.PhotosForTest?.FirstPlaceholder is { } placeholder)
+                {
+                    window.GoToPage(placeholder.PageIndex);
+                    window.FramesForTest?.Select(placeholder.BlockId);
+                    window.RefreshActions();
+                }
+
+                return Task.FromResult(Stage.Shoot(window));
             }),
 
         new("settings", ShotKind.Dialog, null,

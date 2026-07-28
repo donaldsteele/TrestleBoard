@@ -162,15 +162,25 @@ internal sealed class ActionPanel : Border
         }
 
         ActionGroup? currentGroup = null;
+        string? lastReasonShown = null;
         foreach (ActionOffer offer in offers)
         {
             if (currentGroup != offer.Action.Group)
             {
                 currentGroup = offer.Action.Group;
+                lastReasonShown = null;
                 _content.Children.Add(GroupHeading(ActionCatalog.DescribeGroup(currentGroup.Value)));
             }
 
-            _content.Children.Add(BuildOffer(offer, context, invoke));
+            // M18: four picture commands blocked for the SAME reason printed that reason four
+            // times, which is four times the reading for one fact. The sentence is printed once
+            // per run of buttons that share it; every button still carries it in its HelpText, so
+            // a screen-reader user hears the reason on whichever one they land on.
+            bool repeated = !offer.IsAvailable
+                && string.Equals(offer.Availability.Reason, lastReasonShown, StringComparison.Ordinal);
+            lastReasonShown = offer.IsAvailable ? null : offer.Availability.Reason;
+
+            _content.Children.Add(BuildOffer(offer, context, invoke, repeated));
         }
 
         if (_content.Children.Count == 0)
@@ -259,7 +269,16 @@ internal sealed class ActionPanel : Border
     /// One offered action. A blocked one keeps its button and gains a sentence saying why — the
     /// button is not disabled, so a screen reader still reaches it and pressing it explains itself.
     /// </summary>
-    private static Control BuildOffer(ActionOffer offer, ActionContext context, Action<string, Control?> invoke)
+    /// <param name="reasonAlreadyShown">
+    /// The button above this one is blocked for the same reason and has already printed it. The
+    /// sentence is left off here; it stays in <c>HelpText</c>, so nothing is hidden from a screen
+    /// reader — only from a reader who has just read it.
+    /// </param>
+    private static Control BuildOffer(
+        ActionOffer offer,
+        ActionContext context,
+        Action<string, Control?> invoke,
+        bool reasonAlreadyShown = false)
     {
         // The gesture is a second, quieter line rather than a suffix on the title. That removes
         // fourteen to sixteen characters from most buttons and changes nothing a screen reader
@@ -276,7 +295,7 @@ internal sealed class ActionPanel : Border
             offer.IsAvailable ? offer.Action.ShortDescription : offer.Availability.Reason);
         button.Click += (_, _) => invoke(offer.Action.Id, button);
 
-        if (offer.IsAvailable)
+        if (offer.IsAvailable || reasonAlreadyShown)
         {
             return button;
         }

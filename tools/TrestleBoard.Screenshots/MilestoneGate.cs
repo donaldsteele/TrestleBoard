@@ -21,6 +21,8 @@ internal static class MilestoneGate
                 "the lodge address book"),
             ["M14"] = ("TrestleBoard.Layout.Fonts.BundledFontCatalog, TrestleBoard.Layout",
                 "the font catalog"),
+            ["M18"] = ("TrestleBoard.Core.Commands.ReplaceImageCommand, TrestleBoard.Core",
+                "putting a picture into a frame that is already on the page"),
         };
 
     /// <summary>

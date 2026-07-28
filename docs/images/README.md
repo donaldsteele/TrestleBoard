@@ -18,7 +18,7 @@ regeneration adds a full copy to the repository's history:
 dotnet run --project tools/TrestleBoard.Screenshots -- --only font-picker
 ```
 
-Last regenerated: **2026-07-27**, TrestleBoard **0.1.0**.
+Last regenerated: **2026-07-28**, TrestleBoard **0.1.0**.
 That date covers the run that last touched this file; a `--only` run rewrites it
 while leaving the other images as they were, which is the honest reading of it.
 
@@ -122,11 +122,19 @@ Or edit the whole list at once, in big rows. (one dialog on its own)
 
 ### `fix-photo.png`
 
-Behind the one-click Fix photo button: three large sliders that apply as you drag. (one dialog on its own)
+Behind the one-click Fix photo button: large sliders that apply as you drag. (one dialog on its own)
 
 `dotnet run --project tools/TrestleBoard.Screenshots -- --only fix-photo`
 
-![The photograph adjustment window: three large sliders for brighter or darker, more or less contrast, and more or less colour, above buttons to turn the picture a quarter turn or start over.](fix-photo.png)
+![The photograph adjustment window: large sliders for brighter or darker, more or less contrast and more or less colour, a box to brighten and balance the picture automatically, and four more sliders for trimming each edge, above buttons to turn the picture a quarter turn or start over.](fix-photo.png)
+
+### `photo-template-placeholders.png`
+
+A photo page waiting for its photograph, and saying so. (the whole editor window, 1280×860, Light, 100% scale)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only photo-template-placeholders`
+
+![The editor showing a page of the six-page photo template. A large empty picture frame carries the words "Double-click to choose a picture", and the panel beside it is headed "A photo is selected" with "Put a picture here…" at the top of what can be done to it.](photo-template-placeholders.png)
 
 ### `settings.png`
 
