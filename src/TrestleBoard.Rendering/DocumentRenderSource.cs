@@ -37,6 +37,20 @@ public sealed class DocumentRenderSource : IDisposable
     private readonly Dictionary<string, (string StoryId, int FrameIndex)> _framesByBlockId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, HashSet<string>> _storiesByPageId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, RectPt> _previewRects = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// One laid-out caption per captioned picture frame (M18), keyed by block id. Rebuilt at the
+    /// top of every relayout, because a caption's height depends on the frame's width and both can
+    /// change under a drag.
+    /// </summary>
+    private readonly Dictionary<string, FrameLayout> _captionLayouts = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The rects layout sees: the preview rects, plus captioned picture frames grown downwards to
+    /// cover their caption. Painting and hit-testing deliberately do NOT use this — a caption is
+    /// something the text has to flow past, not part of the picture.
+    /// </summary>
+    private readonly Dictionary<string, RectPt> _layoutRects = new(StringComparer.Ordinal);
     private readonly List<string> _oversetTailBlockIds = [];
     private readonly Dictionary<string, (float WidthPt, WidgetDrawList List)> _widgetDrawLists =
         new(StringComparer.Ordinal);
@@ -588,6 +602,30 @@ public sealed class DocumentRenderSource : IDisposable
         return _frameLayoutsByBlockId.TryGetValue(blockId, out layout);
     }
 
+    /// <summary>
+    /// The laid-out caption under a picture frame, if it has one (M18). The lines are in page
+    /// coordinates, like every other frame layout, which is what lets a test say where a caption
+    /// sits rather than only that the page looks different.
+    /// </summary>
+    public bool TryGetCaptionLayout(string blockId, [NotNullWhen(true)] out FrameLayout? layout)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        EnsureLayout();
+        return _captionLayouts.TryGetValue(blockId, out layout);
+    }
+
+    /// <summary>
+    /// The rectangle the surrounding text flows around: the frame, plus its caption when it has one
+    /// (M18). Equal to <see cref="GetEffectiveRect"/> for everything else — which is the additive
+    /// guarantee, stated as a method rather than left implicit.
+    /// </summary>
+    public RectPt GetLayoutRect(string blockId)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        EnsureLayout();
+        return _layoutRects.TryGetValue(blockId, out RectPt rect) ? rect : GetEffectiveRect(blockId);
+    }
+
     public bool TryGetStoryGeometry(string storyId, out StoryTextGeometry geometry)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -710,9 +748,15 @@ public sealed class DocumentRenderSource : IDisposable
         }
 
         RelayoutCount++;
+
+        // M18: captions first. They depend only on the picture frame they hang under, so they can
+        // be laid out before the stories — and they have to be, because how far a caption reaches
+        // down the page is part of what the text beside the picture must flow past.
+        LayOutCaptions();
+
         // Plan rebuild is cheap (style resolution + text concat); the engine is the cost, so
         // clean stories reuse their cached LayoutResult.
-        _plans = [.. DocumentLayoutAdapter.BuildPlans(_document, _previewRects)];
+        _plans = [.. DocumentLayoutAdapter.BuildPlans(_document, _layoutRects)];
         var liveStories = new HashSet<string>(_plans.Select(p => p.StoryId), StringComparer.Ordinal);
         _layoutsByStory.Keys.Where(k => !liveStories.Contains(k)).ToList().ForEach(k =>
         {
@@ -767,6 +811,47 @@ public sealed class DocumentRenderSource : IDisposable
         _dirtyStories.Clear();
     }
 
+    /// <summary>
+    /// Lays out every caption in the document and records how far each one reaches (PLAN.md §11 M18).
+    ///
+    /// <para>The extended rect goes into <see cref="_layoutRects"/> and nowhere else. A captioned
+    /// picture still PAINTS in its own rectangle and still hit-tests as its own rectangle — it is
+    /// only what the surrounding text flows around that grows, which is what makes a caption
+    /// additive: a document with no captions produces exactly the rects it produced before M18, and
+    /// every existing baseline keeps meaning what it meant.</para>
+    /// </summary>
+    private void LayOutCaptions()
+    {
+        _captionLayouts.Clear();
+        _layoutRects.Clear();
+        foreach ((string blockId, RectPt rect) in _previewRects)
+        {
+            _layoutRects[blockId] = rect;
+        }
+
+        foreach (Block block in _document.Pages.SelectMany(p => p.Blocks))
+        {
+            RectPt rect = DocumentLayoutAdapter.EffectiveRect(block, _previewRects);
+            if (CaptionLayout.Request(_document, block, rect) is not { } request)
+            {
+                continue;
+            }
+
+            LayoutResult result = _engine.Layout(request);
+            if (result.Frames.Count == 0 || result.Frames[0].Lines.Count == 0)
+            {
+                continue;
+            }
+
+            FrameLayout laid = result.Frames[0];
+            _captionLayouts[block.Id] = laid;
+
+            float bottom = laid.Lines[^1].BandBottom;
+            _layoutRects[block.Id] = new RectPt(
+                rect.X, rect.Y, rect.Width, Math.Max(rect.Height, bottom - rect.Y));
+        }
+    }
+
     // ---- Block rendering (unchanged from M3) ------------------------------------------------
 
     private void RenderBlock(SKCanvas canvas, Block block)
@@ -784,6 +869,14 @@ public sealed class DocumentRenderSource : IDisposable
                 break;
             case ImageFrame image:
                 RenderImage(canvas, image, rect);
+
+                // M18: and the words under it, drawn by the same frame renderer every story uses,
+                // which is what makes them print in the PDF exactly as they appear on screen.
+                if (_captionLayouts.TryGetValue(image.Id, out FrameLayout? caption))
+                {
+                    PageRenderer.RenderFrame(canvas, caption);
+                }
+
                 break;
             case ShapeBlock shape:
                 RenderShape(canvas, shape, rect);

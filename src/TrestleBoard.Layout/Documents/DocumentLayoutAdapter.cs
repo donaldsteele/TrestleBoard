@@ -196,14 +196,15 @@ public static class DocumentLayoutAdapter
         return new LayoutStory(story.Id, paragraphs);
     }
 
-    private static CharacterStyle MapCharacter(CharacterStyleDef def) => new(
+    /// <summary>Internal from M18 so <see cref="CaptionLayout"/> sets a caption in the same way.</summary>
+    internal static CharacterStyle MapCharacter(CharacterStyleDef def) => new(
         def.FontFamily,
         def.Weight == FontWeightToken.Bold ? FontWeight.Bold : FontWeight.Regular,
         def.Slant == FontSlantToken.Italic ? FontStyleSlant.Italic : FontStyleSlant.Normal,
         def.SizePt,
         def.ColorArgb);
 
-    private static TextAlign MapAlign(TextAlignment align) => align switch
+    internal static TextAlign MapAlign(TextAlignment align) => align switch
     {
         TextAlignment.Center => TextAlign.Center,
         TextAlignment.Right => TextAlign.Right,
