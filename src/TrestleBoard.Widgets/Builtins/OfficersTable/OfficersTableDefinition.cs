@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using TrestleBoard.Core.Model;
 using TrestleBoard.Layout.Widgets;
@@ -24,9 +25,22 @@ public sealed class OfficersTableDefinition : WidgetDefinition<OfficersTableData
 
     public override IWidgetLayouter Layouter { get; } = new OfficersTableLayouter();
 
+    /// <summary>
+    /// 2 since M19: the table gained where-it-came-from fields, purely additive. A v2 payload opened
+    /// in a pre-M19 build is move/resize/delete-only, which is designed behaviour rather than an
+    /// accident — the same rollout note M13 wrote for the birthday list.
+    /// </summary>
+    public override int CurrentDataVersion => 2;
+
     protected override JsonTypeInfo<OfficersTableData> TypeInfo =>
         OfficersTableJsonContext.Default.OfficersTableData;
 
+    /// <summary>
+    /// Twelve offices and nobody in them — and, as PLAN.md §5's projection rule requires, empty with
+    /// no reference to the address book. The roster reaches this widget only through
+    /// <see cref="Roster.OfficersRosterProjection"/>, which takes the member list as a parameter and
+    /// is invoked by a user-confirmed action. Never from here, and never from <see cref="WidgetSeed"/>.
+    /// </summary>
     public override OfficersTableData CreateEmpty(WidgetSeed seed)
     {
         var data = new OfficersTableData();
@@ -36,6 +50,27 @@ public sealed class OfficersTableDefinition : WidgetDefinition<OfficersTableData
         }
 
         return data;
+    }
+
+    /// <summary>
+    /// v1 → v2. Everything new is optional, so the whole upgrade is "say out loud that this table
+    /// was filled in by hand", which is what every v1 table was. Rows need nothing: a row with no
+    /// <c>memberId</c> is a typed row by definition, and that is exactly what the projection leaves
+    /// alone (PLAN.md §11 M19).
+    /// </summary>
+    public override bool TryMigrateStep(JsonNode data, int fromVersion, out JsonNode upgraded, out int toVersion)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        upgraded = data;
+        toVersion = fromVersion;
+        if (fromVersion != 1)
+        {
+            return false;
+        }
+
+        data["source"] = OfficersTableSource.Manual;
+        toVersion = 2;
+        return true;
     }
 
     protected override WizardDefinition BuildWizard() => new(
@@ -71,7 +106,7 @@ public sealed class OfficersTableDefinition : WidgetDefinition<OfficersTableData
                                 + "You can type a name that is not in it.",
                             ExampleText: "A. Placeholder"),
                         new WizardFieldBinding<OfficerEntry>(
-                            "name", r => r.Name, (r, v) => r.Name = v)),
+                            "name", r => r.Name, SetName)),
                     (new WizardField(
                             "phone",
                             "Phone number",
@@ -81,9 +116,37 @@ public sealed class OfficersTableDefinition : WidgetDefinition<OfficersTableData
                         new WizardFieldBinding<OfficerEntry>(
                             "phone",
                             r => r.Phone ?? "",
-                            (r, v) => r.Phone = string.IsNullOrWhiteSpace(v) ? null : v)),
+                            SetPhone)),
                 ],
                 fixedRows: OfficersTableData.StandardPositions,
                 pagination: WizardListPagination.OneRowPerScreen),
         ]);
+
+    /// <summary>
+    /// Provenance is captured here, in the setter both editors already share (M13's pattern, M19's
+    /// use of it): the step wizard and <c>WidgetGridWindow</c> drive the same field bindings, so one
+    /// line per bound field marks a row as the user's without either window learning anything new.
+    ///
+    /// The equality guard is load-bearing, not tidiness. Both windows write the box's value back on
+    /// LostFocus, so tabbing through a filled-in table without typing a character would otherwise
+    /// mark every row manual and freeze the whole table against every future re-sync.
+    /// </summary>
+    private static void SetName(OfficerEntry row, string value)
+    {
+        if (!string.Equals(row.Name, value, StringComparison.Ordinal))
+        {
+            row.Name = value;
+            row.IsManual = true;
+        }
+    }
+
+    private static void SetPhone(OfficerEntry row, string value)
+    {
+        string? phone = string.IsNullOrWhiteSpace(value) ? null : value;
+        if (!string.Equals(row.Phone, phone, StringComparison.Ordinal))
+        {
+            row.Phone = phone;
+            row.IsManual = true;
+        }
+    }
 }

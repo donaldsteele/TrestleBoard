@@ -96,7 +96,7 @@ public sealed class OfficersTableTests
         Assert.True(session.IsReviewScreen);
         Assert.Equal(13, session.ReviewLines.Count);
         Assert.True(session.TryCommit(out JsonElement data, out int version, out _));
-        Assert.Equal(1, version);
+        Assert.Equal(Definition.CurrentDataVersion, version);
         Assert.Equal(12, data.GetProperty("officers").GetArrayLength());
     }
 
