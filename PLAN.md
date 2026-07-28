@@ -711,11 +711,14 @@ pick rather than typing a name and a phone number.
 "Add someone from the address book", appending the picked name as a line. No migration, no layouter
 change, no risk.
 
-**Deferred, with the reason stated: full officer-table generation.** The roster has an `office` field, so
+**Deferred, with the reason stated: full officer-table generation — OVERTURNED 2026-07-27 by
+§11-M19.** The roster has an `office` field, so
 this looks like a free win — but matching free-text office strings ("Sr. Warden", "SW") to the twelve
 fixed standard positions is a real matching problem, and page 2's officers table is the single most
 conspicuous place a wrong name can print. Ship the picker, let real office strings settle over a few
-issues, then generate with the same diff-and-confirm pattern birthdays use. DistrictCalendar, EventCard
+issues, then generate with the same diff-and-confirm pattern birthdays use. *(The deferral was
+overturned on its own stated condition: the picker shipped, the office strings settled, and the owner
+asked for generation by name. M19 is the diff-and-confirm generation this paragraph promised.)* DistrictCalendar, EventCard
 and CoverBanner get nothing — no people in them.
 
 **Scope cut order if M13 runs long:** committee picker → officers phone auto-fill and write-back →
@@ -1457,6 +1460,290 @@ that should not have.
 **Agents:** **Opus** for the theming-composition spike and the palette; **Sonnet** for the icon set,
 the panel and the spacing work; **cavecrew-reviewer (Sonnet)**.
 
+### M17 — Click and type: the canvas answers the first click, and the menus reorganise (M)
+**Goal:** a first-time user who clicks the page can type, and every "put something on the page"
+command lives under Insert. The owner's first hands-on session (2026-07-27) found the app hard to
+*drive*, and exploration confirmed every complaint is real — but most are **discoverability defects
+over working features**. Inline editing exists and works (`PageCanvasControl` places the caret →
+`OnTextInput` → `TextEditorController.InsertText` → `InsertTextCommand`); what is missing is every
+affordance that would tell a user so. `insert.photo` exists with three entry paths (Ctrl+Shift+P,
+drag-drop, panel primary) and hides its menu item at **This item ▸ Picture ▸ Insert a picture…**
+(`MainWindow.axaml:126`) while the Insert menu holds only the six widgets. M17 fixes the telling,
+not the mechanism.
+
+**Deliverables**
+
+- **"Add a text frame" starts the text session** — the same path Enter/F2 take today
+  (`MainWindow.axaml.cs` ~1094 currently selects and stops). Creating a text frame means you wanted
+  to type; leaving the user staring at a selected empty rectangle is the bug.
+- **Empty text frames paint a muted "Click here and start typing" hint.**
+  > **Hints, hover outlines and overset markers are editor adornments, painted by
+  > `PageCanvasControl` (App) — never by `Rendering`,** which is shared with PDF export. A hint that
+  > reached the renderer would print. **No snapshot baseline moves in M17**, and that is the
+  > mechanical proof this rule held.
+- **Widgets answer the double-click** (inline editing stays deferred — owner confirmed, ruling
+  recorded in §13): **double-click on a widget opens its editor** by dispatching `item.edit` through
+  `ActionRunner`, availability rules applying as everywhere else; single-click gets a panel caption
+  "This is a filled-in list. Use 'Change what this says…' to edit it." Today widget text swallows
+  clicks with zero hint (`ParagraphIndex == -1`, the M7 design), which reads as broken rather than
+  designed.
+- **Pointer honesty** — I-beam over text interior, move/size cursors over the 4pt edge band and
+  handles, a faint hover outline on frames. Two fixes ride along: the cursor is cached per
+  `StandardCursorType` (today a fresh `Cursor` is allocated on every pointer move,
+  `PageCanvasControl.cs:517`), and a frame drag **clamps at the page edge instead of freezing**
+  (`PageCanvasControl.cs:451–454`).
+- **Overset gets a face** — an adornment marker at the outflow corner plus a status line: "There is
+  more writing than fits — 'Make the rest fit' (Ctrl+Shift+M) will flow it."
+  `ActionContext.HasOversetText` is already computed; nothing surfaces it.
+- **The menu restructure.** "This item" dissolves; **no action loses its menu item** (the
+  every-command-has-a-menu-item guarantee survives the move) and **nine top-levels stay nine**:
+  - **Insert** leads with "A text frame" (Ctrl+Shift+T) and "A picture…" (Ctrl+Shift+P), then a
+    separator, then the six widgets and the birthday sync. **A slot is reserved for M19's
+    officers sync** so M19 adds a menu item without another restructure.
+  - **Edit** gains Delete this / Change what this says… / Edit the list… after Select all.
+  - **A new top-level Arrange** takes the text-flow group (wrap / continue / stop /
+    make-the-rest-fit), Fit to contents, and the four stacking commands — replacing "This item"
+    one-for-one in the top-level count.
+  - **Format gains a Picture submenu** (Fix, Adjust; M18 adds more). *Rejected: a top-level Picture
+    menu* — ten top-levels at 200% scale for two items.
+  - **View gains "Move to the previous part of the window" (Shift+F6)** — `view.previousRegion` is
+    today the only `ActionId` with no menu item anywhere.
+- **New machine checks** beside the existing `KeyboardAuditTests`: every `ActionCatalog` entry has
+  ≥1 menu item whose `Tag` matches (with an exception list that **must be empty**), and every menu
+  `InputGesture` string equals `KeyboardMap.Describe` for that action. After M17 a command cannot
+  silently lose its menu home again.
+- **Rewrite the stale menu sections of `docs/accessibility-test-script.md`** — ~line 150 still
+  documents an "Object menu (Alt+J)" 16-item list and an 18-control toolbar, neither of which has
+  existed since M11.
+- **Screenshots:** affected shots re-baked by name with `--only`, iterating with `--out` outside the
+  repo, landed in one image commit — M16's rule, now the standing rule.
+
+**Acceptance:** clicking an empty text frame and typing produces text with no key in between;
+Add-a-text-frame leaves a blinking caret; double-clicking every widget either opens its editor or
+speaks its refusal; Insert lists text frame and picture above the widgets; the menu-index and
+gesture-string tests are green with an empty exception list; a drag clamps at the page edge; overset
+shows its marker and status line; **no snapshot baseline moves**; a manual NVDA pass over the new
+menu bar.
+
+**Scope cut order if M17 runs long:** hover outline → status-bar overset wording (keep the marker) →
+the OnLostFocus text-session investigation (fix only if cheap, else it moves to M21) → cursor
+caching. **Never cut:** Insert gains text frame + picture; type-on-create; the menu-index test; the
+widget double-click.
+
+**Post-milestone:** `/graphify . --update`; ingest the M17 decisions into llm-wiki.
+**Agents:** **Opus** for the menu taxonomy and the index tests (touches every menu item — M11-like
+risk); **Sonnet** for adornments, cursors and the doc rewrite; **cavecrew-reviewer (Sonnet)**.
+
+### M18 — Pictures that can be filled, swapped and captioned (L)
+**Goal:** every picture the photo template promises can actually be put there, and a placed picture
+can be swapped, captioned, described and pasted. Today `SixPagePhotoTemplate`'s placeholders are
+**unfillable** — there is no replace-picture command, so `DocumentRenderSource.cs:726–730` renders
+placeholders forever; `ImageFrame.Caption` is collected by the wizard and never rendered;
+`PhotoController.SetAltText`/`SetCrop`/`SetAutoLevels` have zero callers, and `SetAltText` bypasses
+`DocumentSession` — not undoable. This is the genuine-gap milestone, where the others are mostly
+affordance work.
+
+**Deliverables**
+
+- **`picture.replace`** — "Put a picture here…" / "Swap this picture…" (the title varies by whether
+  the frame has bytes). Reuses `PhotoInsertDialog`; a new `IDocumentCommand` sets bytes, recipe,
+  caption and alt on the **existing** frame in one undo step, geometry untouched. Placeholder frames
+  get a hint adornment "Double-click to choose a picture", and double-click dispatches
+  `picture.replace` — the same gesture M17 taught for widgets.
+  > **Replace never re-encodes.** The original bytes land byte-identical in the `.tboard`; §12
+  > item 7's re-crop guarantee applies to the new bytes exactly as to inserted ones, and the privacy
+  > gate re-runs.
+- **Captions render** — the layouter sets a `caption`-styled line under the frame. This is the only
+  deliverable in M17–M21 allowed to touch `Layout`/`Rendering`/`Export.Pdf`.
+  > **Caption rendering moves pixels.** Golden LineBox tests plus cross-OS snapshot baselines
+  > re-bake **once, in their own commit**; the PDF-vs-screen parity test proves WYSIWYG held; and
+  > **a captionless document lays out byte-identically to pre-M18** — the additive guard that keeps
+  > every existing baseline meaningful.
+- **`picture.altText`** ("Describe this picture for people who can't see it…") and
+  **`picture.caption`** ("Write a caption…") — small plain-language dialogs backed by new
+  `IDocumentCommand`s. The `PhotoController.SetAltText` session bypass is retired;
+  `SetCrop`/`SetAutoLevels` are wired or deleted — a zero-caller surface does not survive the
+  milestone.
+- **Paste a picture** — `edit.paste` with a bitmap on the clipboard and no active text session runs
+  the same ingest pipeline as `PhotoInsertDialog` (one path, never a second); a selected
+  `ImageFrame` means replace, otherwise a new frame.
+- **Drop where dropped** — `OnCanvasDrop` reads `e.GetPosition`; a drop on an empty page centres the
+  frame at the pointer (clamped to the page); a drop onto an existing `ImageFrame` replaces it, one
+  undo step. `DefaultRect` remains the keyboard-path placement.
+- **"Trim the edges…"** in `PhotoAdjustWindow` — four plain-language edge controls with live
+  preview over the existing `ImageRecipeSpec`; non-destructive, originals retained. *Rejected:
+  freeform drag-crop* — the fine-motor cost is exactly what §6 exists to avoid.
+- **A `WhatsNext` step** keyed on a photo-placeholder-present flag: "Put your photos in — the photo
+  pages are still showing placeholders." (Follows the `CoverDateMissing` precedent.)
+- **Four new `ActionId`s** through the full catalog / runner / `KeyboardMap` / menu legs — M17's
+  index tests make forgetting a leg a build failure, which is why M17 goes first.
+- **Screenshots:** the photo-template and adjust-window shots re-bake by name.
+
+**Acceptance:** every `SixPagePhotoTemplate` placeholder is fillable keyboard-only and by
+double-click; a swap is one undo step and Ctrl+Z restores the prior picture byte-for-byte; a caption
+typed at insert prints in the PDF and matches the screen (parity test); alt-text edits are undoable;
+paste and drop share the one ingest path; a captionless document lays out byte-identically; the
+privacy gate is green.
+
+**Scope cut order if M18 runs long:** trim-the-edges UI → drop-on-frame-replaces (keep
+drop-position) → paste → the caption *editing* dialog (keep caption *rendering*). **Never cut:**
+`picture.replace` and placeholder fillability — they are the milestone.
+
+**Post-milestone:** `/graphify . --update`; ingest the M18 decisions into llm-wiki; `/wiki:lint`
+(even-numbered milestone).
+**Agents:** **Opus** for the caption layout and the replace-command semantics; **Sonnet** for
+paste/drop/alt plumbing and the crop controls; **cavecrew-reviewer (Sonnet)**.
+
+### M19 — The address book fills in the officers (M)
+**Goal:** the officers table is generated from the address book with the same diff-and-confirm sync
+birthdays have, and every roster-driven widget says so on the panel. This **formally overturns
+M13's officer-generation deferral** — on the deferral's own stated condition: the picker shipped,
+the office strings settled, and the owner asked for it by name. The M13 text is marked
+`— OVERTURNED 2026-07-27 by §11-M19` (the existing idiom, cf. `docs/M7-spec.md:1443`).
+
+> **Officer sync never applies without the dialog, never guesses an office match, and never
+> auto-picks between two claimants.** An unrecognised office string gets "We didn't recognise this —
+> the row stays as it is"; two claimants for one office means the user chooses; a vacancy prints as
+> a vacancy (`VacantText`). Silent-wrong beats loud-absent nowhere in this app, and least of all on
+> page 2 — that sentence is why the deferral existed, and it survives the overturn as the design
+> rule.
+
+**Deliverables**
+
+- **`OfficeMatcher`** in `src/TrestleBoard.Widgets/Roster/` — pure static, mapping free-text
+  `Member.Office` strings to the twelve `StandardPositions`; case- and punctuation-insensitive plus
+  an explicit abbreviation table ("WM", "SW", "Sr. Warden"…); table-driven tests; every non-exact
+  mapping is data in one place, never scattered heuristics.
+- **`OfficersRosterProjection`** beside `BirthdayRosterProjection` — pure static, the member list an
+  explicit parameter (M13's rule: never via `WidgetSeed`/`CreateEmptyData`), fingerprint over
+  name/phone/office; output per position: the match, a vacancy, plus unmatched and ambiguity lists.
+- **`OfficersTableData` dataVersion 2** — `Source`, `RosterFingerprint`, per-entry provenance so
+  hand-edited rows survive a re-sync (the exact M13 semantics: v1 payloads migrate with
+  `source: "manual"`; `WidgetController.CanEdit` refuses newer versions).
+- **`OfficersSyncDialog`** modelled on `Dialogs/BirthdaySyncDialog.cs` — per-position current →
+  proposed, per-row accept, unmatched and ambiguous entries above the fold, one undo step,
+  byte-for-byte Ctrl+Z. The phone write-back checkbox carries over from the M13 pattern.
+- **`item.syncOfficers`** ("Fill in the officers from the address book…") — catalog + runner +
+  `KeyboardMap` + the Insert slot M17 reserved + a panel action on a selected officers table. **App
+  invokes the projection and passes the members — `Editing` still never references `Roster`.**
+- **Visible linkage** — the actual complaint ("widgets not driven by the address book" was half
+  false, and the half that existed was invisible): a panel caption on generated widgets "Filled in
+  from your address book" with the sync date; the same banner in the widget editor; officers
+  staleness in `ActionContext`; a `WhatsNext` step "Update the officers table — somebody's details
+  changed in your address book." M13's rule verbatim: **staleness never mutates the document.**
+- **Committees stay picker-only, reason on record:** `Member` has no committee field, so generation
+  needs a roster schema change — its own small milestone if the owner wants it (§13's unscheduled
+  list carries it).
+- **Tests mirror M13's:** idempotent sync; hand-edits survive; fingerprint changes iff a
+  contributing field changes; the matcher tested in both directions; v1→v2 migration;
+  `TemplateTests` unchanged; a headless fictional-roster end-to-end.
+- **Screenshots:** the officers wizard and sync shots re-bake by name.
+
+**Acceptance:** one command fills twelve positions behind the diff dialog (fictional roster); sync
+twice equals sync once; a hand-edited Treasurer survives a re-sync; an unrecognised office never
+reaches the page; the whole sync is one undo step, byte-for-byte; a generated table says so in the
+panel; the privacy gate passes (no roster data in fixtures outside `tests/Roster.Tests`);
+`TemplateTests` unchanged.
+
+**Scope cut order if M19 runs long:** phone write-back → the staleness nudge (keep the panel
+caption) → per-row accept (degrade to whole-table accept with an unmatched section). **Never cut:**
+the never-guess matcher, the dialog, one-undo-step.
+
+**Post-milestone:** `/graphify . --update`; ingest the M19 decisions into llm-wiki.
+**Agents:** **Opus** for `OfficeMatcher` and the sync/provenance semantics; **Sonnet** for the
+dialog and wiring (it is `BirthdaySyncDialog` with different nouns); **cavecrew-reviewer (Sonnet)**.
+
+### M20 — The font window, taken apart and put back honestly (M)
+**Goal:** choosing fonts is one comprehensible flow that never silently discards a choice.
+`Dialogs/TextStylesWindow.cs` carries ten enumerated defects, three of which discard user choices
+without a word: **(a)** category headings are selectable, and selecting one silently discards the
+pending choice; **(b)** Apply with nothing pending is a silent no-op; **(c)** switching roles
+discards unapplied edits; **(d)** "just here" reuses the whole-newsletter sheet with the wrong
+warning text; **(e)** fixed pixel heights clip at large fonts and **(f)** the ListBox-in-ScrollViewer
+nesting breaks virtualization; **(g)** preview chips paint an opaque white background that is
+illegible on the selection highlight; **(h)** roles sort by raw style name rather than semantic
+order; **(i)** the label prints twice per row; **(j)** search re-renders every preview per
+keystroke. M14's engine semantics (`SetCharacterStyleFontCommand`, the `~` override, sibling sync)
+are **untouched — this is chrome only**, and M14's gate 11 re-runs byte-for-byte as the proof.
+
+**Deliverables**
+
+- **Split the two jobs** — the whole-newsletter styles sheet and the "just here" override picker
+  become two windows, or one window in two explicit modes with different titles and footers. The
+  override picker shows the selection's own text, one family list, and the truthful warning "This
+  changes only the writing you have selected." (Closes (d).)
+- **Headings stop being choices** — non-focusable, non-selectable, arrow keys skip them; the
+  category text is preserved in item `AutomationProperties`, which answers M14 §13's grouped-list
+  NVDA question by test where possible and by the manual pass where not. (Closes (a).)
+- **A pending-change model and an honest footer** — dirty state per role; **Apply applies and stays
+  open** (two roles in one visit); switching roles with unapplied edits applies or asks, never
+  discards; Apply with nothing pending says "Nothing to change yet — pick a different font or size
+  first." (Closes (b), (c).)
+- **Layout stops fighting the list** — fixed pixel heights go; each ListBox owns its own scrolling
+  (no outer ScrollViewer); the window gets min/max bounds and sizes to content; virtualization and
+  bring-into-view are restored; search is debounced; the preview render cache is keyed on
+  (family, size, variant). (Closes (e), (f), (j).)
+- **Previews composite honestly** — transparent or theme-aware background and foreground from
+  `FontPreviewRenderer`, legible on the selection highlight in all three theme variants.
+  (Closes (g).)
+- **Roles in declared semantic order** in `StyleLabels` (tested), replacing the ordinal raw-name
+  sort; one label per row — the duplicate rendered-PNG label goes, the font sample line stays.
+  (Closes (h), (i).)
+- **An unbundled family shows itself** — a distinct non-selectable row carrying M14's warning
+  language, instead of today's silent no-op selection.
+- **Headless tests:** no path discards a pending choice without applying or messaging; headers are
+  unreachable; two roles in one visit; the nothing-pending message; the declared order; a preview
+  cache hit. The M14 font-gate suite re-runs untouched.
+- **Screenshots:** the font-picker shot re-bakes.
+
+**Acceptance:** each defect (a)–(j) has a closing test or screenshot; no silent path exists; "just
+here" never shows other roles or the whole-newsletter warning; NVDA announces the groupings or the
+documented fallback is in place; M14's gate 11 passes byte-for-byte.
+
+**Scope cut order if M20 runs long:** preview caching (keep the debounce) → the unbundled-family
+row (degrade to an open-time warning) → the role reorder. **Never cut:** the split, the
+pending-change model, unselectable headers.
+
+**Post-milestone:** `/graphify . --update`; ingest the M20 decisions into llm-wiki; `/wiki:lint`
+(even-numbered milestone).
+**Agents:** **Sonnet** throughout — the defects are enumerated and the engine is untouched, so this
+is the best-specified milestone of the five; **Opus** only if the grouped-list accessibility forces
+a custom control; **cavecrew-reviewer (Sonnet)**.
+
+### M21 — Everyday conveniences other publishing apps have (L)
+**Goal:** the standard desktop-publishing behaviours whose absence a user notices without being
+able to name them. **Fully scheduled** — the owner decided so on 2026-07-27, which is why this
+heading carries no "owner-optional" suffix.
+
+**Deliverables**
+
+- **Ctrl+wheel zoom** (and pinch where the platform delivers it), centred on the pointer, driving
+  the existing `view.zoomIn`/`view.zoomOut`; **middle-drag or Space+drag pan**. Pure App/canvas
+  work.
+- **Find (Ctrl+F) and Replace** — walks story text across frames and linked chains, selects the
+  hit, scrolls it into view; each replacement is one `IDocumentCommand`. New
+  `edit.find`/`edit.replace` `ActionId`s with Edit-menu items; M17's index tests apply. Widget
+  payload text is out of scope for pass one — the empty-result message says so, never silently
+  misses.
+- **Multi-select with align and distribute** — Shift+click adds to the selection;
+  `arrange.align*`/`arrange.distribute*` actions in the Arrange menu and the panel; each operation
+  is one undo step over the whole selection. Marquee selection is the cut candidate.
+  **Group/ungroup is deliberately excluded** — it is a document-model and serialization change, and
+  it sits in §13's unscheduled list with that reason.
+- **The text session survives chrome clicks** (`PageCanvasControl.OnLostFocus` ~668) — here if it
+  was cut from M17.
+
+**Acceptance:** a keyboard path exists for every new action (mechanical, via M17's tests); aligning
+three frames is one undo step; find reaches the second frame of a linked chain; Ctrl+wheel keeps
+the point under the pointer stationary; **no snapshot baseline moves**.
+
+**Scope cut order if M21 runs long:** replace (keep find) → distribute (keep align) → marquee →
+pan. **Never cut:** Ctrl+wheel zoom.
+
+**Post-milestone:** `/graphify . --update`; ingest the M21 decisions into llm-wiki.
+**Agents:** **Opus** for the multi-select semantics (selection model, undo grouping); **Sonnet**
+for zoom/pan and the find UI; **cavecrew-reviewer (Sonnet)**.
+
 ### Sizing & sequencing notes
 - L milestones to watch: **M1, M4, M7** — each gets a Plan-agent spec pass and Fable/Opus implementation.
 - Hard ordering: M1 before everything UI (retires the existential risk); M2 before M3; M4 before M5; M7 needs M4+M5; M8 needs M4; M9 needs M7+M8.
@@ -1488,6 +1775,15 @@ the panel and the spacing work; **cavecrew-reviewer (Sonnet)**.
   since it changes wizard content rather than shape. Notably **a slipping M12 makes M15 easier** — the
   entire personal-data hazard disappears with it, which inverts the usual pressure and is worth
   knowing before it happens.
+- **Hands-on additions (M17–M21), added 2026-07-27**, ordered by what blocks producing a newsletter.
+  Hard order: **M17 before M18 and M19** — M17 builds the menu homes (the Insert slots, the Arrange
+  menu, Format ▸ Picture) that M18 and M19 fill, the same logic that had M11 build the surface M13
+  hung its buttons on. **M18 ∥ M19:** disjoint layers (App/Editing/Imaging versus Widgets/Roster)
+  that meet only at the menu slots M17 reserved. M20 is independent and goes fourth, by pain; M21
+  goes last and is fully scheduled (owner's decision, 2026-07-27). Every one of the five re-bakes
+  its affected screenshots by name (`--only`, iterate with `--out` outside the repo, one image
+  commit — M16's rule); **M18 is the only one allowed to move rendered pixels or re-bake snapshot
+  baselines** (captions), and the gates hold the others to it.
 
 ---
 
@@ -1506,12 +1802,42 @@ the panel and the spacing work; **cavecrew-reviewer (Sonnet)**.
 11. **Font gate (M14):** every bundled face parses and rasterizes on all three OSes (`font-catalog-sampler`); the font-manifest hash check passes and no TTF exists outside the manifest; changing a style's font or size keeps its `-bold`/`-italic` siblings in sync and bold still finds its pair; a document naming an unbundled family opens with a plain-language warning and saves back byte-unchanged; the OFL/Apache licence text is present **inside the installer**, not merely in the repo.
 12. **Documentation gate (M15):** every image referenced from a doc exists and every committed image is referenced; no committed PNG carries ancillary text chunks; no screenshot shows a real name, phone number, email, or user-name-bearing path.
 13. **Visual gate (M16):** every declared token pair meets its floor in Light, Dark and High Contrast; no chrome control carries a locally-set brush of its own; every mapped icon key resolves to geometry and every widget `IconKey` has a mapping; no button is icon-only; no panel action's title outgrows the panel; **no snapshot baseline moves and exactly 17 of the 18 screenshots regenerate** — `pdf-page-spread` changing means something reached the rendering pipeline. *(Outcome, 2026-07-27: no baseline moved, but sixteen images regenerated and `pdf-page-spread` was one of them. It was not M16 — building the harness from `53dbf07`, the commit before any M16 code, produces the new bytes exactly, because the committed image was baked at `4031d13` and `ed45280` landed after it. Two shots, `people-window` and `import-columns`, came out byte-identical: they declare no `IsDefault` button and paint no chrome surface of their own. `docs/M16-spec.md` §10.)* Then, by eye, because no test settles it: Light, Dark and High Contrast at 100% **and 200%**, confirming the toolbar, panel, status bar and canvas are distinguishable from one another, focus is unmistakable, and the panel folds and unfolds sensibly at both scales.
+14. **Interaction gate (M17):** click-then-type from a fresh template with no intervening key;
+    Add-a-text-frame leaves a live caret; double-click on every widget opens its editor or refuses
+    aloud; every catalog entry is menu-indexed and every gesture string matches `KeyboardMap`
+    (machine-checked, exception list empty); a drag clamps at the page edge; no snapshot baseline
+    moves; a manual NVDA pass over the new menu bar; the rewritten menu sections of
+    `docs/accessibility-test-script.md` re-run as written.
+15. **Picture gate (M18):** every photo-template placeholder fillable keyboard-only; a swap is one
+    undo step and Ctrl+Z restores the prior picture byte-for-byte; original bytes are byte-identical
+    in the `.tboard` after replace, paste and drop (item 7 re-run); a caption typed at insert prints
+    in the PDF and matches the screen (parity); a captionless document lays out byte-identically to
+    pre-M18; paste and drop share one ingest path.
+16. **Officers gate (M19):** syncing twice changes nothing; a hand-edited row survives a re-sync; an
+    unrecognised or ambiguous office reaches the dialog and never the page; the sync is one undo
+    step, byte-for-byte; Ctrl+Z never crosses the roster/document boundary; `TemplateTests`
+    unchanged; the privacy gate re-runs.
+17. **Font-window gate (M20):** no path discards a pending choice without applying it or explaining;
+    Apply with nothing pending says so; headers are unselectable and arrow-unreachable; two roles
+    changeable in one visit; "just here" shows only the selection-scoped warning; gate 11 still
+    passes byte-for-byte.
+18. **Conveniences gate (M21):** every new action keyboard-reachable and menu-indexed (mechanical);
+    align and distribute are one undo step each; find reaches the second frame of a linked chain;
+    Ctrl+wheel holds the point under the pointer stationary; no snapshot baseline moves.
 
 ## 13. Remaining open items (status as at 2026-07-27)
 
 **Every milestone M0–M16 is delivered.** M16 landed on 2026-07-27, the same day it was scheduled;
 `docs/M16-spec.md` is its record and stays the authority for what it decided. The suite is green on
 Windows (946 passed, 12 skipped — the `pdftoppm` parity tests, which are Linux-CI-only by design).
+
+> **Reopened 2026-07-27.** The paragraph above described a closed list, and it was true when
+> written. The same day, the owner's first hands-on session found the app hard to *drive* — typing
+> has no affordances, insert-picture hides three menu levels deep, the "This item" menu duplicates
+> the panel without saying so, the officers table still asks to be typed, and the font window
+> silently discards choices. §11 now carries **M17–M21**, scheduled in that order by what blocks
+> producing a newsletter; §12 gains gates 14–18. The `- [!]` items below remain blocked on a person,
+> a machine, or the owner, exactly as stated — none is superseded by the new milestones.
 
 What is left is listed here so a future session does not have to re-derive it from seven spec
 documents. Each item is blocked on a person, a machine, or a decision that is the owner's to make;
@@ -1588,6 +1914,30 @@ The third of the original defects stays unscheduled and needs the owner's word, 
 that genuinely opens a milestone: the `quote` / `body-italic` attribute collision (`docs/M14-spec.md` §11 — pre-existing,
 exposed rather than caused, cheap to fix by giving `quote` a distinguishing size, but the fix moves
 rendered pixels and therefore needs snapshot baselines re-baked on all three operating systems).
+
+**Recommended but unscheduled (added 2026-07-27, from the hands-on session that produced M17–M21).**
+Each stays out of §11 for the stated reason; none is forgotten, none is scheduled:
+
+- **IME support** — `TextInputMethodClient` is unimplemented, so CJK and dead-key input is degraded.
+  Milestone-sized platform work for an English-language newsletter; schedule only if a committee
+  member needs it.
+- **Spell check** — a dictionary dependency and its licensing are owner decisions; the committee
+  proofreads today. Its own small milestone if wanted (squiggle adornment + suggestion menu,
+  App/Editing only).
+- **Rulers, guides, snap-to-grid** — templates are the layout system for this audience; free-form
+  layout aids cut against the premise. Snapping may ride along with M21's align if the owner asks.
+- **Group/ungroup** — a document-model and serialization change; deliberately excluded from M21.
+- **Committee generation from the roster** — blocked on a roster schema decision (a Committees
+  column through import mapping, the XLSX round-trip, `PeopleWindow`); one small milestone if
+  wanted. M19 records the same reason.
+- **Widget inline text editing — deferral upheld, ruling recorded (2026-07-27, owner confirmed):**
+  M7 deferred it; M17 keeps it deferred, with the affordance carrying the load (double-click opens
+  the editor; the panel says what the thing is). Reasons: widget runs carry `ParagraphIndex == -1` —
+  there is no paragraph model to edit, so inline editing means forking the text engine or degrading
+  widgets to plain frames; `IsGenerated` ownership and diff-and-confirm sync require the wizard as
+  the single edit path, else hand-edits inside generated text become a three-way merge; and M19
+  makes *more* text generated, which strengthens the wizard path. The discoverability half of the
+  complaint was real; M17 fixes that half.
 
 ## Flagged uncertainties (verify early, all covered by M1/M3 spikes)
 - SkiaSharp 3.x `SKShaper`/HarfBuzzSharp packaging and PDF text-embedding behavior → M1.
