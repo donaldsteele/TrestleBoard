@@ -241,6 +241,149 @@ public sealed class PhotoControllerTests : IDisposable
         Assert.NotEqual(plain, brightened);
     }
 
+    // ---- M18: filling, swapping and labelling ---------------------------------------------------
+
+    /// <summary>A frame pointing at bytes the package does not hold — how every photo template ships.</summary>
+    private string AddPlaceholderFrame()
+    {
+        var frame = new ImageFrame
+        {
+            Id = "img-placeholder",
+            AssetRef = "photo-placeholder-1.jpg",
+            FrameRect = new RectPt(54f, 54f, 300f, 200f),
+            ZOrder = 5,
+            WrapMode = WrapMode.Rectangle,
+            WrapMarginPt = 8f,
+            AltText = "Write a description of this photo here…",
+        };
+        _session.Execute(new AddBlockCommand("page-1", frame));
+        return frame.Id;
+    }
+
+    [Fact]
+    public void ATemplatePlaceholderIsRecognisedAndCanBeFilledIn()
+    {
+        string id = AddPlaceholderFrame();
+        Assert.True(_photos.IsPlaceholder(id));
+        Assert.True(_photos.HasPlaceholder);
+        Assert.Equal((id, 0), _photos.FirstPlaceholder);
+
+        byte[] bytes = PhotoBytes();
+        Assert.True(_photos.ReplacePhoto(id, bytes, "Brothers at the picnic", "Summer picnic"));
+
+        var frame = (ImageFrame)_session.Document.FindBlock(id).Block;
+        Assert.Equal("Brothers at the picnic", frame.AltText);
+        Assert.Equal("Summer picnic", frame.Caption);
+        Assert.Equal(bytes, _assets.Assets[frame.AssetRef]);
+        Assert.False(_photos.IsPlaceholder(id));
+        Assert.False(_photos.HasPlaceholder);
+        Assert.Null(_photos.FirstPlaceholder);
+        Assert.Equal("Put a picture here", _session.UndoDescription);
+    }
+
+    /// <summary>
+    /// The acceptance sentence for M18: a swap is ONE undo step, and undoing it brings the previous
+    /// picture back byte for byte — which is only true because the old asset stays in the container.
+    /// </summary>
+    [Fact]
+    public void SwappingAPictureIsOneUndoStepBackToTheOldBytes()
+    {
+        string id = InsertSquareFramedPhoto();
+        var before = (ImageFrame)_session.Document.FindBlock(id).Block;
+        string firstAsset = before.AssetRef;
+        byte[] firstBytes = _assets.Assets[firstAsset];
+        RectPt geometry = before.FrameRect;
+        _photos.FixPhoto(id);   // the picture has been worked on before the swap
+
+        byte[] second = PhotoBytes(400, 400);
+        Assert.True(_photos.ReplacePhoto(id, second, "A different photograph"));
+
+        var after = (ImageFrame)_session.Document.FindBlock(id).Block;
+        Assert.NotEqual(firstAsset, after.AssetRef);
+        Assert.Equal(second, _assets.Assets[after.AssetRef]);
+        Assert.Equal(geometry, after.FrameRect);            // geometry is never touched by a swap
+        Assert.Null(after.Recipe.CropNormalized);           // ...but the old crop is not kept
+        Assert.Equal("Swap this picture", _session.UndoDescription);
+
+        _session.Undo();
+        var reverted = (ImageFrame)_session.Document.FindBlock(id).Block;
+        Assert.Equal(firstAsset, reverted.AssetRef);
+        Assert.Equal(firstBytes, _assets.Assets[reverted.AssetRef]);
+        Assert.True(reverted.Recipe.AutoLevels);            // and the work done on it comes back
+        Assert.Equal(geometry, reverted.FrameRect);
+    }
+
+    [Fact]
+    public void ASwapNeverReEncodesTheBytesItWasGiven()
+    {
+        string id = InsertSquareFramedPhoto();
+        byte[] second = (byte[])PhotoBytes(320, 240).Clone();
+        _photos.ReplacePhoto(id, second, "A different photograph");
+
+        var frame = (ImageFrame)_session.Document.FindBlock(id).Block;
+        Assert.Equal(second, _assets.Assets[frame.AssetRef]);
+        Assert.Equal(".png", System.IO.Path.GetExtension(frame.AssetRef));
+    }
+
+    [Fact]
+    public void SwappingInRubbishIsRefusedAndChangesNothing()
+    {
+        string id = InsertSquareFramedPhoto();
+        string assetBefore = ((ImageFrame)_session.Document.FindBlock(id).Block).AssetRef;
+
+        Assert.False(_photos.ReplacePhoto(id, [1, 2, 3, 4], "not a photo"));
+        Assert.Equal("That file is not a picture TrestleBoard can read. Try a JPEG or PNG.", _photos.StatusMessage);
+        Assert.Equal(assetBefore, ((ImageFrame)_session.Document.FindBlock(id).Block).AssetRef);
+    }
+
+    /// <summary>
+    /// The M18 defect this closes: <c>SetAltText</c> wrote straight to the block, so a description
+    /// typed by mistake could not be taken back.
+    /// </summary>
+    [Fact]
+    public void DescriptionAndCaptionEditsAreUndoable()
+    {
+        string id = InsertSquareFramedPhoto();
+
+        Assert.True(_photos.SetAltText(id, "Brothers at the picnic"));
+        Assert.Equal("Describe the picture", _session.UndoDescription);
+        _session.Undo();
+        Assert.Equal("Placeholder picture", ((ImageFrame)_session.Document.FindBlock(id).Block).AltText);
+
+        Assert.True(_photos.SetCaption(id, "  A warm evening at the lodge.  "));
+        var frame = (ImageFrame)_session.Document.FindBlock(id).Block;
+        Assert.Equal("A warm evening at the lodge.", frame.Caption);
+        Assert.Equal("Change the caption", _session.UndoDescription);
+
+        _session.Undo();
+        Assert.Null(((ImageFrame)_session.Document.FindBlock(id).Block).Caption);
+
+        // A blank caption removes it rather than printing an empty line.
+        _photos.SetCaption(id, "Something");
+        _photos.SetCaption(id, "   ");
+        Assert.Null(((ImageFrame)_session.Document.FindBlock(id).Block).Caption);
+    }
+
+    /// <summary>Trim drags are a burst like the sliders: one undo step for the whole adjustment.</summary>
+    [Fact]
+    public void TrimmingTheEdgesCoalescesAndClamps()
+    {
+        string id = InsertSquareFramedPhoto();
+        _session.Execute(new SetImageRecipeCommand(id, new ImageRecipe()));   // separate the burst
+
+        for (int i = 1; i <= 5; i++)
+        {
+            _photos.SetCrop(id, new NormalizedRect(i * 0.02f, 0f, 1f - (i * 0.02f), 1f));
+        }
+
+        RectPt crop = Assert.IsType<RectPt>(
+            ((ImageFrame)_session.Document.FindBlock(id).Block).Recipe.CropNormalized);
+        Assert.Equal(0.1f, crop.X, 3);
+
+        _session.Undo();
+        Assert.Null(((ImageFrame)_session.Document.FindBlock(id).Block).Recipe.CropNormalized);
+    }
+
     private byte[] RenderPage()
     {
         var info = new SKImageInfo(306, 396, SKColorType.Rgba8888, SKAlphaType.Premul, SKColorSpace.CreateSrgb());

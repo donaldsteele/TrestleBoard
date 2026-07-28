@@ -53,6 +53,11 @@ internal static class ActionIcons
         [ActionId.InsertPhoto] = "photo",
         [ActionId.EditWidget] = "edit",
         [ActionId.EditWidgetList] = "edit",
+
+        // M18. Putting a picture into an empty frame is the same act as inserting one, so it wears
+        // the same glyph: the user is choosing a photograph either way, and the frame it lands in is
+        // the only difference between them.
+        [ActionId.ReplacePicture] = "photo",
         [ActionId.FixPhoto] = "wand",
         [ActionId.ToggleWrap] = "wrap",
         [ActionId.ShowPeople] = "people",
@@ -108,6 +113,12 @@ internal static class ActionIcons
         [ActionId.SyncBirthdays] = "the sentence names both ends of the operation; no glyph does",
 
         [ActionId.AdjustPhoto] = "sliders read as decoration beside picture.fix's wand",
+
+        // M18's other three. Each is words about a picture rather than an act on one, and the
+        // pictures that would say "caption" or "description" are the words themselves.
+        [ActionId.TrimPicture] = "a crop rectangle is indistinguishable from picture.fix's wand at 20px",
+        [ActionId.CaptionPicture] = "the words under a picture cannot be drawn as a picture",
+        [ActionId.DescribePicture] = "spoken, never drawn — there is no shape for what is said aloud",
 
         // --- Flow. Only wrap gets one: the other three are relationships between two frames, and a
         //     relationship has no silhouette.

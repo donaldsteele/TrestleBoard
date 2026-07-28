@@ -52,6 +52,44 @@ public sealed class PhotoController
                 .FirstOrDefault(b => b.Id == blockId);
 
     /// <summary>
+    /// A picture frame with nothing in it yet (PLAN.md §11 M18). The photo template ships three of
+    /// these and, until M18, no command could fill one — the frame pointed at an asset the package
+    /// did not contain, and it rendered as a grey rectangle forever.
+    /// </summary>
+    public bool IsPlaceholder(string? blockId) =>
+        GetPhoto(blockId) is { } frame && FrameIsEmpty(frame);
+
+    /// <summary>True when any page still shows an unfilled picture frame — the "what's next" flag.</summary>
+    public bool HasPlaceholder =>
+        _session.Document.Pages.SelectMany(p => p.Blocks).OfType<ImageFrame>().Any(FrameIsEmpty);
+
+    /// <summary>
+    /// The first unfilled picture frame and the page it sits on, or null. The shell uses it to
+    /// answer the "what's next" card with nothing selected: it turns to that page, chooses the
+    /// frame, and then asks for a file — the same two-way reachability M13 gave the birthday sync.
+    /// </summary>
+    public (string BlockId, int PageIndex)? FirstPlaceholder
+    {
+        get
+        {
+            for (int i = 0; i < _session.Document.Pages.Count; i++)
+            {
+                foreach (ImageFrame frame in _session.Document.Pages[i].Blocks.OfType<ImageFrame>())
+                {
+                    if (FrameIsEmpty(frame))
+                    {
+                        return (frame.Id, i);
+                    }
+                }
+            }
+
+            return null;
+        }
+    }
+
+    private bool FrameIsEmpty(ImageFrame frame) => _layout.GetDecodedImage(frame.AssetRef) is null;
+
+    /// <summary>
     /// Inserts a photo at its natural aspect inside the page margins and returns the new block id,
     /// or null when the bytes are not a readable image. Alt text is required at the call site —
     /// a screen-reader user must never meet an unlabelled photo (PLAN.md §6).
@@ -106,6 +144,50 @@ public sealed class PhotoController
     }
 
     /// <summary>
+    /// Puts a picture into a frame that is already on the page, or swaps the one that is there
+    /// (PLAN.md §11 M18). Returns false when the frame is not a picture or the bytes are unreadable.
+    ///
+    /// <para>The original encoded bytes are stored verbatim, exactly as on the insert path — a swap
+    /// never re-encodes, so §12 item 7's "re-crop months later with no loss" guarantee applies to a
+    /// swapped-in photograph as much as to an inserted one. The frame's rectangle is not touched,
+    /// and the whole swap is one undo step.</para>
+    /// </summary>
+    public bool ReplacePhoto(string blockId, byte[] bytes, string altText, string? caption = null)
+    {
+        ArgumentNullException.ThrowIfNull(bytes);
+        if (GetPhoto(blockId) is not { } frame)
+        {
+            return false;
+        }
+
+        using DecodedImage? probe = ImageDecoder.Decode(bytes);
+        if (probe is null)
+        {
+            StatusMessage = "That file is not a picture TrestleBoard can read. Try a JPEG or PNG.";
+            Raise();
+            return false;
+        }
+
+        bool wasEmpty = FrameIsEmpty(frame);
+        string assetRef = NextAssetRef(bytes);
+
+        // Register BEFORE the command runs so the first paint after it can decode the new bytes.
+        _assets.Register(assetRef, bytes);
+        _layout.AddAsset(assetRef, bytes);
+
+        _session.Execute(new CompositeCommand(
+            wasEmpty ? "Put a picture here" : "Swap this picture",
+            new ChangeScope(ChangeKind.BlockGeometry, BlockId: blockId),
+            [new ReplaceImageCommand(blockId, assetRef, altText ?? "", string.IsNullOrWhiteSpace(caption) ? null : caption)]));
+
+        StatusMessage = wasEmpty
+            ? "The picture is on the page."
+            : "The picture was swapped. Press Ctrl+Z to put the old one back.";
+        Raise();
+        return true;
+    }
+
+    /// <summary>
     /// The one big button (PLAN.md §9): auto-crop to the frame's shape plus luminance auto-levels,
     /// as a single undo step labelled in plain language.
     /// </summary>
@@ -157,6 +239,15 @@ public sealed class PhotoController
         return true;
     }
 
+    /// <summary>
+    /// Keeps only part of the picture (docs/M6-spec.md §8). From M18 this is what "Trim the edges…"
+    /// drives, which is how it stopped being a method nobody called.
+    ///
+    /// <para>Like the sliders, a burst of these coalesces into ONE undo step: the four edge controls
+    /// are dragged, and an undo stack with a step per pixel of drag is an undo stack nobody can use.
+    /// That is why the bare <see cref="SetImageRecipeCommand"/> is executed here rather than the
+    /// labelled composite the one-shot photo edits use.</para>
+    /// </summary>
     public bool SetCrop(string blockId, NormalizedRect crop)
     {
         if (GetPhoto(blockId) is not { } frame)
@@ -167,7 +258,7 @@ public sealed class PhotoController
         NormalizedRect clamped = crop.Clamped();
         ImageRecipe recipe = frame.Recipe.Clone();
         recipe.CropNormalized = new RectPt(clamped.X, clamped.Y, clamped.Width, clamped.Height);
-        Execute(blockId, recipe, "Crop photo");
+        _session.Execute(new SetImageRecipeCommand(blockId, recipe));
         Raise();
         return true;
     }
@@ -216,16 +307,37 @@ public sealed class PhotoController
         return true;
     }
 
+    /// <summary>
+    /// What a screen reader says instead of showing the picture (PLAN.md §6).
+    ///
+    /// <para>Until M18 this wrote straight to the block and never reached <c>DocumentSession</c>, so
+    /// a description typed by mistake could not be taken back — the one photo edit in the app that
+    /// was not undoable. It goes through a command now like everything else.</para>
+    /// </summary>
     public bool SetAltText(string blockId, string altText)
     {
-        if (GetPhoto(blockId) is not { } frame)
+        if (GetPhoto(blockId) is null)
         {
             return false;
         }
 
-        // Alt text lives on the block, not the recipe, so it rides the same command as a no-op
-        // recipe change would; a dedicated command is not worth a new type here.
-        frame.AltText = altText ?? "";
+        _session.Execute(SetPictureWordsCommand.ForAltText(blockId, altText ?? ""));
+        StatusMessage = "The description is saved. Press Ctrl+Z to take it back.";
+        Raise();
+        return true;
+    }
+
+    /// <summary>The words printed under the picture; null or blank removes the caption (M18).</summary>
+    public bool SetCaption(string blockId, string? caption)
+    {
+        if (GetPhoto(blockId) is null)
+        {
+            return false;
+        }
+
+        _session.Execute(SetPictureWordsCommand.ForCaption(
+            blockId,
+            string.IsNullOrWhiteSpace(caption) ? null : caption.Trim()));
         Raise();
         return true;
     }

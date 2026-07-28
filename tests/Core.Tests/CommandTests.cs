@@ -30,6 +30,12 @@ public sealed class CommandTests
         }),
         ["RemoveBlock"] = _ => new RemoveBlockCommand("page-1", "rule-1"),
         ["SetImageRecipe"] = _ => new SetImageRecipeCommand("img-1", new ImageRecipe { Brightness = 0.2f }),
+        // M18. A swap replaces four things at once — bytes, recipe, description and caption — so the
+        // identity check is what proves one Ctrl+Z puts all four back.
+        ["ReplaceImage"] = _ => new ReplaceImageCommand(
+            "img-1", "img-2.jpg", "Brothers at the picnic", "A warm evening at the lodge."),
+        ["SetPictureWords.AltText"] = _ => SetPictureWordsCommand.ForAltText("img-1", "A new description"),
+        ["SetPictureWords.Caption"] = _ => SetPictureWordsCommand.ForCaption("img-1", "A new caption"),
         ["SetWidgetData"] = _ => new SetWidgetDataCommand(
             "widget-1",
             JsonSerializer.Deserialize<JsonElement>("""{"officers":[]}"""),

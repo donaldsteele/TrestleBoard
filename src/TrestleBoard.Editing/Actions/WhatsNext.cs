@@ -49,6 +49,19 @@ public static class WhatsNext
                 null));
         }
 
+        // M18: the photo template ships three empty frames, and a first issue exported with grey
+        // rectangles where the photographs should be is the most visible way this app can let
+        // somebody down. Named after the CoverDateMissing precedent — a fact about the document,
+        // computed, never acted on by itself.
+        if (context.HasPicturePlaceholder)
+        {
+            steps.Add(new NextStep(
+                "Put your photos in",
+                "The photo pages are still showing placeholders. Double-click a grey picture frame, "
+                + "or choose one and use 'Put a picture here…'.",
+                Actions.ActionId.ReplacePicture));
+        }
+
         if (context.CoverDateMissing)
         {
             steps.Add(new NextStep(

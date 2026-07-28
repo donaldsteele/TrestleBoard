@@ -32,6 +32,21 @@ public sealed class WhatsNextTests
         Assert.Empty(WhatsNext.Suggestions(Open()));
     }
 
+    /// <summary>
+    /// M18. A first issue exported with grey rectangles where the photographs should be is the most
+    /// visible way this app can let somebody down, and until M18 nothing said a word about it —
+    /// there was no command that could fill a placeholder in.
+    /// </summary>
+    [Fact]
+    public void EmptyPictureFramesAreNoticed()
+    {
+        NextStep only = Assert.Single(WhatsNext.Suggestions(Open() with { HasPicturePlaceholder = true }));
+
+        Assert.Equal(ActionId.ReplacePicture, only.ActionId);
+        Assert.Contains("photos", only.Title, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("placeholders", only.Why, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void AnUnwrittenArticleIsNoticed()
     {

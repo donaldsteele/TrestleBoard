@@ -90,10 +90,25 @@
         <!-- M17: formatting a picture is formatting. A top-level Picture menu was rejected — ten
              top-level menus at 200% UI scale for two items. M18 adds more items here. -->
         <MenuItem Header="Pi_cture" AutomationProperties.Name="Picture submenu">
+          <!-- M18 puts replace first and gives it a name that changes with the frame: an empty
+               frame is asked to take a picture, a full one to swap the one it has. The header is
+               rewritten in RefreshActions; the XAML wording is the empty-frame case. -->
+          <MenuItem x:Name="ReplacePictureMenuItem" Header="_Put a picture here…" Tag="picture.replace"
+                    InputGesture="Ctrl+Shift+O" Click="OnActionClicked"
+                    AutomationProperties.Name="Put a picture here" />
+          <Separator />
           <MenuItem Header="_Fix this picture" Tag="picture.fix" InputGesture="Ctrl+Shift+F"
                     Click="OnActionClicked" AutomationProperties.Name="Fix this picture" />
           <MenuItem Header="_Adjust the picture…" Tag="picture.adjust" InputGesture="Ctrl+Shift+A"
                     Click="OnActionClicked" AutomationProperties.Name="Adjust the picture" />
+          <MenuItem Header="_Trim the edges…" Tag="picture.trim"
+                    Click="OnActionClicked" AutomationProperties.Name="Trim the edges of the picture" />
+          <Separator />
+          <MenuItem x:Name="CaptionPictureMenuItem" Header="Write a _caption…" Tag="picture.caption"
+                    Click="OnActionClicked" AutomationProperties.Name="Write a caption for the picture" />
+          <MenuItem Header="_Describe this picture…" Tag="picture.altText"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Describe this picture for people who cannot see it" />
         </MenuItem>
       </MenuItem>
       <!-- Insert menu: the six widgets each get their own item so a keyboard user never has to

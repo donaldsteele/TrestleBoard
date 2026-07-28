@@ -122,6 +122,14 @@ public partial class MainWindow : Window
             RefreshActions();
             _ = _actions.RunAsync(ActionId.EditWidget);
         };
+
+        // M18: and double-clicking a picture frame fills it in, or swaps what is in it. Same route
+        // through the runner, for the same reason.
+        PageCanvas.PictureActivated += (_, _) =>
+        {
+            RefreshActions();
+            _ = _actions.RunAsync(ActionId.ReplacePicture);
+        };
         ApplySettings(_settings);
         RefreshActions();
 
@@ -233,6 +241,14 @@ public partial class MainWindow : Window
         UndoPeopleMenuItem.Header = _context.RosterCanUndo
             ? $"_Undo {_context.RosterUndoDescription}"
             : "_Undo the last change";
+
+        // M18: the two picture commands whose name depends on what is in the frame. The catalog
+        // owns both wordings — the menu must not invent a third.
+        ReplacePictureMenuItem.Header =
+            "_" + ActionCatalog.TitleFor(ActionId.ReplacePicture, _context);
+        CaptionPictureMenuItem.Header = ActionCatalog
+            .TitleFor(ActionId.CaptionPicture, _context)
+            .Replace("caption", "_caption", StringComparison.Ordinal);
 
         RebuildParagraphStyleMenu();
 
@@ -1175,19 +1191,27 @@ public partial class MainWindow : Window
         await InsertPhotoFromFileAsync(files[0]);
     }
 
-    private async Task InsertPhotoFromFileAsync(IStorageFile file)
+    /// <summary>The file's bytes, or null once the failure has been explained to the user.</summary>
+    private async Task<byte[]?> ReadPictureBytesAsync(IStorageFile file)
     {
-        byte[] bytes;
         try
         {
             await using Stream stream = await file.OpenReadAsync();
             using var buffer = new MemoryStream();
             await stream.CopyToAsync(buffer);
-            bytes = buffer.ToArray();
+            return buffer.ToArray();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             await ShowErrorAsync("Could not open that picture", ex.Message);
+            return null;
+        }
+    }
+
+    private async Task InsertPhotoFromFileAsync(IStorageFile file)
+    {
+        if (await ReadPictureBytesAsync(file) is not { } bytes)
+        {
             return;
         }
 
@@ -1220,15 +1244,140 @@ public partial class MainWindow : Window
         }
     }
 
-    internal async Task AdjustPhotoAsync()
+    internal async Task AdjustPhotoAsync() => await ShowAdjustWindowAsync(startOnTrim: false);
+
+    /// <summary>"Trim the edges…" — the same window, opened with the edge controls showing (M18).</summary>
+    internal async Task TrimPictureAsync() => await ShowAdjustWindowAsync(startOnTrim: true);
+
+    private async Task ShowAdjustWindowAsync(bool startOnTrim)
     {
         if (_photos is null || _frames?.SelectedBlockId is not { } blockId || !_photos.IsPhoto(blockId))
         {
             return;
         }
 
-        var window = new PhotoAdjustWindow(_photos, blockId);
+        var window = new PhotoAdjustWindow(_photos, blockId, startOnTrim);
         await window.ShowDialog(this);
+        RefreshActions();
+    }
+
+    // ---- Filling, swapping and labelling a picture (PLAN.md §11 M18) --------------------------
+
+    /// <summary>
+    /// The frame the picture commands act on: the chosen one, or — when nothing is chosen and the
+    /// "what's next" card has just said the photo pages are empty — the first unfilled frame in the
+    /// newsletter, which is turned to and chosen first so the user can see what they are filling.
+    /// </summary>
+    private string? PictureTarget()
+    {
+        if (_photos is null)
+        {
+            return null;
+        }
+
+        if (_frames?.SelectedBlockId is { } selected && _photos.IsPhoto(selected))
+        {
+            return selected;
+        }
+
+        if (_photos.FirstPlaceholder is not { } placeholder)
+        {
+            return null;
+        }
+
+        GoToPage(placeholder.PageIndex);
+        _editor?.End();
+        _frames?.Select(placeholder.BlockId);
+        return placeholder.BlockId;
+    }
+
+    /// <summary>
+    /// "Put a picture here…" / "Swap this picture…". The bytes land in the package verbatim, exactly
+    /// as on the insert path — a swap never re-encodes — and the whole change is one undo step.
+    /// </summary>
+    internal async Task ReplacePictureAsync()
+    {
+        if (_photos is null || PictureTarget() is not { } blockId)
+        {
+            return;
+        }
+
+        IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Choose a picture",
+            AllowMultiple = false,
+            FileTypeFilter = [FilePickerFileTypes.ImageAll],
+        });
+        if (files.Count == 0)
+        {
+            return;
+        }
+
+        if (await ReadPictureBytesAsync(files[0]) is not { } bytes)
+        {
+            return;
+        }
+
+        await ReplacePictureFromBytesAsync(blockId, bytes, files[0].Name);
+    }
+
+    /// <summary>
+    /// The shared tail of every replace: ask for the words, then put the bytes in. Drag-and-drop and
+    /// paste both come through here, so a picture arriving by any route is described before it lands
+    /// (PLAN.md §6).
+    /// </summary>
+    private async Task ReplacePictureFromBytesAsync(string blockId, byte[] bytes, string fileName)
+    {
+        var dialog = new PhotoInsertDialog(fileName);
+        await dialog.ShowDialog(this);
+        if (!dialog.Confirmed)
+        {
+            return;
+        }
+
+        _editor?.End();
+        if (!_photos!.ReplacePhoto(blockId, bytes, dialog.AltText, dialog.Caption))
+        {
+            await ShowErrorAsync(
+                "That file is not a picture",
+                "TrestleBoard could not read that file as a picture. JPEG and PNG files work best.");
+            return;
+        }
+
+        _frames?.Select(blockId);
+        RefreshActions();
+    }
+
+    internal async Task DescribePictureAsync()
+    {
+        if (_photos is null || PictureTarget() is not { } blockId)
+        {
+            return;
+        }
+
+        PictureWordsDialog dialog = PictureWordsDialog.ForAltText(_photos.GetPhoto(blockId)?.AltText);
+        await dialog.ShowDialog(this);
+        if (dialog.Confirmed && dialog.Text is { } description)
+        {
+            _photos.SetAltText(blockId, description);
+            RefreshActions();
+        }
+    }
+
+    internal async Task CaptionPictureAsync()
+    {
+        if (_photos is null || PictureTarget() is not { } blockId)
+        {
+            return;
+        }
+
+        PictureWordsDialog dialog = PictureWordsDialog.ForCaption(_photos.GetPhoto(blockId)?.Caption);
+        await dialog.ShowDialog(this);
+        if (dialog.Confirmed)
+        {
+            _photos.SetCaption(blockId, dialog.Text);
+            RefreshActions();
+        }
     }
 
     /// <summary>Drag-and-drop is an accelerator; the Insert menu item is the primary path (PLAN.md §6).</summary>

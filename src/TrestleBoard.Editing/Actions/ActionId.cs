@@ -59,6 +59,18 @@ public static class ActionId
     public const string FixPhoto = "picture.fix";
     public const string AdjustPhoto = "picture.adjust";
 
+    /// <summary>M18: put a picture into a frame that is already on the page, or swap the one in it.</summary>
+    public const string ReplacePicture = "picture.replace";
+
+    /// <summary>M18: the words a screen reader says instead of showing the picture.</summary>
+    public const string DescribePicture = "picture.altText";
+
+    /// <summary>M18: the words printed under the picture.</summary>
+    public const string CaptionPicture = "picture.caption";
+
+    /// <summary>M18: take the edges off the picture without touching the original file.</summary>
+    public const string TrimPicture = "picture.trim";
+
     // ---- How text flows -----------------------------------------------------------------------
     public const string ToggleWrap = "flow.wrap";
     public const string LinkFrames = "flow.link";

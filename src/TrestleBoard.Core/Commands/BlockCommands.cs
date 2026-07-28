@@ -237,3 +237,161 @@ public sealed class SetWidgetDataCommand(string blockId, JsonElement? newData, i
 
     public bool TryMerge(IDocumentCommand newer) => false;
 }
+
+/// <summary>
+/// Puts different bytes in a picture frame that is already on the page (PLAN.md §11 M18) — the
+/// command behind "Put a picture here…" and "Swap this picture…".
+///
+/// <para>Geometry is deliberately untouched: the frame the template drew is the frame the designer
+/// wanted, and a swap that resized it would undo their work every time somebody changed their mind
+/// about a photograph. The recipe IS reset, because a crop chosen for one photograph means nothing
+/// on the next one.</para>
+///
+/// <para>One command, so one Ctrl+Z takes the whole swap back — bytes, description and caption
+/// together — and the old asset stays in the container, which is what makes that undo lossless.</para>
+/// </summary>
+public sealed class ReplaceImageCommand(string blockId, string assetRef, string altText, string? caption)
+    : IDocumentCommand
+{
+    private string? _oldAssetRef;
+    private ImageRecipe? _oldRecipe;
+    private string? _oldAltText;
+    private string? _oldCaption;
+
+    public string BlockId { get; } = blockId;
+
+    public string AssetRef { get; } = assetRef;
+
+    public string AltText { get; } = altText;
+
+    public string? Caption { get; } = caption;
+
+    public string Description => "Change the picture";
+
+    /// <summary>
+    /// Geometry, not content: from M18 a caption prints under the frame, so the space the picture
+    /// takes from the text around it depends on what the caption says.
+    /// </summary>
+    public ChangeScope Scope => new(ChangeKind.BlockGeometry, BlockId: BlockId);
+
+    public void Apply(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ImageFrame frame = FindImageFrame(document, BlockId);
+        _oldAssetRef = frame.AssetRef;
+        _oldRecipe = frame.Recipe;
+        _oldAltText = frame.AltText;
+        _oldCaption = frame.Caption;
+
+        frame.AssetRef = AssetRef;
+        frame.Recipe = new ImageRecipe();
+        frame.AltText = AltText;
+        frame.Caption = Caption;
+    }
+
+    public void Revert(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ImageFrame frame = FindImageFrame(document, BlockId);
+        frame.AssetRef = _oldAssetRef ?? throw new InvalidOperationException("Revert before Apply.");
+        frame.Recipe = _oldRecipe ?? new ImageRecipe();
+        frame.AltText = _oldAltText ?? "";
+        frame.Caption = _oldCaption;
+    }
+
+    public bool TryMerge(IDocumentCommand newer) => false;
+
+    internal static ImageFrame FindImageFrame(Document document, string blockId)
+    {
+        (_, Block block) = document.FindBlock(blockId);
+        return block as ImageFrame
+            ?? throw new InvalidOperationException($"Block {blockId} is not an image frame.");
+    }
+}
+
+/// <summary>
+/// The words that belong to a picture: what a screen reader says about it, and what prints under it
+/// (PLAN.md §11 M18).
+///
+/// <para>Both live on the block rather than in a story, so before M18 the only code that set them
+/// wrote straight to the model and never reached the undo stack. That is the defect this type
+/// exists to close: a description typed by mistake was, until now, unrecoverable.</para>
+/// </summary>
+public sealed class SetPictureWordsCommand : IDocumentCommand
+{
+    private readonly bool _setAltText;
+    private readonly bool _setCaption;
+    private string? _oldAltText;
+    private string? _oldCaption;
+    private bool _applied;
+
+    private SetPictureWordsCommand(string blockId, string? altText, string? caption, bool setAltText, bool setCaption)
+    {
+        BlockId = blockId;
+        AltText = altText;
+        Caption = caption;
+        _setAltText = setAltText;
+        _setCaption = setCaption;
+    }
+
+    public string BlockId { get; }
+
+    public string? AltText { get; }
+
+    public string? Caption { get; }
+
+    public string Description => _setAltText ? "Describe the picture" : "Change the caption";
+
+    /// <summary>
+    /// A caption prints under the frame and therefore changes what the text around it has to flow
+    /// past; a description is spoken, never drawn, so it moves nothing.
+    /// </summary>
+    public ChangeScope Scope => new(
+        _setCaption ? ChangeKind.BlockGeometry : ChangeKind.BlockContent,
+        BlockId: BlockId);
+
+    public static SetPictureWordsCommand ForAltText(string blockId, string altText) =>
+        new(blockId, altText, null, setAltText: true, setCaption: false);
+
+    public static SetPictureWordsCommand ForCaption(string blockId, string? caption) =>
+        new(blockId, null, caption, setAltText: false, setCaption: true);
+
+    public void Apply(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ImageFrame frame = ReplaceImageCommand.FindImageFrame(document, BlockId);
+        _oldAltText = frame.AltText;
+        _oldCaption = frame.Caption;
+        _applied = true;
+
+        if (_setAltText)
+        {
+            frame.AltText = AltText ?? "";
+        }
+
+        if (_setCaption)
+        {
+            frame.Caption = Caption;
+        }
+    }
+
+    public void Revert(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        if (!_applied)
+        {
+            throw new InvalidOperationException("Revert before Apply.");
+        }
+
+        ImageFrame frame = ReplaceImageCommand.FindImageFrame(document, BlockId);
+        frame.AltText = _oldAltText ?? "";
+        frame.Caption = _oldCaption;
+    }
+
+    /// <summary>
+    /// Typing is not merged here. The dialogs behind these two commands hand over one finished
+    /// sentence when the user presses the button, so there is no burst to coalesce — and merging
+    /// would silently join two deliberate edits into one undo step.
+    /// </summary>
+    public bool TryMerge(IDocumentCommand newer) => false;
+}

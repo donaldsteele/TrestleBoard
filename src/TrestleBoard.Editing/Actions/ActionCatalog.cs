@@ -22,6 +22,10 @@ public static class ActionCatalog
     private const string NeedsPicture =
         "This needs a picture. Choose one on the page first.";
 
+    private const string EmptyPictureFrame =
+        "There is no picture in this frame yet, so there is nothing to change. "
+        + "Put one in first — double-clicking the frame on the page does the same thing.";
+
     private const string NeedsText =
         "Click into some writing first, then this changes the words you highlight.";
 
@@ -117,10 +121,20 @@ public static class ActionCatalog
             ActionGroup.Item, "Ctrl+Shift+U"),
 
         // ---- Pictures ---------------------------------------------------------------------------
+        // M18 puts the replace command FIRST: an empty frame is the state every photo template
+        // ships in, and until M18 no command in the app could fill one.
+        new(ActionId.ReplacePicture, "Put a picture here…", "Chooses a picture file and puts it in this frame.",
+            ActionGroup.Picture, "Ctrl+Shift+O", IsPrimary: true),
         new(ActionId.FixPhoto, "Fix this picture", "Crops it to the frame and brightens it in one step.",
             ActionGroup.Picture, "Ctrl+Shift+F", IsPrimary: true),
         new(ActionId.AdjustPhoto, "Adjust the picture…", "Opens the sliders for brightness, contrast and colour.",
             ActionGroup.Picture, "Ctrl+Shift+A"),
+        new(ActionId.TrimPicture, "Trim the edges…", "Takes the edges off without changing the original file.",
+            ActionGroup.Picture),
+        new(ActionId.CaptionPicture, "Write a caption…", "Writes the words printed under the picture.",
+            ActionGroup.Picture),
+        new(ActionId.DescribePicture, "Describe this picture…",
+            "Writes what somebody who cannot see it should be told.", ActionGroup.Picture),
 
         // ---- How text flows ---------------------------------------------------------------------
         new(ActionId.ToggleWrap, "Wrap text around this", "Makes the writing on the page flow around it.",
@@ -205,6 +219,28 @@ public static class ActionCatalog
 
     public static bool TryGet(string actionId, out EditorAction action) =>
         ById.TryGetValue(actionId, out action!);
+
+    /// <summary>
+    /// What this action is called RIGHT NOW (PLAN.md §11 M18). Almost every action has one name; two
+    /// picture commands do not, because the same command means two different things depending on
+    /// whether the frame already holds a photograph, and "Swap this picture…" offered over an empty
+    /// grey rectangle would be describing something that is not there.
+    ///
+    /// <para>The catalog's own <see cref="EditorAction.Title"/> stays the empty-frame wording, so a
+    /// surface that has not been taught about this — a menu header written in XAML — still reads
+    /// correctly rather than reading wrongly.</para>
+    /// </summary>
+    public static string TitleFor(string actionId, ActionContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        return actionId switch
+        {
+            ActionId.ReplacePicture when !context.SelectedPictureIsEmpty => "Swap this picture…",
+            ActionId.CaptionPicture when context.SelectedPictureHasCaption => "Change the caption…",
+            _ => Get(actionId).Title,
+        };
+    }
 
     /// <summary>
     /// Can the user do this right now, and if not, why not? The one decision point; everything the
@@ -325,9 +361,28 @@ public static class ActionCatalog
                         : ActionAvailability.NotApplicable(NeedsBirthdayList),
 
             // ---- Pictures -------------------------------------------------------------------------
-            ActionId.FixPhoto or ActionId.AdjustPhoto => context.Selection == SelectionKind.Photo
-                ? ActionAvailability.Available
-                : ActionAvailability.NotApplicable(NeedsPicture),
+            // Putting one in and describing one are the two things an EMPTY frame can still do;
+            // everything else needs a picture to work on, and says so by name rather than greying.
+            // Replace is reachable two ways, like M13's birthday sync: with a picture frame chosen,
+            // and — because that is where the user is standing when the "what's next" card tells
+            // them the photo pages are still empty — with nothing chosen at all. The shell finds the
+            // first empty frame in that case.
+            ActionId.ReplacePicture =>
+                context.Selection == SelectionKind.Photo
+                    ? ActionAvailability.Available
+                    : context.HasPicturePlaceholder && !context.HasFrameSelection && !context.IsEditingText
+                        ? ActionAvailability.Available
+                        : ActionAvailability.NotApplicable(NeedsPicture),
+            ActionId.DescribePicture =>
+                context.Selection == SelectionKind.Photo
+                    ? ActionAvailability.Available
+                    : ActionAvailability.NotApplicable(NeedsPicture),
+            ActionId.FixPhoto or ActionId.AdjustPhoto or ActionId.TrimPicture
+                or ActionId.CaptionPicture => context.Selection != SelectionKind.Photo
+                ? ActionAvailability.NotApplicable(NeedsPicture)
+                : context.SelectedPictureIsEmpty
+                    ? ActionAvailability.Blocked(EmptyPictureFrame, ActionId.ReplacePicture)
+                    : ActionAvailability.Available,
 
             // ---- How text flows -------------------------------------------------------------------
             ActionId.ToggleWrap => context.HasFrameSelection
@@ -443,6 +498,17 @@ public static class ActionCatalog
     public static string? DescribeSelectionHint(ActionContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
+
+        // M18: an empty picture frame has the same problem the widgets have — clicking it does
+        // something invisible — with the extra sting that the photo template ships three of them and
+        // nothing in the app could fill one until M18.
+        if (context.Selection == SelectionKind.Photo)
+        {
+            return context.SelectedPictureIsEmpty
+                ? "There is no picture in this frame yet. Use 'Put a picture here…' — "
+                  + "or just double-click it on the page."
+                : null;
+        }
 
         if (context.Selection != SelectionKind.Widget)
         {

@@ -170,7 +170,7 @@ internal sealed class ActionPanel : Border
                 _content.Children.Add(GroupHeading(ActionCatalog.DescribeGroup(currentGroup.Value)));
             }
 
-            _content.Children.Add(BuildOffer(offer, invoke));
+            _content.Children.Add(BuildOffer(offer, context, invoke));
         }
 
         if (_content.Children.Count == 0)
@@ -259,14 +259,18 @@ internal sealed class ActionPanel : Border
     /// One offered action. A blocked one keeps its button and gains a sentence saying why — the
     /// button is not disabled, so a screen reader still reaches it and pressing it explains itself.
     /// </summary>
-    private static Control BuildOffer(ActionOffer offer, Action<string, Control?> invoke)
+    private static Control BuildOffer(ActionOffer offer, ActionContext context, Action<string, Control?> invoke)
     {
         // The gesture is a second, quieter line rather than a suffix on the title. That removes
         // fourteen to sixteen characters from most buttons and changes nothing a screen reader
         // hears, because AutomationProperties.Name below has always carried the title alone.
+        //
+        // M18: the title comes from the catalog's context-aware TitleFor rather than straight off
+        // the declaration, so "Put a picture here…" becomes "Swap this picture…" once there is one.
+        string title = ActionCatalog.TitleFor(offer.Action.Id, context);
         Button button = PanelButton(
-            offer.Action.Title, offer.Action.Id, offer.Action.DisplayGesture, offer.Action.IsPrimary);
-        AutomationProperties.SetName(button, offer.Action.Title);
+            title, offer.Action.Id, offer.Action.DisplayGesture, offer.Action.IsPrimary);
+        AutomationProperties.SetName(button, title);
         AutomationProperties.SetHelpText(
             button,
             offer.IsAvailable ? offer.Action.ShortDescription : offer.Availability.Reason);

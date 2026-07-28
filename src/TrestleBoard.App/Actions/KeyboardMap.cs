@@ -75,6 +75,11 @@ internal static class KeyboardMap
         new(Key.F, CtrlShift, ActionId.FixPhoto),
         new(Key.A, CtrlShift, ActionId.AdjustPhoto),
 
+        // M18. Ctrl+Shift+O reads as "open a picture into this frame", beside Ctrl+O for opening a
+        // newsletter. The other three picture commands are menu-only on purpose: they are typed
+        // into once and then left alone, and three more unmemorable chords would buy nothing.
+        new(Key.O, CtrlShift, ActionId.ReplacePicture),
+
         // ---- How text flows ---------------------------------------------------------------------
         new(Key.W, CtrlShift, ActionId.ToggleWrap),
         new(Key.L, CtrlShift, ActionId.LinkFrames),

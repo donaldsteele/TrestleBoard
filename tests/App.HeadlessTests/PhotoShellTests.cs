@@ -88,6 +88,146 @@ public sealed class PhotoShellTests
         }, TestContext.Current.CancellationToken);
     }
 
+    // ---- M18: the photo template's frames can actually be filled ------------------------------
+
+    /// <summary>
+    /// The milestone in one test. "6-page with photos" ships three unfillable frames — there was no
+    /// replace command at all before M18, so <c>DocumentRenderSource</c> drew grey rectangles for
+    /// the life of the document. Now each of them offers the hint, takes a picture, and says so.
+    /// </summary>
+    [Fact]
+    public async Task EveryPlaceholderInThePhotoTemplateCanBeFilledIn()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenTemplate("six-page-photos");
+
+            (string BlockId, int PageIndex) first = Assert.IsType<(string, int)>(
+                window.PhotosForTest!.FirstPlaceholder);
+            Assert.Equal(3, first.PageIndex);                       // page 4, the first photo page
+            Assert.Contains(
+                window.SourceForTest!.GetPlaceholderPictureRects(first.PageIndex),
+                p => p.BlockId == first.BlockId);
+
+            byte[] bytes = PhotoBytes();
+            Assert.True(window.PhotosForTest.ReplacePhoto(
+                first.BlockId, bytes, "Brothers at the picnic", "Summer picnic"));
+
+            var frame = (ImageFrame)window.SessionForTest!.Document.FindBlock(first.BlockId).Block;
+            Assert.Equal(bytes, window.PackageForTest!.Assets[frame.AssetRef]);
+            Assert.Equal("Summer picnic", frame.Caption);
+            Assert.Equal("Put a picture here", window.SessionForTest.UndoDescription);
+
+            // The frame stops being a placeholder, and stops being offered the hint.
+            Assert.DoesNotContain(
+                window.SourceForTest.GetPlaceholderPictureRects(first.PageIndex),
+                p => p.BlockId == first.BlockId);
+
+            // ...and the next empty frame moves up, so the "what's next" card keeps working.
+            Assert.NotEqual(first, window.PhotosForTest.FirstPlaceholder);
+
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// Double-clicking a picture frame asks for a picture — the gesture M17 taught for the lists,
+    /// routed through the runner so the availability rules apply exactly as from the menu.
+    /// </summary>
+    [Fact]
+    public async Task DoubleClickingAPictureFrameAsksToFillIt()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.OpenTemplate("six-page-photos");
+            window.GoToPage(3);
+
+            (string blockId, _) = Assert.IsType<(string, int)>(window.PhotosForTest!.FirstPlaceholder);
+            Core.Model.RectPt rect = window.SourceForTest!.GetEffectiveRect(blockId);
+
+            var invoked = new List<string>();
+            window.ActionsForTest.InterceptorForTest = id =>
+            {
+                invoked.Add(id);
+                return true;
+            };
+
+            Assert.True(window.CanvasForTest.TryActivatePictureAt(
+                rect.X + (rect.Width / 2f), rect.Y + (rect.Height / 2f)));
+
+            Assert.Equal(blockId, window.FramesForTest!.SelectedBlockId);
+            Assert.Equal(["picture.replace"], invoked);
+
+            window.ActionsForTest.InterceptorForTest = null;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>Keyboard-only fillability: Ctrl+Shift+O reaches the same command.</summary>
+    [Fact]
+    public async Task TheKeyboardReachesTheReplaceCommand()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenTemplate("six-page-photos");
+            window.CanvasForTest.Focus();
+
+            (string blockId, int pageIndex) = Assert.IsType<(string, int)>(
+                window.PhotosForTest!.FirstPlaceholder);
+            window.GoToPage(pageIndex);
+            window.FramesForTest!.Select(blockId);
+
+            var invoked = new List<string>();
+            window.ActionsForTest.InterceptorForTest = id =>
+            {
+                invoked.Add(id);
+                return true;
+            };
+
+            window.KeyPressQwerty(PhysicalKey.O, RawInputModifiers.Control | RawInputModifiers.Shift);
+            Assert.Equal(["picture.replace"], invoked);
+
+            window.ActionsForTest.InterceptorForTest = null;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// The picture commands that need a picture refuse an empty frame out loud, naming the way out.
+    /// A grey rectangle cannot be brightened, and greying the button would say nothing about why.
+    /// </summary>
+    [Fact]
+    public async Task AnEmptyFrameRefusesTheAdjustmentsInPlainLanguage()
+    {
+        await Session.Dispatch(async () =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenTemplate("six-page-photos");
+
+            (string blockId, int pageIndex) = Assert.IsType<(string, int)>(
+                window.PhotosForTest!.FirstPlaceholder);
+            window.GoToPage(pageIndex);
+            window.FramesForTest!.Select(blockId);
+            window.RefreshActions();
+
+            await window.ActionsForTest.RunAsync("picture.fix");
+
+            Assert.Contains(
+                "no picture in this frame",
+                window.StatusLabelTextForTest ?? "",
+                StringComparison.Ordinal);
+            Assert.False(window.SessionForTest!.CanUndo);
+
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
     [Fact]
     public async Task FixPhotoDoesNothingWhenTheSelectionIsNotAPicture()
     {

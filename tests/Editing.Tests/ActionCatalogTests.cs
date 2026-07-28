@@ -32,6 +32,9 @@ public sealed class ActionCatalogTests
         yield return BirthdayList() with { RosterCount = 0, RosterBirthdaysThisMonth = 0 };
         yield return BirthdayList() with { RosterBirthdaysThisMonth = 0 };
         yield return Document() with { BirthdayListIsStale = true, RosterCount = 40, RosterBirthdaysThisMonth = 7 };
+        yield return EmptyPicture();
+        yield return Photo() with { SelectedPictureHasCaption = true };
+        yield return Document() with { HasPicturePlaceholder = true };
     }
 
     private static ActionContext Document() => new()
@@ -61,6 +64,13 @@ public sealed class ActionCatalogTests
     {
         Selection = SelectionKind.Photo,
         SelectedBlockId = "p1",
+    };
+
+    /// <summary>A picture frame with nothing in it — how the photo template ships (M18).</summary>
+    private static ActionContext EmptyPicture() => Photo() with
+    {
+        SelectedPictureIsEmpty = true,
+        HasPicturePlaceholder = true,
     };
 
     private static ActionContext Widget() => Document() with
@@ -416,8 +426,21 @@ public sealed class ActionCatalogTests
     }
 
     /// <summary>
-    /// Only the widgets need it. A text frame answers a click by putting a caret in it, and a photo
-    /// by selecting itself; a caption under those would be noise the user has to read past.
+    /// M18 adds the second case: an empty picture frame has the widgets' problem too — clicking it
+    /// does something invisible — so it gets the same sentence, naming the same two ways out.
+    /// </summary>
+    [Fact]
+    public void AnEmptyPictureFrameSaysHowItIsFilled()
+    {
+        string hint = Assert.IsType<string>(ActionCatalog.DescribeSelectionHint(EmptyPicture()));
+        Assert.Contains("double-click", hint, StringComparison.Ordinal);
+        Assert.Contains(ActionCatalog.Get(ActionId.ReplacePicture).Title, hint, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Only the widgets and empty picture frames need it. A text frame answers a click by putting a
+    /// caret in it, and a picture with something in it by selecting itself; a caption under those
+    /// would be noise the user has to read past.
     /// </summary>
     [Fact]
     public void NothingElseCarriesACaption()
@@ -429,5 +452,90 @@ public sealed class ActionCatalogTests
         // A widget this build does not understand already explains itself in its refusal; a second
         // sentence telling the user to edit it would contradict the first.
         Assert.Null(ActionCatalog.DescribeSelectionHint(Widget() with { CanEditWidget = false }));
+    }
+
+    // ---- pictures (M18) --------------------------------------------------------------------------
+
+    /// <summary>
+    /// The same command, two names. Offering "Swap this picture…" over a grey rectangle would be
+    /// describing something that is not there, and "Put a picture here…" over a photograph would be
+    /// hiding what the command is about to do to it.
+    /// </summary>
+    [Fact]
+    public void TheReplaceCommandIsNamedForWhatIsInTheFrame()
+    {
+        Assert.Equal("Put a picture here…", ActionCatalog.TitleFor(ActionId.ReplacePicture, EmptyPicture()));
+        Assert.Equal("Swap this picture…", ActionCatalog.TitleFor(ActionId.ReplacePicture, Photo()));
+
+        Assert.Equal("Write a caption…", ActionCatalog.TitleFor(ActionId.CaptionPicture, Photo()));
+        Assert.Equal(
+            "Change the caption…",
+            ActionCatalog.TitleFor(ActionId.CaptionPicture, Photo() with { SelectedPictureHasCaption = true }));
+
+        // Everything else answers with its declared title, unchanged.
+        foreach (EditorAction action in ActionCatalog.All)
+        {
+            if (action.Id is ActionId.ReplacePicture or ActionId.CaptionPicture)
+            {
+                continue;
+            }
+
+            Assert.Equal(action.Title, ActionCatalog.TitleFor(action.Id, Photo()));
+        }
+    }
+
+    /// <summary>
+    /// An empty frame can be filled and described; it cannot be brightened, trimmed or captioned,
+    /// and the refusal names the way out rather than greying the button (PLAN.md §11 M11).
+    /// </summary>
+    [Fact]
+    public void AnEmptyPictureFrameCanBeFilledButNotAdjusted()
+    {
+        ActionContext empty = EmptyPicture();
+        Assert.True(ActionCatalog.Evaluate(ActionId.ReplacePicture, empty).IsAvailable);
+        Assert.True(ActionCatalog.Evaluate(ActionId.DescribePicture, empty).IsAvailable);
+
+        foreach (string id in new[]
+                 {
+                     ActionId.FixPhoto, ActionId.AdjustPhoto, ActionId.TrimPicture, ActionId.CaptionPicture,
+                 })
+        {
+            ActionAvailability availability = ActionCatalog.Evaluate(id, empty);
+            Assert.False(availability.IsAvailable);
+            Assert.Equal(ActionAvailabilityKind.Blocked, availability.Kind);
+            Assert.Contains("no picture in this frame", availability.Reason, StringComparison.Ordinal);
+            Assert.Equal(ActionId.ReplacePicture, availability.RemedyId);
+        }
+
+        // With a picture in it, all four are simply available.
+        foreach (string id in new[]
+                 {
+                     ActionId.FixPhoto, ActionId.AdjustPhoto, ActionId.TrimPicture, ActionId.CaptionPicture,
+                 })
+        {
+            Assert.True(ActionCatalog.Evaluate(id, Photo()).IsAvailable);
+        }
+    }
+
+    /// <summary>
+    /// Reachable two ways, like M13's birthday sync: from a chosen frame, and from the "what's next"
+    /// card with nothing chosen at all — which is where the user is standing when the card has just
+    /// told them the photo pages are still empty.
+    /// </summary>
+    [Fact]
+    public void PuttingAPictureInIsReachableFromTheWhatsNextCard()
+    {
+        Assert.True(ActionCatalog
+            .Evaluate(ActionId.ReplacePicture, Document() with { HasPicturePlaceholder = true })
+            .IsAvailable);
+
+        // ...but never while something else is selected: it would fill in a frame nobody is looking at.
+        Assert.False(ActionCatalog
+            .Evaluate(ActionId.ReplacePicture, TextFrame() with { HasPicturePlaceholder = true })
+            .IsAvailable);
+        Assert.False(ActionCatalog
+            .Evaluate(ActionId.ReplacePicture, Typing() with { HasPicturePlaceholder = true })
+            .IsAvailable);
+        Assert.False(ActionCatalog.Evaluate(ActionId.ReplacePicture, Document()).IsAvailable);
     }
 }

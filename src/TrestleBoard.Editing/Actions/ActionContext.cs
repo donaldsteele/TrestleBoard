@@ -76,6 +76,21 @@ public sealed record ActionContext
     /// <summary>There is somewhere for the overflowing text of the selected frame to go.</summary>
     public bool CanAutoFlow { get; init; }
 
+    // ---- Pictures (M18) -----------------------------------------------------------------------
+
+    /// <summary>
+    /// The selected picture frame has nothing in it yet — the state every photo template ships in.
+    /// It is what makes "Put a picture here…" and "Swap this picture…" the same command wearing two
+    /// titles, and what stops the app offering to brighten a grey rectangle.
+    /// </summary>
+    public bool SelectedPictureIsEmpty { get; init; }
+
+    /// <summary>The selected picture already has a caption printed under it.</summary>
+    public bool SelectedPictureHasCaption { get; init; }
+
+    /// <summary>Somewhere in the newsletter a picture frame is still empty (the "what's next" flag).</summary>
+    public bool HasPicturePlaceholder { get; init; }
+
     // ---- Fonts (M14) --------------------------------------------------------------------------
 
     /// <summary>The writing at the caret carries a "just here" font rather than its role's.</summary>

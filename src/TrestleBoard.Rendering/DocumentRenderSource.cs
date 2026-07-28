@@ -216,6 +216,38 @@ public sealed class DocumentRenderSource : IDisposable
     /// </summary>
     public bool IsWidgetBlock(string blockId) => _document.FindBlock(blockId).Block is WidgetBlock;
 
+    /// <summary>A picture frame, whether or not there is a picture in it yet (M18).</summary>
+    public bool IsImageBlock(string blockId) => _document.FindBlock(blockId).Block is ImageFrame;
+
+    /// <summary>
+    /// The picture frames on this page with nothing in them yet (PLAN.md §11 M18) — where the shell
+    /// hangs "Double-click to choose a picture", exactly as it hangs the empty-frame hint on a text
+    /// frame nobody has typed in.
+    ///
+    /// <para>"Empty" is decided by whether the bytes DECODE, not by whether the container holds an
+    /// entry: a template ships frames pointing at assets that were never in the package, and a file
+    /// whose picture failed to decode is just as empty from where the user is standing.</para>
+    /// </summary>
+    public IReadOnlyList<(string BlockId, RectPt Rect)> GetPlaceholderPictureRects(int pageIndex)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (pageIndex < 0 || pageIndex >= _document.Pages.Count)
+        {
+            return [];
+        }
+
+        var empty = new List<(string, RectPt)>();
+        foreach (ImageFrame frame in _document.Pages[pageIndex].Blocks.OfType<ImageFrame>())
+        {
+            if (ResolveImage(frame.AssetRef) is null)
+            {
+                empty.Add((frame.Id, DocumentLayoutAdapter.EffectiveRect(frame, _previewRects)));
+            }
+        }
+
+        return empty;
+    }
+
     /// <summary>
     /// The text frames on one page that hold nothing yet, so the editor can paint "click here and
     /// start typing" over them (PLAN.md §11 M17).

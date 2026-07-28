@@ -102,6 +102,12 @@ public static class ActionContextFactory
             SelectionIsOverset = frames?.IsSelectionOverset == true,
             CanAutoFlow = pages?.CanAutoFlow(textBlockId) == true,
 
+            SelectedPictureIsEmpty = selection == SelectionKind.Photo && photos?.IsPlaceholder(blockId) == true,
+            SelectedPictureHasCaption =
+                selection == SelectionKind.Photo
+                && !string.IsNullOrWhiteSpace(photos?.GetPhoto(blockId)?.Caption),
+            HasPicturePlaceholder = photos?.HasPlaceholder == true,
+
             SelectionUsesFontOverride = editing && editor!.SelectionUsesFontOverride,
             FontOverrideNote = editing ? editor!.DescribeFontOverride() : null,
             FontOverrideCount = editor?.CountFontOverrides() ?? 0,

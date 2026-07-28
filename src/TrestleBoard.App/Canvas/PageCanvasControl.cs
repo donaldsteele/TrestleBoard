@@ -138,6 +138,13 @@ public sealed class PageCanvasControl : Control
     /// </summary>
     internal event EventHandler<string>? WidgetActivated;
 
+    /// <summary>
+    /// Raised when the user double-clicks a picture frame (M18). M17 deliberately left a photo's
+    /// double-click alone — "there is no one obvious thing it should do" — and M18 is where there
+    /// is one: an empty frame asks for a picture, a full one offers to swap it.
+    /// </summary>
+    internal event EventHandler<string>? PictureActivated;
+
     public DocumentRenderSource? Source
     {
         get => _source;
@@ -340,23 +347,38 @@ public sealed class PageCanvasControl : Control
                 continue;
             }
 
-            var text = new FormattedText(
-                EmptyFrameHint,
-                System.Globalization.CultureInfo.InvariantCulture,
-                FlowDirection.LeftToRight,
-                Typeface.Default,
-                14d,
-                hintBrush);
-
-            Rect box = ToControlRect(rect);
-            if (box.Width < text.Width + 16 || box.Height < text.Height + 12)
-            {
-                // Too small to say it in: a clipped half-sentence would be worse than nothing.
-                continue;
-            }
-
-            context.DrawText(text, new Point(box.X + 8, box.Y + 6));
+            DrawHint(context, EmptyFrameHint, rect, hintBrush);
         }
+
+        // M18: the photo template's frames say what to do with them. Until M18 they said nothing,
+        // because nothing could be done with them — there was no replace command at all.
+        foreach ((string _, Core.Model.RectPt rect) in _source.GetPlaceholderPictureRects(PageIndex))
+        {
+            DrawHint(context, EmptyPictureHint, rect, hintBrush);
+        }
+    }
+
+    /// <summary>What an empty picture frame says, in the same voice as <see cref="EmptyFrameHint"/>.</summary>
+    internal const string EmptyPictureHint = "Double-click to choose a picture";
+
+    private void DrawHint(DrawingContext context, string hint, Core.Model.RectPt rect, IBrush brush)
+    {
+        var text = new FormattedText(
+            hint,
+            System.Globalization.CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            Typeface.Default,
+            14d,
+            brush);
+
+        Rect box = ToControlRect(rect);
+        if (box.Width < text.Width + 16 || box.Height < text.Height + 12)
+        {
+            // Too small to say it in: a clipped half-sentence would be worse than nothing.
+            return;
+        }
+
+        context.DrawText(text, new Point(box.X + 8, box.Y + 6));
     }
 
     private Rect ToControlRect(Core.Model.RectPt rect) => new(
@@ -437,7 +459,7 @@ public sealed class PageCanvasControl : Control
             return;
         }
 
-        if (e.ClickCount == 2 && TryActivateWidgetAt(x, y))
+        if (e.ClickCount == 2 && (TryActivateWidgetAt(x, y) || TryActivatePictureAt(x, y)))
         {
             e.Handled = true;
             return;
@@ -494,6 +516,26 @@ public sealed class PageCanvasControl : Control
         _editor?.End();
         _frames.Select(hit);
         WidgetActivated?.Invoke(this, hit);
+        return true;
+    }
+
+    /// <summary>
+    /// The M18 half of the same gesture: a second click on a picture frame chooses it and asks the
+    /// shell to fill it in. The gesture the app already taught for the lists now means the same kind
+    /// of thing for pictures — "this is the thing you edit by double-clicking".
+    /// </summary>
+    internal bool TryActivatePictureAt(float xPt, float yPt)
+    {
+        if (_frames is not { IsLinkModeActive: false }
+            || _source?.HitTestBlock(PageIndex, xPt, yPt) is not { } hit
+            || !_source.IsImageBlock(hit))
+        {
+            return false;
+        }
+
+        _editor?.End();
+        _frames.Select(hit);
+        PictureActivated?.Invoke(this, hit);
         return true;
     }
 
