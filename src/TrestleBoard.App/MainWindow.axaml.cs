@@ -28,6 +28,7 @@ using TrestleBoard.Rendering;
 using TrestleBoard.Roster;
 using TrestleBoard.Widgets;
 using TrestleBoard.Widgets.Builtins.BirthdayList;
+using TrestleBoard.Widgets.Builtins.OfficersTable;
 using TrestleBoard.Widgets.Roster;
 using TrestleBoard.Widgets.Wizards;
 
@@ -299,6 +300,13 @@ public partial class MainWindow : Window
                     ? 0
                     : BirthdayRosterProjection.CountFor(
                         Roster.Book.Members, _session.Document.Metadata.IssueMonth),
+
+                // M19: the same three facts for the officers table. Reading the page's widgets on
+                // every refresh is what M13 already does for birthdays, and the cost is a dozen
+                // JSON reads against a document that is at most six pages long.
+                OfficersTableIsStale: OfficersTableNeedsUpdating(),
+                RosterOfficesFilledIn: OfficersRosterProjection.CountFor(Roster.Book.Members),
+                SelectionFilledInFromRoster: FilledInFromRoster(blockId),
 
                 // Reading the book here means the first refresh loads it, which is near enough to
                 // eager — and that is the right trade: "Save as a spreadsheet…" greyed with the
@@ -1644,8 +1652,10 @@ public partial class MainWindow : Window
 
     // ---- Birthdays from the address book (PLAN.md §11 M13) -----------------------------------
 
-    /// <summary>The one widget type the shell fills in from the address book.</summary>
+    /// <summary>The two widget types the shell fills in from the address book (M13, M19).</summary>
     private const string BirthdayListTypeId = "birthdayList";
+
+    private const string OfficersTableTypeId = "officersTable";
 
     /// <summary>
     /// Does a generated birthday list on the page disagree with the address book? Asking is all this
@@ -1673,24 +1683,7 @@ public partial class MainWindow : Window
         return false;
     }
 
-    private IEnumerable<string> BirthdayListBlockIds()
-    {
-        if (_session is null)
-        {
-            yield break;
-        }
-
-        foreach (Core.Model.Page page in _session.Document.Pages)
-        {
-            foreach (Core.Model.Block block in page.Blocks)
-            {
-                if (block is Core.Model.WidgetBlock { WidgetType: BirthdayListTypeId } widget)
-                {
-                    yield return widget.Id;
-                }
-            }
-        }
-    }
+    private IEnumerable<string> BirthdayListBlockIds() => WidgetBlockIds(BirthdayListTypeId);
 
     private bool TryReadBirthdayList(string blockId, out BirthdayListData data)
     {
@@ -1859,6 +1852,273 @@ public partial class MainWindow : Window
             : $"The {monthName} birthday list now has {string.Join(", ", parts)}. Press Ctrl+Z to take it back.";
     }
 
+    // ---- Officers from the address book (PLAN.md §11 M19) ------------------------------------
+
+    /// <summary>
+    /// Does a generated officers table on the page disagree with the address book? Asking is all
+    /// this does — M13's hard rule carries over word for word: staleness never mutates the document.
+    /// </summary>
+    private bool OfficersTableNeedsUpdating()
+    {
+        if (_session is null)
+        {
+            return false;
+        }
+
+        foreach (string blockId in WidgetBlockIds(OfficersTableTypeId))
+        {
+            if (TryReadOfficers(blockId, out OfficersTableData data)
+                && OfficersRosterProjection.IsStale(data, Roster.Book.Members))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// "14 July 2026" when the selected widget was filled in from the address book, an empty string
+    /// when it was but the stamp cannot be read, and null when it was typed by hand. The panel and
+    /// the widget editor both print this, so a generated list finally SAYS it is one (M19).
+    /// </summary>
+    private string? FilledInFromRoster(string? blockId)
+    {
+        if (blockId is null || _widgets is null)
+        {
+            return null;
+        }
+
+        return _widgets.GetWidgetType(blockId) switch
+        {
+            OfficersTableTypeId when TryReadOfficers(blockId, out OfficersTableData officers)
+                && officers.Source == OfficersTableSource.Roster =>
+                OfficersSyncDialog.WhenText(officers.GeneratedUtc),
+            BirthdayListTypeId when TryReadBirthdayList(blockId, out BirthdayListData birthdays)
+                && birthdays.Source == BirthdayListSource.Roster =>
+                OfficersSyncDialog.WhenText(birthdays.GeneratedUtc),
+            _ => null,
+        };
+    }
+
+    /// <summary>The officers table on a block, or null. The screenshot harness builds a projection
+    /// against a fictional book with it; nothing in the shipping app goes through here.</summary>
+    internal OfficersTableData? ReadOfficersForTest(string blockId) =>
+        TryReadOfficers(blockId, out OfficersTableData data) ? data : null;
+
+    private bool TryReadOfficers(string blockId, out OfficersTableData data)
+    {
+        data = null!;
+        if (_session is null
+            || !_widgetProvider.Registry.TryGet(OfficersTableTypeId, out IWidgetDefinition? definition)
+            || !_session.Document.TryFindBlock(blockId, out _, out Core.Model.Block? block)
+            || block is not Core.Model.WidgetBlock widget
+            || widget.WidgetType != OfficersTableTypeId
+            || !definition.TryReadData(widget.Data, widget.DataVersion, out object typed)
+            || typed is not OfficersTableData typedData)
+        {
+            return false;
+        }
+
+        data = typedData;
+        return true;
+    }
+
+    /// <summary>
+    /// Fills the selected officers table in from the address book, showing the per-office diff
+    /// first. One sync is ONE undo step labelled in the user's words, because it commits through the
+    /// same <see cref="WidgetController.ApplyWidgetData"/> the wizard uses — no new command type, so
+    /// Ctrl+Z restores exactly what was printed before (PLAN.md §11 M19).
+    /// </summary>
+    internal async Task SyncOfficersAsync()
+    {
+        if (_session is null || _widgets is null)
+        {
+            return;
+        }
+
+        // The panel offers this beside a selected table; the "what's next" card offers it with
+        // nothing selected at all, and then the shell finds the table and shows the user where it is.
+        string? blockId = _frames?.SelectedBlockId;
+        if (blockId is null || _widgets.GetWidgetType(blockId) != OfficersTableTypeId)
+        {
+            blockId = WidgetBlockIds(OfficersTableTypeId).FirstOrDefault();
+            if (blockId is null)
+            {
+                Announce("There is no officers table on this newsletter yet. Add one from the Insert menu.");
+                return;
+            }
+
+            _frames?.Select(blockId);
+            GoToPage(PageOf(blockId));
+        }
+
+        if (!_widgets.CanEdit(blockId))
+        {
+            Announce(WidgetController.NewerVersionMessage);
+            return;
+        }
+
+        if (!TryReadOfficers(blockId, out OfficersTableData current))
+        {
+            Announce("TrestleBoard could not read what is in this officers table, so it left it alone.");
+            return;
+        }
+
+        OfficersProjection plan = OfficersRosterProjection.Plan(current, Roster.Book.Members);
+
+        // Nothing to show is not nothing to do: the table may never have been stamped as generated,
+        // and leaving that behind would nag from the "what's next" card forever. The user pressed
+        // the button, so the provenance is brought up to date without a dialog nobody needs.
+        if (!plan.HasAnythingToSay)
+        {
+            ApplyOfficerDecisions(blockId, current, plan, plan.DefaultDecisions);
+            Announce("The officers table already matches your address book.");
+            return;
+        }
+
+        OfficersSyncAnswer answer = await AskAboutOfficersAsync(plan, inserting: false);
+        if (!answer.Confirmed)
+        {
+            Announce("The officers table was left exactly as it was.");
+            return;
+        }
+
+        ApplyOfficerDecisions(blockId, current, plan, answer.Decisions);
+        WritePhoneNumbersBack(answer.PhoneWriteBacks);
+        Announce(Describe(answer.Decisions, plan));
+    }
+
+    /// <summary>
+    /// At insert time only: the extra first screen, exactly as M13 offers one for birthdays. With an
+    /// empty address book — or a book nobody has written offices into — the wizard is exactly what it
+    /// has always been, and the user is asked nothing.
+    /// </summary>
+    private async Task<System.Text.Json.JsonElement?> OfferOfficersFromRosterAsync()
+    {
+        if (_session is null
+            || Roster.Book.Count == 0
+            || !_widgetProvider.Registry.TryGet(OfficersTableTypeId, out IWidgetDefinition? definition))
+        {
+            return null;
+        }
+
+        var empty = (OfficersTableData)definition.CreateEmptyData(
+            WidgetController.SeedFrom(_session.Document));
+        OfficersProjection plan = OfficersRosterProjection.Plan(empty, Roster.Book.Members);
+        if (plan.Proposals.Count == 0)
+        {
+            return null;
+        }
+
+        OfficersSyncAnswer answer = await AskAboutOfficersAsync(plan, inserting: true);
+        return answer.Confirmed
+            ? StampedOfficers(OfficersRosterProjection.Apply(empty, answer.Decisions, plan.Fingerprint))
+            : null;
+    }
+
+    /// <summary>What the officers dialog came back with, flattened so a test can stand in for it.</summary>
+    internal sealed record OfficersSyncAnswer(
+        bool Confirmed,
+        IReadOnlyList<OfficerDecision> Decisions,
+        IReadOnlyList<(string MemberId, string Phone)> PhoneWriteBacks);
+
+    /// <summary>
+    /// Set by the headless tests, which cannot stand in front of a modal window. It answers the
+    /// dialog's question and nothing else — every rule about what the answer then does stays in the
+    /// code the user exercises.
+    /// </summary>
+    internal Func<OfficersProjection, OfficersSyncAnswer>? OfficersConfirmForTest { get; set; }
+
+    private async Task<OfficersSyncAnswer> AskAboutOfficersAsync(OfficersProjection plan, bool inserting)
+    {
+        if (OfficersConfirmForTest is { } answer)
+        {
+            return answer(plan);
+        }
+
+        OfficersSyncDialog dialog = await OfficersSyncDialog.AskAsync(this, plan, inserting);
+        return new OfficersSyncAnswer(dialog.Confirmed, dialog.Decisions, dialog.PhoneWriteBacks);
+    }
+
+    private void ApplyOfficerDecisions(
+        string blockId,
+        OfficersTableData current,
+        OfficersProjection plan,
+        IReadOnlyList<OfficerDecision> decisions)
+    {
+        if (_widgets is null
+            || !_widgetProvider.Registry.TryGet(OfficersTableTypeId, out IWidgetDefinition? definition))
+        {
+            return;
+        }
+
+        OfficersTableData result = OfficersRosterProjection.Apply(current, decisions, plan.Fingerprint);
+        _widgets.ApplyWidgetData(
+            blockId,
+            StampedOfficers(result),
+            definition.CurrentDataVersion,
+            OfficersRosterProjection.UndoLabel);
+    }
+
+    /// <summary>
+    /// The projection is a pure function and deliberately knows nothing about the clock, so the
+    /// "when" is stamped here, in the layer that already owns wall-clock time.
+    /// </summary>
+    private System.Text.Json.JsonElement StampedOfficers(OfficersTableData data)
+    {
+        data.GeneratedUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+        _widgetProvider.Registry.TryGet(OfficersTableTypeId, out IWidgetDefinition? definition);
+        return definition!.WriteData(data);
+    }
+
+    /// <summary>Plain counts, in the status bar's polite live region — never "12 records synced".</summary>
+    private static string Describe(IReadOnlyList<OfficerDecision> decisions, OfficersProjection plan)
+    {
+        int filled = decisions.Count(d => d.Chosen is not null);
+        int cleared = decisions.Count(d => d.Chosen is null);
+        int leftAlone = plan.Proposals.Count - decisions.Count;
+
+        var parts = new List<string>();
+        if (filled > 0)
+        {
+            parts.Add(filled == 1 ? "one office filled in" : $"{filled} offices filled in");
+        }
+
+        if (cleared > 0)
+        {
+            parts.Add(cleared == 1 ? "one office now vacant" : $"{cleared} offices now vacant");
+        }
+
+        if (leftAlone > 0)
+        {
+            parts.Add(leftAlone == 1 ? "one left as it was" : $"{leftAlone} left as they were");
+        }
+
+        return parts.Count == 0
+            ? "The officers table is up to date."
+            : $"The officers table now has {string.Join(", ", parts)}. Press Ctrl+Z to take it back.";
+    }
+
+    private IEnumerable<string> WidgetBlockIds(string typeId)
+    {
+        if (_session is null)
+        {
+            yield break;
+        }
+
+        foreach (Core.Model.Page page in _session.Document.Pages)
+        {
+            foreach (Core.Model.Block block in page.Blocks)
+            {
+                if (block is Core.Model.WidgetBlock widget && widget.WidgetType == typeId)
+                {
+                    yield return widget.Id;
+                }
+            }
+        }
+    }
+
     private int PageOf(string blockId)
     {
         if (_session is null)
@@ -2012,9 +2272,12 @@ public partial class MainWindow : Window
         // M13: one extra screen at the front, and only when there is something to offer. The answer
         // seeds the wizard rather than committing on its own, so filling the list in and pressing
         // "Save it" is still a single undo step.
-        System.Text.Json.JsonElement? seeded = typeId == BirthdayListTypeId
-            ? await OfferBirthdaysFromRosterAsync()
-            : null;
+        System.Text.Json.JsonElement? seeded = typeId switch
+        {
+            BirthdayListTypeId => await OfferBirthdaysFromRosterAsync(),
+            OfficersTableTypeId => await OfferOfficersFromRosterAsync(),
+            _ => null,
+        };
 
         await RunWizardAsync(blockId, grid: false, seeded);
     }
@@ -2053,9 +2316,15 @@ public partial class MainWindow : Window
         }
 
         IReadOnlyList<PersonSuggestion> people = PeopleForWizards();
+
+        // M19: the widget editor says where the list came from, in the same words the panel uses.
+        string? banner = FilledInFromRoster(blockId) is { } filledIn
+            ? ActionCatalog.DescribeFilledIn(filledIn)
+            : null;
+
         if (grid)
         {
-            var window = new WidgetGridWindow(wizard, people);
+            var window = new WidgetGridWindow(wizard, people, banner);
             await window.ShowDialog(this);
             if (window.Confirmed)
             {
@@ -2064,7 +2333,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            var window = new WizardWindow(wizard, people);
+            var window = new WizardWindow(wizard, people, banner);
             await window.ShowDialog(this);
             if (window.Confirmed)
             {

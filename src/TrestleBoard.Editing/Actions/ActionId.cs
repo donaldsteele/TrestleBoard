@@ -55,6 +55,9 @@ public static class ActionId
     /// <summary>M13: fill the birthday list in from the lodge address book.</summary>
     public const string SyncBirthdays = "item.syncBirthdays";
 
+    /// <summary>M19: fill the officers table in from the lodge address book.</summary>
+    public const string SyncOfficers = "item.syncOfficers";
+
     // ---- Pictures -----------------------------------------------------------------------------
     public const string FixPhoto = "picture.fix";
     public const string AdjustPhoto = "picture.adjust";

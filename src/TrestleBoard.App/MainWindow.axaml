@@ -126,9 +126,12 @@
         <MenuItem Header="_Lodge officers" Tag="insert.officersTable"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Insert the lodge officers table" />
-        <!-- RESERVED for M19's "Bring in the officers from the address book…", which belongs
-             directly under "Lodge officers" exactly as the birthday sync sits under "Birthdays".
-             Keeping the slot means M19 adds one item rather than restructuring the menu again. -->
+        <!-- M19 takes the slot M17 reserved: the address book fills the officers table in, and the
+             item sits directly under "Lodge officers" exactly as the birthday sync sits under
+             "Birthdays". One item added, no menu restructured. -->
+        <MenuItem Header="_Fill in the officers from the address book…" Tag="item.syncOfficers"
+                  InputGesture="Ctrl+Shift+B" Click="OnActionClicked"
+                  AutomationProperties.Name="Fill in the officers from the address book" />
         <MenuItem Header="_Birthdays" Tag="insert.birthdayList"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Insert the birthday list" />

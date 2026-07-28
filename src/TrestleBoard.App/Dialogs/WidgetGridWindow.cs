@@ -28,7 +28,15 @@ public sealed class WidgetGridWindow : Window
     /// laxer one, so a Person field is a picker here too — otherwise the fast path would quietly be
     /// the one without the help in it.
     /// </param>
-    public WidgetGridWindow(WizardSession session, IReadOnlyList<PersonSuggestion>? people = null)
+    /// <param name="rosterBanner">
+    /// M19: the same "Filled in from your address book on …" line the step wizard and the panel show.
+    /// The grid is a second view of the same list, so it must not be the one that stays quiet about
+    /// where the list came from.
+    /// </param>
+    public WidgetGridWindow(
+        WizardSession session,
+        IReadOnlyList<PersonSuggestion>? people = null,
+        string? rosterBanner = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _people = people ?? [];
@@ -74,6 +82,7 @@ public sealed class WidgetGridWindow : Window
                             // that gave wizard-officers-step.png five left edges.
                             HorizontalAlignment = HorizontalAlignment.Left,
                         },
+                        WizardWindow.RosterBanner(rosterBanner),
                         _errorPanel,
                     },
                 },

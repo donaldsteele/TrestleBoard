@@ -150,6 +150,89 @@ public sealed class ActionCatalogTests
         Assert.Contains("newer TrestleBoard", availability.Reason, StringComparison.Ordinal);
     }
 
+    // ---- filling in the officers (M19) ---------------------------------------------------------
+
+    private static ActionContext OfficersTable() => Widget() with
+    {
+        WidgetTypeId = "officersTable",
+        WidgetDisplayName = "Lodge officers",
+        RosterCount = 40,
+        RosterOfficesFilledIn = 9,
+    };
+
+    [Fact]
+    public void FillingInTheOfficersIsAboutTheOfficersTableAndNothingElse()
+    {
+        Assert.True(ActionCatalog.Evaluate(ActionId.SyncOfficers, OfficersTable()).IsAvailable);
+
+        Assert.Equal(
+            ActionAvailabilityKind.NotApplicable,
+            ActionCatalog.Evaluate(ActionId.SyncOfficers, BirthdayList()).Kind);
+        Assert.Equal(
+            ActionAvailabilityKind.NotApplicable,
+            ActionCatalog.Evaluate(ActionId.SyncOfficers, Photo()).Kind);
+    }
+
+    [Fact]
+    public void AStaleOfficersTableCanBeUpdatedFromTheWhatsNextCardWithNothingSelected()
+    {
+        ActionContext nothingSelected = Document() with
+        {
+            OfficersTableIsStale = true,
+            RosterCount = 40,
+            RosterOfficesFilledIn = 9,
+        };
+
+        Assert.True(ActionCatalog.Evaluate(ActionId.SyncOfficers, nothingSelected).IsAvailable);
+        Assert.Contains(
+            WhatsNext.Suggestions(nothingSelected),
+            step => step.ActionId == ActionId.SyncOfficers);
+    }
+
+    [Fact]
+    public void AnEmptyBookAndABookWithNoOfficesAreDifferentRefusalsWithDifferentWaysOut()
+    {
+        ActionAvailability empty = ActionCatalog.Evaluate(
+            ActionId.SyncOfficers, OfficersTable() with { RosterCount = 0, RosterOfficesFilledIn = 0 });
+        Assert.Equal(ActionAvailabilityKind.Blocked, empty.Kind);
+        Assert.Equal(ActionId.ImportPeople, empty.RemedyId);
+
+        ActionAvailability noOffices = ActionCatalog.Evaluate(
+            ActionId.SyncOfficers, OfficersTable() with { RosterOfficesFilledIn = 0 });
+        Assert.Equal(ActionAvailabilityKind.Blocked, noOffices.Kind);
+        Assert.Equal(ActionId.ShowPeople, noOffices.RemedyId);
+        Assert.NotEqual(empty.Reason, noOffices.Reason);
+    }
+
+    [Fact]
+    public void AnOfficersTableFromANewerTrestleBoardIsRefusedBeforeTheAddressBookIsEvenConsulted()
+    {
+        ActionAvailability availability = ActionCatalog.Evaluate(
+            ActionId.SyncOfficers, OfficersTable() with { CanEditWidget = false });
+
+        Assert.Equal(ActionAvailabilityKind.Blocked, availability.Kind);
+        Assert.Contains("newer TrestleBoard", availability.Reason, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The M19 complaint, as an assertion: a list the address book filled in has to SAY so where the
+    /// user is looking. A list somebody typed must not claim it.
+    /// </summary>
+    [Fact]
+    public void AGeneratedListSaysWhereItCameFromAndATypedOneDoesNot()
+    {
+        string? generated = ActionCatalog.DescribeSelectionHint(
+            OfficersTable() with { SelectionFilledInFromRoster = "14 July 2026" });
+        Assert.Contains("Filled in from your address book on 14 July 2026.", generated!, StringComparison.Ordinal);
+
+        string? undated = ActionCatalog.DescribeSelectionHint(
+            OfficersTable() with { SelectionFilledInFromRoster = "" });
+        Assert.Contains("Filled in from your address book.", undated!, StringComparison.Ordinal);
+
+        string? typed = ActionCatalog.DescribeSelectionHint(OfficersTable());
+        Assert.DoesNotContain("address book", typed!, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void EveryActionHasAnAvailabilityRuleInEverySituation()
     {

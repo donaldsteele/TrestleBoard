@@ -39,13 +39,17 @@ public static class ActionCatalog
     private const string NeedsBirthdayList =
         "This is about the birthday list. Choose one on the page first, or add one from the Insert menu.";
 
+    private const string NeedsOfficersTable =
+        "This is about the officers table. Choose one on the page first, or add one from the Insert menu.";
+
     /// <summary>
-    /// The one widget type id this project knows by name (M13). <c>TrestleBoard.Widgets</c> is
-    /// deliberately above this layer, so the birthday list is recognised by its stable id — the same
-    /// string the document itself stores — rather than by a type reference that would invert the
-    /// dependency.
+    /// The two widget type ids this project knows by name (M13, M19). <c>TrestleBoard.Widgets</c> is
+    /// deliberately above this layer, so each is recognised by its stable id — the same string the
+    /// document itself stores — rather than by a type reference that would invert the dependency.
     /// </summary>
     private const string BirthdayListTypeId = "birthdayList";
+
+    private const string OfficersTableTypeId = "officersTable";
 
     private static readonly EditorAction[] AllActions =
     [
@@ -119,6 +123,9 @@ public static class ActionCatalog
         new(ActionId.SyncBirthdays, "Bring in birthdays from the address book",
             "Fills the birthday list in from your address book, showing you the changes first.",
             ActionGroup.Item, "Ctrl+Shift+U"),
+        new(ActionId.SyncOfficers, "Fill in the officers from the address book",
+            "Fills the officers table in from your address book, showing you the changes first.",
+            ActionGroup.Item, "Ctrl+Shift+B"),
 
         // ---- Pictures ---------------------------------------------------------------------------
         // M18 puts the replace command FIRST: an empty frame is the state every photo template
@@ -368,6 +375,14 @@ public static class ActionCatalog
                         ? EvaluateBirthdaySync(context)
                         : ActionAvailability.NotApplicable(NeedsBirthdayList),
 
+            // M19, reachable the same two ways and for the same reason.
+            ActionId.SyncOfficers =>
+                context.WidgetTypeId == OfficersTableTypeId
+                    ? EvaluateWidget(context, EvaluateOfficersSync(context))
+                    : context.OfficersTableIsStale
+                        ? EvaluateOfficersSync(context)
+                        : ActionAvailability.NotApplicable(NeedsOfficersTable),
+
             // ---- Pictures -------------------------------------------------------------------------
             // Putting one in and describing one are the two things an EMPTY frame can still do;
             // everything else needs a picture to work on, and says so by name rather than greying.
@@ -523,11 +538,31 @@ public static class ActionCatalog
             return null;
         }
 
-        return context.CanEditWidget
-            ? "This is a filled-in list. Use 'Change what this says…' to edit it — "
-              + "or just double-click it on the page."
-            : null;
+        if (!context.CanEditWidget)
+        {
+            return null;
+        }
+
+        // M19: the owner's complaint was that the widgets are not driven by the address book. Half
+        // of that was false, and the half that was true was that nothing ANYWHERE said so. A list
+        // that came out of the address book now says it, on the panel, in the widget editor, and in
+        // the "what's next" card.
+        string hint = "This is a filled-in list. Use 'Change what this says…' to edit it — "
+            + "or just double-click it on the page.";
+        return context.SelectionFilledInFromRoster is { } filledIn
+            ? DescribeFilledIn(filledIn) + " " + hint
+            : hint;
     }
+
+    /// <summary>
+    /// "Filled in from your address book on 14 July 2026." — or without the date when the stamp is
+    /// missing or unreadable, because a sentence with an empty gap in it reads worse than no date.
+    /// One place, so the panel and the widget editor say the same words (M19).
+    /// </summary>
+    public static string DescribeFilledIn(string? whenText) =>
+        string.IsNullOrWhiteSpace(whenText)
+            ? "Filled in from your address book."
+            : $"Filled in from your address book on {whenText}.";
 
     /// <summary>
     /// Which groups the panel shows for this selection. Ordered: the thing you most likely want
@@ -582,6 +617,33 @@ public static class ActionCatalog
             return ActionAvailability.Blocked(
                 "Nobody in your address book has a birthday in this issue's month. You can still "
                 + "type a birthday in yourself, or add the missing dates in the People window.",
+                ActionId.ShowPeople);
+        }
+
+        return ActionAvailability.Available;
+    }
+
+    /// <summary>
+    /// Whether the address book has anything to say about who holds office (M19). Both refusals name
+    /// the door out, exactly as the birthday rule does: an empty book wants importing, and a book
+    /// where nobody's office field is filled in is not broken — it is simply a book nobody has
+    /// recorded offices in, and saying so is better than a grey button.
+    /// </summary>
+    private static ActionAvailability EvaluateOfficersSync(ActionContext context)
+    {
+        if (context.RosterCount == 0)
+        {
+            return ActionAvailability.Blocked(
+                "Your address book is empty, so there are no officers to fill in. Import your member "
+                + "list first, or type the officers in yourself.",
+                ActionId.ImportPeople);
+        }
+
+        if (context.RosterOfficesFilledIn == 0)
+        {
+            return ActionAvailability.Blocked(
+                "Nobody in your address book has an office written against his name, so there is "
+                + "nothing to fill in. Open the People window and write in who holds each office.",
                 ActionId.ShowPeople);
         }
 

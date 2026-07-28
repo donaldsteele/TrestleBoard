@@ -71,6 +71,11 @@ internal static class KeyboardMap
         new(Key.Y, CtrlShift, ActionId.FitToContents),
         new(Key.U, CtrlShift, ActionId.SyncBirthdays),
 
+        // M19. Every letter in "officers" and "fill in" was already spoken for — O is the picture
+        // replace, F is fix-this-picture — so the officers sync takes Ctrl+Shift+B and the menu item
+        // carries the words. An unmemorable chord is a smaller sin than a stolen one.
+        new(Key.B, CtrlShift, ActionId.SyncOfficers),
+
         // ---- Pictures ---------------------------------------------------------------------------
         new(Key.F, CtrlShift, ActionId.FixPhoto),
         new(Key.A, CtrlShift, ActionId.AdjustPhoto),

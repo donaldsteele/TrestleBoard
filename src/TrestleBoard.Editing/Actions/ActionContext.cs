@@ -155,6 +155,23 @@ public sealed record ActionContext
     /// <summary>How many people in the address book have a birthday in this issue's month (M13).</summary>
     public int RosterBirthdaysThisMonth { get; init; }
 
+    /// <summary>
+    /// An officers table on the page was filled in from the address book and no longer matches it
+    /// (M19). Saying so is all this does — M13's rule carries over unchanged: staleness never
+    /// mutates the document.
+    /// </summary>
+    public bool OfficersTableIsStale { get; init; }
+
+    /// <summary>How many of the twelve offices the address book could fill in (M19).</summary>
+    public int RosterOfficesFilledIn { get; init; }
+
+    /// <summary>
+    /// The selected widget was filled in from the address book, and this is when — "14 July 2026",
+    /// or an empty string when the stamp cannot be read. Null when the selection was typed by hand,
+    /// which is what makes the panel caption honest rather than decorative (M19).
+    /// </summary>
+    public string? SelectionFilledInFromRoster { get; init; }
+
     // ---- The address book (M12) ---------------------------------------------------------------
 
     /// <summary>How many people the address book holds.</summary>

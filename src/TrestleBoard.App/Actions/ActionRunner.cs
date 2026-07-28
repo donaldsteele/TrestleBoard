@@ -70,6 +70,7 @@ internal sealed class ActionRunner
             [ActionId.EditWidgetList] = _ => window.EditWidgetAsync(grid: true),
             [ActionId.FitToContents] = Sync(window.FitWidgetToContents),
             [ActionId.SyncBirthdays] = _ => window.SyncBirthdaysAsync(),
+            [ActionId.SyncOfficers] = _ => window.SyncOfficersAsync(),
 
             // ---- Pictures --------------------------------------------------------------------------
             [ActionId.FixPhoto] = Sync(window.FixPhoto),

@@ -63,7 +63,15 @@ public sealed class WizardWindow : Window
     /// §5's projection rule. Null or empty simply means the wizard behaves exactly as it did before
     /// there was an address book.
     /// </param>
-    public WizardWindow(WizardSession session, IReadOnlyList<PersonSuggestion>? people = null)
+    /// <param name="rosterBanner">
+    /// M19: "Filled in from your address book on 14 July 2026." when this list came out of the
+    /// address book, and null when somebody typed it. The panel prints the same sentence, so wherever
+    /// the user is standing, a generated list says it is one.
+    /// </param>
+    public WizardWindow(
+        WizardSession session,
+        IReadOnlyList<PersonSuggestion>? people = null,
+        string? rosterBanner = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _people = people ?? [];
@@ -123,7 +131,7 @@ public sealed class WizardWindow : Window
                     [DockPanel.DockProperty] = Dock.Top,
                     Margin = new Avalonia.Thickness(24, 24, 24, 8),
                     Spacing = 6,
-                    Children = { _header, _progress, _help, _errorPanel },
+                    Children = { _header, _progress, RosterBanner(rosterBanner), _help, _errorPanel },
                 },
                 // Shaded, like the toolbar, the status bar and WidgetGridWindow's own bar: the
                 // scroller's clip then reads as a footer rather than as content cut off.
@@ -142,6 +150,20 @@ public sealed class WizardWindow : Window
         KeyDown += OnKeyDown;
         Opened += (_, _) => RenderScreen();
     }
+
+    /// <summary>
+    /// The one line that says a list came out of the address book (M19). Collapsed rather than
+    /// absent, so the header's spacing is the same whichever kind of list this is.
+    /// </summary>
+    internal static TextBlock RosterBanner(string? text) => new()
+    {
+        Text = text ?? string.Empty,
+        IsVisible = !string.IsNullOrWhiteSpace(text),
+        FontSize = 16,
+        TextWrapping = TextWrapping.Wrap,
+        MaxWidth = 760,
+        HorizontalAlignment = HorizontalAlignment.Left,
+    };
 
     /// <summary>True when the user pressed "Save it" and the data validated.</summary>
     public bool Confirmed { get; private set; }

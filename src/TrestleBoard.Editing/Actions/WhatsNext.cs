@@ -41,6 +41,15 @@ public static class WhatsNext
                 Actions.ActionId.SyncBirthdays));
         }
 
+        if (context.OfficersTableIsStale)
+        {
+            steps.Add(new NextStep(
+                "Update the officers table",
+                "Somebody's details changed in your address book since the officers table was "
+                + "filled in.",
+                Actions.ActionId.SyncOfficers));
+        }
+
         if (context.RosterEmptyButNeeded)
         {
             steps.Add(new NextStep(

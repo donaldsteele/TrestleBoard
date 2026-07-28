@@ -111,6 +111,7 @@ internal static class ActionIcons
         [ActionId.DeleteFrame] = "a bin icon invites the click this audience most fears",
         [ActionId.FitToContents] = "would be indistinguishable from view.fitPage",
         [ActionId.SyncBirthdays] = "the sentence names both ends of the operation; no glyph does",
+        [ActionId.SyncOfficers] = "the sentence names both ends of the operation; no glyph does",
 
         [ActionId.AdjustPhoto] = "sliders read as decoration beside picture.fix's wand",
 
