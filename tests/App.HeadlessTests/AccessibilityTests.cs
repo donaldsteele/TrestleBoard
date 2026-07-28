@@ -331,6 +331,16 @@ public sealed class AccessibilityTests
         yield return (nameof(PhotoAdjustWindow), new PhotoAdjustWindow(photoHost.PhotosForTest!, photoBlock));
         photoHost.Close();
 
+        // M18's small windows, and the insert dialog they were modelled on. All three ask for words
+        // about a picture, and a screen-reader user meets every one of them.
+        yield return (nameof(PhotoInsertDialog), new PhotoInsertDialog("summer-picnic.jpg"));
+        yield return (
+            nameof(PictureWordsDialog) + ".AltText",
+            PictureWordsDialog.ForAltText("Brothers at the picnic"));
+        yield return (
+            nameof(PictureWordsDialog) + ".Caption",
+            PictureWordsDialog.ForCaption("A warm evening at the lodge."));
+
         // The address book's three windows (M12). The roster they are built over is fictional and
         // in-memory; the suite's app-state root is a temporary folder, so none of this can reach a
         // real address book (PLAN.md §0 rule 5).

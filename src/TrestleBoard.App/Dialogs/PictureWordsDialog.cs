@@ -70,6 +70,7 @@ public sealed class PictureWordsDialog : Window
             MinWidth = 200,
             IsDefault = true,
         };
+        Avalonia.Automation.AutomationProperties.SetName(confirm, confirmLabel);
         confirm.Click += (_, _) =>
         {
             if (_required && string.IsNullOrWhiteSpace(_box.Text))
@@ -91,6 +92,7 @@ public sealed class PictureWordsDialog : Window
             MinWidth = 120,
             IsCancel = true,
         };
+        Avalonia.Automation.AutomationProperties.SetName(cancel, "Cancel, change nothing");
         cancel.Click += (_, _) => Close();
 
         Content = new StackPanel

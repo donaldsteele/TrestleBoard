@@ -62,6 +62,7 @@ public sealed class PhotoInsertDialog : Window
             MinWidth = 200,
             IsDefault = true,
         };
+        Avalonia.Automation.AutomationProperties.SetName(insert, "Put this picture on the page");
         insert.Click += (_, _) =>
         {
             // A description is what a screen-reader user gets instead of the picture (PLAN.md §6),
@@ -86,6 +87,7 @@ public sealed class PhotoInsertDialog : Window
             MinWidth = 120,
             IsCancel = true,
         };
+        Avalonia.Automation.AutomationProperties.SetName(cancel, "Cancel, do not add this picture");
         cancel.Click += (_, _) => Close();
 
         Content = new StackPanel
