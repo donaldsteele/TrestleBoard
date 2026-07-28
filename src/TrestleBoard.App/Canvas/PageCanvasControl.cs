@@ -8,6 +8,7 @@ using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using Avalonia.Threading;
 using SkiaSharp;
+using TrestleBoard.App.Theme;
 using TrestleBoard.Editing;
 using TrestleBoard.Layout;
 using TrestleBoard.Layout.Editing;
@@ -39,6 +40,13 @@ public sealed class PageCanvasControl : Control
     public static readonly StyledProperty<int> PageIndexProperty =
         AvaloniaProperty.Register<PageCanvasControl, int>(nameof(PageIndex), defaultValue: 0);
 
+    /// <summary>
+    /// One <see cref="Cursor"/> per shape, made once. Until M17 <c>UpdateCursor</c> allocated a
+    /// fresh native cursor handle on every pointer move — a hundred a second while the mouse
+    /// crossed the page, each one needing the finaliser to give it back.
+    /// </summary>
+    private static readonly Dictionary<StandardCursorType, Cursor> CursorCache = [];
+
     private readonly DispatcherTimer _caretBlink;
     private DocumentRenderSource? _source;
     private Avalonia.Automation.Peers.AutomationPeer? _peer;
@@ -46,6 +54,8 @@ public sealed class PageCanvasControl : Control
     private FrameEditorController? _frames;
     private bool _caretVisible = true;
     private bool _draggingFrame;
+    private StandardCursorType _cursorType = StandardCursorType.Arrow;
+    private string? _hoverBlockId;
 
     static PageCanvasControl()
     {
@@ -120,6 +130,13 @@ public sealed class PageCanvasControl : Control
     internal event EventHandler? PeerAskedForContextMenu;
 
     internal void RaisePeerContextMenuRequest() => PeerAskedForContextMenu?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>
+    /// Raised when the user double-clicks one of the lists TrestleBoard fills in (M17). The canvas
+    /// says what happened; the shell decides what to do about it, because "open its editor" means
+    /// running <c>item.edit</c> through the action runner, availability rules and all.
+    /// </summary>
+    internal event EventHandler<string>? WidgetActivated;
 
     public DocumentRenderSource? Source
     {
@@ -262,7 +279,91 @@ public sealed class PageCanvasControl : Control
         context.Custom(new PageDrawOperation(
             new Rect(Bounds.Size), _source, PageIndex, Zoom, PagePaddingPx, selection, caret,
             frameOverlay, pageFrames, fontOverrides, BackdropColour()));
+
+        DrawAdornments(context);
     }
+
+    // ---- Editor adornments (PLAN.md §11 M17) --------------------------------------------------
+
+    /// <summary>What an empty text frame says so that a first-time user knows it is for typing in.</summary>
+    internal const string EmptyFrameHint = "Click here and start typing";
+
+    /// <summary>
+    /// A palette brush, resolved against the CURRENT variant every time it is asked for. These two
+    /// are measured against <c>Page.Sheet</c> rather than the chrome background, because the sheet
+    /// is what is behind them — see the palette's header.
+    ///
+    /// <para>Null when the key does not resolve, and the adornment is then simply not drawn. There
+    /// is no literal fallback on purpose: a hard-coded colour here is the exact defect M16 spent a
+    /// milestone removing, and <c>ThemeCompositionTests</c> already fails the build if a token goes
+    /// missing from any variant.</para>
+    /// </summary>
+    private IBrush? BrushFor(string token) =>
+        this.TryFindResource(token, ActualThemeVariant, out object? value) ? value as IBrush : null;
+
+    /// <summary>
+    /// Hints and hover outlines, drawn with AVALONIA's own primitives on top of the page.
+    ///
+    /// <para>This is the whole reason M17 could add them without moving a snapshot baseline. Every
+    /// other overlay in this control — selection, caret, frame chrome — is Skia drawn through
+    /// <see cref="PageDrawOperation"/>, which shares its renderers with <c>TrestleBoard.Rendering</c>.
+    /// These are not: they are chrome about the editor, they use the interface's font rather than
+    /// the newsletter's, and there is no path from here to <c>SKDocument</c> at all. A hint that
+    /// reached the renderer would print.</para>
+    /// </summary>
+    private void DrawAdornments(DrawingContext context)
+    {
+        if (_source is null)
+        {
+            return;
+        }
+
+        if (_hoverBlockId is { } hovered
+            && !string.Equals(hovered, _frames?.SelectedBlockId, StringComparison.Ordinal)
+            && BlockIsOnPage(hovered, PageIndex)
+            && BrushFor(Tokens.AdornmentHover) is { } hoverBrush)
+        {
+            context.DrawRectangle(
+                null, new Pen(hoverBrush, 1d), ToControlRect(_source.GetEffectiveRect(hovered)));
+        }
+
+        if (BrushFor(Tokens.AdornmentHint) is not { } hintBrush)
+        {
+            return;
+        }
+
+        string? typingIn = _editor is { IsActive: true } ? _editor.BlockId : null;
+        foreach ((string blockId, Core.Model.RectPt rect) in _source.GetEmptyTextFrameRects(PageIndex))
+        {
+            if (string.Equals(blockId, typingIn, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var text = new FormattedText(
+                EmptyFrameHint,
+                System.Globalization.CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight,
+                Typeface.Default,
+                14d,
+                hintBrush);
+
+            Rect box = ToControlRect(rect);
+            if (box.Width < text.Width + 16 || box.Height < text.Height + 12)
+            {
+                // Too small to say it in: a clipped half-sentence would be worse than nothing.
+                continue;
+            }
+
+            context.DrawText(text, new Point(box.X + 8, box.Y + 6));
+        }
+    }
+
+    private Rect ToControlRect(Core.Model.RectPt rect) => new(
+        PagePaddingPx + (rect.X * Zoom),
+        PagePaddingPx + (rect.Y * Zoom),
+        rect.Width * Zoom,
+        rect.Height * Zoom);
 
     /// <summary>
     /// The colour of the desk the sheet lies on (PLAN.md §11 M16). It is CHROME, not the document —
@@ -336,6 +437,12 @@ public sealed class PageCanvasControl : Control
             return;
         }
 
+        if (e.ClickCount == 2 && TryActivateWidgetAt(x, y))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (TryHandleFramePress(x, y, e))
         {
             e.Handled = true;
@@ -363,6 +470,31 @@ public sealed class PageCanvasControl : Control
             action();
             return true;
         }
+    }
+
+    /// <summary>
+    /// The double-click half of M17: a second click on one of the lists TrestleBoard fills in
+    /// selects it and asks the shell to open its editor. Returns false for everything else, so a
+    /// double-click on ordinary text still selects a word.
+    ///
+    /// <para>Widgets only, deliberately. Their text is drawn from a payload rather than a story, so
+    /// a click inside one lands on no paragraph at all (<c>ParagraphIndex == -1</c>, the M7 design)
+    /// and nothing happens — which reads as broken. A photo's double-click is left alone; there is
+    /// no one obvious thing it should do, and guessing wrong is worse than doing nothing.</para>
+    /// </summary>
+    internal bool TryActivateWidgetAt(float xPt, float yPt)
+    {
+        if (_frames is not { IsLinkModeActive: false }
+            || _source?.HitTestBlock(PageIndex, xPt, yPt) is not { } hit
+            || !_source.IsWidgetBlock(hit))
+        {
+            return false;
+        }
+
+        _editor?.End();
+        _frames.Select(hit);
+        WidgetActivated?.Invoke(this, hit);
+        return true;
     }
 
     /// <summary>
@@ -448,19 +580,29 @@ public sealed class PageCanvasControl : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
-        if (!TryToPagePoint(e.GetPosition(this), out float x, out float y))
-        {
-            return;
-        }
+        Point position = e.GetPosition(this);
+        bool onPage = TryToPagePoint(position, out float x, out float y);
 
         if (_draggingFrame && _frames is not null)
         {
+            // M17: a drag whose pointer leaves the sheet CLAMPS at the page edge. It used to
+            // return here, so the frame froze mid-drag and then jumped when the pointer came back
+            // — indistinguishable, while it was happening, from the app having hung.
+            (float dragX, float dragY) = ToClampedPagePoint(position);
+
             // Alt suppresses snapping for a free drag (docs/M5-spec.md §3.2).
-            _frames.DragTo(x, y, snap: !e.KeyModifiers.HasFlag(KeyModifiers.Alt), OverlayScale);
+            _frames.DragTo(dragX, dragY, snap: !e.KeyModifiers.HasFlag(KeyModifiers.Alt), OverlayScale);
+            return;
+        }
+
+        if (!onPage)
+        {
+            SetHover(null);
             return;
         }
 
         UpdateCursor(x, y);
+        SetHover(_source?.HitTestBlock(PageIndex, x, y));
         if (_editor is { IsActive: true } && ReferenceEquals(e.Pointer.Captured, this))
         {
             _editor.ExtendTo(PageIndex, x, y);
@@ -514,7 +656,59 @@ public sealed class PageCanvasControl : Control
             }
         }
 
-        Cursor = new Cursor(type);
+        if (type == _cursorType)
+        {
+            return;
+        }
+
+        _cursorType = type;
+        Cursor = CursorFor(type);
+    }
+
+    /// <summary>Which shape the pointer currently wears, for the headless pointer tests.</summary>
+    internal StandardCursorType CursorTypeForTest => _cursorType;
+
+    /// <summary>The block the pointer is over, or null. Drives the faint hover outline.</summary>
+    internal string? HoverBlockIdForTest => _hoverBlockId;
+
+    private void SetHover(string? blockId)
+    {
+        if (string.Equals(_hoverBlockId, blockId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _hoverBlockId = blockId;
+        InvalidateVisual();
+    }
+
+    /// <summary>
+    /// A control point turned into a page point and held inside the sheet, so a drag follows the
+    /// pointer to the edge and stops there rather than freezing wherever it was when the pointer
+    /// left the page (M17).
+    /// </summary>
+    internal (float X, float Y) ToClampedPagePoint(Point controlPoint)
+    {
+        TryToPagePoint(controlPoint, out float x, out float y);
+        if (_source is null || PageIndex >= _source.PageCount)
+        {
+            return (x, y);
+        }
+
+        Core.Model.SizePt size = _source.GetPageSize(PageIndex);
+        return (Math.Clamp(x, 0f, size.Width), Math.Clamp(y, 0f, size.Height));
+    }
+
+    /// <summary>The cached cursor for a shape — one native handle per shape for the app's life.</summary>
+    internal static Cursor CursorFor(StandardCursorType type)
+    {
+        if (!CursorCache.TryGetValue(type, out Cursor? cursor))
+        {
+            cursor = new Cursor(type);
+            CursorCache[type] = cursor;
+        }
+
+        return cursor;
     }
 
     protected override void OnTextInput(TextInputEventArgs e)
@@ -642,6 +836,13 @@ public sealed class PageCanvasControl : Control
                 return false;
         }
     }
+
+    /// <summary>
+    /// Puts the caret in the selected text frame — what Enter and F2 have always done, and from
+    /// M17 what "Add a text frame" does too. Creating a frame means you wanted to type in it;
+    /// leaving the user looking at a selected empty rectangle was the bug.
+    /// </summary>
+    internal bool BeginTextEditingOnSelection() => EnterTextEditingOnSelection();
 
     private bool EnterTextEditingOnSelection()
     {

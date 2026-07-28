@@ -47,12 +47,17 @@ public sealed class FrameShellTests
             window.KeyPressQwerty(PhysicalKey.ArrowRight, RawInputModifiers.Control);
             Assert.Equal(beforeResize.Width + 1f, RectOf(window, first).Width, 3);
 
-            // Add a text frame — Ctrl+Shift+T; it becomes the selection.
+            // Add a text frame — Ctrl+Shift+T. From M17 the caret goes straight into it, so the
+            // gesture leaves a text session open rather than a selected empty rectangle; Escape is
+            // the documented way back to frame mode.
             int blocksBefore = window.SessionForTest!.Document.Pages[0].Blocks.Count;
             window.KeyPressQwerty(PhysicalKey.T, RawInputModifiers.Control | RawInputModifiers.Shift);
             Assert.Equal(blocksBefore + 1, window.SessionForTest.Document.Pages[0].Blocks.Count);
-            string added = Assert.IsType<string>(window.FramesForTest.SelectedBlockId);
+            Assert.True(window.EditorForTest!.IsActive);
+            string added = Assert.IsType<string>(window.EditorForTest.BlockId);
             Assert.Equal("Add text frame", window.SessionForTest.UndoDescription);
+            window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+            Assert.Equal(added, window.FramesForTest.SelectedBlockId);
 
             // Wrap toggle — Ctrl+Shift+W.
             window.KeyPressQwerty(PhysicalKey.W, RawInputModifiers.Control | RawInputModifiers.Shift);
@@ -93,7 +98,10 @@ public sealed class FrameShellTests
             window.OpenSample();
             window.CanvasForTest.Focus();
 
+            // M17: the new frame arrives with the caret in it, so Escape first — link mode acts on
+            // a SELECTED frame, and typing and selecting are exclusive modes (docs/M5-spec.md §1.2).
             window.KeyPressQwerty(PhysicalKey.T, RawInputModifiers.Control | RawInputModifiers.Shift);
+            window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
             window.KeyPressQwerty(PhysicalKey.L, RawInputModifiers.Control | RawInputModifiers.Shift);
 
             Assert.True(window.FramesForTest!.IsLinkModeActive);
@@ -121,8 +129,9 @@ public sealed class FrameShellTests
 
             // A fresh empty frame to link into, then select an unlinked text frame as the source.
             window.KeyPressQwerty(PhysicalKey.T, RawInputModifiers.Control | RawInputModifiers.Shift);
-            string target = Assert.IsType<string>(window.FramesForTest!.SelectedBlockId);
-            window.FramesForTest.Select("block-officers");
+            string target = Assert.IsType<string>(window.EditorForTest!.BlockId);
+            window.EditorForTest.End();
+            window.FramesForTest!.Select("block-officers");
 
             window.KeyPressQwerty(PhysicalKey.L, RawInputModifiers.Control | RawInputModifiers.Shift);
             window.KeyPressQwerty(PhysicalKey.Tab, RawInputModifiers.None);

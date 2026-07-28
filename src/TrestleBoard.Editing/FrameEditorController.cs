@@ -705,7 +705,8 @@ public sealed class FrameEditorController
     // ---- Internals ---------------------------------------------------------------------------
 
     private const string OversetMessage =
-        "This text does not fit. Add another frame and link it, or make this frame bigger.";
+        "There is more writing than fits — 'Make the rest fit' (Ctrl+Shift+M) will flow it, "
+        + "or make this frame bigger.";
 
     private void OnDocumentChanged()
     {

@@ -211,6 +211,55 @@ public sealed class DocumentRenderSource : IDisposable
     public bool IsTextBlock(string blockId) => _document.FindBlock(blockId).Block is TextBlock;
 
     /// <summary>
+    /// True when the block is one of the lists TrestleBoard fills in — what the canvas needs to
+    /// decide whether a double-click should open an editor (M17).
+    /// </summary>
+    public bool IsWidgetBlock(string blockId) => _document.FindBlock(blockId).Block is WidgetBlock;
+
+    /// <summary>
+    /// The text frames on one page that hold nothing yet, so the editor can paint "click here and
+    /// start typing" over them (PLAN.md §11 M17).
+    ///
+    /// <para>A query, not a drawing: the hint itself is an EDITOR ADORNMENT painted by
+    /// <c>PageCanvasControl</c> with Avalonia's own primitives, and it must stay that way. Anything
+    /// this class draws goes onto whatever canvas it is handed, and one of those canvases is the
+    /// PDF's — a hint that reached <c>RenderPage</c> would print.</para>
+    ///
+    /// <para>Continuation frames are left out. A frame that is the second half of a linked story is
+    /// empty only because the first half has not overflowed yet, and telling the user to type into
+    /// it would put their words in the wrong place.</para>
+    /// </summary>
+    public IReadOnlyList<(string BlockId, RectPt Rect)> GetEmptyTextFrameRects(int pageIndex)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (pageIndex < 0 || pageIndex >= _document.Pages.Count)
+        {
+            return [];
+        }
+
+        var empty = new List<(string, RectPt)>();
+        foreach (TextBlock block in _document.Pages[pageIndex].Blocks.OfType<TextBlock>())
+        {
+            bool isContinuation = _document.Pages
+                .SelectMany(p => p.Blocks)
+                .OfType<TextBlock>()
+                .Any(b => string.Equals(b.LinkNext, block.Id, StringComparison.Ordinal));
+            if (isContinuation || !StoryIsEmpty(block.StoryRef))
+            {
+                continue;
+            }
+
+            empty.Add((block.Id, DocumentLayoutAdapter.EffectiveRect(block, _previewRects)));
+        }
+
+        return empty;
+    }
+
+    private bool StoryIsEmpty(string storyId) =>
+        _document.Stories.FirstOrDefault(s => s.Id == storyId) is not { } story
+        || story.Paragraphs.All(p => p.Runs.All(r => r.Text.Trim().Length == 0));
+
+    /// <summary>
     /// Would this story still overflow if the given frames existed? Auto-flow asks this before it
     /// commits anything, so a run that cannot help leaves the document untouched (docs/M8-spec.md §2).
     /// The speculative layout is never cached and never affects the painted state.

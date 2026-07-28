@@ -51,6 +51,16 @@
         <Separator />
         <MenuItem Header="Select _all" Tag="edit.selectAll" InputGesture="Ctrl+A"
                   Click="OnActionClicked" AutomationProperties.Name="Select all" />
+        <Separator />
+        <!-- M17: the three commands that change or remove the thing you have chosen. They used to
+             live under "This item", a top-level menu named after a model concept; a user looking
+             for "delete" looks under Edit. -->
+        <MenuItem Header="_Delete this" Tag="item.delete" InputGesture="Delete"
+                  Click="OnActionClicked" AutomationProperties.Name="Delete this" />
+        <MenuItem Header="C_hange what this says…" Tag="item.edit" InputGesture="Ctrl+Shift+E"
+                  Click="OnActionClicked" AutomationProperties.Name="Change what this item says" />
+        <MenuItem Header="Edit the _list…" Tag="item.editList" InputGesture="Ctrl+Shift+G"
+                  Click="OnActionClicked" AutomationProperties.Name="Edit this list" />
       </MenuItem>
       <!-- Paragraph style used to be a toolbar combo with no menu path at all — the one command
            in the app that a keyboard-only user could not reach (M11). -->
@@ -76,13 +86,34 @@
                   Click="OnActionClicked" AutomationProperties.Name="Use a different font just here" />
         <MenuItem Header="Put it back to the _usual font" Tag="text.clearFontOverride"
                   Click="OnActionClicked" AutomationProperties.Name="Put it back to the usual font" />
+        <Separator />
+        <!-- M17: formatting a picture is formatting. A top-level Picture menu was rejected — ten
+             top-level menus at 200% UI scale for two items. M18 adds more items here. -->
+        <MenuItem Header="Pi_cture" AutomationProperties.Name="Picture submenu">
+          <MenuItem Header="_Fix this picture" Tag="picture.fix" InputGesture="Ctrl+Shift+F"
+                    Click="OnActionClicked" AutomationProperties.Name="Fix this picture" />
+          <MenuItem Header="_Adjust the picture…" Tag="picture.adjust" InputGesture="Ctrl+Shift+A"
+                    Click="OnActionClicked" AutomationProperties.Name="Adjust the picture" />
+        </MenuItem>
       </MenuItem>
       <!-- Insert menu: the six widgets each get their own item so a keyboard user never has to
-           go through a picker (docs/M7-spec.md §8.1). -->
+           go through a picker (docs/M7-spec.md §8.1).
+
+           M17 puts the two things a first-time user actually looks for — a box to write in and a
+           photograph — at the top, above the separator. "Insert a picture…" used to hide at
+           This item ▸ Picture ▸ Insert a picture…, which is not where anybody looks for it. -->
       <MenuItem Header="_Insert" AutomationProperties.Name="Insert menu">
+        <MenuItem Header="A _text frame" Tag="insert.textFrame" InputGesture="Ctrl+Shift+T"
+                  Click="OnActionClicked" AutomationProperties.Name="Add a text frame" />
+        <MenuItem Header="A _picture…" Tag="insert.photo" InputGesture="Ctrl+Shift+P"
+                  Click="OnActionClicked" AutomationProperties.Name="Insert a picture" />
+        <Separator />
         <MenuItem Header="_Lodge officers" Tag="insert.officersTable"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Insert the lodge officers table" />
+        <!-- RESERVED for M19's "Bring in the officers from the address book…", which belongs
+             directly under "Lodge officers" exactly as the birthday sync sits under "Birthdays".
+             Keeping the slot means M19 adds one item rather than restructuring the menu again. -->
         <MenuItem Header="_Birthdays" Tag="insert.birthdayList"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Insert the birthday list" />
@@ -104,50 +135,32 @@
                   Click="OnActionClicked"
                   AutomationProperties.Name="Insert the cover heading" />
       </MenuItem>
-      <!-- Was "Object", fourteen flat items deep. Same commands, six direct entries and three
-           submenus, named for what the user is looking at rather than for a model type (M11).
-           Nothing was removed; the four front-to-back items simply went one level deeper. -->
-      <MenuItem Header="_This item" AutomationProperties.Name="This item menu">
-        <MenuItem Header="_Add a text frame" Tag="insert.textFrame" InputGesture="Ctrl+Shift+T"
-                  Click="OnActionClicked" AutomationProperties.Name="Add a text frame" />
-        <MenuItem Header="_Delete this" Tag="item.delete" InputGesture="Delete"
-                  Click="OnActionClicked" AutomationProperties.Name="Delete this" />
-        <Separator />
-        <MenuItem Header="_Change what this says…" Tag="item.edit" InputGesture="Ctrl+Shift+E"
-                  Click="OnActionClicked" AutomationProperties.Name="Change what this item says" />
-        <MenuItem Header="Edit the _list…" Tag="item.editList" InputGesture="Ctrl+Shift+G"
-                  Click="OnActionClicked" AutomationProperties.Name="Edit this list" />
-        <MenuItem Header="_Fit to contents" Tag="item.fitToContents" InputGesture="Ctrl+Shift+Y"
-                  Click="OnActionClicked" AutomationProperties.Name="Fit this item to its contents" />
+      <!-- M17 dissolves "This item". It was named after a model concept, and its own submenus put
+           four of the app's commands three levels deep. Every command it held kept a menu home:
+           the two Insert entries went to Insert, the three change-or-remove ones to Edit, the two
+           picture ones to Format, and everything about WHERE a thing sits on the page is here.
+           Nine top-level menus before, nine after — the chrome budget at 200% is the reason. -->
+      <MenuItem Header="A_rrange" AutomationProperties.Name="Arrange menu">
+        <MenuItem Header="_Wrap text around this" Tag="flow.wrap" InputGesture="Ctrl+Shift+W"
+                  Click="OnActionClicked" AutomationProperties.Name="Wrap text around this frame" />
+        <MenuItem Header="_Continue this text in another frame…" Tag="flow.link" InputGesture="Ctrl+Shift+L"
+                  Click="OnActionClicked" AutomationProperties.Name="Continue this text in another frame" />
+        <MenuItem Header="_Stop continuing into the next frame" Tag="flow.unlink" InputGesture="Ctrl+Shift+K"
+                  Click="OnActionClicked" AutomationProperties.Name="Stop continuing into the next frame" />
         <MenuItem Header="_Make the rest fit" Tag="flow.auto" InputGesture="Ctrl+Shift+M"
                   Click="OnActionClicked" AutomationProperties.Name="Make the rest of this text fit" />
         <Separator />
-        <MenuItem Header="_Picture" AutomationProperties.Name="Picture submenu">
-          <MenuItem Header="_Insert a picture…" Tag="insert.photo" InputGesture="Ctrl+Shift+P"
-                    Click="OnActionClicked" AutomationProperties.Name="Insert a picture" />
-          <MenuItem Header="_Fix this picture" Tag="picture.fix" InputGesture="Ctrl+Shift+F"
-                    Click="OnActionClicked" AutomationProperties.Name="Fix this picture" />
-          <MenuItem Header="_Adjust the picture…" Tag="picture.adjust" InputGesture="Ctrl+Shift+A"
-                    Click="OnActionClicked" AutomationProperties.Name="Adjust the picture" />
-        </MenuItem>
-        <MenuItem Header="_Text flow" AutomationProperties.Name="Text flow submenu">
-          <MenuItem Header="_Wrap text around this" Tag="flow.wrap" InputGesture="Ctrl+Shift+W"
-                    Click="OnActionClicked" AutomationProperties.Name="Wrap text around this frame" />
-          <MenuItem Header="_Continue this text in another frame…" Tag="flow.link" InputGesture="Ctrl+Shift+L"
-                    Click="OnActionClicked" AutomationProperties.Name="Continue this text in another frame" />
-          <MenuItem Header="_Stop continuing into the next frame" Tag="flow.unlink" InputGesture="Ctrl+Shift+K"
-                    Click="OnActionClicked" AutomationProperties.Name="Stop continuing into the next frame" />
-        </MenuItem>
-        <MenuItem Header="A_rrange" AutomationProperties.Name="Arrange submenu">
-          <MenuItem Header="Bring _forward" Tag="arrange.bringForward" InputGesture="Ctrl+OemCloseBrackets"
-                    Click="OnActionClicked" AutomationProperties.Name="Bring forward" />
-          <MenuItem Header="Send _backward" Tag="arrange.sendBackward" InputGesture="Ctrl+OemOpenBrackets"
-                    Click="OnActionClicked" AutomationProperties.Name="Send backward" />
-          <MenuItem Header="Bring to f_ront" Tag="arrange.bringToFront" InputGesture="Ctrl+Shift+OemCloseBrackets"
-                    Click="OnActionClicked" AutomationProperties.Name="Bring to front" />
-          <MenuItem Header="Send to bac_k" Tag="arrange.sendToBack" InputGesture="Ctrl+Shift+OemOpenBrackets"
-                    Click="OnActionClicked" AutomationProperties.Name="Send to back" />
-        </MenuItem>
+        <MenuItem Header="_Fit to contents" Tag="item.fitToContents" InputGesture="Ctrl+Shift+Y"
+                  Click="OnActionClicked" AutomationProperties.Name="Fit this item to its contents" />
+        <Separator />
+        <MenuItem Header="Bring f_orward" Tag="arrange.bringForward" InputGesture="Ctrl+OemCloseBrackets"
+                  Click="OnActionClicked" AutomationProperties.Name="Bring forward" />
+        <MenuItem Header="Send _backward" Tag="arrange.sendBackward" InputGesture="Ctrl+OemOpenBrackets"
+                  Click="OnActionClicked" AutomationProperties.Name="Send backward" />
+        <MenuItem Header="Bring to f_ront" Tag="arrange.bringToFront" InputGesture="Ctrl+Shift+OemCloseBrackets"
+                  Click="OnActionClicked" AutomationProperties.Name="Bring to front" />
+        <MenuItem Header="Send to bac_k" Tag="arrange.sendToBack" InputGesture="Ctrl+Shift+OemOpenBrackets"
+                  Click="OnActionClicked" AutomationProperties.Name="Send to back" />
       </MenuItem>
       <MenuItem Header="_View" AutomationProperties.Name="View menu">
         <MenuItem Header="Zoom _in" Tag="view.zoomIn" InputGesture="Ctrl+OemPlus"
@@ -166,6 +179,11 @@
                   AutomationProperties.Name="Show where fonts were changed" />
         <MenuItem Header="Move to the _next part of the window" Tag="view.nextRegion" InputGesture="F6"
                   Click="OnActionClicked" AutomationProperties.Name="Move to the next part of the window" />
+        <!-- M17: Shift+F6 has worked since M11 and was the one ActionId in the whole app with no
+             menu item anywhere — a shortcut nobody could discover. -->
+        <MenuItem Header="Move to the _previous part of the window" Tag="view.previousRegion"
+                  InputGesture="Shift+F6" Click="OnActionClicked"
+                  AutomationProperties.Name="Move to the previous part of the window" />
         <Separator />
         <MenuItem Header="How things _look…" Tag="view.settings" Click="OnActionClicked"
                   AutomationProperties.Name="Change how things look" />

@@ -1460,7 +1460,16 @@ that should not have.
 **Agents:** **Opus** for the theming-composition spike and the palette; **Sonnet** for the icon set,
 the panel and the spacing work; **cavecrew-reviewer (Sonnet)**.
 
-### M17 — Click and type: the canvas answers the first click, and the menus reorganise (M)
+### M17 — Click and type: the canvas answers the first click, and the menus reorganise (M) ✅
+**Delivered 2026-07-27 — `docs/M17-spec.md` is its record.** Everything below shipped; nothing in
+the scope-cut list was cut. Two things went differently and are argued in the spec: the menu-gesture
+test compares the **parsed `KeyGesture`** rather than the gesture string (XAML spells a key
+`OemCloseBrackets`, `KeyboardMap.Describe` spells it `]` — the texts are written for different
+readers and could never have been equal), and the overset **marker already existed** since M5, so
+"overset gets a face" delivered as the two status sentences that name the command. The
+`OnLostFocus` investigation was third in the cut order, is not cheap, and **moves to M21** as the
+plan permitted. No snapshot baseline moved.
+
 **Goal:** a first-time user who clicks the page can type, and every "put something on the page"
 command lives under Insert. The owner's first hands-on session (2026-07-27) found the app hard to
 *drive*, and exploration confirmed every complaint is real — but most are **discoverability defects
@@ -1808,6 +1817,11 @@ for zoom/pan and the find UI; **cavecrew-reviewer (Sonnet)**.
     (machine-checked, exception list empty); a drag clamps at the page edge; no snapshot baseline
     moves; a manual NVDA pass over the new menu bar; the rewritten menu sections of
     `docs/accessibility-test-script.md` re-run as written.
+    **Machine half green 2026-07-27.** `CanvasAffordanceTests` and `MenuIndexTests` cover
+    click-then-type, the live caret, the widget double-click, the page-edge clamp and the two index
+    checks with an empty exception list; the snapshot suite is unmoved. The gesture check compares
+    parsed `KeyGesture`s, not strings — see `docs/M17-spec.md` §6. **The NVDA pass and the re-run of
+    the script are open** and listed in §13.
 15. **Picture gate (M18):** every photo-template placeholder fillable keyboard-only; a swap is one
     undo step and Ctrl+Z restores the prior picture byte-for-byte; original bytes are byte-identical
     in the `.tboard` after replace, paste and drop (item 7 re-run); a caption typed at insert prints
@@ -1838,6 +1852,9 @@ Windows (946 passed, 12 skipped — the `pdftoppm` parity tests, which are Linux
 > silently discards choices. §11 now carries **M17–M21**, scheduled in that order by what blocks
 > producing a newsletter; §12 gains gates 14–18. The `- [!]` items below remain blocked on a person,
 > a machine, or the owner, exactly as stated — none is superseded by the new milestones.
+>
+> **M17 delivered 2026-07-27** (`docs/M17-spec.md`). It leaves one new manual item, listed below
+> with the others; M18–M21 remain scheduled in that order.
 
 What is left is listed here so a future session does not have to re-derive it from seven spec
 documents. Each item is blocked on a person, a machine, or a decision that is the owner's to make;
@@ -1888,6 +1905,11 @@ The one item a machine could take on is the last defect named after the list, an
       for literal brushes, and the icon-and-label partition — but **no test settles whether the
       result looks designed.** `docs/M16-spec.md` §11. The three committed screenshots that come
       closest are `high-contrast.png`, `scale-200.png` and `wizard-officers-step.png`.
+- [!] **A manual NVDA pass over M17's restructured menu bar** (§11 M17 acceptance). The machine
+      checks cover the *index* — every command has a menu item, every gesture matches the table, the
+      bar is nine wide — but not how "Arrange menu", the new Format ▸ Picture submenu and the two
+      Edit items read aloud in sequence. Needs the same person as the item above and can be run in
+      the same sitting; `docs/accessibility-test-script.md` §3 is rewritten and waiting.
 - [!] **The chrome-budget measurement at 200%** matters slightly more than it did: a 360px panel
       occupies 720px of a 1280px window at 200%, up from 640px. It is part of the NVDA item above
       and blocked on the same person.

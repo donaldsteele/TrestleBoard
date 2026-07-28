@@ -33,6 +33,11 @@
   something that will be printed on paper (docs/M9-spec.md §4). It is declared here — though no
   control paints with it — so that Page.Backdrop has something its floor can be measured against.
 
+  THE TWO ADORNMENT TOKENS ARE THE SAME IN LIGHT AND DARK, and that is not an oversight. They are
+  painted ON THE SHEET (M17: the empty-frame hint and the hover outline), and the sheet is white in
+  every variant, so a Dark value would be a pale grey on white paper — unreadable, and wrong for the
+  same reason Page.Sheet does not theme. High Contrast still moves, because there the floor moves.
+
   ==== CONTRAST ====
   ThemeCompositionTests parses the block below OUT OF THIS FILE, recomputes every ratio from the
   hex values above it, and fails if a number here is wrong or a floor is missed. The ratios are not
@@ -52,6 +57,8 @@
   PAIR Focus.Inner on Focus >= 3 : Light 17.79  Dark 16.08  HighContrast 19.56
   PAIR Focus.Inner on Accent >= 3 : Light 12.48  Dark 8.31  HighContrast 16.75
   PAIR Warning on Chrome.Background >= 4.5 : Light 6.81  Dark 8.35  HighContrast 10.64
+  PAIR Adornment.Hint on Page.Sheet >= 4.5 : Light 5.33  Dark 5.33  HighContrast 21.00
+  PAIR Adornment.Hover on Page.Sheet >= 3 : Light 4.91  Dark 4.91  HighContrast 21.00
   ==== END CONTRAST ====
 
   Two rules bind absolutely and both are tested: colour is never the only signal (Border.Thickness
@@ -75,6 +82,8 @@
       <SolidColorBrush x:Key="TrestleBoard.Ornament.OnAccent" Color="#C8A24B" />
       <SolidColorBrush x:Key="TrestleBoard.Page.Backdrop" Color="#6E7A8F" />
       <SolidColorBrush x:Key="TrestleBoard.Page.Sheet" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TrestleBoard.Adornment.Hint" Color="#6B6B6B" />
+      <SolidColorBrush x:Key="TrestleBoard.Adornment.Hover" Color="#2A6FCF" />
       <SolidColorBrush x:Key="TrestleBoard.Focus" Color="#14181F" />
       <SolidColorBrush x:Key="TrestleBoard.Focus.Inner" Color="#FFFFFF" />
       <SolidColorBrush x:Key="TrestleBoard.Warning" Color="#A31515" />
@@ -99,6 +108,8 @@
       <SolidColorBrush x:Key="TrestleBoard.Ornament.OnAccent" Color="#4A3708" />
       <SolidColorBrush x:Key="TrestleBoard.Page.Backdrop" Color="#2A2E38" />
       <SolidColorBrush x:Key="TrestleBoard.Page.Sheet" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TrestleBoard.Adornment.Hint" Color="#6B6B6B" />
+      <SolidColorBrush x:Key="TrestleBoard.Adornment.Hover" Color="#2A6FCF" />
       <SolidColorBrush x:Key="TrestleBoard.Focus" Color="#F2F4F8" />
       <SolidColorBrush x:Key="TrestleBoard.Focus.Inner" Color="#10182A" />
       <SolidColorBrush x:Key="TrestleBoard.Warning" Color="#FF9E9E" />
@@ -126,6 +137,8 @@
       <SolidColorBrush x:Key="TrestleBoard.Ornament.OnAccent" Color="#000000" />
       <SolidColorBrush x:Key="TrestleBoard.Page.Backdrop" Color="#000000" />
       <SolidColorBrush x:Key="TrestleBoard.Page.Sheet" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="TrestleBoard.Adornment.Hint" Color="#000000" />
+      <SolidColorBrush x:Key="TrestleBoard.Adornment.Hover" Color="#000000" />
       <SolidColorBrush x:Key="TrestleBoard.Focus" Color="#FFFF00" />
       <SolidColorBrush x:Key="TrestleBoard.Focus.Inner" Color="#000000" />
       <SolidColorBrush x:Key="TrestleBoard.Warning" Color="#FF9E9E" />

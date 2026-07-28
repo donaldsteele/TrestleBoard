@@ -320,7 +320,8 @@ public sealed class FrameEditorControllerTests
 
         harness.Frames.Select(EditorTestHarness.BlockId);
         Assert.Equal(
-            "This text does not fit. Add another frame and link it, or make this frame bigger.",
+            "There is more writing than fits — 'Make the rest fit' (Ctrl+Shift+M) will flow it, "
+            + "or make this frame bigger.",
             harness.Frames.StatusMessage);
 
         string target = harness.Frames.AddTextFrame(0);

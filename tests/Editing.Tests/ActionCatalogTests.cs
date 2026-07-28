@@ -400,4 +400,34 @@ public sealed class ActionCatalogTests
         int longest = ActionCatalog.All.Max(a => a.Title.Length);
         Assert.True(longest > ceiling - 12, $"the longest title is only {longest} characters — is this ceiling still real?");
     }
+
+    // ---- the panel's caption (M17) ---------------------------------------------------------------
+
+    /// <summary>
+    /// A click inside one of the filled-in lists lands on no paragraph — correct by the M7 design,
+    /// and indistinguishable from nothing happening. The panel says how the list is edited instead.
+    /// </summary>
+    [Fact]
+    public void AWidgetSelectionSaysHowItIsEdited()
+    {
+        string hint = Assert.IsType<string>(ActionCatalog.DescribeSelectionHint(Widget()));
+        Assert.Contains("double-click", hint, StringComparison.Ordinal);
+        Assert.Contains(ActionCatalog.Get(ActionId.EditWidget).Title, hint, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Only the widgets need it. A text frame answers a click by putting a caret in it, and a photo
+    /// by selecting itself; a caption under those would be noise the user has to read past.
+    /// </summary>
+    [Fact]
+    public void NothingElseCarriesACaption()
+    {
+        Assert.Null(ActionCatalog.DescribeSelectionHint(Document()));
+        Assert.Null(ActionCatalog.DescribeSelectionHint(TextFrame()));
+        Assert.Null(ActionCatalog.DescribeSelectionHint(Photo()));
+
+        // A widget this build does not understand already explains itself in its refusal; a second
+        // sentence telling the user to edit it would contradict the first.
+        Assert.Null(ActionCatalog.DescribeSelectionHint(Widget() with { CanEditWidget = false }));
+    }
 }

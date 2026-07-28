@@ -133,47 +133,77 @@ Work through every menu below. For each item, press `Tab`/arrow onto it (or open
 directly from `AutomationProperties.Name` in `src/TrestleBoard.App/MainWindow.axaml` — if you hear
 something different, that is itself a finding, write it down.
 
-**3.1 File menu** (`Alt+F`): Open a newsletter (`Ctrl+O`) · Open the sample newsletter · Export as
-PDF (`Ctrl+E`) · Exit TrestleBoard.
+> **The menu bar was restructured in M17** (PLAN.md §11 M17, `docs/M17-spec.md`). If you are
+> holding a printed copy of this script older than that, throw it away: there is no longer an
+> "Object" menu or a "This item" menu, and the toolbar has nine controls rather than eighteen.
+> **Nine top-level menus, and every command in the app has a menu item** — that second promise is
+> now enforced by `MenuIndexTests.EveryActionInTheCatalogHasAMenuItem`, so if you find a command
+> with no menu home, that is a test that has been switched off, not a menu that was forgotten.
+
+**3.1 File menu** (`Alt+F`): Open a newsletter (`Ctrl+O`) · Open the sample newsletter · Start from
+a template · Start this month from last month's newsletter · Export as PDF (`Ctrl+E`) · Exit
+TrestleBoard.
 
 **3.2 Edit menu** (`Alt+E`): Undo (`Ctrl+Z`) · Redo (`Ctrl+Y`) · Cut (`Ctrl+X`) · Copy (`Ctrl+C`) ·
-Paste (`Ctrl+V`) · Select all (`Ctrl+A`). With no document open, or nothing selected, most of
-these should announce as unavailable — check.
+Paste (`Ctrl+V`) · Select all (`Ctrl+A`) · Delete this (`Delete`) · Change what this item says
+(`Ctrl+Shift+E`) · Edit this list (`Ctrl+Shift+G`). With no document open, or nothing selected,
+most of these should announce as unavailable — check. **Undo and Redo say what they will take
+back** ("Undo move photo"), so their spoken name changes as you work; that is deliberate.
 
-**3.3 Format menu** (`Alt+O`): Bold (`Ctrl+B`) · Italic (`Ctrl+I`). Both should be unavailable
-until you are typing inside a text frame (§5 below).
+**3.3 Format menu** (`Alt+O`): Bold (`Ctrl+B`) · Italic (`Ctrl+I`) · Paragraph style (a submenu,
+built from the newsletter's own styles) · Fonts and text styles (`Ctrl+Shift+D`) · Make text bigger
+(`Ctrl+Shift+.`) · Make text smaller (`Ctrl+Shift+,`) · Use a different font just here · Put it back
+to the usual font · **Picture** (a submenu: Fix this picture `Ctrl+Shift+F`, Adjust the picture
+`Ctrl+Shift+A`). Bold and Italic should be unavailable until you are typing inside a text frame
+(§5 below); the two picture items until a photo is chosen.
 
-**3.4 Insert menu** (`Alt+I`): Lodge officers · Birthdays · Committees · District calendar ·
-Announcement box · Cover heading. None of these carry a keyboard shortcut of their own — the menu
-is the only path to each. All six should be unavailable until a document is open.
+**3.4 Insert menu** (`Alt+I`): Add a text frame (`Ctrl+Shift+T`) · Insert a picture
+(`Ctrl+Shift+P`) — then, after a separator — Lodge officers · Birthdays · Bring in birthdays from
+the address book (`Ctrl+Shift+U`) · Committees · District calendar · Announcement box · Cover
+heading. The six widgets carry no shortcut of their own; the menu is the only path to each. All of
+them should be unavailable until a document is open.
 
-**3.5 Object menu** (`Alt+J`): Add a text frame (`Ctrl+Shift+T`) · Delete this frame (`Delete`) ·
-Wrap text around this frame (`Ctrl+Shift+W`) · Bring forward (`Ctrl+]`) · Send backward (`Ctrl+[`)
-· Bring to front (`Ctrl+Shift+]`) · Send to back (`Ctrl+Shift+[`) · Insert a picture
-(`Ctrl+Shift+P`) · Fix this picture (`Ctrl+Shift+F`) · Adjust the picture (`Ctrl+Shift+A`) · Edit
-this item (`Ctrl+Shift+E`) · Edit this list (`Ctrl+Shift+G`) · Fit this item to its contents
-(`Ctrl+Shift+Y`) · Make the rest of this text fit (`Ctrl+Shift+M`) · Continue this text in another
-frame (`Ctrl+Shift+L`) · Stop continuing into the next frame (`Ctrl+Shift+K`). This is the longest
-menu — read through every item and note anything whose spoken name doesn't match its visible text.
+**3.5 Arrange menu** (`Alt+R`): Wrap text around this frame (`Ctrl+Shift+W`) · Continue this text in
+another frame (`Ctrl+Shift+L`) · Stop continuing into the next frame (`Ctrl+Shift+K`) · Make the
+rest of this text fit (`Ctrl+Shift+M`) · Fit this item to its contents (`Ctrl+Shift+Y`) · Bring
+forward (`Ctrl+]`) · Send backward (`Ctrl+[`) · Bring to front (`Ctrl+Shift+]`) · Send to back
+(`Ctrl+Shift+[`). Everything here is about **where a thing sits on the page**, which is why the
+four stacking commands are one level up from where M11 left them.
 
 **3.6 View menu** (`Alt+V`): Zoom in (`Ctrl+=`) · Zoom out (`Ctrl+-`) · Actual size (`Ctrl+0`) ·
-Fit page (`Ctrl+1`).
+Fit page (`Ctrl+1`) · Show or hide the panel of things you can do · Show where fonts were changed ·
+Move to the next part of the window (`F6`) · **Move to the previous part of the window
+(`Shift+F6`)** · Change how things look. Shift+F6 gained its menu item in M17; before that it was
+the one gesture in the whole app that could only be found by guessing.
 
 **3.7 Page menu** (`Alt+P`): Next page (`Ctrl+Page Down`) · Previous page (`Ctrl+Page Up`) · Add a
 page after this one · Delete this page · Move this page earlier · Move this page later.
 
-**3.8 Toolbar, left to right.** With the sample newsletter open, `Tab` across the whole toolbar
-row and write down what each announces: Open · Undo · Redo · Bold · Italic · **Paragraph style**
-(a dropdown/combo box) · Previous page (`◀ Back`) · **Current page** label · Next page (`Next ▶`)
-· Zoom out (`− Smaller`) · **Current zoom** label · Zoom in (`+ Bigger`) · Fit the whole page in
-the window (`Fit page`) · Add a text frame (`+ Text frame`) · Wrap text around this frame (`Wrap
-text`) · Insert a picture (`+ Picture`) · Fix this picture (`Fix photo`) · Bring forward
-(`Forward`) · Send backward (`Backward`).
-**PASS criterion:** every button announces role "button" plus the plain-language name above — not
-just the glyph/short label that's visibly printed on it (e.g. you should hear "Zoom out," not "−
-Smaller" read as a symbol, though exact renderings vary by screen reader).
+**3.8 People menu** (`Alt+L`): Open your lodge address book (`Ctrl+Shift+R`) · Import members from a
+spreadsheet · Save your address book as a spreadsheet · Undo the last change to your address book ·
+Restore an earlier version of your address book. The address book's undo is a **separate sentence**
+from the newsletter's, because `Ctrl+Z` never crosses that boundary — check that the two are not
+confusable by ear.
 
-**3.9 Status line.** Select a frame that overflows its text (see §6/§5 for how to make one, or use
+**3.9 Help menu** (`Alt+H`): Check for an update · Show me an example newsletter · Fonts and
+licences · About TrestleBoard.
+
+**3.10 Toolbar, left to right.** Nine controls, not eighteen: everything that acts on the thing you
+have chosen moved into the panel in M11, where it sits beside that thing. With the sample newsletter
+open, `Tab` across the row and write down what each announces: Open a newsletter (`Open`) · Undo ·
+Redo · Previous page (`Back`) · **Current page** label · Next page (`Next`) · Zoom out (`Smaller`) ·
+**Current zoom** label · Zoom in (`Bigger`) · Fit the whole page in the window (`Fit page`).
+**PASS criterion:** every button announces role "button" plus the plain-language name above — not
+just the short label that's visibly printed on it (e.g. you should hear "Zoom out," not "Smaller,"
+though exact renderings vary by screen reader).
+
+**3.11 Unavailable items must say why.** Pick any greyed menu item — Export as PDF with nothing
+open, or Fix this picture with no photo chosen — and read its **help text** as well as its name
+(NVDA: `Insert+Tab`, or listen to the full announcement). Since M11 every unavailable command
+carries a plain-language reason there, and pressing its shortcut says the same sentence in the
+status line. "Dimmed" with no reason is a finding.
+
+**3.12 Status line.** Select a frame that overflows its text (see §6/§5 for how to make one, or use
 the sample document and look for a red `+` badge), and check whether the status line — labelled
 "Status" — speaks its text automatically without you having to Tab to it. It is marked as a
 "polite" live region in the source, but live-region support varies by screen reader/OS
@@ -192,9 +222,10 @@ combination; write down whether it announced itself or whether you had to go fin
 > is announced — "nothing was announced" is the correct and useful answer if that's what happens.
 
 **4.1** With the sample newsletter open, build a small test page: use Insert ▸ Lodge officers to
-add a widget (cancel out of the wizard once the box appears on the page), Object ▸ Insert a
-picture… to add a photo (see §7 for the description prompt), and Object ▸ Add a text frame to add
-an empty text frame. You now have at least three different kinds of block on one page. (There is
+add a widget (cancel out of the wizard once the box appears on the page), Insert ▸ A picture… to
+add a photo (see §7 for the description prompt), and Insert ▸ A text frame to add
+an empty text frame. **From M17 the caret lands in the new text frame straight away**, so press
+Escape once to get back to frame selection before you go on. You now have at least three different kinds of block on one page. (There is
 no menu path to the pre-built five-page sample with a full mix of content — it exists only for
 the automated tests — so building a small page by hand like this is currently the only way to get
 a mixed page in front of a screen reader.)
@@ -304,7 +335,7 @@ description PLAN.md §4 requires, not a generic "Undo."
 
 ## 7. Inserting a photo, including the description prompt
 
-**7.1** Choose Object ▸ Insert a picture… (`Ctrl+Shift+P`).
+**7.1** Choose Insert ▸ A picture… (`Ctrl+Shift+P`).
 Expected: the operating system's file picker opens (again, not TrestleBoard's own accessibility —
 confirm you can navigate it, then choose any JPEG or PNG).
 
@@ -325,13 +356,13 @@ completely blank, and note whether the app stops you. As written today the "Put 
 button does not require the description box to contain anything — nothing currently prevents an
 undescribed photo from reaching the page. Write down what you observe; see Finding 10.
 
-**7.5** With the new photo selected on the canvas (Tab to it, per §4's caveats), choose Object ▸
+**7.5** With the new photo selected on the canvas (Tab to it, per §4's caveats), choose Format ▸ Picture ▸
 Fix this picture (`Ctrl+Shift+F`).
 Expected: the status line should announce something like *"Picture fixed. Press Ctrl+Z if you
 liked it better before."* Confirm whether this is spoken without you having to go find it (it is
 the same "polite" status line from §3.9).
 
-**7.6** Choose Object ▸ Adjust the picture… (`Ctrl+Shift+A`).
+**7.6** Choose Format ▸ Picture ▸ Adjust the picture… (`Ctrl+Shift+A`).
 Expected: a window titled "Adjust the picture" opens with three sliders — **"Brighter or darker,"
 "More or less contrast," "More or less colour"** — plus **"Turn the picture a quarter turn"** and
 **"Undo all changes to this picture"** buttons. Tab through all five controls and record what is
@@ -344,7 +375,7 @@ source, so what you hear may fall back to the title text, which is worth confirm
 ## 8. The grid re-editor
 
 **8.1** Select a widget that has a list inside it (Lodge officers, Birthdays, or Committees all
-qualify), then choose Object ▸ Edit this list… (`Ctrl+Shift+G`).
+qualify), then choose Edit ▸ Edit the list… (`Ctrl+Shift+G`).
 Expected: a window titled "*[widget name]* — edit list" opens, with every row on one scrolling
 page instead of one row per screen.
 
@@ -443,7 +474,7 @@ allowed to be greyed.
 are **gone from the panel entirely** rather than dimmed. That absence is deliberate: the panel is
 headed with what is selected, so an action that is missing reads as "not about text frames".
 
-**11.6** Now open the **This item** menu with nothing selected on the page (press Escape on the
+**11.6** Now open the **Arrange** menu with nothing selected on the page (press Escape on the
 canvas first).
 **What you should hear:** several items announced as dimmed or unavailable — that part is normal
 and deliberate in a menu. What is being tested is whether your screen reader also reads the
@@ -788,7 +819,7 @@ concrete, reproducible bugs rather than missing features.
    (Redo) at roughly line 556, and a separate `case Key.Y when ctrl && shift:` (Fit to contents)
    at roughly line 643. C# evaluates `switch` cases in order, and the Redo case's guard is only
    `ctrl` — it does not exclude Shift — so it matches `Ctrl+Shift+Y` too, before the later case is
-   ever reached. Pressing the shortcut the Object menu itself advertises for "Fit this item to its
+   ever reached. Pressing the shortcut the Arrange menu itself advertises for "Fit this item to its
    contents" (`Ctrl+Shift+Y`) actually redoes the last undone action. The menu item still works
    fine by mouse/Enter; only the keyboard gesture is broken. This is exactly the kind of
    menu-advertises-a-gesture-the-handler-doesn't-implement bug the milestone's automated keyboard

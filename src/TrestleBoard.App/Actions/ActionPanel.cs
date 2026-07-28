@@ -125,6 +125,21 @@ internal sealed class ActionPanel : Border
 
         _content.Children.Clear();
 
+        // M17: how this thing is edited, when a click on it does not say so by itself. A polite
+        // live region, so a screen-reader user hears it on the selection change too.
+        if (ActionCatalog.DescribeSelectionHint(context) is { Length: > 0 } hint)
+        {
+            var caption = new TextBlock
+            {
+                Text = hint,
+                FontSize = 15,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Avalonia.Thickness(0, 0, 0, 8),
+            };
+            AutomationProperties.SetLiveSetting(caption, AutomationLiveSetting.Polite);
+            _content.Children.Add(caption);
+        }
+
         // M14: one of the three ways the user can tell this text carries a font of its own. The
         // other two are the View overlay and the styles window's footer — all three are needed,
         // because each answers the question from a different place.

@@ -34,6 +34,15 @@ internal static class Tokens
     internal const string OrnamentOnAccent = "TrestleBoard.Ornament.OnAccent";
 
     internal const string PageBackdrop = "TrestleBoard.Page.Backdrop";
+
+    /// <summary>
+    /// The two colours the editor paints ON the sheet (M17): the empty-frame hint and the hover
+    /// outline. They live in the palette like everything else, but they are measured against
+    /// <c>Page.Sheet</c> rather than <c>Chrome.Background</c>, because that is what is behind them.
+    /// </summary>
+    internal const string AdornmentHint = "TrestleBoard.Adornment.Hint";
+
+    internal const string AdornmentHover = "TrestleBoard.Adornment.Hover";
     internal const string Focus = "TrestleBoard.Focus";
     internal const string FocusInner = "TrestleBoard.Focus.Inner";
 

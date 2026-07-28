@@ -432,6 +432,30 @@ public static class ActionCatalog
     }
 
     /// <summary>
+    /// A sentence under the panel's heading saying how this thing is edited, or null when the
+    /// heading already says everything there is to say (PLAN.md §11 M17).
+    ///
+    /// <para>It exists for the widgets. Their text is drawn from a payload rather than from a
+    /// story, so a click inside one lands on no paragraph at all and nothing happens — correct by
+    /// the M7 design, and indistinguishable from a broken program. The panel is where the user is
+    /// already looking after a click, so it is where the answer goes.</para>
+    /// </summary>
+    public static string? DescribeSelectionHint(ActionContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        if (context.Selection != SelectionKind.Widget)
+        {
+            return null;
+        }
+
+        return context.CanEditWidget
+            ? "This is a filled-in list. Use 'Change what this says…' to edit it — "
+              + "or just double-click it on the page."
+            : null;
+    }
+
+    /// <summary>
     /// Which groups the panel shows for this selection. Ordered: the thing you most likely want
     /// first. With nothing selected the panel shows the "what's next" card and the ways of putting
     /// something new on the page.

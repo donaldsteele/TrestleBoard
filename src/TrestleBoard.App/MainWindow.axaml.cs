@@ -113,6 +113,15 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
         PageCanvas.ContextRequested += OnCanvasContextRequested;
         PageCanvas.PeerAskedForContextMenu += (_, _) => ShowContextActions();
+
+        // M17: double-clicking a filled-in list opens its editor. The canvas reports the gesture;
+        // the decision goes through the runner like every other command, so a widget this build
+        // does not recognise refuses in plain language instead of opening a wrong dialog.
+        PageCanvas.WidgetActivated += (_, _) =>
+        {
+            RefreshActions();
+            _ = _actions.RunAsync(ActionId.EditWidget);
+        };
         ApplySettings(_settings);
         RefreshActions();
 
@@ -1091,10 +1100,23 @@ public partial class MainWindow : Window
 
     // ---- Frames (docs/M5-spec.md §9) ----------------------------------------------------------
 
+    /// <summary>
+    /// Adds an empty text frame AND starts the text session in it (PLAN.md §11 M17) — the same
+    /// path Enter and F2 take on a selected frame. Before M17 this selected the new frame and
+    /// stopped, so the user was left looking at an empty rectangle with no sign that typing was
+    /// what to do next; the inline editor underneath has worked since M4.
+    /// </summary>
     internal void AddTextFrame()
     {
         _editor?.End();
-        _frames?.AddTextFrame(_pageIndex);
+        if (_frames is null)
+        {
+            return;
+        }
+
+        _frames.AddTextFrame(_pageIndex);
+        PageCanvas.Focus();
+        PageCanvas.BeginTextEditingOnSelection();
     }
 
     internal void DeleteSelectedFrame() => _frames?.DeleteSelected();
@@ -2041,8 +2063,11 @@ public partial class MainWindow : Window
             ?? _widgets?.StatusMessage
             ?? _photos?.StatusMessage
             ?? _frames?.StatusMessage
-            ?? (_source is { IsOverset: true }
-                ? "Some text does not fit in its frame. Select that frame to see what to do."
+            ?? (_context.HasOversetText
+                // M17: the marker at the outflow corner has been drawn since M5 and said nothing
+                // about what to do. This names the command and its shortcut, so the red square
+                // stops being a symbol the user has to look up.
+                ? "There is more writing than fits — 'Make the rest fit' (Ctrl+Shift+M) will flow it."
                 : null);
 
         StatusLabel.Text = message ?? _announcement ?? "";
