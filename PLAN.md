@@ -1874,6 +1874,15 @@ for zoom/pan and the find UI; **cavecrew-reviewer (Sonnet)**.
     Apply with nothing pending says so; headers are unselectable and arrow-unreachable; two roles
     changeable in one visit; "just here" shows only the selection-scoped warning; gate 11 still
     passes byte-for-byte.
+    **Green 2026-07-28.** `TextStylesWindowTests` drives all four exits through the real shell: Apply
+    applies and leaves the window open (two roles, two undo steps, one visit), switching roles with
+    an edit pending applies it first and names whose it was, the title-bar X applies rather than
+    forgets, and Cancel — now labelled "Cancel — change nothing" — is the only path that changes
+    nothing. A heading refuses the selection and the pending choice survives it; the category text
+    survives on each family row's automation name; the declared role order is tested in
+    `Core.Tests/StyleFontTests`; the preview cache answers the second ask for a size already drawn.
+    Gate 11 (`TextStylesShellTests`) re-runs **unchanged** — M20 opened no engine file — and no
+    snapshot baseline moved.
 18. **Conveniences gate (M21):** every new action keyboard-reachable and menu-indexed (mechanical);
     align and distribute are one undo step each; find reaches the second frame of a linked chain;
     Ctrl+wheel holds the point under the pointer stationary; no snapshot baseline moves.
@@ -1905,6 +1914,12 @@ Windows (946 passed, 12 skipped — the `pdftoppm` parity tests, which are Linux
 > address book behind a per-office diff dialog, and M13's officer-generation deferral is formally
 > overturned on its own stated condition (`docs/M13-spec.md` §1 carries the marker). It moved no
 > snapshot baseline and changed no layouter. **M20 and M21 remain scheduled in that order.**
+>
+> **M20 delivered 2026-07-28** (`docs/M20-spec.md`) — the font window is two explicit modes, it
+> applies rather than discards on every exit but Cancel, and its category headings are no longer
+> choices. All ten enumerated defects closed; nothing was cut. Chrome only: no engine file was
+> opened, M14's font gate re-ran unchanged, and no snapshot baseline moved. It leaves two manual
+> items (below), both folded into passes that already existed. **M21 alone remains scheduled.**
 
 What is left is listed here so a future session does not have to re-derive it from seven spec
 documents. Each item is blocked on a person, a machine, or a decision that is the owner's to make;
@@ -1968,6 +1983,15 @@ The one item a machine could take on is the last defect named after the list, an
       printed page and said the words under the photograph are the right size and distance from it.
       Needs the same person as the real-world test and can be run in the same sitting;
       `docs/M18-spec.md` §3 records the three sizing constants to judge.
+- [!] **A manual NVDA pass over M20's grouped font list** (§11 M20 acceptance). The test proves each
+      family row's automation name carries its category, and that headings are unselectable and
+      arrow-unreachable; only a person with a screen reader can say the grouping is *heard* and that
+      the pending-change messages (polite live regions) are announced. Same person and same sitting
+      as the M17 menu-bar pass; `docs/M20-spec.md` §7.
+- [!] **The font window at 200% in all three themes**, by eye. M20 removed every fixed pixel height
+      and made the previews transparent, which is what the defects asked for; whether the result
+      looks right at 200% in High Contrast is a judgement. It folds into M16's by-eye item above
+      rather than standing as a second sitting.
 
 Of the three known defects recorded here, **the two cosmetic ones are fixed (2026-07-27)** — they
 turned out to be App-only chrome fixes that re-bake no snapshot baseline, so closing them opened no
