@@ -1740,7 +1740,17 @@ pending-change model, unselectable headers.
 is the best-specified milestone of the five; **Opus** only if the grouped-list accessibility forces
 a custom control; **cavecrew-reviewer (Sonnet)**.
 
-### M21 — Everyday conveniences other publishing apps have (L)
+### M21 — Everyday conveniences other publishing apps have (L) ✅
+**Delivered 2026-07-28 — `docs/M21-spec.md` is its record.** Everything below shipped and **nothing
+in the scope-cut list was cut**, including the marquee the multi-select bullet named as its cut
+candidate. Three things are worth reading in the spec: find walks **stories**, so reaching the second
+frame of a linked chain needs no special case at all (a chain is one story); **replace-all is one
+undo step** rather than one per replacement, because forty Ctrl+Zs to take back one command would be
+a punishment for using it; and the find window is the app's **only non-modal dialog**, which is
+possible only because the same milestone made the text session survive losing focus. No snapshot
+baseline moved and no screenshot was re-baked — with one thing chosen the panel looks exactly as it
+did before, and no committed image poses a multi-selection or an open menu.
+
 **Goal:** the standard desktop-publishing behaviours whose absence a user notices without being
 able to name them. **Fully scheduled** — the owner decided so on 2026-07-27, which is why this
 heading carries no "owner-optional" suffix.
@@ -1814,9 +1824,12 @@ for zoom/pan and the find UI; **cavecrew-reviewer (Sonnet)**.
   its affected screenshots by name (`--only`, iterate with `--out` outside the repo, one image
   commit — M16's rule); **M18 is the only one allowed to move rendered pixels or re-bake snapshot
   baselines** (captions), and the gates hold the others to it.
-  **M17 landed 2026-07-27 and M18 on 2026-07-28**, both to this shape. M18 spent its pixel budget on
-  exactly two baselines per platform; **M19, M20 and M21 are held to none**, and the M17 index tests
-  plus the unmoved snapshot suite are how that is checked rather than promised.
+  **M17 landed 2026-07-27 and M18–M21 on 2026-07-28**, all five to this shape. M18 spent its pixel
+  budget on exactly two baselines per platform; **M19, M20 and M21 moved none**, and the M17 index
+  tests plus the unmoved snapshot suite are how that was checked rather than promised. **M21 is the
+  one of the five that re-baked no screenshot at all** — its new chrome (the multi-selection outline,
+  the marquee, the find window) only appears in states no committed image poses, and with one thing
+  chosen the panel looks exactly as it did before.
 
 ---
 
@@ -1886,6 +1899,16 @@ for zoom/pan and the find UI; **cavecrew-reviewer (Sonnet)**.
 18. **Conveniences gate (M21):** every new action keyboard-reachable and menu-indexed (mechanical);
     align and distribute are one undo step each; find reaches the second frame of a linked chain;
     Ctrl+wheel holds the point under the pointer stationary; no snapshot baseline moves.
+    **Green 2026-07-28.** The ten new commands are carried by M17's index tests without a line
+    added to them — `MenuIndexTests` and `KeyboardAuditTests` walk the catalog, so a command with no
+    menu home fails the build. `ConveniencesShellTests` drives the rest through the real window:
+    Ctrl+wheel holds its point to within the pixel the scroller rounds to, three frames line up in
+    one step whose Ctrl+Z puts all three back, the text session survives focus moving to the panel,
+    a marquee chooses what it touches and a one-pixel box chooses nothing, and with one thing chosen
+    nothing about lining up is offered at all. `FindControllerTests` builds a two-page linked chain
+    and finds a word in its second frame; `FrameAlignmentTests` holds the arithmetic, including that
+    aligning twice changes nothing; `StoryFinderTests` holds reading order and the wrap. The
+    snapshot suite re-ran **unchanged**.
 
 ## 13. Remaining open items (status as at 2026-07-27)
 
@@ -1920,6 +1943,12 @@ Windows (946 passed, 12 skipped — the `pdftoppm` parity tests, which are Linux
 > choices. All ten enumerated defects closed; nothing was cut. Chrome only: no engine file was
 > opened, M14's font gate re-ran unchanged, and no snapshot baseline moved. It leaves two manual
 > items (below), both folded into passes that already existed. **M21 alone remains scheduled.**
+>
+> **M21 delivered 2026-07-28** (`docs/M21-spec.md`) — zoom about the pointer, pan, find and replace,
+> multi-select with align and distribute, and M17's `OnLostFocus` deferral closed. Nothing was cut,
+> including the marquee. No baseline moved, no screenshot was re-baked, and no file in
+> `Layout`/`Rendering`/`Export.Pdf` was opened. It leaves one new manual item (below).
+> **With this, M17–M21 are all delivered and §11 carries no scheduled milestone.**
 
 What is left is listed here so a future session does not have to re-derive it from seven spec
 documents. Each item is blocked on a person, a machine, or a decision that is the owner's to make;
@@ -1988,6 +2017,14 @@ The one item a machine could take on is the last defect named after the list, an
       arrow-unreachable; only a person with a screen reader can say the grouping is *heard* and that
       the pending-change messages (polite live regions) are announced. Same person and same sitting
       as the M17 menu-bar pass; `docs/M20-spec.md` §7.
+- [!] **A manual NVDA pass over §15 of `docs/accessibility-test-script.md`** (§11 M21 acceptance) —
+      the eleven steps written for M21: the find window's live region beside the status line, the
+      "3 things are selected" panel heading, the eight new Arrange items announcing their refusal
+      with the reason that names Shift+click, and the text session surviving focus moving to the
+      panel. The tests prove the strings exist and the state is right; only a person with a screen
+      reader can say they are heard. Same person and same sitting as the M17 and M20 passes.
+      **Step 15.11 needs a mouse** — Ctrl+wheel and Space+drag are pointer gestures by definition,
+      and every command they reach also has a keyboard path. `docs/M21-spec.md` §7.
 - [!] **The font window at 200% in all three themes**, by eye. M20 removed every fixed pixel height
       and made the previews transparent, which is what the defects asked for; whether the result
       looks right at 200% in High Contrast is a judgement. It folds into M16's by-eye item above
@@ -2026,8 +2063,19 @@ Each stays out of §11 for the stated reason; none is forgotten, none is schedul
   proofreads today. Its own small milestone if wanted (squiggle adornment + suggestion menu,
   App/Editing only).
 - **Rulers, guides, snap-to-grid** — templates are the layout system for this audience; free-form
-  layout aids cut against the premise. Snapping may ride along with M21's align if the owner asks.
-- **Group/ungroup** — a document-model and serialization change; deliberately excluded from M21.
+  layout aids cut against the premise. Snapping did **not** ride along with M21's align (frame
+  snapping has existed since M5's `SnapEngine`; a grid is the separate idea, and still unscheduled).
+- **Group/ungroup** — a document-model and serialization change; deliberately excluded from M21, and
+  M21 kept that line: multi-select is a selection, not a stored relationship.
+- **Deleting several chosen things at once** (added 2026-07-28, from M21). Delete still acts on the
+  primary frame alone. Doing it for a set means deciding, per frame, whether its story is still shown
+  anywhere else — real work that belongs to whoever asks for it rather than smuggled into a milestone
+  about lining things up. `docs/M21-spec.md` §4.
+- **Searching inside the lists TrestleBoard fills in** (added 2026-07-28, from M21). Find walks
+  stories; widget text is a JSON payload with no caret model, so a hit there could be reported but
+  neither selected nor replaced. M21 says so out loud in the empty-result message rather than
+  half-doing it. Doing it properly is the same fork-the-text-engine problem as widget inline editing,
+  above, and is blocked behind the same ruling.
 - **Committee generation from the roster** — blocked on a roster schema decision (a Committees
   column through import mapping, the XLSX round-trip, `PeopleWindow`); one small milestone if
   wanted. M19 records the same reason.

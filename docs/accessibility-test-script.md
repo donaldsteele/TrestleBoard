@@ -145,7 +145,8 @@ a template · Start this month from last month's newsletter · Export as PDF (`C
 TrestleBoard.
 
 **3.2 Edit menu** (`Alt+E`): Undo (`Ctrl+Z`) · Redo (`Ctrl+Y`) · Cut (`Ctrl+X`) · Copy (`Ctrl+C`) ·
-Paste (`Ctrl+V`) · Select all (`Ctrl+A`) · Delete this (`Delete`) · Change what this item says
+Paste (`Ctrl+V`) · Select all (`Ctrl+A`) · **Find (`Ctrl+F`)** · **Find and replace (`Ctrl+H`)** ·
+Delete this (`Delete`) · Change what this item says
 (`Ctrl+Shift+E`) · Edit this list (`Ctrl+Shift+G`). With no document open, or nothing selected,
 most of these should announce as unavailable — check. **Undo and Redo say what they will take
 back** ("Undo move photo"), so their spoken name changes as you work; that is deliberate.
@@ -167,8 +168,14 @@ them should be unavailable until a document is open.
 another frame (`Ctrl+Shift+L`) · Stop continuing into the next frame (`Ctrl+Shift+K`) · Make the
 rest of this text fit (`Ctrl+Shift+M`) · Fit this item to its contents (`Ctrl+Shift+Y`) · Bring
 forward (`Ctrl+]`) · Send backward (`Ctrl+[`) · Bring to front (`Ctrl+Shift+]`) · Send to back
-(`Ctrl+Shift+[`). Everything here is about **where a thing sits on the page**, which is why the
-four stacking commands are one level up from where M11 left them.
+(`Ctrl+Shift+[`) — then, after a separator, the eight M21 commands that act on **more than one**
+thing: Line up the left edges · Line up the centres, side to side · Line up the right edges · Line
+up the top edges · Line up the middles, top to bottom · Line up the bottom edges · Space them out
+evenly, side to side · Space them out evenly, top to bottom. Everything here is about **where a
+thing sits on the page**, which is why the four stacking commands are one level up from where M11
+left them. The eight new ones carry **no shortcut**: the menu is their keyboard path, and each
+should announce as unavailable — with a reason naming Shift+click — until two things are chosen
+(three, for the two spacing commands).
 
 **3.6 View menu** (`Alt+V`): Zoom in (`Ctrl+=`) · Zoom out (`Ctrl+-`) · Actual size (`Ctrl+0`) ·
 Fit page (`Ctrl+1`) · Show or hide the panel of things you can do · Show where fonts were changed ·
@@ -673,6 +680,64 @@ properly. No dialog, no error, no stack trace.
 
 ---
 
+## 15. Finding words, and lining things up (M21)
+
+Have the example newsletter open (**Help → Show me an example newsletter**). Everything in this
+section must work without a mouse.
+
+**15.1** Press `Ctrl+F`.
+**What you should hear:** the window's name, "Find window", and then the box named "What are you
+looking for?". The window is **not modal** — the newsletter behind it stays reachable, which is
+deliberate, because this window exists to point at something in it.
+
+**15.2** Type `lodge` and press Enter.
+**What you should hear:** a sentence saying what was found and how many there are altogether, from
+the live region inside the window **and** from the status line at the bottom of the main window.
+Confirm the newsletter behind has scrolled to the word and highlighted it.
+
+**15.3** Press Enter again, several times, until the search wraps.
+**What you should hear:** "Carried on from the beginning" the first time it goes round. It should
+never go silent.
+
+**15.4** Search for something that is not there, e.g. `zamboni`.
+**What you should hear:** that the words are not in the writing on the page, **and** that
+TrestleBoard does not look inside the lists it fills in for you. The second half matters: without it
+the sentence teaches you something false about the officers table.
+
+**15.5** Close the find window with Escape, then press `Ctrl+H`.
+**What you should hear:** the same window, now named "Find and replace window", with a second box
+named "What should go there instead?".
+
+**15.6** Replace every one of something, then press `Ctrl+Z` **once**.
+**What you should confirm:** the whole replacement goes back in one step, and the Edit menu's Undo
+item said "Undo Replace all" before you pressed it.
+
+**15.7** Click into a text frame and start typing, then Tab or F6 away to the panel or the menu bar
+without pressing Escape first.
+**What you should confirm:** the caret and anything you had highlighted are **still there** when you
+come back. Before M21 focus loss ended the session silently, and this step is the check that it no
+longer does.
+
+**15.8** Choose something on the page, then hold **Shift** and click a second and a third thing.
+**What you should hear:** the panel heading change to "3 things are selected", and a sentence
+saying Shift+click adds or removes one.
+
+**15.9** With three things chosen, open **Arrange** and choose "Line up the left edges".
+**What you should hear:** a sentence in the status line saying what was done and how many things
+moved. Press `Ctrl+Z` **once** and confirm all three go back together.
+
+**15.10** With only ONE thing chosen, open Arrange again and read the eight new items.
+**What you should hear:** each announced as unavailable, with a reason that tells you to hold Shift
+and click another one. None of them may be silent about it.
+
+**15.11** Hold **Ctrl** and turn the mouse wheel over the page (this one step needs a mouse).
+**What you should confirm:** the zoom percentage in the toolbar changes, and the part of the page
+under the pointer stays under the pointer. Then hold **Space** and drag, and confirm the view pans
+without anything on the page moving — press `Ctrl+Z` afterwards and confirm there was nothing to
+take back.
+
+---
+
 ## Results table
 
 Copy this table (or the row shape) into a spreadsheet or a copy of this file as you go. Use the
@@ -771,6 +836,17 @@ step numbers from above so the full "what you should hear" text doesn't need to 
 | 14.11 | | | | |
 | 14.12 | | | | |
 | 14.13 | | | | |
+| 15.1 | | | | |
+| 15.2 | | | | the find window's live region and the status line, together |
+| 15.3 | | | | |
+| 15.4 | | | | |
+| 15.5 | | | | |
+| 15.6 | | | | |
+| 15.7 | | | | the M17 deferral, closed in M21 |
+| 15.8 | | | | |
+| 15.9 | | | | |
+| 15.10 | | | | |
+| 15.11 | | | | the one step in this script that needs a mouse |
 
 Add rows for anything else you notice along the way, even if it isn't in a numbered step.
 
