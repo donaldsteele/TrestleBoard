@@ -142,6 +142,31 @@ public sealed class StyleFontTests
         Assert.False(StyleLabels.IsKnown("sidebar"));
     }
 
+    /// <summary>
+    /// M20 (h): the font window lists roles in the order a page is read in, and that order lives
+    /// here rather than in the window, so it is testable without a UI thread.
+    /// </summary>
+    [Fact]
+    public void RolesCarryADeclaredSemanticOrderRatherThanTheAlphabetOfTheirRawNames()
+    {
+        Assert.Equal(
+            ["display", "heading", "subheading", "body", "quote", "caption", "table-header", "table"],
+            StyleLabels.DeclaredOrder);
+
+        Assert.True(StyleLabels.OrderOf("display") < StyleLabels.OrderOf("heading"));
+        Assert.True(StyleLabels.OrderOf("heading") < StyleLabels.OrderOf("body"));
+        Assert.True(StyleLabels.OrderOf("body") < StyleLabels.OrderOf("caption"));
+
+        // A variant sorts with its base, and a role this build has never heard of sorts last
+        // rather than being dropped or guessed at.
+        Assert.Equal(StyleLabels.OrderOf("body"), StyleLabels.OrderOf("body-bold-italic"));
+        Assert.Equal(StyleLabels.DeclaredOrder.Count, StyleLabels.OrderOf("sidebar"));
+
+        // Every label this build knows is in the order, and nothing is in it twice.
+        Assert.Equal(StyleLabels.KnownRoles.Count, StyleLabels.DeclaredOrder.Distinct().Count());
+        Assert.All(StyleLabels.KnownRoles, role => Assert.Contains(role, StyleLabels.DeclaredOrder));
+    }
+
     [Fact]
     public void AnOverrideDescribesItselfAgainstItsRole()
     {

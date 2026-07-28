@@ -974,6 +974,10 @@ public partial class MainWindow : Window
             _editor?.CountFontOverrides() ?? 0,
             _settings.Theme is ThemeChoice.Dark or ThemeChoice.HighContrast);
         _textStylesForTest = window;
+
+        // From M20 the sheet stays open after Apply, so one visit can change two kinds of writing.
+        // Each Apply is its own command and its own undo step, applied as it happens.
+        window.Applied += (_, choice) => ApplyTextStyleChoice(choice);
         await window.ShowDialog(this);
 
         if (window.ShowOverridesRequested)
@@ -988,10 +992,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (window.Result is { } choice)
-        {
-            ApplyTextStyleChoice(choice);
-        }
     }
 
     /// <summary>Applies the sheet's answer, and says afterwards if the page count moved.</summary>
@@ -1039,9 +1039,15 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// "Use a different font just here…": the same picker, applied as a derived style to the
-    /// highlighted words only. No new command type — EnsureCharacterStyle plus ApplyCharacterStyle,
-    /// exactly as bold and italic already work.
+    /// "Use a different font just here…": the picker in its second mode (PLAN.md M20), applied as a
+    /// derived style to the highlighted words only. No new command type — EnsureCharacterStyle plus
+    /// ApplyCharacterStyle, exactly as bold and italic already work.
+    /// <para>
+    /// Until M20 this reused the whole-newsletter sheet with its title swapped, so it offered the
+    /// other roles it was not going to change and warned about a repagination it was not going to
+    /// cause. It is now the same window in <see cref="TextStylesMode.JustHere"/>: no role list, the
+    /// selected words as the preview, and a warning that is true.
+    /// </para>
     /// </summary>
     internal async Task UseFontJustHereAsync()
     {
@@ -1050,26 +1056,27 @@ public partial class MainWindow : Window
             return;
         }
 
-        var window = new TextStylesWindow(
-            _fonts,
-            _session.Document.StyleSheet,
-            _editor.CurrentCharacterStyleRef,
-            FontPreviewRenderer.SampleFrom(FirstWordsOfDocument(), "The Trestle Board"),
-            _editor.CountFontOverrides(),
-            _settings.Theme is ThemeChoice.Dark or ThemeChoice.HighContrast)
-        {
-            Title = "Use a different font just here",
-        };
-        _textStylesForTest = window;
-        await window.ShowDialog(this);
+        _textStylesForTest = BuildJustHereWindowForTest();
+        await _textStylesForTest.ShowDialog(this);
 
-        if (window.Result is { } choice)
+        if (_textStylesForTest.Result is { } choice)
         {
             _editor.UseFontJustHere(choice.FontFamily ?? CurrentFamily(), choice.SizePt);
             Announce("Those words now use their own font. Press Ctrl+Z to put them back.");
             RefreshActions();
         }
     }
+
+    /// <summary>Builds the "just here" picker without showing it, for the M20 headless tests.</summary>
+    internal TextStylesWindow BuildJustHereWindowForTest() => new(
+        _fonts,
+        _session!.Document.StyleSheet,
+        _editor?.CurrentCharacterStyleRef,
+        FontPreviewRenderer.SampleFrom(
+            _editor?.SelectedText ?? FirstWordsOfDocument(), "The Trestle Board"),
+        overrideCount: 0,
+        _settings.Theme is ThemeChoice.Dark or ThemeChoice.HighContrast,
+        TextStylesMode.JustHere);
 
     internal void ClearFontOverrideHere()
     {

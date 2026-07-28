@@ -11,17 +11,28 @@ namespace TrestleBoard.Core.Text;
 /// </summary>
 public static class StyleLabels
 {
+    /// <summary>
+    /// Insertion order IS the order the font window lists the roles in (PLAN.md M20 (h)).
+    /// <para>
+    /// Before M20 the window sorted by raw style name, so the list read "Body text, Cover title,
+    /// Headings, Photo captions…" — alphabetical in a name the user is never shown, which is the
+    /// same as random to them. This order is the one a page is read in: the cover title, then the
+    /// headings, then the words under them, then the things that hang off the page.
+    /// </para>
+    /// </summary>
     private static readonly Dictionary<string, string> Known = new(StringComparer.Ordinal)
     {
-        ["body"] = "Body text",
+        ["display"] = "Cover title",
         ["heading"] = "Headings",
         ["subheading"] = "Smaller headings",
-        ["caption"] = "Photo captions",
+        ["body"] = "Body text",
         ["quote"] = "Quotations",
-        ["table"] = "Tables",
+        ["caption"] = "Photo captions",
         ["table-header"] = "Table headings",
-        ["display"] = "Cover title",
+        ["table"] = "Tables",
     };
+
+    private static readonly string[] Order = [.. Known.Keys];
 
     /// <summary>
     /// The label for a style role. Pass a base name; a variant name is reduced to its base
@@ -47,4 +58,21 @@ public static class StyleLabels
 
     /// <summary>Every role this build can label, for tests and for the styles window's ordering.</summary>
     public static IReadOnlyCollection<string> KnownRoles => Known.Keys;
+
+    /// <summary>
+    /// The roles in the order a page is read in — the order the font window lists them in.
+    /// </summary>
+    public static IReadOnlyList<string> DeclaredOrder => Order;
+
+    /// <summary>
+    /// Where a role sits in <see cref="DeclaredOrder"/>. A role this build has never heard of
+    /// sorts after every known one rather than being hidden or guessed at; ties between unknown
+    /// roles are broken by the caller, ordinally, so the list is still stable.
+    /// </summary>
+    public static int OrderOf(string styleName)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(styleName);
+        int index = Array.IndexOf(Order, CharacterStyleResolver.BaseName(styleName));
+        return index < 0 ? Order.Length : index;
+    }
 }

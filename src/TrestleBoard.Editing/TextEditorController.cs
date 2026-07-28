@@ -618,6 +618,15 @@ public sealed class TextEditorController
         }
     }
 
+    /// <summary>
+    /// The highlighted words, or null when nothing is highlighted. Read-only, and read by the
+    /// "just here" font picker so its preview shows the words that are actually about to change
+    /// (PLAN.md M20) rather than the first words of the newsletter.
+    /// </summary>
+    public string? SelectedText => IsActive && !_selection.IsEmpty
+        ? StoryNavigator.GetRangeText(CurrentStory(), _selection.Range)
+        : null;
+
     /// <summary>True when the text here carries a "just here" font, rather than its role's font.</summary>
     public bool SelectionUsesFontOverride =>
         CurrentCharacterStyleRef is { } reference && StyleOverrides.IsOverride(reference);
