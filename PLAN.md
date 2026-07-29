@@ -1784,6 +1784,64 @@ pan. **Never cut:** Ctrl+wheel zoom.
 **Agents:** **Opus** for the multi-select semantics (selection model, undo grouping); **Sonnet**
 for zoom/pan and the find UI; **cavecrew-reviewer (Sonnet)**.
 
+### M22 — Position the picture in its frame (M)
+
+**Goal:** crop and frame-resize are one coupled operation today — `PhotoController.FixPhoto`
+derives its auto-crop target aspect from whatever `frame.FrameRect.Width/Height` currently is,
+then commits crop plus auto-levels in a single step, and the only manual control (the four trim
+sliders in `PhotoAdjustWindow`) can only shrink from edges, never pan or recentre. Users cannot
+get picture alignment right without re-triggering a full auto-crop. M22 separates resize-the-frame
+and align-the-content into distinct, revisitable steps, added after a 2026-07-29 owner request
+following hands-on use.
+
+**Deliverables**
+
+- **`PositionPhotoWindow`** (new, `App/Dialogs`): a pannable/zoomable preview of the full decoded
+  image with a crop-window overlay locked to the frame's current aspect ratio at dialog-open time.
+  Pan by arrow keys or drag; zoom via a stepped ladder with a plain-language readout (M14's
+  font-size stepper precedent, not a freeform slider). Apply/Cancel, one undo step.
+- **`PhotoController.ProposePosition`** (pure — returns a candidate crop without committing) and
+  **`SetPosition`** (commits through the existing coalescing `SetImageRecipeCommand`). `FixPhoto`
+  stays the one-click default, but re-opening Position after it now shows the crop actually
+  committed, not a fresh auto-proposal.
+- New `ActionId` `picture.position` ("Position the picture in its frame…") — `ActionCatalog` entry,
+  availability rule (enabled only with a photo block selected, plain-language reason otherwise),
+  `ActionRunner` handler, `KeyboardMap` row; M17's index tests apply.
+- An entry point from `PhotoAdjustWindow` into the new Position window; the trim sliders stay for
+  quick nudges.
+- **Deliberately untouched:** `BlockCommands.cs`, `Blocks.cs`, and all of `TrestleBoard.Imaging`
+  (`AutoCrop`, `ImageRecipeSpec`, pipeline, decoder) — no new command types, no model change. This
+  is the decoupling proof: the fix is workflow/UI, not data model.
+
+**Acceptance:** resizing a frame no longer silently changes a crop `FixPhoto` already committed;
+re-opening Position after Fix Photo shows the actually-committed crop; the Position window is
+fully operable via keyboard alone (pan, zoom, apply, cancel), 16pt+ fonts, screen-reader peer on
+the overlay; undo/redo is one step per Apply, coalesced like the existing trim-slider drags; no
+changes required to `BlockCommands.cs`, `Blocks.cs`, or `TrestleBoard.Imaging/*`.
+
+**Scope cut order if M22 runs long:** stale-crop notice first (defer to M23) → zoom ladder cut to
+a fixed 3-step (75/100/150%). **Never cut:** arrow-key pan — it is the only keyboard path to
+recentring.
+
+**Post-milestone:** `/graphify . --update`; ingest the M22 decisions into llm-wiki.
+**Agents:** **Sonnet** for `PositionPhotoWindow` and the pan/zoom interaction;
+**cavecrew-reviewer (Sonnet)**.
+
+### M23 — Stale-crop notice (S, owner-optional)
+
+**Goal:** if M22's stale-crop notice is cut for scope, ship it separately: warn, non-blockingly,
+when a frame resize has materially changed aspect since the photo's current crop was set — never
+a silent auto-recrop, matching the "explained refusal" pattern already used across the panel.
+
+**Deliverables:** a dismissible, read-only notice in the action panel; an aspect-delta check that
+fires on frame resize of an already-cropped photo block.
+
+**Acceptance:** the notice is dismissible and keyboard-dismissible; it never recrops on its own;
+its text is plain language.
+
+**Post-milestone:** `/graphify . --update`; ingest the M23 decision into llm-wiki (if run).
+**Agents:** **Sonnet**; **cavecrew-reviewer (Sonnet)**.
+
 ### Sizing & sequencing notes
 - L milestones to watch: **M1, M4, M7** — each gets a Plan-agent spec pass and Fable/Opus implementation.
 - Hard ordering: M1 before everything UI (retires the existential risk); M2 before M3; M4 before M5; M7 needs M4+M5; M8 needs M4; M9 needs M7+M8.
@@ -1830,6 +1888,11 @@ for zoom/pan and the find UI; **cavecrew-reviewer (Sonnet)**.
   one of the five that re-baked no screenshot at all** — its new chrome (the multi-selection outline,
   the marquee, the find window) only appears in states no committed image poses, and with one thing
   chosen the panel looks exactly as it did before.
+- **M22 (+M23), added 2026-07-29** from an owner alignment complaint after hands-on use: crop and
+  frame-resize were one coupled operation, with no step to pan/recentre image content once frame
+  size was set. No hard dependency on M17–M21 — M22 only touches `PhotoController`, a new dialog,
+  and the M17-era action-catalog machinery it reuses. M23 exists only as the scope-cut landing spot
+  if M22's stale-crop notice doesn't fit.
 
 ---
 

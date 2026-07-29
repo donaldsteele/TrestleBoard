@@ -27,6 +27,7 @@ publish/
 .vscode/
 *.user
 *.suo
+.nightshift/
 
 # ── Test / tooling output ────────────────────────────────────────
 TestResults/

@@ -12,6 +12,7 @@
   </Folder>
   <!-- Compiled by CI so it cannot rot; never run by CI (PLAN.md §11 M15). -->
   <Folder Name="/tools/">
+    <Project Path="tools/TrestleBoard.PdfImport/TrestleBoard.PdfImport.csproj" />
     <Project Path="tools/TrestleBoard.Screenshots/TrestleBoard.Screenshots.csproj" />
   </Folder>
   <Folder Name="/tests/">

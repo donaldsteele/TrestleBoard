@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- M21-era one-off conversion tool: turns the real newsletter PDFs in Examples/*.pdf into
+       matching .tboard files. Not shipped, not run by CI — a local aid like
+       tools/TrestleBoard.Screenshots, compiled so it cannot rot but never executed automatically.
+       Output is a heuristic best-effort reconstruction, not a pixel-perfect import: PDFs carry no
+       paragraph/column/style structure, so text geometry is clustered into columns and paragraphs,
+       and none of the source PDFs' original fonts are among TrestleBoard's 20 bundled families
+       (M14's "no system fonts" rule), so text is mapped to the nearest bundled body/heading style
+       rather than reproducing the original typeface. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- `dotnet test TrestleBoard.slnx` must not try to run this exe as a test assembly. -->
+    <IsTestProject>false</IsTestProject>
+    <AssemblyName>TrestleBoard.PdfImport</AssemblyName>
+    <RootNamespace>TrestleBoard.PdfImport</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Docnet.Core" />
+    <PackageReference Include="PdfSharpCore" />
+    <!-- Forces the patched version transitively (see Directory.Packages.props). -->
+    <PackageReference Include="SixLabors.ImageSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TrestleBoard.Core\TrestleBoard.Core.csproj" />
+  </ItemGroup>
+</Project>

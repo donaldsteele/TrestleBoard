@@ -7,7 +7,7 @@ namespace TrestleBoard.Core.Templates;
 /// three slightly different sets of numbers; those differences are preserved here rather than
 /// flattened, because flattening them would move pixels in the snapshot baselines.
 /// </summary>
-internal sealed record StandardStyleMetrics
+public sealed record StandardStyleMetrics
 {
     public float BodySizePt { get; init; } = 11f;
 
@@ -37,7 +37,7 @@ internal sealed record StandardStyleMetrics
 /// Adding styles nothing uses changes no pixels — no snapshot baseline moves for this.
 /// </para>
 /// </summary>
-internal static class StandardStyles
+public static class StandardStyles
 {
     public const string BodyFamily = "Source Serif 4";
     public const string SansFamily = "Source Sans 3";
