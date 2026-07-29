@@ -18,7 +18,7 @@ regeneration adds a full copy to the repository's history:
 dotnet run --project tools/TrestleBoard.Screenshots -- --only font-picker
 ```
 
-Last regenerated: **2026-07-28**, TrestleBoard **0.1.0**.
+Last regenerated: **2026-07-29**, TrestleBoard **0.1.0**.
 That date covers the run that last touched this file; a `--only` run rewrites it
 while leaving the other images as they were, which is the honest reading of it.
 
@@ -135,6 +135,14 @@ Behind the one-click Fix photo button: large sliders that apply as you drag. (on
 `dotnet run --project tools/TrestleBoard.Screenshots -- --only fix-photo`
 
 ![The photograph adjustment window: large sliders for brighter or darker, more or less contrast and more or less colour, a box to brighten and balance the picture automatically, and four more sliders for trimming each edge, above buttons to turn the picture a quarter turn or start over.](fix-photo.png)
+
+### `position-photo.png`
+
+Recentre the crop without resizing it — the whole picture is visible behind the frame. (one dialog on its own)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only position-photo`
+
+![The position picture window: the whole decoded photograph behind a blue crop-window overlay, zoom in and zoom out buttons with a plain-language percentage, and Apply and Cancel buttons.](position-photo.png)
 
 ### `photo-template-placeholders.png`
 

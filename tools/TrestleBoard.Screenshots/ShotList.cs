@@ -232,6 +232,25 @@ internal static class ShotList
                 return Task.FromResult(Stage.Shoot(adjust));
             }),
 
+        // M22. FixPhoto auto-crops on resize; Position is the separate, revisitable step that only
+        // recentres the already-committed crop, with the whole picture visible behind it so the
+        // user can see what panning trims away.
+        new("position-photo", ShotKind.Dialog, null,
+            "Recentre the crop without resizing it — the whole picture is visible behind the frame.",
+            "The position picture window: the whole decoded photograph behind a blue crop-window "
+            + "overlay, zoom in and zoom out buttons with a plain-language percentage, and Apply "
+            + "and Cancel buttons.",
+            stage =>
+            {
+                MainWindow window = stage.OpenEditor();
+                window.FramesForTest?.Select(CoverPhotoBlockId);
+                PhotoController photos = window.PhotosForTest
+                    ?? throw new InvalidOperationException("No photo controller — is a document open?");
+                PositionPhotoWindow position = stage.OpenDialog(
+                    new PositionPhotoWindow(photos, CoverPhotoBlockId));
+                return Task.FromResult(Stage.Shoot(position));
+            }),
+
         // M18. The photo template shipped three of these frames from M9 and no command in the app
         // could put a picture in one; this is the shot of them asking to be filled.
         new("photo-template-placeholders", ShotKind.Window, "M18",
