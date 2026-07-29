@@ -152,6 +152,9 @@ public static class ActionCatalog
             ActionGroup.Picture),
         new(ActionId.PositionPicture, "Position the picture in its frame…",
             "Slides the picture around without changing its crop size.", ActionGroup.Picture),
+        new(ActionId.DismissCropNotice, "Dismiss this note",
+            "Hides the stretched-picture warning until the frame changes shape again.",
+            ActionGroup.Picture),
         new(ActionId.CaptionPicture, "Write a caption…", "Writes the words printed under the picture.",
             ActionGroup.Picture),
         new(ActionId.DescribePicture, "Describe this picture…",
@@ -447,6 +450,12 @@ public static class ActionCatalog
                 : context.SelectedPictureIsEmpty
                     ? ActionAvailability.Blocked(EmptyPictureFrame, ActionId.ReplacePicture)
                     : ActionAvailability.Available,
+
+            // M23: absent unless the picture actually has something stale to dismiss — never greyed,
+            // since there is no reason to give for a notice that is not showing.
+            ActionId.DismissCropNotice => context.PictureCropIsStale
+                ? ActionAvailability.Available
+                : ActionAvailability.NotApplicable(NeedsPicture),
 
             // ---- How text flows -------------------------------------------------------------------
             ActionId.ToggleWrap => context.HasFrameSelection

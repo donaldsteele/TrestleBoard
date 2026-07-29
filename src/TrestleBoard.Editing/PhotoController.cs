@@ -25,9 +25,22 @@ public sealed class PhotoController
     /// <summary>New photos land at this fraction of the page's text width.</summary>
     private const float DefaultWidthFraction = 0.55f;
 
+    /// <summary>
+    /// How far the crop's real-world aspect may drift from the frame's before M23 calls it stale.
+    /// A resize that changes the frame's shape by less than this reads as noise, not misalignment.
+    /// </summary>
+    private const float StaleCropAspectTolerance = 0.02f;
+
     private readonly DocumentSession _session;
     private readonly DocumentRenderSource _layout;
     private readonly IPhotoAssetStore _assets;
+
+    /// <summary>
+    /// The frame aspect ratio at the moment M23's stale-crop notice was last dismissed for a block —
+    /// session-only, like the rest of the notice. A later resize changes the frame's aspect again,
+    /// which is what brings the notice back without needing to touch the document model.
+    /// </summary>
+    private readonly Dictionary<string, float> _dismissedStaleCropFrameAspect = new(StringComparer.Ordinal);
 
     public PhotoController(DocumentSession session, DocumentRenderSource layout, IPhotoAssetStore assets)
     {
@@ -348,6 +361,62 @@ public sealed class PhotoController
         recipe.CropNormalized = new RectPt(clamped.X, clamped.Y, clamped.Width, clamped.Height);
         Execute(blockId, recipe, "Position photo");
         StatusMessage = "The picture was repositioned. Press Ctrl+Z if you liked it better before.";
+        Raise();
+        return true;
+    }
+
+    /// <summary>
+    /// True when a frame resize has changed the picture's shape enough since its crop was set that
+    /// it now looks stretched or squashed — M23's non-blocking warning, never a silent auto-recrop.
+    /// False for a frame that has never been cropped: <see cref="Fit"/> has nothing to compare yet.
+    /// </summary>
+    public bool CropIsStale(string? blockId)
+    {
+        if (GetPhoto(blockId) is not { } frame
+            || frame.Recipe.CropNormalized is not { Width: > 0f, Height: > 0f } crop
+            || frame.FrameRect.Height <= 0f)
+        {
+            return false;
+        }
+
+        DecodedImage? decoded = _layout.GetDecodedImage(frame.AssetRef);
+        if (decoded is null)
+        {
+            return false;
+        }
+
+        float frameAspect = frame.FrameRect.Width / frame.FrameRect.Height;
+        float cropAspect = crop.Width / crop.Height * decoded.Aspect;
+        if (frameAspect <= 0f || cropAspect <= 0f
+            || Math.Abs(cropAspect - frameAspect) / frameAspect <= StaleCropAspectTolerance)
+        {
+            return false;
+        }
+
+        return !_dismissedStaleCropFrameAspect.TryGetValue(blockId!, out float dismissedAt)
+            || Math.Abs(dismissedAt - frameAspect) > 0.0001f;
+    }
+
+    /// <summary>The notice's sentence, or null when nothing needs saying.</summary>
+    public string? CropStaleNote(string? blockId) =>
+        CropIsStale(blockId)
+            ? "This frame's shape changed since the picture was cropped, so it may look stretched "
+              + "or squashed. Reposition the picture to fix it, or dismiss this note."
+            : null;
+
+    /// <summary>
+    /// Hides the notice until the frame changes shape again. Read-only and non-blocking by design —
+    /// this never touches the crop or the recipe, only which frame-shape the notice has already
+    /// been shown for.
+    /// </summary>
+    public bool DismissStaleCropNotice(string blockId)
+    {
+        if (GetPhoto(blockId) is not { } frame || frame.FrameRect.Height <= 0f)
+        {
+            return false;
+        }
+
+        _dismissedStaleCropFrameAspect[blockId] = frame.FrameRect.Width / frame.FrameRect.Height;
         Raise();
         return true;
     }

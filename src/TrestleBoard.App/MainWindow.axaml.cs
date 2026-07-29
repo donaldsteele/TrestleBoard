@@ -1371,6 +1371,16 @@ public partial class MainWindow : Window
         RefreshActions();
     }
 
+    /// <summary>"Dismiss this note" (PLAN.md M23) — hides the stretched-picture warning until the
+    /// frame changes shape again. <c>_photos.Changed</c> refreshes the panel.</summary>
+    internal void DismissCropNotice()
+    {
+        if (_photos is not null && _frames?.SelectedBlockId is { } blockId)
+        {
+            _photos.DismissStaleCropNotice(blockId);
+        }
+    }
+
     // ---- Filling, swapping and labelling a picture (PLAN.md §11 M18) --------------------------
 
     /// <summary>

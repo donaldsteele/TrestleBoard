@@ -99,6 +99,15 @@ public sealed record ActionContext
     /// <summary>Somewhere in the newsletter a picture frame is still empty (the "what's next" flag).</summary>
     public bool HasPicturePlaceholder { get; init; }
 
+    /// <summary>
+    /// M23: the selected picture's frame changed shape enough since its crop was set that it may
+    /// look stretched. Never true for a frame that has never been cropped.
+    /// </summary>
+    public bool PictureCropIsStale { get; init; }
+
+    /// <summary>The plain-language sentence for the notice above, or null when there is nothing to say.</summary>
+    public string? CropStaleNote { get; init; }
+
     // ---- Fonts (M14) --------------------------------------------------------------------------
 
     /// <summary>The writing at the caret carries a "just here" font rather than its role's.</summary>

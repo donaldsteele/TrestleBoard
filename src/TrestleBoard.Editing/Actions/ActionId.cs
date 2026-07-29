@@ -83,6 +83,9 @@ public static class ActionId
     /// <summary>M22: pan/recentre the already-sized crop window without changing its size.</summary>
     public const string PositionPicture = "picture.position";
 
+    /// <summary>M23: hides the stretched-picture note until the frame changes shape again.</summary>
+    public const string DismissCropNotice = "picture.dismissCropNotice";
+
     // ---- How text flows -----------------------------------------------------------------------
     public const string ToggleWrap = "flow.wrap";
     public const string LinkFrames = "flow.link";

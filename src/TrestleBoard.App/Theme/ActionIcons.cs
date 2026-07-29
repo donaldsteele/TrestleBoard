@@ -124,6 +124,7 @@ internal static class ActionIcons
         // pictures that would say "caption" or "description" are the words themselves.
         [ActionId.TrimPicture] = "a crop rectangle is indistinguishable from picture.fix's wand at 20px",
         [ActionId.PositionPicture] = "a crosshair/move glyph is indistinguishable from picture.trim's crop at 20px",
+        [ActionId.DismissCropNotice] = "a sentence about a warning, not a shape",
         [ActionId.CaptionPicture] = "the words under a picture cannot be drawn as a picture",
         [ActionId.DescribePicture] = "spoken, never drawn — there is no shape for what is said aloud",
 

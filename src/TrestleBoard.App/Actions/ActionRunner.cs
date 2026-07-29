@@ -81,6 +81,7 @@ internal sealed class ActionRunner
             [ActionId.ReplacePicture] = _ => window.ReplacePictureAsync(),
             [ActionId.TrimPicture] = _ => window.TrimPictureAsync(),
             [ActionId.PositionPicture] = _ => window.PositionPictureAsync(),
+            [ActionId.DismissCropNotice] = Sync(window.DismissCropNotice),
             [ActionId.CaptionPicture] = _ => window.CaptionPictureAsync(),
             [ActionId.DescribePicture] = _ => window.DescribePictureAsync(),
 

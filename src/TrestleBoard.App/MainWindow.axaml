@@ -113,6 +113,8 @@
                     Click="OnActionClicked" AutomationProperties.Name="Trim the edges of the picture" />
           <MenuItem Header="Positio_n the picture…" Tag="picture.position"
                     Click="OnActionClicked" AutomationProperties.Name="Position the picture in its frame" />
+          <MenuItem Header="Dis_miss this note" Tag="picture.dismissCropNotice"
+                    Click="OnActionClicked" AutomationProperties.Name="Dismiss the stretched-picture note" />
           <Separator />
           <MenuItem x:Name="CaptionPictureMenuItem" Header="Write a _caption…" Tag="picture.caption"
                     Click="OnActionClicked" AutomationProperties.Name="Write a caption for the picture" />

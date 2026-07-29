@@ -472,6 +472,67 @@ public sealed class PhotoControllerTests : IDisposable
         Assert.Null(_photos.GetDecodedImage("no-such-block"));
     }
 
+    /// <summary>M23: a crop that already matches its frame's aspect has nothing stale to say.</summary>
+    [Fact]
+    public void CropIsNotStaleImmediatelyAfterFixPhoto()
+    {
+        string id = InsertSquareFramedPhoto();
+        _photos.FixPhoto(id);
+
+        Assert.False(_photos.CropIsStale(id));
+        Assert.Null(_photos.CropStaleNote(id));
+    }
+
+    /// <summary>M23's whole point: a frame resize that changes shape enough is flagged, non-blockingly.</summary>
+    [Fact]
+    public void ResizingTheFrameAfterFixPhotoMakesTheCropStale()
+    {
+        string id = InsertSquareFramedPhoto();
+        _photos.FixPhoto(id);
+
+        _session.Execute(new ResizeBlockCommand(id, new RectPt(100f, 100f, 400f, 100f)));
+
+        Assert.True(_photos.CropIsStale(id));
+        Assert.NotNull(_photos.CropStaleNote(id));
+
+        // Never a silent auto-recrop: the recipe TrestleBoard.Imaging never touches stays put.
+        Assert.NotNull(((ImageFrame)_session.Document.FindBlock(id).Block).Recipe.CropNormalized);
+    }
+
+    /// <summary>Dismissing hides the notice, but only until the frame's shape changes again.</summary>
+    [Fact]
+    public void DismissingTheNoticeHidesItUntilTheFrameChangesShapeAgain()
+    {
+        string id = InsertSquareFramedPhoto();
+        _photos.FixPhoto(id);
+        _session.Execute(new ResizeBlockCommand(id, new RectPt(100f, 100f, 400f, 100f)));
+        Assert.True(_photos.CropIsStale(id));
+
+        Assert.True(_photos.DismissStaleCropNotice(id));
+        Assert.False(_photos.CropIsStale(id));
+
+        _session.Execute(new ResizeBlockCommand(id, new RectPt(100f, 100f, 400f, 300f)));
+        Assert.True(_photos.CropIsStale(id));
+    }
+
+    /// <summary>No crop has ever been committed, so there is nothing for a resize to make stale.</summary>
+    [Fact]
+    public void CropIsNeverStaleBeforeAnyCropIsSet()
+    {
+        string id = InsertSquareFramedPhoto();
+        _session.Execute(new ResizeBlockCommand(id, new RectPt(100f, 100f, 400f, 100f)));
+
+        Assert.False(_photos.CropIsStale(id));
+    }
+
+    [Fact]
+    public void CropIsStaleIsRefusedForABlockThatIsNotAPhoto()
+    {
+        Assert.False(_photos.CropIsStale("no-such-block"));
+        Assert.Null(_photos.CropStaleNote("no-such-block"));
+        Assert.False(_photos.DismissStaleCropNotice("no-such-block"));
+    }
+
     private byte[] RenderPage()
     {
         var info = new SKImageInfo(306, 396, SKColorType.Rgba8888, SKAlphaType.Premul, SKColorSpace.CreateSrgb());

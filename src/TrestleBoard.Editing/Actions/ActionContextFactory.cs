@@ -116,6 +116,8 @@ public static class ActionContextFactory
                 selection == SelectionKind.Photo
                 && !string.IsNullOrWhiteSpace(photos?.GetPhoto(blockId)?.Caption),
             HasPicturePlaceholder = photos?.HasPlaceholder == true,
+            PictureCropIsStale = selection == SelectionKind.Photo && photos?.CropIsStale(blockId) == true,
+            CropStaleNote = selection == SelectionKind.Photo ? photos?.CropStaleNote(blockId) : null,
 
             SelectionUsesFontOverride = editing && editor!.SelectionUsesFontOverride,
             FontOverrideNote = editing ? editor!.DescribeFontOverride() : null,

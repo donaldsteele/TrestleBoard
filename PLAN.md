@@ -1839,7 +1839,18 @@ recentring.
 **Agents:** **Sonnet** for `PositionPhotoWindow` and the pan/zoom interaction;
 **cavecrew-reviewer (Sonnet)**.
 
-### M23 — Stale-crop notice (S, owner-optional)
+### M23 — Stale-crop notice (S, owner-optional) ✅
+
+**Delivered 2026-07-29.** `PhotoController.CropIsStale` compares the frame's current aspect ratio
+against the committed crop's real-world aspect (`CropNormalized`'s width/height fraction scaled by
+the decoded image's own aspect) and flags a resize that has drifted the two apart by more than 2%.
+`CropStaleNote` gives the plain-language sentence; `DismissStaleCropNotice` hides it in session-only
+state, keyed by the frame aspect at dismissal, so the next resize that actually changes the shape
+brings it back without touching the document model. New `ActionId.DismissCropNotice`
+(`picture.dismissCropNotice`) is absent from the panel (never greyed) until the notice is showing,
+joins the Picture menu and `ActionIcons.WithoutAnIcon`, and the note itself renders as a read-only,
+polite-live-region line above the Picture group buttons — the same pattern M14's `FontOverrideNote`
+already established. Nothing recrops on its own; the crop and `TrestleBoard.Imaging` are untouched.
 
 **Goal:** if M22's stale-crop notice is cut for scope, ship it separately: warn, non-blockingly,
 when a frame resize has materially changed aspect since the photo's current crop was set — never

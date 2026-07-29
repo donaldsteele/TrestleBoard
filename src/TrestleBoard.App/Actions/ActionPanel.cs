@@ -156,6 +156,21 @@ internal sealed class ActionPanel : Border
             _content.Children.Add(line);
         }
 
+        // M23: read-only — the picture is never auto-recropped, only told about. "Dismiss this
+        // note" (below, in the Picture group) is the only thing this notice's own text triggers.
+        if (context.CropStaleNote is { Length: > 0 } staleCropNote)
+        {
+            var line = new TextBlock
+            {
+                Text = staleCropNote,
+                FontSize = 15,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Avalonia.Thickness(0, 0, 0, 8),
+            };
+            AutomationProperties.SetLiveSetting(line, AutomationLiveSetting.Polite);
+            _content.Children.Add(line);
+        }
+
         if (!context.HasFrameSelection && !context.IsEditingText && nextSteps.Count > 0)
         {
             _content.Children.Add(BuildWhatsNext(nextSteps, invoke));
