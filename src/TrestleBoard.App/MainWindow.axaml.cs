@@ -1357,6 +1357,20 @@ public partial class MainWindow : Window
         RefreshActions();
     }
 
+    /// <summary>"Position the picture in its frame…" (PLAN.md M22) — recentres an already-sized
+    /// crop; separate from Fix/Adjust/Trim, which change the crop's size.</summary>
+    internal async Task PositionPictureAsync()
+    {
+        if (_photos is null || _frames?.SelectedBlockId is not { } blockId || !_photos.IsPhoto(blockId))
+        {
+            return;
+        }
+
+        var window = new PositionPhotoWindow(_photos, blockId);
+        await window.ShowDialog(this);
+        RefreshActions();
+    }
+
     // ---- Filling, swapping and labelling a picture (PLAN.md §11 M18) --------------------------
 
     /// <summary>

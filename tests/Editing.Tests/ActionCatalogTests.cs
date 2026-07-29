@@ -580,7 +580,8 @@ public sealed class ActionCatalogTests
 
         foreach (string id in new[]
                  {
-                     ActionId.FixPhoto, ActionId.AdjustPhoto, ActionId.TrimPicture, ActionId.CaptionPicture,
+                     ActionId.FixPhoto, ActionId.AdjustPhoto, ActionId.TrimPicture,
+                     ActionId.PositionPicture, ActionId.CaptionPicture,
                  })
         {
             ActionAvailability availability = ActionCatalog.Evaluate(id, empty);
@@ -593,7 +594,8 @@ public sealed class ActionCatalogTests
         // With a picture in it, all four are simply available.
         foreach (string id in new[]
                  {
-                     ActionId.FixPhoto, ActionId.AdjustPhoto, ActionId.TrimPicture, ActionId.CaptionPicture,
+                     ActionId.FixPhoto, ActionId.AdjustPhoto, ActionId.TrimPicture,
+                     ActionId.PositionPicture, ActionId.CaptionPicture,
                  })
         {
             Assert.True(ActionCatalog.Evaluate(id, Photo()).IsAvailable);

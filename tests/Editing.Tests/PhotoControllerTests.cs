@@ -420,6 +420,58 @@ public sealed class PhotoControllerTests : IDisposable
         Assert.Null(((ImageFrame)_session.Document.FindBlock(id).Block).Recipe.CropNormalized);
     }
 
+    /// <summary>
+    /// M22: Position keeps the crop's SIZE exactly as Fix Photo left it — only the centre moves.
+    /// That is the whole point of splitting resize-the-frame from align-the-content.
+    /// </summary>
+    [Fact]
+    public void PositionKeepsTheCommittedCropSizeAndOnlyMovesItsCentre()
+    {
+        string id = InsertSquareFramedPhoto();
+        _photos.FixPhoto(id);
+        RectPt committed = Assert.IsType<RectPt>(
+            ((ImageFrame)_session.Document.FindBlock(id).Block).Recipe.CropNormalized);
+
+        NormalizedRect? proposal = _photos.ProposePosition(id, 0.8f, 0.8f);
+        Assert.NotNull(proposal);
+        Assert.Equal(committed.Width, proposal!.Value.Width, 3);
+        Assert.Equal(committed.Height, proposal.Value.Height, 3);
+
+        Assert.True(_photos.SetPosition(id, proposal.Value));
+        RectPt moved = Assert.IsType<RectPt>(
+            ((ImageFrame)_session.Document.FindBlock(id).Block).Recipe.CropNormalized);
+        Assert.Equal(committed.Width, moved.Width, 3);
+        Assert.Equal(committed.Height, moved.Height, 3);
+        Assert.NotEqual(committed.X, moved.X, 3);
+        Assert.Equal("Position photo", _session.UndoDescription);
+
+        _session.Undo();
+        Assert.Equal(committed, Assert.IsType<RectPt>(
+            ((ImageFrame)_session.Document.FindBlock(id).Block).Recipe.CropNormalized));
+    }
+
+    /// <summary>Before any crop is committed, Position proposes the same largest-inscribed-window
+    /// shape Fix Photo would start from — locked to the frame's aspect, not resizable here.</summary>
+    [Fact]
+    public void PositionWithNoExistingCropProposesTheFrameAspectWindow()
+    {
+        string id = InsertSquareFramedPhoto();
+        NormalizedRect? proposal = _photos.ProposePosition(id, 0.5f, 0.5f);
+        Assert.NotNull(proposal);
+
+        // Frame is square, source is 3:2 → the proposed window must be squared up too.
+        float aspect = (proposal!.Value.Width * 300f) / (proposal.Value.Height * 200f);
+        Assert.InRange(aspect, 0.94f, 1.06f);
+    }
+
+    [Fact]
+    public void PositionIsRefusedForABlockThatIsNotAPhoto()
+    {
+        Assert.Null(_photos.ProposePosition("no-such-block", 0.5f, 0.5f));
+        Assert.False(_photos.SetPosition("no-such-block", NormalizedRect.Full));
+        Assert.Null(_photos.GetDecodedImage("no-such-block"));
+    }
+
     private byte[] RenderPage()
     {
         var info = new SKImageInfo(306, 396, SKColorType.Rgba8888, SKAlphaType.Premul, SKColorSpace.CreateSrgb());

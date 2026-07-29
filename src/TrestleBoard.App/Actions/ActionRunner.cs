@@ -80,6 +80,7 @@ internal sealed class ActionRunner
             [ActionId.AdjustPhoto] = _ => window.AdjustPhotoAsync(),
             [ActionId.ReplacePicture] = _ => window.ReplacePictureAsync(),
             [ActionId.TrimPicture] = _ => window.TrimPictureAsync(),
+            [ActionId.PositionPicture] = _ => window.PositionPictureAsync(),
             [ActionId.CaptionPicture] = _ => window.CaptionPictureAsync(),
             [ActionId.DescribePicture] = _ => window.DescribePictureAsync(),
 

@@ -80,6 +80,9 @@ public static class ActionId
     /// <summary>M18: take the edges off the picture without touching the original file.</summary>
     public const string TrimPicture = "picture.trim";
 
+    /// <summary>M22: pan/recentre the already-sized crop window without changing its size.</summary>
+    public const string PositionPicture = "picture.position";
+
     // ---- How text flows -----------------------------------------------------------------------
     public const string ToggleWrap = "flow.wrap";
     public const string LinkFrames = "flow.link";

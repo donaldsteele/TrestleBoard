@@ -123,6 +123,7 @@ internal static class ActionIcons
         // M18's other three. Each is words about a picture rather than an act on one, and the
         // pictures that would say "caption" or "description" are the words themselves.
         [ActionId.TrimPicture] = "a crop rectangle is indistinguishable from picture.fix's wand at 20px",
+        [ActionId.PositionPicture] = "a crosshair/move glyph is indistinguishable from picture.trim's crop at 20px",
         [ActionId.CaptionPicture] = "the words under a picture cannot be drawn as a picture",
         [ActionId.DescribePicture] = "spoken, never drawn — there is no shape for what is said aloud",
 

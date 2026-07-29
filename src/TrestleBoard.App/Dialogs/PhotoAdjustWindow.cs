@@ -85,6 +85,17 @@ public sealed class PhotoAdjustWindow : Window
         };
         Avalonia.Automation.AutomationProperties.SetName(reset, "Undo all changes to this picture");
 
+        // M22: re-centring an already-sized crop is a separate step from resizing one — opening it
+        // from here, rather than only from the action panel, keeps the two discoverable together.
+        var position = new Button { Content = "Position…", FontSize = 18, MinHeight = 44, MinWidth = 140 };
+        position.Click += async (_, _) =>
+        {
+            var window = new PositionPhotoWindow(_photos, _blockId);
+            await window.ShowDialog(this);
+            LoadFromDocument();
+        };
+        Avalonia.Automation.AutomationProperties.SetName(position, "Position the picture in its frame");
+
         var done = new Button
         {
             Content = "Done",
@@ -137,7 +148,7 @@ public sealed class PhotoAdjustWindow : Window
                 {
                     Orientation = Orientation.Horizontal,
                     Spacing = 12,
-                    Children = { turn, reset },
+                    Children = { turn, reset, position },
                 },
                 new StackPanel
                 {

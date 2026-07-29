@@ -1784,7 +1784,19 @@ pan. **Never cut:** Ctrl+wheel zoom.
 **Agents:** **Opus** for the multi-select semantics (selection model, undo grouping); **Sonnet**
 for zoom/pan and the find UI; **cavecrew-reviewer (Sonnet)**.
 
-### M22 — Position the picture in its frame (M)
+### M22 — Position the picture in its frame (M) ✅
+**Delivered 2026-07-29.** `PhotoController.ProposePosition`/`SetPosition` split re-centring from
+resizing exactly as scoped: the proposed crop always keeps the SIZE of the picture's already-committed
+crop (or, before any crop exists, the same largest-frame-aspect window `FixPhoto` would start from) and
+only moves its centre. `PositionPhotoWindow` shows the whole decoded picture behind a locked-aspect
+crop-window overlay; the picture pans behind the fixed overlay via pointer drag or the arrow keys
+(never cut, per the scope-cut order below), and a `ZoomLadder` stepper (100/150/200/300/400%, plain-
+language readout) magnifies the preview for finer panning — zoom never changes the crop's size, only
+how precisely it can be aimed. New `ActionId.PositionPicture` (`picture.position`) joins the
+Fix/Adjust/Trim/Caption availability group and its own menu item; entry points from both the action
+panel and a "Position…" button in `PhotoAdjustWindow`. `BlockCommands.cs`, `Blocks.cs` and
+`TrestleBoard.Imaging` were untouched, as scoped. No keyboard shortcut was added — `TrimPicture` and
+`CaptionPicture` already establish that not every picture command needs one.
 
 **Goal:** crop and frame-resize are one coupled operation today — `PhotoController.FixPhoto`
 derives its auto-crop target aspect from whatever `frame.FrameRect.Width/Height` currently is,

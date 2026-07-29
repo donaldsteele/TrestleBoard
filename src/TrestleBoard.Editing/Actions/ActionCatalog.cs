@@ -150,6 +150,8 @@ public static class ActionCatalog
             ActionGroup.Picture, "Ctrl+Shift+A"),
         new(ActionId.TrimPicture, "Trim the edges…", "Takes the edges off without changing the original file.",
             ActionGroup.Picture),
+        new(ActionId.PositionPicture, "Position the picture in its frame…",
+            "Slides the picture around without changing its crop size.", ActionGroup.Picture),
         new(ActionId.CaptionPicture, "Write a caption…", "Writes the words printed under the picture.",
             ActionGroup.Picture),
         new(ActionId.DescribePicture, "Describe this picture…",
@@ -440,7 +442,7 @@ public static class ActionCatalog
                     ? ActionAvailability.Available
                     : ActionAvailability.NotApplicable(NeedsPicture),
             ActionId.FixPhoto or ActionId.AdjustPhoto or ActionId.TrimPicture
-                or ActionId.CaptionPicture => context.Selection != SelectionKind.Photo
+                or ActionId.PositionPicture or ActionId.CaptionPicture => context.Selection != SelectionKind.Photo
                 ? ActionAvailability.NotApplicable(NeedsPicture)
                 : context.SelectedPictureIsEmpty
                     ? ActionAvailability.Blocked(EmptyPictureFrame, ActionId.ReplacePicture)

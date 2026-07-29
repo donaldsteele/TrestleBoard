@@ -275,6 +275,83 @@ public sealed class PhotoController
         return true;
     }
 
+    /// <summary>
+    /// The decoded picture behind a frame, for a preview that needs the whole image rather than
+    /// just the current crop — <see cref="PositionPhotoWindow"/>'s pan/zoom canvas, in particular.
+    /// Null when the frame is a placeholder or the bytes could not be read.
+    /// </summary>
+    public DecodedImage? GetDecodedImage(string blockId) =>
+        GetPhoto(blockId) is { } frame ? _layout.GetDecodedImage(frame.AssetRef) : null;
+
+    /// <summary>
+    /// Candidate crop for M22's Position window: same size as the picture's current crop (or, if
+    /// none has been set yet, the largest window of the frame's aspect that fits the image — the
+    /// same shape <see cref="FixPhoto"/> would start from), recentred on the given point. Pure —
+    /// nothing is committed until <see cref="SetPosition"/> is called with the result.
+    /// </summary>
+    public NormalizedRect? ProposePosition(string blockId, float centerX, float centerY)
+    {
+        if (GetPhoto(blockId) is not { } frame)
+        {
+            return null;
+        }
+
+        RectPt? current = frame.Recipe.CropNormalized;
+        float width;
+        float height;
+        if (current is { Width: > 0f, Height: > 0f } crop)
+        {
+            width = crop.Width;
+            height = crop.Height;
+        }
+        else
+        {
+            DecodedImage? decoded = _layout.GetDecodedImage(frame.AssetRef);
+            if (decoded is null)
+            {
+                return null;
+            }
+
+            float targetAspect = frame.FrameRect.Height > 0f
+                ? frame.FrameRect.Width / frame.FrameRect.Height
+                : decoded.Aspect;
+            float sourceAspect = decoded.Aspect;
+            if (targetAspect >= sourceAspect)
+            {
+                width = 1f;
+                height = sourceAspect / targetAspect;
+            }
+            else
+            {
+                width = targetAspect / sourceAspect;
+                height = 1f;
+            }
+        }
+
+        return new NormalizedRect(centerX - (width / 2f), centerY - (height / 2f), width, height).Clamped();
+    }
+
+    /// <summary>
+    /// Commits a Position window's Apply as one undo step (PLAN.md M22) — unlike the trim sliders'
+    /// coalescing drag, re-centring is one explicit user action, so it gets the labelled composite
+    /// the other one-shot photo edits use rather than the bare, merging command.
+    /// </summary>
+    public bool SetPosition(string blockId, NormalizedRect crop)
+    {
+        if (GetPhoto(blockId) is not { } frame)
+        {
+            return false;
+        }
+
+        NormalizedRect clamped = crop.Clamped();
+        ImageRecipe recipe = frame.Recipe.Clone();
+        recipe.CropNormalized = new RectPt(clamped.X, clamped.Y, clamped.Width, clamped.Height);
+        Execute(blockId, recipe, "Position photo");
+        StatusMessage = "The picture was repositioned. Press Ctrl+Z if you liked it better before.";
+        Raise();
+        return true;
+    }
+
     /// <summary>Quarter-turn rotation, the only rotation v1 offers (docs/M6-spec.md §8).</summary>
     public bool Rotate(string blockId, int steps)
     {
