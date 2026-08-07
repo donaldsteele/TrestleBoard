@@ -2678,9 +2678,9 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 - Assorted: the M23 stretched-picture dismissal is session-only and keyed by frame aspect, so the
   note returns after any reshape or restart; no tooltips exist anywhere in the App project; no
   rulers, guides, margin display, or grid — snap guides appear only mid-drag; page change clears
-  the selection; the context menu uses
+  the selection; ~~the context menu uses
   static titles where the panel uses context-aware ones ("Put a picture here…" over a filled
-  frame); two undo stacks (document vs address book) are disclosed only inside the People menu.
+  frame)~~ (**fixed at M36**); two undo stacks (document vs address book) are disclosed only inside the People menu.
 - **Jargon inventory** (user-facing strings that assume desktop-publishing or programmer
   vocabulary): "text frame", "Wrap text around this", "Fit to contents", "Bring forward / Send
   backward", "Export as PDF", "placeholders", "This item" (the heading M17 dissolved as a menu
