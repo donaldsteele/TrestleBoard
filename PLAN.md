@@ -1955,7 +1955,22 @@ The `RecipeCache` eviction finding was investigated and **deliberately not chang
 call site draws the image immediately and never holds one across a fetch, so it is not reachable;
 see `docs/M25-spec.md` §5 for why that is recorded rather than "fixed".
 
-**§14.5 groupings 3–5 remain unscheduled.**
+### M26 — Import honestly (delivered 2026-08-07, `docs/M26-spec.md`)
+
+§14.5 grouping 3. The Excel serial floor said 61 in its own documentation and `1` in the code, so
+every small number in a birthday column was read as a date — `"7"` as 7 January, a stray year
+`"1968"` as 21 May 1905 — and because `ColumnGuesser` asks that parser whether a column looks like
+birthdays, a column of ages or degree years could push the real birthday column out of the mapping.
+A bare number in the calendar-year range is now read as a year, which the floor alone does not
+settle. `"February 29"` was parsed against the current year and so was silently dropped in three
+years out of four. `2/30` and `4/31` were accepted and printed as real birthdays. And the officers
+sync dialog listed changes for offices with no row yet, which `Apply` then silently discarded.
+
+Deliberately unchanged and now documented as decisions: month-first date reading (this lodge is in
+South Carolina), which the review had raised as a possible bug. Still open: CSV encoding detection,
+the header-hint misfires, `ChooseHeaderRow` bounds, and unparsable backups never being trimmed.
+
+**§14.5 groupings 4–5 remain unscheduled.**
 
 ---
 
@@ -2384,11 +2399,13 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 
 **Widgets**
 
-- Major PLAUSIBLE — `OfficersRosterProjection.cs:191-210` vs `:127-167`: `Plan` proposes candidates
+- ~~Major PLAUSIBLE — `OfficersRosterProjection.cs:191-210` vs `:127-167`: `Plan` proposes candidates
   for all twelve standard positions, but `Apply` only rewrites rows already present — a decision
-  for a missing position is silently dropped; the sync dialog promises a change that never lands.
-- Minor — `WizardValidators.cs:116-128` (and `Member.HasBirthday`): impossible dates (2/30, 4/31)
-  are accepted, stored, and printed as birthdays. · Fingerprints concatenate fields with no
+  for a missing position is silently dropped; the sync dialog promises a change that never lands.~~
+  — **confirmed and fixed at M26**: the missing row is added, in printed order.
+- ~~Minor — `WizardValidators.cs:116-128` (and `Member.HasBirthday`): impossible dates (2/30, 4/31)
+  are accepted, stored, and printed as birthdays.~~ (**fixed at M26**; February keeps 29 days,
+  which is somebody's real birthday) · Fingerprints concatenate fields with no
   separator (`BirthdayRosterProjection.cs:197`, `OfficersRosterProjection.cs:275`) —
   boundary-shifted rosters can hash identical and report "not stale". · PLAUSIBLE
   `CommitteeListLayouter.cs:74-93`: a long committee name drives the first line's available width
@@ -2397,12 +2414,15 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 
 **Roster** (real personal data — data-loss items first; §14.1 item 4 is the headline)
 
-- Major — `FieldValues.cs:25-27,53-63`: `SmallestPlausibleSerial = 1` contradicts its own doc
+- ~~Major — `FieldValues.cs:25-27,53-63`: `SmallestPlausibleSerial = 1` contradicts its own doc
   comment; a bare "7" imports as birthday 1/7, a year "1968" as 5/21, and age/year columns poison
-  `ColumnGuesser` into classifying them as Birthday columns.
-- Minor — `FieldValues.cs:30-34`: "February 29" parses against the *current* year and is silently
-  dropped in non-leap years — a time-dependent import bug. · PLAUSIBLE `FieldValues.cs:78-88`:
-  month-first is hardwired, so d/M-formatted lists silently swap month and day for days ≤ 12. ·
+  `ColumnGuesser` into classifying them as Birthday columns.~~ — **fixed at M26**, together with a
+  calendar-year guard the floor alone did not provide.
+- ~~Minor — `FieldValues.cs:30-34`: "February 29" parses against the *current* year and is silently
+  dropped in non-leap years — a time-dependent import bug.~~ — **fixed at M26**. · ~~PLAUSIBLE `FieldValues.cs:78-88`:
+  month-first is hardwired, so d/M-formatted lists silently swap month and day for days ≤ 12.~~ —
+  **kept deliberately at M26** and documented in the code as a decision: this lodge writes American
+  dates, and nothing in a two-number cell can tell the readings apart. ·
   ~~PLAUSIBLE `RosterStore.cs:87-89`: temp-then-rename with no flush-to-disk — power loss can persist
   the rename without the data blocks.~~ (**fixed at M24**) · `RosterStore.cs:108-159`: unparsable
   backups are never counted against `BackupsKept` nor deleted — they accumulate forever. ·
@@ -2541,8 +2561,9 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
    action exceptions, render-thread race, RecipeCache eviction, damaged-file messaging.~~ —
    **delivered as M25, 2026-08-07.** RecipeCache turned out not to be reachable and is recorded as
    such rather than changed. It also took the `PeopleWindow` leak, which belongs to the same story.
-3. **Import honestly** — roster serial/date/encoding fixes, impossible-date validation, officers
-   sync Plan/Apply parity.
+3. ~~**Import honestly** — roster serial/date/encoding fixes, impossible-date validation, officers
+   sync Plan/Apply parity.~~ — **delivered as M26, 2026-08-07**, except CSV encoding detection,
+   which is left for a milestone that can carry that decision properly.
 4. **Say what you mean** — grey-vs-disabled palette split, one name per command, picture-verb
    consolidation, style labels, jargon list, position-dialog copy.
 5. **Reach everything from the keyboard** — shortcut coverage, Tab out of text, keyboard placement,

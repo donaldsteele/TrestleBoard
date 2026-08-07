@@ -188,6 +188,7 @@ public static class OfficersRosterProjection
         }
 
         var officers = new List<OfficerEntry>();
+        var applied = new HashSet<string>(StringComparer.Ordinal);
         foreach (OfficerEntry row in current.Officers)
         {
             // A hand-edited row never reaches the decision list, so this is belt and braces: even a
@@ -198,6 +199,7 @@ public static class OfficersRosterProjection
                 continue;
             }
 
+            applied.Add(row.Position);
             officers.Add(new OfficerEntry
             {
                 Position = row.Position,
@@ -207,6 +209,31 @@ public static class OfficersRosterProjection
                 IsManual = false,
                 ExtraProperties = row.ExtraProperties,
             });
+        }
+
+        // A decision for an office that has no row yet gets one (M26 review §14.2). Plan() proposes
+        // across all twelve StandardPositions whether or not the table holds a row for each, but
+        // this loop only ever rewrote rows that were already there — so for any table with fewer
+        // than twelve rows, the dialog listed a change, the user ticked it, and nothing happened.
+        // Silently doing less than was agreed to is the one outcome a confirm dialog must not have.
+        foreach (OfficerDecision decision in decisions)
+        {
+            if (applied.Contains(decision.Position)
+                || current.Officers.Any(o => string.Equals(o.Position, decision.Position, StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
+            officers.Insert(
+                InsertionPoint(officers, decision.Position),
+                new OfficerEntry
+                {
+                    Position = decision.Position,
+                    Name = decision.Chosen?.Name ?? string.Empty,
+                    Phone = decision.Chosen?.Phone,
+                    MemberId = decision.Chosen?.MemberId,
+                    IsManual = false,
+                });
         }
 
         return new OfficersTableData
@@ -324,6 +351,38 @@ public static class OfficersRosterProjection
         && string.Equals(row?.MemberId, candidate.MemberId, StringComparison.Ordinal);
 
     private static string? Blank(string? phone) => string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
+
+    /// <summary>
+    /// Where a newly added office belongs, so the table stays in the order it is printed in rather
+    /// than growing an appendix at the bottom. Offices this build does not know sort last, which is
+    /// where a user who added one of their own will have put it.
+    /// </summary>
+    private static int InsertionPoint(List<OfficerEntry> officers, string position)
+    {
+        int rank = StandardRank(position);
+        for (int i = 0; i < officers.Count; i++)
+        {
+            if (StandardRank(officers[i].Position) > rank)
+            {
+                return i;
+            }
+        }
+
+        return officers.Count;
+    }
+
+    private static int StandardRank(string position)
+    {
+        for (int i = 0; i < OfficersTableData.StandardPositions.Count; i++)
+        {
+            if (string.Equals(OfficersTableData.StandardPositions[i], position, StringComparison.Ordinal))
+            {
+                return i;
+            }
+        }
+
+        return int.MaxValue;
+    }
 
     private static OfficerEntry Clone(OfficerEntry row) => new()
     {

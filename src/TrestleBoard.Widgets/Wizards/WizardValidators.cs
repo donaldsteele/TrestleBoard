@@ -118,7 +118,8 @@ public static class WizardValidators
             || !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out month)
             || !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out day)
             || month is < 1 or > 12
-            || day is < 1 or > 31)
+            || day < 1
+            || day > DaysIn(month))
         {
             month = 0;
             day = 0;
@@ -127,6 +128,21 @@ public static class WizardValidators
 
         return true;
     }
+
+    /// <summary>
+    /// How long a month is, for a birthday that carries no year.
+    ///
+    /// <para>A flat "1 to 31" let 30 February and 31 April through, and the birthday list printed
+    /// them as real birthdays for a real brother, on a page that goes out to the whole lodge
+    /// (review §14.2). February is 29 here on purpose: 29 February is somebody's actual birthday,
+    /// and a month-and-day with no year behind it has no business ruling it out.</para>
+    /// </summary>
+    private static int DaysIn(int month) => month switch
+    {
+        2 => 29,
+        4 or 6 or 9 or 11 => 30,
+        _ => 31,
+    };
 
     /// <summary>Canonical "M/D", no leading zeros, invariant culture.</summary>
     public static string FormatMonthDay(int month, int day) =>

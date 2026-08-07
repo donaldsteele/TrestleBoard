@@ -334,6 +334,52 @@ public sealed class OfficersRosterProjectionTests
 
     // ---- fictional scaffolding -------------------------------------------------------------------
 
+    /// <summary>
+    /// Review §14.2: what the dialog promises is what lands on the page, even when the table does
+    /// not already hold a row for the office.
+    ///
+    /// <para><c>Plan</c> proposes across all twelve <c>StandardPositions</c> whether or not a row
+    /// exists for each, but <c>Apply</c> only ever rewrote rows that were already there. So for any
+    /// table with fewer than twelve rows — which is any document a newer TrestleBoard, a hand edit
+    /// or an older format left short — the dialog listed the change, the user ticked it, and
+    /// nothing happened. A confirm dialog that quietly does less than it said is worse than one
+    /// that refuses.</para>
+    /// </summary>
+    [Fact]
+    public void AnOfficeWithNoRowYetIsAddedRatherThanSilentlyDropped()
+    {
+        // A table missing the Treasurer row altogether.
+        OfficersTableData short_ = Empty();
+        var trimmed = new OfficersTableData
+        {
+            Heading = short_.Heading,
+            Officers = [.. short_.Officers.Where(o => o.Position != "Treasurer")],
+        };
+        Assert.DoesNotContain(trimmed.Officers, o => o.Position == "Treasurer");
+
+        OfficersProjection plan = OfficersRosterProjection.Plan(trimmed, Book());
+        Assert.Contains(plan.Proposals, p => p.Position == "Treasurer");
+
+        OfficersTableData applied = OfficersRosterProjection.Apply(
+            trimmed, plan.DefaultDecisions, plan.Fingerprint);
+
+        OfficerEntry treasurer = Row(applied, "Treasurer");
+        Assert.Equal("C. Example", treasurer.Name);
+        Assert.Equal("555-0102", treasurer.Phone);
+        Assert.Equal("m-treasurer", treasurer.MemberId);
+        Assert.False(treasurer.IsManual);
+
+        // And it lands where it is printed, not appended to the bottom.
+        List<string> positions = [.. applied.Officers.Select(o => o.Position)];
+        Assert.Equal(
+            positions.OrderBy(p => OfficersTableData.StandardPositions.ToList().IndexOf(p)).ToList(),
+            positions);
+
+        // Running it again changes nothing, which is the M19 rule this must not break.
+        OfficersProjection again = OfficersRosterProjection.Plan(applied, Book());
+        Assert.False(again.ChangesAnything);
+    }
+
     private static OfficersTableData Empty() => Definition.CreateEmpty(WidgetTestData.Seed);
 
     private static OfficerEntry Row(OfficersTableData data, string position) =>

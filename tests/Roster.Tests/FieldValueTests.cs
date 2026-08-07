@@ -79,5 +79,58 @@ public sealed class FieldValueTests
         // Not recognised is not the same as not wanted: the user typed it, so it is kept verbatim.
         Assert.Equal("some time in 1995", FieldValues.ReadDate("some time in 1995"));
         Assert.Null(FieldValues.ReadDate(" "));
+
+        // A bare year is how a lodge records a degree whose exact day is lost. It used to be read
+        // as Excel serial 1968 and stored as a day in 1905; now it is kept as written, because
+        // "1968-01-01" would invent a day nobody claimed (review §14.2).
+        Assert.Equal("1968", FieldValues.ReadDate("1968"));
+    }
+
+    /// <summary>
+    /// Review §14.2: the serial floor said 61 in its own documentation and 1 in the code, so every
+    /// small number in a birthday column was read as a date. "7" became 7 January and a stray year
+    /// "1968" became 21 May 1905 — and because <see cref="ColumnGuesser"/> asks this parser whether
+    /// a column looks like birthdays, a column of ages or dues scored as one and pushed the real
+    /// birthday column out of the mapping.
+    /// </summary>
+    [Theory]
+    [InlineData("7")]
+    [InlineData("12")]
+    [InlineData("42")]
+    [InlineData("60")]
+    [InlineData("1968")]
+    [InlineData("2026")]
+    public void ASmallBareNumberIsNotABirthday(string text)
+    {
+        Assert.False(FieldValues.TryReadBirthday(text, out int month, out int day));
+        Assert.Equal(0, month);
+        Assert.Equal(0, day);
+    }
+
+    /// <summary>A real serial still reads as one — the floor is 1900-03-01, not "no serials".</summary>
+    [Fact]
+    public void ARealSpreadsheetSerialStillReads()
+    {
+        Assert.True(FieldValues.TryReadBirthday("45123", out int month, out int day));
+        Assert.Equal(7, month);
+        Assert.Equal(16, day);
+    }
+
+    /// <summary>
+    /// Review §14.2: "February 29" is somebody's real birthday. The year-less formats were parsed
+    /// against the CURRENT year, so in three years out of four the row silently failed to parse and
+    /// was dropped — a bug that fixed itself for one year in four, which is the worst way for one
+    /// to behave. They are now read against a leap year.
+    /// </summary>
+    [Theory]
+    [InlineData("February 29")]
+    [InlineData("Feb 29")]
+    [InlineData("29 February")]
+    [InlineData("2/29")]
+    public void TheTwentyNinthOfFebruaryIsABirthdayInEveryYear(string text)
+    {
+        Assert.True(FieldValues.TryReadBirthday(text, out int month, out int day));
+        Assert.Equal(2, month);
+        Assert.Equal(29, day);
     }
 }

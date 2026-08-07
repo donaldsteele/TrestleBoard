@@ -22,16 +22,46 @@ public static class FieldValues
 
     private static readonly DateTime ExcelEpochBeforeTheLeapBug = new(1899, 12, 31, 0, 0, 0, DateTimeKind.Unspecified);
 
-    /// <summary>1900-03-01 onwards. Below 61 the sheet and the calendar disagree; above 2958465 it is not a date.</summary>
-    private const double SmallestPlausibleSerial = 1;
+    /// <summary>
+    /// 1900-03-01 onwards. Below 61 the sheet and the calendar disagree; above 2958465 it is not a
+    /// date.
+    ///
+    /// <para>This said 61 in prose and <c>1</c> in code, and the code won (M25 review §14.2). Every
+    /// small number in a birthday column was therefore read as a date: <c>"7"</c> imported as 7
+    /// January, and a stray year <c>"1968"</c> as 21 May 1905. It also poisoned
+    /// <see cref="ColumnGuesser"/>, which asks this parser whether a column looks like birthdays —
+    /// so a column of ages, dues or degree years scored as a Birthday column and pushed the real
+    /// one out.</para>
+    ///
+    /// <para>Nothing real is lost by the floor: serial 61 is 1 March 1900, and a birthday or a
+    /// degree date written as a serial by a spreadsheet is five figures.</para>
+    /// </summary>
+    private const double SmallestPlausibleSerial = 61;
 
     private const double LargestSerial = 2958465;
 
+    /// <summary>Formats that carry their own year.</summary>
     private static readonly string[] BirthdayFormats =
     [
         "yyyy-MM-dd", "yyyy/MM/dd", "M/d/yyyy", "M-d-yyyy", "M.d.yyyy",
-        "MMMM d", "MMM d", "d MMMM", "d MMM", "MMMM d yyyy", "MMM d yyyy",
+        "MMMM d yyyy", "MMM d yyyy",
     ];
+
+    /// <summary>
+    /// Formats with no year in them, which is the usual shape of a lodge birthday list.
+    ///
+    /// <para>Parsed against a known LEAP year rather than the current one. `TryParseExact` fills a
+    /// missing year with today's, so "February 29" — a real birthday, belonging to a real brother —
+    /// silently failed to parse in every non-leap year and the row was dropped without a word. The
+    /// bug fixed itself for one year in four, which is the worst way for a bug to behave.</para>
+    /// </summary>
+    private static readonly string[] YearlessBirthdayFormats =
+    [
+        "MMMM d", "MMM d", "d MMMM", "d MMM",
+    ];
+
+    /// <summary>Any leap year will do; this one is only ever used to let 29 February through.</summary>
+    private const int LeapYearForYearlessDates = 2024;
 
     /// <summary>
     /// Reads a birthday as month and day, from any of the shapes a real list uses: "7/4", "7/4/1968",
@@ -53,6 +83,7 @@ public static class FieldValues
         if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double serial)
             && serial >= SmallestPlausibleSerial
             && serial <= LargestSerial
+            && !LooksLikeACalendarYear(serial)
             && !value.Contains('/', StringComparison.Ordinal)
             && !value.Contains('-', StringComparison.Ordinal))
         {
@@ -60,6 +91,14 @@ public static class FieldValues
             month = fromSerial.Month;
             day = fromSerial.Day;
             return true;
+        }
+
+        // A bare number that was not a plausible serial is not a date at all — an age, a dues
+        // amount, a member number, a degree year. Everything below this point would guess at one:
+        // "1968" parses quite happily as the first of January 1968.
+        if (IsBareNumber(value))
+        {
+            return false;
         }
 
         if (DateTime.TryParseExact(
@@ -74,7 +113,25 @@ public static class FieldValues
             return true;
         }
 
+        // Year-less shapes, read against a leap year so 29 February survives (see the field above).
+        if (DateTime.TryParseExact(
+                value + " " + LeapYearForYearlessDates.ToString(CultureInfo.InvariantCulture),
+                Array.ConvertAll(YearlessBirthdayFormats, f => f + " yyyy"),
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out DateTime yearless))
+        {
+            month = yearless.Month;
+            day = yearless.Day;
+            return true;
+        }
+
         // "7/4" and "7-4": month and day with no year, the shape a birthday list is usually in.
+        //
+        // Month first, deliberately and permanently. This lodge is in South Carolina and writes
+        // dates the American way; a d/M reading would silently swap every day-of-month at or below
+        // twelve for them, and there is nothing in a two-number cell that can tell the two apart.
+        // The review raised this (§14.2) and the answer is that it is a decision, not an oversight.
         string[] parts = value.Split(['/', '-', '.'], StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 2
             && int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out int m)
@@ -125,9 +182,19 @@ public static class FieldValues
 
         string value = text.Trim();
         if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double serial)
-            && serial is >= SmallestPlausibleSerial and <= LargestSerial)
+            && serial is >= SmallestPlausibleSerial and <= LargestSerial
+            && !LooksLikeACalendarYear(serial))
         {
             return FromExcelSerial(serial).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        }
+
+        // A bare number that is not a serial is most often a bare YEAR — "1968" in a "Raised"
+        // column, which is how a lodge that has lost the exact day records it. Kept verbatim: this
+        // method's contract is already that unrecognised text is preserved as the user wrote it,
+        // and "1968" is true where "1968-01-01" invents a day nobody claimed.
+        if (IsBareNumber(value))
+        {
+            return value;
         }
 
         if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsed))
@@ -188,6 +255,26 @@ public static class FieldValues
 
         return value.Contains("init", StringComparison.OrdinalIgnoreCase) ? DegreeKind.Initiated : null;
     }
+
+    /// <summary>
+    /// Digits and nothing else (a decimal point allowed, since a spreadsheet writes serials that
+    /// way). Once a value like this has been rejected as an Excel serial there is no reading of it
+    /// left that is a date, and every parser below would invent one.
+    /// </summary>
+    private static bool IsBareNumber(string value) =>
+        value.Length > 0 && value.All(c => char.IsAsciiDigit(c) || c == '.');
+
+    /// <summary>
+    /// A bare number that is far likelier to be a calendar year than a spreadsheet serial.
+    ///
+    /// <para>The serial floor alone does not settle this: serial 1968 is a real date (20 May 1905),
+    /// so "1968" in a Raised column parsed happily and stored 1905. The two readings only collide
+    /// for serials between about 1800 and 2200, which are dates in 1904–1906 — and nobody on a
+    /// lodge roster was born or raised then, while columns of four-digit years are everywhere. The
+    /// year wins that trade every time.</para>
+    /// </summary>
+    private static bool LooksLikeACalendarYear(double serial) =>
+        serial == Math.Floor(serial) && serial is >= 1800 and <= 2200;
 
     private static string TableWorkbookNumber(double value) =>
         value.ToString("0.############################", CultureInfo.InvariantCulture);

@@ -237,4 +237,35 @@ public sealed class BirthdayListTests
         Assert.True(drawList.IsEmpty);
         Assert.Equal("Birthdays — not filled in yet.", drawList.EmptyPromptText);
     }
+
+    /// <summary>
+    /// Review §14.2: a day that does not exist in its month is not a birthday. The check was a flat
+    /// "1 to 31", so 30 February and 31 April were accepted, stored, and printed as somebody's real
+    /// birthday on a page that goes out to the whole lodge.
+    /// </summary>
+    [Theory]
+    [InlineData("2/30")]
+    [InlineData("2/31")]
+    [InlineData("4/31")]
+    [InlineData("6/31")]
+    [InlineData("9/31")]
+    [InlineData("11/31")]
+    public void ADayThatDoesNotExistInItsMonthIsRefused(string value) =>
+        Assert.False(WizardValidators.TryParseMonthDay(value, out _, out _));
+
+    /// <summary>
+    /// And the days that do exist are still accepted — including 29 February, which is somebody's
+    /// actual birthday and which a month-and-day with no year behind it cannot rule out.
+    /// </summary>
+    [Theory]
+    [InlineData("2/29", 2, 29)]
+    [InlineData("1/31", 1, 31)]
+    [InlineData("4/30", 4, 30)]
+    [InlineData("12/25", 12, 25)]
+    public void TheDaysThatDoExistAreStillAccepted(string value, int month, int day)
+    {
+        Assert.True(WizardValidators.TryParseMonthDay(value, out int m, out int d));
+        Assert.Equal(month, m);
+        Assert.Equal(day, d);
+    }
 }
