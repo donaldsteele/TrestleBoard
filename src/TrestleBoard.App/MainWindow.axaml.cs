@@ -2254,8 +2254,13 @@ public partial class MainWindow : Window
                 return;
             }
 
-            _frames?.Select(blockId);
+            // Page FIRST, then select. GoToPage clears the selection — deliberately, because a
+            // selection carried to another page would make the panel act on something the user
+            // cannot see — so doing it in the other order destroyed the very selection this line
+            // exists to make. The whole point of these two lines is to show the user where the list
+            // it is talking about actually is (review §14.2).
             GoToPage(PageOf(blockId));
+            _frames?.Select(blockId);
         }
 
         if (!_widgets.CanEdit(blockId))
@@ -2473,8 +2478,13 @@ public partial class MainWindow : Window
                 return;
             }
 
-            _frames?.Select(blockId);
+            // Page FIRST, then select. GoToPage clears the selection — deliberately, because a
+            // selection carried to another page would make the panel act on something the user
+            // cannot see — so doing it in the other order destroyed the very selection this line
+            // exists to make. The whole point of these two lines is to show the user where the list
+            // it is talking about actually is (review §14.2).
             GoToPage(PageOf(blockId));
+            _frames?.Select(blockId);
         }
 
         if (!_widgets.CanEdit(blockId))
@@ -3294,7 +3304,20 @@ public partial class MainWindow : Window
                 Children =
                 {
                     new TextBlock { Text = message, FontSize = 18, MaxWidth = 480, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
-                    new Button { Content = "OK", FontSize = 18, MinHeight = 44, MinWidth = 120, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center },
+                    // IsDefault AND IsCancel: this dialog has one button, so Enter and Esc must
+                    // both dismiss it. Neither did, so the app's standard error message could only
+                    // be closed with the mouse — the one dialog a keyboard-only user is most likely
+                    // to be looking at, since something has just gone wrong (review §14.2).
+                    new Button
+                    {
+                        Content = "OK",
+                        FontSize = 18,
+                        MinHeight = 44,
+                        MinWidth = 120,
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                        IsDefault = true,
+                        IsCancel = true,
+                    },
                 },
             },
         };

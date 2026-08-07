@@ -70,6 +70,11 @@ public sealed class PositionPhotoWindow : Window
         _decoded = photos.GetDecodedImage(blockId);
         _preview = _decoded is null ? null : ToBitmap(_decoded.Bitmap);
 
+        // A decoded photograph is native memory measured in megabytes, and this window is opened
+        // and closed repeatedly while somebody nudges a picture into place. Waiting for the GC to
+        // notice is not good enough (review §14.2).
+        Closed += (_, _) => _preview?.Dispose();
+
         _image = new Image
         {
             Source = _preview,

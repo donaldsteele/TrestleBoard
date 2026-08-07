@@ -17,6 +17,14 @@ public sealed class CommitteeListLayouter : IWidgetLayouter
     /// long committee name cannot push every continuation line into the right margin.</summary>
     private const float MaxIndentFraction = 0.40f;
 
+    /// <summary>
+    /// And the first line never gets LESS than this fraction of the width. The cap above protected
+    /// the continuation lines and left the first line unguarded, so a committee name longer than
+    /// the column gave it a zero or negative width — which the wrapper reads as "do not break", and
+    /// the line ran off the right of the page (review §14.2).
+    /// </summary>
+    private const float MinFirstLineFraction = 0.20f;
+
     public WidgetDrawList Layout(WidgetLayoutContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -89,8 +97,18 @@ public sealed class CommitteeListLayouter : IWidgetLayouter
             return topPt + lineHeightPt;
         }
 
+        // The FIRST line's width had no floor under it. Only the hanging indent was capped (at 40%
+        // of the column); the first line was given `widthPt - prefixWidthPt`, which goes to zero
+        // and then negative for a committee name longer than the column — and a negative available
+        // width means the wrapper places the whole first line without breaking it, straight across
+        // the right margin and off the page (review §14.2).
+        //
+        // Below the floor the first line simply starts on the row after the name, which is what a
+        // printed list does with a heading too long to share its line.
+        float firstLineWidthPt = Math.Max(widthPt - prefixWidthPt, widthPt * MinFirstLineFraction);
+
         IReadOnlyList<string> lines = shaper.WrapToWidth(
-            rest, style.Body, widthPt - prefixWidthPt, widthPt - hangingIndentPt);
+            rest, style.Body, firstLineWidthPt, widthPt - hangingIndentPt);
 
         float y = topPt;
         for (int i = 0; i < lines.Count; i++)

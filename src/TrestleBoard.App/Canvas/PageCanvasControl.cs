@@ -794,6 +794,35 @@ public sealed class PageCanvasControl : Control
         }
     }
 
+    /// <summary>
+    /// Capture can be taken away mid-gesture — the window deactivates, a popup opens, the platform
+    /// decides. Without this the drag, pan or marquee flags stayed set with no pointer behind them,
+    /// and the NEXT unrelated release committed a drag the user had abandoned some time ago, moving
+    /// a frame they were no longer touching (review §14.2).
+    ///
+    /// <para>An interrupted gesture is cancelled, never committed: the user did not let go, so
+    /// there is no moment at which they agreed to where the frame had got to.</para>
+    /// </summary>
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
+    {
+        base.OnPointerCaptureLost(e);
+
+        if (_draggingFrame)
+        {
+            _frames?.EndDrag(commit: false);
+            _draggingFrame = false;
+        }
+
+        if (_marquee)
+        {
+            _marquee = false;
+            InvalidateVisual();
+        }
+
+        _panning = false;
+        Cursor = CursorFor(_cursorType);
+    }
+
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);

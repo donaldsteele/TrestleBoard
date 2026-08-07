@@ -117,8 +117,18 @@ public sealed class StyleFontTests
     {
         Assert.Equal("body~lora", StyleOverrides.NameFor("body", "Lora", 11f, 11f));
         Assert.Equal("body~lora-14", StyleOverrides.NameFor("body", "Lora", 14f, 11f));
-        Assert.Equal("body~lora-85", StyleOverrides.NameFor("body", "Lora", 8.5f, 11f));
         Assert.Equal("body~lora", StyleOverrides.NameFor("body-bold-italic", "Lora", 11f, 11f));
+
+        // M29: the decimal point survives as "p". This line used to expect "body~lora-85" for
+        // 8.5 pt — the same name 85 pt produces — because Slug() strips everything that is not a
+        // letter or digit. TextEditorController.UseFontJustHere finds a derived style BY NAME and
+        // does not check its size, so with an 8.5 pt override already in the document, asking for a
+        // banner at 85 pt silently gave you 8.5 pt (review §14.2).
+        Assert.Equal("body~lora-8p5", StyleOverrides.NameFor("body", "Lora", 8.5f, 11f));
+        Assert.Equal("body~lora-85", StyleOverrides.NameFor("body", "Lora", 85f, 11f));
+        Assert.NotEqual(
+            StyleOverrides.NameFor("body", "Lora", 8.5f, 11f),
+            StyleOverrides.NameFor("body", "Lora", 85f, 11f));
     }
 
     [Fact]

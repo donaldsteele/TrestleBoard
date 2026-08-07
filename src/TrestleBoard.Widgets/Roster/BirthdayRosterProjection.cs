@@ -44,6 +44,15 @@ public sealed record BirthdayProjection(
 /// </summary>
 public static class BirthdayRosterProjection
 {
+    /// <summary>
+    /// The ASCII unit separator between fingerprint fields. Without it "person-12" + "Al"
+    /// and "person-1" + "2Al" produce the same bytes, so a real change to somebody's
+    /// details can hash identical to the stored fingerprint and the list reports itself up
+    /// to date when it is not (review §14.2). Same reason, same character, as the officers
+    /// projection.
+    /// </summary>
+    private const string Unit = "\u001f";
+
     /// <summary>The undo step one sync produces. Named once, so the Edit menu and the panel agree.</summary>
     public const string UndoLabel = "Update birthdays from the address book";
 
@@ -194,7 +203,7 @@ public static class BirthdayRosterProjection
         builder.Append(CultureInfo.InvariantCulture, $"m{month}\n");
         foreach (Member member in Candidates(members, month, removedMemberIds))
         {
-            builder.Append(CultureInfo.InvariantCulture, $"{member.Id}{member.DisplayName}{member.BirthDay}\n");
+            builder.Append(CultureInfo.InvariantCulture, $"{member.Id}{Unit}{member.DisplayName}{Unit}{member.BirthDay}\n");
         }
 
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
@@ -245,5 +254,5 @@ public static class BirthdayRosterProjection
     };
 
     private static string Prints(BirthdayEntry entry) =>
-        string.Create(CultureInfo.InvariantCulture, $"{entry.Name}{entry.Month}/{entry.Day}");
+        string.Create(CultureInfo.InvariantCulture, $"{entry.Name}{Unit}{entry.Month}/{entry.Day}");
 }

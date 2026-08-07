@@ -38,7 +38,12 @@ public static class StyleOverrides
         string name = $"{CharacterStyleResolver.BaseName(baseStyleName)}{Separator}{Slug(fontFamily)}";
         if (Math.Abs(sizePt - baseSizePt) >= 0.01f)
         {
-            return name + "-" + Slug(sizePt.ToString("0.##", CultureInfo.InvariantCulture));
+            // The decimal point becomes "p", not nothing. Slug() strips every non-alphanumeric
+            // character, so 8.5 pt and 85 pt both slugged to "85" and collided — and
+            // TextEditorController.UseFontJustHere looks the derived style up BY NAME without
+            // checking its size, so asking for a banner at 85 pt after an 8.5 pt override existed
+            // silently gave you 8.5 pt (review §14.2).
+            return name + "-" + SizeSlug(sizePt);
         }
 
         return name;
@@ -94,6 +99,13 @@ public static class StyleOverrides
     /// <summary>"11 pt", "8.5 pt" — never "11.0 pt".</summary>
     public static string Size(float sizePt) =>
         sizePt.ToString("0.##", CultureInfo.InvariantCulture) + " pt";
+
+    /// <summary>
+    /// A point size as a name fragment, with the decimal point kept as "p": 8.5 → "8p5", 85 → "85".
+    /// Distinguishable, and still made only of characters a style name may contain.
+    /// </summary>
+    public static string SizeSlug(float sizePt) =>
+        Slug(sizePt.ToString("0.##", CultureInfo.InvariantCulture).Replace(".", "p", StringComparison.Ordinal));
 
     /// <summary>Lowercases and strips everything that is not a letter or digit: "EB Garamond" → "ebgaramond".</summary>
     public static string Slug(string text)

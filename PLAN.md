@@ -2005,6 +2005,23 @@ interface is made bigger).
 Shift+click add-to-selection and panning — each needs a new command with real design behind it —
 plus advertising Alt-suppresses-snapping, and Tab inside a text session.
 
+### M29 — The small ones (delivered 2026-08-07, `docs/M29-spec.md`)
+
+Nine defects from §14.2–§14.3 that share no theme beyond being real, grouped so they are not left
+to rot as "the minors". The recovery store wrote its timestamp before its bytes, so a crash between
+the two atomic writes made the restore dialog overstate how fresh the snapshot was — the direction
+that costs work. 8.5 pt and 85 pt slugged to the same derived style name, and the font-override
+lookup matches by name without checking size. Two roster fingerprints hashed their fields run
+together, so a boundary shift between them reported a changed list as "not stale". Both sync paths
+selected the widget and then called `GoToPage`, which clears the selection — so the two lines that
+exist to show the user where the list is did nothing. The canvas had no `OnPointerCaptureLost`, so
+an interrupted drag was committed by the next unrelated pointer release. The error dialog's only
+button had neither `IsDefault` nor `IsCancel`. Two windows leaked their bitmaps. `RecipeCache` keyed
+on an unescaped separator; `ChooseHeaderRow` accepted a row past the end of the sheet and produced
+an empty plan with no error. Unreadable roster backups were never counted or deleted. And a
+committee name longer than its column gave the first line a negative width, which the wrapper reads
+as "do not break" — so it ran across the right margin and off the page.
+
 **Grouping 4 is half done; grouping 5 is part done.**
 
 ---
@@ -2362,20 +2379,22 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   link chain never repoints the downstream frame's `StoryRef` — two chain heads share one story,
   the article renders twice, and the `AnyOtherBlockUsesStory` guard is broken for that story
   afterward. (`Unlink` at `:743` preserves the invariant; delete does not.)~~ — **fixed at M25**: the chain now heals A→C.
-- Minor — `FileRecoveryStore.cs:39-45`: the sidecar (new `SavedAt`) is written *before* the document
+- ~~Minor — `FileRecoveryStore.cs:39-45`: the sidecar (new `SavedAt`) is written *before* the document
   bytes, so a crash between the two atomic writes pairs the new timestamp with the old bytes —
   recovery overstates how fresh the snapshot is. Also `:70-75`, `:147-157`:
   `UnauthorizedAccessException` is not caught — it aborts the whole startup recovery scan, or
-  escapes `RecoveryService.Complete()` on the clean-close path.
+  escapes `RecoveryService.Complete()` on the clean-close path.~~ — **write order fixed at M29**;
+  the `UnauthorizedAccessException` half is still open.
 - ~~Minor — `MigrationRunner.cs:38-49` + `TboardContainer.cs:95-101`: an unparseable
   `formatVersion` or malformed JSON escapes as a raw `FormatException`/`JsonException` instead of
   `UnsupportedFormatException` — a damaged `.tboard` gets the unhandled-exception dialog instead of
   "This newsletter file is damaged…", the exact case the contract exists for.~~ — **fixed at M25**.
 - ~~Minor — `TboardContainer.cs:81-88`: a failed save leaves `path + ".tmp"` behind permanently.~~ —
   **fixed at M24**, along with a missing flush-to-disk before the rename.
-- Minor — `StyleOverrides.cs:34-45`: the size slug strips "." so 8.5 pt and 85 pt collide;
+- ~~Minor — `StyleOverrides.cs:34-45`: the size slug strips "." so 8.5 pt and 85 pt collide;
   `UseFontJustHere` (`TextEditorController.cs:754-758`) matches the derived style *by name* without
-  checking `SizePt` — ask for EB Garamond 85 pt after 8.5 pt exists and you get 8.5 pt.
+  checking `SizePt` — ask for EB Garamond 85 pt after 8.5 pt exists and you get 8.5 pt.~~ —
+  **fixed at M29**: the decimal point survives as "p" (`body~lora-8p5` against `body~lora-85`).
 - PLAUSIBLE — `DocumentSession.cs:49-53`: no rollback if a composite child throws mid-`Apply` —
   partial mutation with no undo record. · `PhotoController.cs:388-397`: the stale-crop aspect test
   ignores `RotationSteps` — wrong stretched-picture warning on rotated photos. ·
@@ -2427,8 +2446,8 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   Skia raster targets must be premul/opaque, so on some builds the stretch is a silent no-op or a
   black result.
 - Minor PLAUSIBLE — `AutoLevels.cs:87-104`: the histogram reads premultiplied RGBA, so transparency
-  skews the black/white points. · `RecipeCache.cs:30,61-68`: unescaped `|` in the cache key makes
-  `InvalidateAsset`'s prefix match ambiguous.
+  skews the black/white points. · ~~`RecipeCache.cs:30,61-68`: unescaped `|` in the cache key makes
+  `InvalidateAsset`'s prefix match ambiguous.~~ (**fixed at M29**)
 - Verified sound: all eight EXIF orientation matrices, crop/rotate ordering, `NormalizedRect`
   clamping, auto-crop integral-image math.
 
@@ -2440,11 +2459,12 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   — **confirmed and fixed at M26**: the missing row is added, in printed order.
 - ~~Minor — `WizardValidators.cs:116-128` (and `Member.HasBirthday`): impossible dates (2/30, 4/31)
   are accepted, stored, and printed as birthdays.~~ (**fixed at M26**; February keeps 29 days,
-  which is somebody's real birthday) · Fingerprints concatenate fields with no
+  which is somebody's real birthday) · ~~Fingerprints concatenate fields with no
   separator (`BirthdayRosterProjection.cs:197`, `OfficersRosterProjection.cs:275`) —
-  boundary-shifted rosters can hash identical and report "not stale". · PLAUSIBLE
-  `CommitteeListLayouter.cs:74-93`: a long committee name drives the first line's available width
-  zero or negative and draws past the right margin. · `DistrictCalendarLayouter.cs:129-133`:
+  boundary-shifted rosters can hash identical and report "not stale".~~ (**fixed at M29**:
+  U+001F between fields) · PLAUSIBLE
+  ~~`CommitteeListLayouter.cs:74-93`: a long committee name drives the first line's available width
+  zero or negative and draws past the right margin.~~ (**confirmed and fixed at M29**) · `DistrictCalendarLayouter.cs:129-133`:
   hanging indent measured with the " — " separator even when `DateText` is blank.
 
 **Roster** (real personal data — data-loss items first; §14.1 item 4 is the headline)
@@ -2459,14 +2479,15 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   **kept deliberately at M26** and documented in the code as a decision: this lodge writes American
   dates, and nothing in a two-number cell can tell the readings apart. ·
   ~~PLAUSIBLE `RosterStore.cs:87-89`: temp-then-rename with no flush-to-disk — power loss can persist
-  the rename without the data blocks.~~ (**fixed at M24**) · `RosterStore.cs:108-159`: unparsable
-  backups are never counted against `BackupsKept` nor deleted — they accumulate forever. ·
+  the rename without the data blocks.~~ (**fixed at M24**) · ~~`RosterStore.cs:108-159`: unparsable
+  backups are never counted against `BackupsKept` nor deleted — they accumulate forever.~~
+  (**fixed at M29**) ·
   ~~`RosterService.cs:113-124`: in-memory state mutates before `Save`; on throw the UI is stale, the
   edit unsaved, `Changed` never raised.~~ (**fixed at M24** — it writes first, then believes it) ·
   PLAUSIBLE `CsvTableReader.cs:36`: BOM-less Windows-1252 CSVs decode as UTF-8 —
   accented names arrive as U+FFFD. · Header hints misfire ("Member Number" → Name, "Mailing
-  address" → Email; `RosterField.cs:33-49`); `RosterImportSession.cs:150-159` accepts a header row
-  ≥ `RowCount`, yielding an empty, non-erroring plan.
+  address" → Email; `RosterField.cs:33-49`); ~~`RosterImportSession.cs:150-159` accepts a header row ≥ `RowCount`, yielding an
+  empty, non-erroring plan.~~ (**fixed at M29**)
 
 **Export.Pdf**
 
@@ -2494,14 +2515,15 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   thread draw op renders against the shared `DocumentRenderSource` while the UI thread mutates or
   disposes it (`ShowPackage`) — use-after-dispose race on the render thread.~~ — **contained at
   M25**: a stale frame is skipped rather than thrown from the render thread.
-- Minor — Birthday/officers sync selects the widget *then* calls `GoToPage`, which clears the
-  selection (`MainWindow.axaml.cs:1837-1838`, `:2056-2057` vs `:2647`) — the "show the user where
-  it is" gesture never shows. · No `OnPointerCaptureLost` override: a lost capture leaves
-  drag/pan/marquee armed and the next unrelated release commits a stale drag. · Wizard Esc is
+- ~~Minor — Birthday/officers sync selects the widget *then* calls `GoToPage`, which clears the
+  selection — the "show the user where it is" gesture never shows.~~ (**fixed at M29**) · ~~No
+  `OnPointerCaptureLost` override: a lost capture leaves drag/pan/marquee armed and the next
+  unrelated release commits a stale drag.~~ (**fixed at M29**) · Wizard Esc is
   handled twice (KeyDown + `IsCancel`) and can stack two confirm dialogs. · The grid editor's
   Cancel/Esc discards a dirty session with no confirmation, while the step wizard over the same
-  session confirms. · `PositionPhotoWindow`/`RestoreDialog` never dispose their bitmaps. · The
-  standard error dialog's OK has neither `IsDefault` nor `IsCancel` (Enter/Esc dead);
+  session confirms. · ~~`PositionPhotoWindow`/`RestoreDialog` never dispose their bitmaps.~~ (**fixed at M29**) · ~~The
+  standard error dialog's OK has neither `IsDefault` nor `IsCancel` (Enter/Esc dead).~~
+  (**fixed at M29**) ·
   `StartDialog` has no Esc path. · Startup and manual update checks are unsynchronised — duplicate
   downloads possible.
 - Tools verified clean: the screenshot harness redirects `AppPaths.Root` before Avalonia starts and
@@ -2548,7 +2570,7 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 - Assorted: the M23 stretched-picture dismissal is session-only and keyed by frame aspect, so the
   note returns after any reshape or restart; no tooltips exist anywhere in the App project; no
   rulers, guides, margin display, or grid — snap guides appear only mid-drag; page change clears
-  the selection; Backspace deletes a frame but is absent from `KeyboardMap`; the context menu uses
+  the selection; the context menu uses
   static titles where the panel uses context-aware ones ("Put a picture here…" over a filled
   frame); two undo stacks (document vs address book) are disclosed only inside the People menu.
 - **Jargon inventory** (user-facing strings that assume desktop-publishing or programmer

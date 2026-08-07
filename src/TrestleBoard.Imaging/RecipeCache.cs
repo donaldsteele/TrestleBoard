@@ -27,8 +27,15 @@ public sealed class RecipeCache(int capacity = 32) : IDisposable
     /// <summary>Times a lookup had to render.</summary>
     public int MissCount { get; private set; }
 
+    /// <summary>
+    /// The cache key. The asset reference is length-prefixed rather than merely separated, so an
+    /// assetRef that itself contains "|" cannot make <see cref="InvalidateAsset"/>'s prefix match
+    /// ambiguous — dropping another asset's renders, or keeping the stale ones it was asked to
+    /// drop (review §14.2). Asset names are minted by the app today and never contain a bar; this
+    /// stops that being load-bearing.
+    /// </summary>
     public static string BuildKey(string assetRef, ImageRecipeSpec recipe, int maxPixelSize) =>
-        $"{assetRef}|{recipe.CacheKeyPart()}|{maxPixelSize}";
+        $"{assetRef.Length}:{assetRef}|{recipe.CacheKeyPart()}|{maxPixelSize}";
 
     /// <summary>Returns the cached render, producing it with <paramref name="render"/> on a miss.
     /// The cache owns the returned image — callers draw it, they never dispose it.</summary>
@@ -58,7 +65,7 @@ public sealed class RecipeCache(int capacity = 32) : IDisposable
     public void InvalidateAsset(string assetRef)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        string prefix = assetRef + "|";
+        string prefix = $"{assetRef.Length}:{assetRef}|";
         foreach (string key in _index.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToList())
         {
             LinkedListNode<Entry> node = _index[key];

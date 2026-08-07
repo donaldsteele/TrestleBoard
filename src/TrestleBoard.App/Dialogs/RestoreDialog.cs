@@ -85,9 +85,15 @@ public sealed class RestoreDialog : Window
         if (thumbnailPng is { Length: > 0 })
         {
             using var stream = new MemoryStream(thumbnailPng);
+
+            // Disposed with the window: this one is small, but it is the same rule as the position
+            // window's preview, and a leak nobody bothered with is how the rule stops being one.
+            var thumbnail = new Bitmap(stream);
+            Closed += (_, _) => thumbnail.Dispose();
+
             var image = new Image
             {
-                Source = new Bitmap(stream),
+                Source = thumbnail,
                 Width = 220,
                 HorizontalAlignment = HorizontalAlignment.Left,
             };

@@ -109,6 +109,13 @@ public static class OfficersRosterProjection
     public const string UndoLabel = "Fill in the officers from the address book";
 
     /// <summary>
+    /// The ASCII unit separator, placed between fields inside a fingerprint. It cannot occur in a
+    /// name or a phone number that came through the importer, which is what makes it safe as a
+    /// boundary the hash can actually see.
+    /// </summary>
+    private const string Unit = "\u001f";
+
+    /// <summary>
     /// Works out what a sync would do, without doing it. Never mutates <paramref name="current"/> —
     /// the caller decides, the user confirms, and the caller commits.
     /// </summary>
@@ -298,8 +305,13 @@ public static class OfficersRosterProjection
             builder.Append(CultureInfo.InvariantCulture, $"{position}\n");
             foreach (OfficerCandidate candidate in candidates)
             {
+                // Unit-separated. Run together, "person-12" + "Al" and "person-1" + "2Al" produce
+                // the same bytes, so a real change could hash identical to the stored fingerprint
+                // and the table would report itself up to date when it is not (review §14.2).
+                // U+001F cannot occur in a name or phone number that came through the importer.
                 builder.Append(
-                    CultureInfo.InvariantCulture, $"{candidate.MemberId}{candidate.Name}{candidate.Phone}\n");
+                    CultureInfo.InvariantCulture,
+                    $"{candidate.MemberId}{Unit}{candidate.Name}{Unit}{candidate.Phone}\n");
             }
         }
 

@@ -202,14 +202,31 @@ public sealed class RosterStore
 
             foreach (RosterBackup old in Backups().Skip(BackupsKept))
             {
-                try
+                TryDelete(old.Path);
+            }
+
+            // Backups() skips any file it cannot parse, so an unreadable one was never counted
+            // against BackupsKept and never deleted — it simply accumulated, for ever, in a folder
+            // the user never opens (review §14.2). They are removed here instead: a kept copy that
+            // cannot be read is not a kept copy.
+            foreach (string file in Directory.GetFiles(BackupDirectory, BackupPrefix + "*" + BackupSuffix))
+            {
+                if (!Backups().Any(b => string.Equals(b.Path, file, StringComparison.Ordinal)))
                 {
-                    File.Delete(old.Path);
-                }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-                {
+                    TryDelete(file);
                 }
             }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            File.Delete(path);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {

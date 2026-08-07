@@ -149,7 +149,11 @@ public sealed class RosterImportSession
     /// <summary>-1 for "there are no column titles"; re-guesses the mapping, since it depends on this.</summary>
     public void ChooseHeaderRow(int row)
     {
-        _headerRow = row < 0 ? -1 : row;
+        // Clamped at BOTH ends. A row past the end of the sheet used to be accepted, and produced
+        // an empty mapping and an empty plan with no error anywhere — the import simply appeared to
+        // find nobody (review §14.2). Out of range now means "no column titles", which is the
+        // answer that at least tries to read the file.
+        _headerRow = row < 0 || (Sheet is { } s && row >= s.RowCount) ? -1 : row;
         if (Sheet is { } sheet)
         {
             _mapping = ColumnGuesser.GuessMapping(sheet, _headerRow);

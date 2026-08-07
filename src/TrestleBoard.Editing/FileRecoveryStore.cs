@@ -36,13 +36,22 @@ public sealed class FileRecoveryStore : IRecoveryStore
         string document = Path.Combine(_directory, snapshot.Id + DocumentExtension);
         string sidecar = Path.Combine(_directory, snapshot.Id + SidecarExtension);
 
-        // Sidecar FIRST, document second. Both writes are atomic, but a crash between them has to
-        // leave the pair readable: an old document with a new sidecar merely reports a slightly
-        // early time, whereas a new document with a stale sidecar would tell the user their current
-        // work is older than it is.
+        // DOCUMENT first, sidecar second. Both writes are atomic, but a crash between them has to
+        // leave the pair readable, and only one order gets that right.
+        //
+        // This used to be the other way round, with a comment reasoning it through backwards
+        // (review §14.2). Sidecar-first pairs the NEW timestamp with the PREVIOUS document — so the
+        // restore dialog says "saved 10 seconds ago" over bytes that are a minute old, and the
+        // user, told their work is current, accepts it and loses the difference without ever being
+        // shown that there was one. Overstating freshness is the direction that costs work.
+        //
+        // Document-first pairs new bytes with a stale timestamp: the dialog understates how fresh
+        // the snapshot is. The user is offered MORE work than they were promised, which is a
+        // harmless surprise. A missing sidecar entirely — the first-ever write, interrupted — is
+        // already handled by ReadSidecar returning its default.
+        WriteAtomic(document, snapshot.Bytes);
         WriteAtomic(sidecar, JsonSerializer.SerializeToUtf8Bytes(
             new Sidecar(snapshot.OriginalPath, snapshot.SavedAt)));
-        WriteAtomic(document, snapshot.Bytes);
     }
 
     public void Delete(string id)
