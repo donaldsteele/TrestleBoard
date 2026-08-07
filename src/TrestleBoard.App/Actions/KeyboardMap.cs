@@ -53,7 +53,14 @@ internal static class KeyboardMap
         new(Key.Y, Ctrl, ActionId.Redo),
         new(Key.X, Ctrl, ActionId.Cut, KeyScope.WhileTyping),
         new(Key.C, Ctrl, ActionId.Copy, KeyScope.WhileTyping),
-        new(Key.V, Ctrl, ActionId.Paste, KeyScope.WhileTyping),
+        // M28: NOT WhileTyping. M18 made paste mean two things — words into a story, or a picture
+        // from the clipboard onto the page — and the catalog says so (`IsEditingText || HasDocument`),
+        // and the Edit menu advertises Ctrl+V. Only this row still believed paste was about typing,
+        // so the keyboard half of M18's feature was unreachable from the day it shipped: a user who
+        // copied a photo, clicked a frame and pressed Ctrl+V got nothing at all, silently
+        // (review §14.2). Cut and copy stay WhileTyping, because the catalog genuinely does require
+        // a caret for those.
+        new(Key.V, Ctrl, ActionId.Paste),
         new(Key.A, Ctrl, ActionId.SelectAll, KeyScope.WhileTyping),
 
         // M21. Both are KeyScope.Always: Ctrl+F is most useful while the caret is already in a
@@ -80,6 +87,12 @@ internal static class KeyboardMap
         // ---- The selected thing -----------------------------------------------------------------
         // Delete belongs to the caret while typing; outside a story it removes the chosen frame.
         new(Key.Delete, KeyModifiers.None, ActionId.DeleteFrame, KeyScope.WhileNotTyping),
+
+        // M28: Backspace does the same thing, and used to do it from a `case` in the canvas that
+        // this table knew nothing about — so the audit could not see it, the panel could not
+        // advertise it, and it could not be refused with a reason like every other command. Both
+        // keys reach a frame the same way now.
+        new(Key.Back, KeyModifiers.None, ActionId.DeleteFrame, KeyScope.WhileNotTyping),
         new(Key.E, CtrlShift, ActionId.EditWidget),
         new(Key.G, CtrlShift, ActionId.EditWidgetList),
         new(Key.Y, CtrlShift, ActionId.FitToContents),
@@ -117,6 +130,14 @@ internal static class KeyboardMap
         // Bare PageUp/PageDown moves the caret while typing, and turns the page otherwise.
         new(Key.PageDown, KeyModifiers.None, ActionId.NextPage, KeyScope.WhileNotTyping),
         new(Key.PageUp, KeyModifiers.None, ActionId.PreviousPage, KeyScope.WhileNotTyping),
+
+        // M28: two commands that had no gesture at all. Adding a page is one of the handful of
+        // things somebody does every month while building an issue, and the settings window is
+        // where the UI is made bigger — the one window an elderly user most needs to find. The
+        // other four page commands stay menu-only: they are rare, and four more chords nobody can
+        // remember would buy nothing (the same trade M21 made for align and distribute).
+        new(Key.N, CtrlShift, ActionId.AddPage),
+        new(Key.F10, KeyModifiers.None, ActionId.Settings),
 
         // ---- The address book (M12) ---------------------------------------------------------------
         new(Key.R, CtrlShift, ActionId.ShowPeople),

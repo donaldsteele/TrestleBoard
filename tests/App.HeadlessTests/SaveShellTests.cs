@@ -221,6 +221,47 @@ public sealed class SaveShellTests : IDisposable
     }
 
     /// <summary>
+    /// M28, review §14.2: Ctrl+V reaches paste with a frame selected and no caret in a story.
+    ///
+    /// <para>M18 made paste mean two things — words into a story, or a picture from the clipboard
+    /// onto the page — but its KeyboardMap row stayed scoped to typing, so the keyboard half of
+    /// that feature was unreachable from the day it shipped. Pressing Ctrl+V over a selected frame
+    /// did nothing at all, and said nothing, while the Edit menu advertised the gesture.</para>
+    /// </summary>
+    [Fact]
+    public async Task ControlVReachesPasteWithAFrameSelectedRatherThanOnlyWhileTyping()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenIssueSample();
+
+            // A frame is chosen and the caret is NOT in a story — the M18 situation.
+            string frame = window.SessionForTest!.Document.Pages[0].Blocks[0].Id;
+            window.EditorForTest!.End();
+            window.FramesForTest!.Select(frame);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.False(window.CurrentActionContext.IsEditingText);
+
+            var reached = new List<string>();
+            window.ActionsForTest.InterceptorForTest = id =>
+            {
+                reached.Add(id);
+                return true;
+            };
+
+            window.KeyPressQwerty(PhysicalKey.V, RawInputModifiers.Control);
+
+            Assert.Equal([ActionId.Paste], reached);
+
+            window.ActionsForTest.InterceptorForTest = null;
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
     /// A carried-forward issue exists in no file anywhere, and work put back by the recovery dialog
     /// is unsaved by definition — that is why it was in the recovery store. Both say so from the
     /// first moment rather than looking like a document that is already safe.

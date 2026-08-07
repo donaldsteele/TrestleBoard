@@ -1988,7 +1988,24 @@ the grey-means-two-things palette split (a look-and-feel decision across thirtee
 `Controls.axaml` documents why a blanket Button selector is unavailable), the selection chrome's
 hard-coded ARGB, consolidating the four picture verbs, and the rest of the jargon inventory.
 
-**§14.5 grouping 5 remains unscheduled, and grouping 4 is half done.**
+### M28 — Reach it from the keyboard (delivered 2026-08-07, `docs/M28-spec.md`)
+
+§14.5 grouping 5, **in part**. Ctrl+V had been dead since M18: that milestone made paste mean "a
+picture onto the page" as well as "words into a story", updated the catalog, wrote the handler and
+advertised the gesture in the Edit menu — and left the `KeyboardMap` row scoped to typing, so the
+keyboard half of the feature was unreachable from the day it shipped, silently. The keyboard audit
+could not see it, because it skips every typing-scoped row by construction; the missing test asks
+the catalog instead, and its mirror checks that every advertised gesture is really in the table.
+Backspace deleted a frame from a private `case` in the canvas that the map knew nothing about, so
+it could not be refused with a reason, audited, or advertised. And two commands gained gestures:
+add-a-page (Ctrl+Shift+N) and the settings window (F10, a single key because it is where the
+interface is made bigger).
+
+**Still open**, and listed in `docs/M28-spec.md` §4: keyboard equivalents for marquee selection,
+Shift+click add-to-selection and panning — each needs a new command with real design behind it —
+plus advertising Alt-suppresses-snapping, and Tab inside a text session.
+
+**Grouping 4 is half done; grouping 5 is part done.**
 
 ---
 
@@ -2462,9 +2479,10 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 
 **App shell** (criticals listed in §14.1)
 
-- Major — `KeyboardMap.cs:48` vs `ActionCatalog.cs:357-359`: Ctrl+V is scoped `WhileTyping`, but
+- ~~Major — `KeyboardMap.cs:48` vs `ActionCatalog.cs:357-359`: Ctrl+V is scoped `WhileTyping`, but
   M18's paste-a-picture is available document-wide and the Edit menu advertises Ctrl+V — the
-  keyboard path for pasting a photo is dead. (Ctrl+X/C similarly inert outside typing.)
+  keyboard path for pasting a photo is dead.~~ — **fixed at M28**, with the audit test whose absence
+  let it ship. (Ctrl+X/C stay typing-scoped: the catalog genuinely requires a caret for those.)
 - ~~Major — `MainWindow.axaml.cs:207` et al.: every action runs as `_ = RunAsync(...)` — a handler
   exception is swallowed with no user feedback and possible half-applied state. `Opened += async`
   (`:151`), `OnCanvasDrop` (`:1519`) and wizard cancel (`WizardWindow.cs:218`) are async-void and
@@ -2525,6 +2543,8 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 - ~~**Toolbar and menu disagree on names for the same command**: Smaller/Bigger vs Zoom out/Zoom in;
   Back/Next vs Previous page/Next page — and Back/Next collides with the wizard's own buttons.~~ —
   **fixed at M27**, with a test comparing every toolbar label against the catalog.
+- ~~Backspace deletes a frame but is absent from `KeyboardMap`~~ — **fixed at M28**: both keys are
+  rows, and the canvas no longer deletes behind the runner's back.
 - Assorted: the M23 stretched-picture dismissal is session-only and keyed by frame aspect, so the
   note returns after any reshape or restart; no tooltips exist anywhere in the App project; no
   rulers, guides, margin display, or grid — snap guides appear only mid-drag; page change clears
@@ -2595,4 +2615,8 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
    in the photo adjust window, and the 16pt floor. The palette split, the picture verbs and the
    rest of the jargon list are still open; `docs/M27-spec.md` §5 says why each was left.
 5. **Reach everything from the keyboard** — shortcut coverage, Tab out of text, keyboard placement,
-   advertised modifiers; then the 16 pt floor and themed selection chrome.
+   advertised modifiers; then the 16 pt floor and themed selection chrome. — **part delivered as
+   M28, 2026-08-07**: the dead Ctrl+V, Backspace's unregistered path, two missing gestures, and two
+   audit tests that make the whole class of "advertised but unreachable" fail the build. The 16 pt
+   floor went with M27. Marquee/add-to-selection/pan equivalents and the themed selection chrome
+   are still open.

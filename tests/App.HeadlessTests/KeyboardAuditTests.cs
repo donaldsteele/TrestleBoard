@@ -202,6 +202,84 @@ public sealed class KeyboardAuditTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>
+    /// M28: a gesture must apply wherever the command it runs is available.
+    ///
+    /// <para>This is the test whose absence let the Ctrl+V bug ship. The existing audit walks
+    /// <see cref="KeyboardMap"/> and skips every <see cref="KeyScope.WhileTyping"/> row as
+    /// "covered by the editor's own tests" — so a row scoped to typing for a command that is
+    /// available WITHOUT typing was invisible to it. M18 made paste mean "a picture onto the page"
+    /// as well as "words into a story", the catalog was updated to say so, the Edit menu advertised
+    /// Ctrl+V, and this one row still believed paste was about typing. The keyboard half of the
+    /// feature was unreachable from the day it shipped, silently (review §14.2).</para>
+    ///
+    /// <para>The rule, stated once: if the catalog makes a command available with a newsletter open
+    /// and no caret in a story, its gesture may not be scoped to typing. The catalog is asked, not
+    /// a hand-written list, so a future command cannot be forgotten here.</para>
+    /// </summary>
+    [Fact]
+    public void NoGestureIsScopedNarrowerThanTheCommandItRuns()
+    {
+        // A newsletter is open, a frame is selected, and the caret is NOT in a story.
+        var notTyping = new ActionContext
+        {
+            HasDocument = true,
+            PageCount = 4,
+            Selection = SelectionKind.TextFrame,
+            SelectionIsTextFrame = true,
+            SelectionCount = 1,
+            IsEditingText = false,
+        };
+
+        var unreachable = new List<string>();
+        foreach (KeyShortcut shortcut in KeyboardMap.All)
+        {
+            if (shortcut.Scope != KeyScope.WhileTyping
+                || !ActionCatalog.TryGet(shortcut.ActionId, out _))
+            {
+                continue;
+            }
+
+            if (ActionCatalog.Evaluate(shortcut.ActionId, notTyping).IsAvailable)
+            {
+                unreachable.Add(
+                    $"{shortcut.ActionId} is available without a caret, but {KeyboardMap.Describe(shortcut)} "
+                    + "only applies while typing");
+            }
+        }
+
+        Assert.True(unreachable.Count == 0, string.Join("; ", unreachable));
+    }
+
+    /// <summary>
+    /// And the other direction: every gesture the CATALOG advertises is really in the table. A menu
+    /// that promises Ctrl+Shift+N and a table that has never heard of it is the same broken promise
+    /// as M11's shadowed Ctrl+Shift+Y, arriving from the opposite side.
+    /// </summary>
+    [Fact]
+    public void EveryShortcutTheCatalogAdvertisesIsInTheTable()
+    {
+        var missing = new List<string>();
+        foreach (EditorAction action in ActionCatalog.All)
+        {
+            if (action.DisplayGesture is not { Length: > 0 } advertised)
+            {
+                continue;
+            }
+
+            bool found = KeyboardMap.All.Any(
+                k => k.ActionId == action.Id
+                    && string.Equals(KeyboardMap.Describe(k), advertised, StringComparison.OrdinalIgnoreCase));
+
+            if (!found)
+            {
+                missing.Add($"{action.Id} advertises {advertised}, which no row provides");
+            }
+        }
+
+        Assert.True(missing.Count == 0, string.Join("; ", missing));
+    }
+
     private static RawInputModifiers ToRawModifiers(KeyModifiers modifiers)
     {
         RawInputModifiers raw = RawInputModifiers.None;

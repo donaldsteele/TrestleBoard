@@ -1117,8 +1117,11 @@ public sealed class PageCanvasControl : Control
             case Key.Escape:
                 _frames.ClearSelection();
                 return true;
-            case Key.Delete or Key.Back:
-                return _frames.DeleteSelected();
+            // M28: Delete and Backspace are NOT handled here any more. Both are rows in
+            // KeyboardMap, so both go through the action runner like every other command — which
+            // means both can be refused with a reason, both appear in the keyboard audit, and the
+            // panel can advertise them. Deleting from here bypassed all three, and Backspace was
+            // additionally invisible to the map, so nothing in the app knew it was a shortcut.
             case Key.Enter or Key.F2:
                 return EnterTextEditingOnSelection();
             case Key.Left or Key.Right or Key.Up or Key.Down when _frames.HasSelection:

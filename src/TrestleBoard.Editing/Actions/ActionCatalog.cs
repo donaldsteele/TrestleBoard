@@ -212,7 +212,8 @@ public static class ActionCatalog
         new(ActionId.NextPage, "Next page", "Shows the following page.", ActionGroup.Page, "Ctrl+PageDown"),
         new(ActionId.PreviousPage, "Previous page", "Shows the page before this one.",
             ActionGroup.Page, "Ctrl+PageUp"),
-        new(ActionId.AddPage, "Add a page after this one", "Puts a new empty page in.", ActionGroup.Page),
+        new(ActionId.AddPage, "Add a page after this one", "Puts a new empty page in.", ActionGroup.Page,
+            "Ctrl+Shift+N"),
         new(ActionId.RemovePage, "Delete this page", "Takes this page out. You can undo this.", ActionGroup.Page),
         new(ActionId.MovePageEarlier, "Move this page earlier", "Swaps it with the page before it.",
             ActionGroup.Page),
@@ -223,8 +224,11 @@ public static class ActionCatalog
         new(ActionId.ZoomOut, "Zoom out", "Makes the page on screen smaller.", ActionGroup.View, "Ctrl+-"),
         new(ActionId.ActualSize, "Actual size", "Shows the page at its printed size.", ActionGroup.View, "Ctrl+0"),
         new(ActionId.FitPage, "Fit page", "Shows the whole page in the window.", ActionGroup.View, "Ctrl+1"),
+        // M28: F10 rather than a Ctrl chord. Nothing else in the app claims a bare function key
+        // except F2 and F6, and the window that makes everything bigger is the one an elderly user
+        // most needs to be able to find with one finger.
         new(ActionId.Settings, "How things look…", "Changes the theme and how big everything is.",
-            ActionGroup.View),
+            ActionGroup.View, "F10"),
         new(ActionId.NextRegion, "Move to the next part of the window",
             "Moves between the page, the panel, the toolbar and the menus.", ActionGroup.View, "F6"),
         new(ActionId.PreviousRegion, "Move to the previous part of the window",

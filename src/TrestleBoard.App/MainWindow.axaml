@@ -247,7 +247,7 @@
                   InputGesture="Shift+F6" Click="OnActionClicked"
                   AutomationProperties.Name="Move to the previous part of the window" />
         <Separator />
-        <MenuItem Header="How things _look…" Tag="view.settings" Click="OnActionClicked"
+        <MenuItem Header="How things _look…" Tag="view.settings" InputGesture="F10" Click="OnActionClicked"
                   AutomationProperties.Name="Change how things look" />
       </MenuItem>
       <MenuItem Header="_Page" AutomationProperties.Name="Page menu">
@@ -257,7 +257,7 @@
         <MenuItem Header="_Previous page" Tag="page.previous" InputGesture="Ctrl+PageUp"
                   Click="OnActionClicked" AutomationProperties.Name="Previous page" />
         <Separator />
-        <MenuItem Header="_Add a page after this one" Tag="page.add"
+        <MenuItem Header="_Add a page after this one" Tag="page.add" InputGesture="Ctrl+Shift+N"
                   Click="OnActionClicked" AutomationProperties.Name="Add a page after this one" />
         <MenuItem Header="_Delete this page" Tag="page.remove"
                   Click="OnActionClicked" AutomationProperties.Name="Delete this page" />
