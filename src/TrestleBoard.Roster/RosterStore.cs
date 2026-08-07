@@ -3,6 +3,28 @@ using System.Text.Json;
 
 namespace TrestleBoard.Roster;
 
+/// <summary>
+/// Why <see cref="RosterStore.Load(out RosterLoadState)"/> returned what it did.
+///
+/// The distinction is the whole point (M24): an empty book because there is no file yet is the
+/// ordinary first-run state, and saving over nothing is correct. An empty book because the file
+/// could not be READ — antivirus holding it, a sync client mid-write, a permissions change — looks
+/// identical to the caller, and saving over that destroys a real address book. The old
+/// <see cref="RosterStore.Load()"/> collapsed both into <see cref="RosterBook.Empty"/>, so a
+/// transient lock at startup became silent, permanent data loss on the next edit.
+/// </summary>
+public enum RosterLoadState
+{
+    /// <summary>The file was read. The book is what it held.</summary>
+    Loaded,
+
+    /// <summary>There is no address book yet — first run. An empty book is the truth.</summary>
+    NoFileYet,
+
+    /// <summary>A file is there and could not be read. The empty book is a placeholder, NOT the data.</summary>
+    CouldNotBeRead,
+}
+
 /// <summary>One kept copy of the address book, as the "Restore an earlier version…" list shows it.</summary>
 /// <param name="Path">Where the copy is.</param>
 /// <param name="SavedAt">When it was taken, in UTC.</param>
@@ -52,21 +74,33 @@ public sealed class RosterStore
     public bool Exists => File.Exists(Path);
 
     /// <summary>Never throws. See the class remarks — this is a deliberate contract, not laziness.</summary>
-    public RosterBook Load()
+    public RosterBook Load() => Load(out _);
+
+    /// <summary>
+    /// Never throws, and says which of the three things happened (M24). Callers that are going to
+    /// WRITE this file must use this overload: <see cref="RosterLoadState.CouldNotBeRead"/> means the
+    /// empty book they were handed is a placeholder standing in front of real data.
+    /// </summary>
+    public RosterBook Load(out RosterLoadState state)
     {
+        if (!File.Exists(Path))
+        {
+            state = RosterLoadState.NoFileYet;
+            return RosterBook.Empty;
+        }
+
         try
         {
-            if (!File.Exists(Path))
-            {
-                return RosterBook.Empty;
-            }
-
-            return (JsonSerializer.Deserialize(File.ReadAllBytes(Path), RosterJsonContext.Default.RosterBook)
-                ?? RosterBook.Empty).Normalised();
+            RosterBook book =
+                (JsonSerializer.Deserialize(File.ReadAllBytes(Path), RosterJsonContext.Default.RosterBook)
+                    ?? RosterBook.Empty).Normalised();
+            state = RosterLoadState.Loaded;
+            return book;
         }
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException
             or NotSupportedException)
         {
+            state = RosterLoadState.CouldNotBeRead;
             return RosterBook.Empty;
         }
     }
@@ -84,8 +118,18 @@ public sealed class RosterStore
         Backup();
 
         string temp = Path + TempSuffix;
-        File.WriteAllBytes(temp, JsonSerializer.SerializeToUtf8Bytes(
-            book.Normalised(), RosterJsonContext.Default.RosterBook));
+
+        // Flushed to the DEVICE, not just to the OS cache, before the rename. Without this the
+        // rename can reach the disk while the bytes are still in flight, and a power cut leaves a
+        // present-but-empty roster.json — the exact corruption temp-then-rename exists to prevent
+        // (M24). The cost is one fsync on a file measured in kilobytes.
+        using (var fs = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            fs.Write(JsonSerializer.SerializeToUtf8Bytes(
+                book.Normalised(), RosterJsonContext.Default.RosterBook));
+            fs.Flush(flushToDisk: true);
+        }
+
         File.Move(temp, Path, overwrite: true);
     }
 

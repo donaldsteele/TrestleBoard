@@ -45,6 +45,11 @@ internal static class ActionIcons
 
         // Ten primary or item-level actions. Nine are IsPrimary; item.editList is not, but it sits
         // directly beside item.edit in the panel and reads as its twin without one.
+        // M24. Both wear the same disk for the reason item.edit and item.editList share one: they
+        // are the same act, and the only difference is whether the app already knows where to put it.
+        [ActionId.Save] = "save",
+        [ActionId.SaveAs] = "save",
+
         [ActionId.ExportPdf] = "export-pdf",
         [ActionId.Bold] = "bold",
         [ActionId.Italic] = "italic",

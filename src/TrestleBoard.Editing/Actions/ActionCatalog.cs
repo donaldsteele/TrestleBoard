@@ -70,6 +70,11 @@ public static class ActionCatalog
             ActionGroup.Newsletter),
         new(ActionId.StartFromLastMonth, "Start from last month",
             "Copies this newsletter forward to next month and clears the articles.", ActionGroup.Newsletter),
+        new(ActionId.Save, "Save this newsletter", "Keeps your work in its file so you can come back to it.",
+            ActionGroup.Newsletter, "Ctrl+S", IsPrimary: true),
+        new(ActionId.SaveAs, "Save it as a new file…",
+            "Keeps your work in a file you choose, leaving the one you started from alone.",
+            ActionGroup.Newsletter, "Ctrl+Shift+S"),
         new(ActionId.ExportPdf, "Export as PDF…", "Makes the file you email to the lodge.",
             ActionGroup.Newsletter, "Ctrl+E", IsPrimary: true),
         new(ActionId.Exit, "Exit", "Closes TrestleBoard.", ActionGroup.Newsletter),
@@ -284,6 +289,11 @@ public static class ActionCatalog
         {
             ActionId.ReplacePicture when !context.SelectedPictureIsEmpty => "Swap this picture…",
             ActionId.CaptionPicture when context.SelectedPictureHasCaption => "Change the caption…",
+
+            // M24: a newsletter that has never been saved has no file to save INTO, so this one
+            // will ask where to put it — and the ellipsis is how every other program on the
+            // machine promises that a question is coming.
+            ActionId.Save when !context.DocumentHasFile => "Save this newsletter…",
             _ => Get(actionId).Title,
         };
     }
@@ -330,6 +340,20 @@ public static class ActionCatalog
                 : ActionAvailability.Blocked(
                     "There is no newsletter open to carry forward. Open last month's newsletter first.",
                     ActionId.Open),
+
+            // M24. Saving an unchanged newsletter would rewrite the file for nothing, so it is
+            // refused — but the refusal is the sentence that answers the question the user was
+            // really asking when they reached for Ctrl+S: is my work safe?
+            ActionId.Save => !context.HasDocument
+                ? ActionAvailability.Blocked(NoNewsletter, ActionId.NewFromTemplate)
+                : context.HasUnsavedChanges
+                    ? ActionAvailability.Available
+                    : ActionAvailability.Blocked(
+                        context.DocumentFileName is { } saved
+                            ? $"Everything is saved already. Your work is in {saved}."
+                            : "There is nothing new to save.",
+                        ActionId.SaveAs),
+            ActionId.SaveAs => RequiresDocument(context),
 
             ActionId.ExportPdf => RequiresDocument(context),
 

@@ -195,6 +195,47 @@ public sealed class ContainerTests
         return (JsonObject)JsonNode.Parse(s)!;
     }
 
+    /// <summary>
+    /// M24: a save that fails leaves the folder as it found it. The temp file used to be abandoned
+    /// beside the user's document for ever, so a full disk quietly littered
+    /// <c>Newsletter.tboard.tmp</c> and a later successful save overwrote whatever the failed one
+    /// had managed to put there. The user's own file is untouched either way — that is what the
+    /// temp-then-rename is for, and this checks the other half of it.
+    /// </summary>
+    [Fact]
+    public void AFailedSaveLeavesNoTempFileBehind()
+    {
+        string folder = Directory.CreateTempSubdirectory("tb-container-").FullName;
+        try
+        {
+            string path = Path.Combine(folder, "newsletter.tboard");
+            TboardContainer.SaveToFile(Fixtures.BuildPackage(), path);
+            byte[] good = File.ReadAllBytes(path);
+
+            // A directory sitting where the temp file must go is the simplest way to make the
+            // write fail at exactly the point that matters.
+            Directory.CreateDirectory(path + ".tmp");
+            Assert.ThrowsAny<Exception>(() => TboardContainer.SaveToFile(Fixtures.BuildPackage(), path));
+
+            // The failure did not take the saved newsletter with it.
+            Assert.Equal(good, File.ReadAllBytes(path));
+
+            Directory.Delete(path + ".tmp", recursive: true);
+            TboardContainer.SaveToFile(Fixtures.BuildPackage(), path);
+            Assert.Empty(Directory.GetFiles(folder, "*.tmp"));
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+    }
+
     private static void RewriteEntry(MemoryStream zipStream, string entryName, Action<JsonObject> mutate)
     {
         zipStream.Position = 0;

@@ -50,7 +50,9 @@ public partial class App : Application
 
             if (path is not null)
             {
-                window.OpenDocumentFromPath(path);
+                // M24: unsaved work on screen is offered up first — this arrives while the user is
+                // in the middle of something, which is exactly when it must not overwrite them.
+                _ = window.OpenDocumentFromPathAsync(path);
             }
         };
     }

@@ -22,12 +22,14 @@ public sealed class RosterService
     private RosterBook? _undo;
     private string? _undoDescription;
     private bool _hasEarlierVersions;
+    private bool _unreadable;
 
     public RosterService(RosterStore store)
     {
         ArgumentNullException.ThrowIfNull(store);
         _store = store;
-        _book = store.Load();
+        _book = store.Load(out RosterLoadState state);
+        _unreadable = state == RosterLoadState.CouldNotBeRead;
         _hasEarlierVersions = store.Backups().Count > 0;
     }
 
@@ -72,16 +74,16 @@ public sealed class RosterService
     /// </summary>
     public bool Undo()
     {
-        if (_undo is not { } previous)
+        if (_undo is not { } previous || _unreadable)
         {
             return false;
         }
 
+        _store.Save(previous);
         _undo = null;
         _undoDescription = null;
         _book = previous;
         _hasEarlierVersions |= _store.Exists;
-        _store.Save(_book);
         Changed?.Invoke(this, EventArgs.Empty);
         return true;
     }
@@ -98,10 +100,40 @@ public sealed class RosterService
     /// <summary>Re-reads the file. Used after something outside this service wrote it.</summary>
     public void Reload()
     {
-        _book = _store.Load();
+        _book = _store.Load(out RosterLoadState state);
+        _unreadable = state == RosterLoadState.CouldNotBeRead;
         _undo = null;
         _undoDescription = null;
         Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// The address book file is there but could not be read, so what this service is holding is an
+    /// empty placeholder rather than the user's data (M24). Every write is refused while this is
+    /// true — see <see cref="Apply"/>. The shell shows it as a plain-language warning; the fix is
+    /// out of the app's hands (close the program holding the file, then use "Try again").
+    /// </summary>
+    public bool CouldNotBeRead => _unreadable;
+
+    /// <summary>
+    /// What the user is told when a change is refused because the file could not be read. One
+    /// sentence about what happened, one about what to do, and the location so they can look.
+    /// </summary>
+    public string UnreadableReason =>
+        "Your address book is on this computer but TrestleBoard could not read it, so it is showing "
+        + "an empty one. Nothing will be changed until it can be read, because saving now would "
+        + "write over the real list. Close any other program using it and choose "
+        + $"\"Look for the address book again\". It is at {_store.Path}";
+
+    /// <summary>
+    /// Tries the file again — the way out of <see cref="CouldNotBeRead"/> without restarting.
+    /// Returns true when the book was read this time.
+    /// </summary>
+    public bool TryReadAgain()
+    {
+        Reload();
+        _hasEarlierVersions |= _store.Backups().Count > 0;
+        return !_unreadable;
     }
 
     /// <summary>
@@ -110,17 +142,29 @@ public sealed class RosterService
     /// </summary>
     public bool HasEarlierVersions => _hasEarlierVersions;
 
+    /// <summary>
+    /// Writes first, and only then believes it (M24). The old order set <c>_book</c> and <c>_undo</c>
+    /// before <see cref="RosterStore.Save"/>, which throws by design: a failed write left the app
+    /// showing a change that reached no disk and raised no <see cref="Changed"/>, so the People
+    /// window displayed an edit nothing was holding.
+    /// </summary>
     private void Apply(RosterBook book, string description)
     {
         ArgumentNullException.ThrowIfNull(book);
+        if (_unreadable)
+        {
+            throw new InvalidOperationException(UnreadableReason);
+        }
 
-        // A save copies the file it replaces into the ring — so if there is a file now, there is a
-        // kept copy afterwards.
+        RosterBook next = book.Normalised();
+        _store.Save(next);
+
+        // A save copies the file it replaces into the ring — so if there was a file, there is a
+        // kept copy now.
         _hasEarlierVersions |= _store.Exists;
         _undo = _book;
         _undoDescription = description;
-        _book = book.Normalised();
-        _store.Save(_book);
+        _book = next;
         Changed?.Invoke(this, EventArgs.Empty);
     }
 }

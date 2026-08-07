@@ -97,6 +97,20 @@ public partial class MainWindow : Window
     private int _pageIndex;
     private bool _fitToWindow = true;
     private bool _exportedThisSession;
+
+    /// <summary>
+    /// M24: the newsletter has been edited since it was last written to <see cref="_documentPath"/>.
+    /// Set by the document session's own change event and cleared only by a successful save, so it
+    /// tracks the file rather than the undo stack — undoing back to where you started still leaves
+    /// the file out of date if something was written in between.
+    /// </summary>
+    private bool _unsavedChanges;
+
+    /// <summary>
+    /// M24: the close has already been through <see cref="OnWindowClosing"/> and been agreed to.
+    /// Without this the second <see cref="Window.Close"/> would ask the same question again.
+    /// </summary>
+    private bool _closeAgreed;
     private int _regionIndex;
     private TextStylesWindow? _textStylesForTest;
 
@@ -155,13 +169,20 @@ public partial class MainWindow : Window
                 await RunStartupAsync();
             }
         };
+        Closing += OnWindowClosing;
         Closed += (_, _) =>
         {
-            // A clean close removes the recovery file, so a file surviving startup MEANS the app
-            // did not close cleanly (docs/M9-spec.md §1.4). Any unsaved work is written first.
+            // A clean close removes the recovery file, so a file surviving startup MEANS the app did
+            // not close cleanly (docs/M9-spec.md §1.4).
+            //
+            // M24 removed a SaveNow() that stood here. It read as "any unsaved work is written
+            // first", but Complete() deletes the snapshot SaveNow() had just written, under the same
+            // id — so the pair wrote a file and immediately destroyed it, and the work survived only
+            // when the app CRASHED. What makes deleting correct now is that nothing reaches this
+            // point with unsaved work any more: OnWindowClosing has already offered to save it, and
+            // the user either did, or said not to.
             _findWindow?.Close();
             _recoveryTimer?.Stop();
-            _recovery?.SaveNow();
             _recovery?.Complete();
             _recovery?.Dispose();
             _source?.Dispose();
@@ -258,6 +279,13 @@ public partial class MainWindow : Window
 
         // M18: the two picture commands whose name depends on what is in the frame. The catalog
         // owns both wordings — the menu must not invent a third.
+        // M24: "Save this newsletter" grows an ellipsis when there is no file yet, because then it
+        // asks where to put it. Same rule, same owner — the catalog. The mnemonic is on the "v"
+        // because "Open the sample newsletter" already holds S in this menu.
+        SaveMenuItem.Header = ActionCatalog
+            .TitleFor(ActionId.Save, _context)
+            .Replace("Save", "Sa_ve", StringComparison.Ordinal);
+
         ReplacePictureMenuItem.Header =
             "_" + ActionCatalog.TitleFor(ActionId.ReplacePicture, _context);
         CaptionPictureMenuItem.Header = ActionCatalog
@@ -328,7 +356,13 @@ public partial class MainWindow : Window
                 RosterCount: Roster.Book.Count,
                 RosterCanUndo: Roster.CanUndo,
                 RosterUndoDescription: Roster.UndoDescription,
-                RosterHasEarlierVersions: Roster.HasEarlierVersions));
+                RosterHasEarlierVersions: Roster.HasEarlierVersions,
+
+                // M24. The file name only, never the folder — it is printed in the status bar and
+                // read out by the screen reader, and a full path is neither what the user needs nor
+                // something PLAN.md §0 wants on screen when a screenshot is taken.
+                HasUnsavedChanges: _unsavedChanges,
+                DocumentFileName: _documentPath is { } saved ? Path.GetFileName(saved) : null));
     }
 
     /// <summary>
@@ -511,10 +545,10 @@ public partial class MainWindow : Window
     /// </summary>
     private void StartRecovery(TboardPackage package)
     {
-        // SaveNow BEFORE Complete, exactly as the close path does. Complete() deletes the snapshot,
-        // so dropping it without writing would throw away edits the user has not autosaved yet —
-        // and there is no manual Save to fall back on.
-        _recovery?.SaveNow();
+        // The snapshot belongs to the newsletter being replaced, and by the time anything reaches
+        // here that newsletter has been saved or deliberately discarded (M24) — every path that
+        // swaps documents goes through ConfirmSaveFirstAsync first. Dropping it is therefore
+        // correct. It used to be preceded by a SaveNow() whose file this very line deleted.
         _recovery?.Complete();
         _recovery?.Dispose();
         _recoveryStore ??= new FileRecoveryStore(AppPaths.RecoveryDirectory);
@@ -553,21 +587,32 @@ public partial class MainWindow : Window
     /// </summary>
     private byte[] SnapshotBytes(TboardPackage package)
     {
-        if (_source is { PageCount: > 0 })
-        {
-            try
-            {
-                package.Thumbnails["page-1.png"] = _source.RenderPageToPng(0, scale: 0.35f);
-            }
-            catch (InvalidOperationException)
-            {
-                // A thumbnail is a nicety; the document bytes are the point.
-            }
-        }
-
+        RefreshThumbnail(package);
         using var buffer = new MemoryStream();
         TboardContainer.Save(package, buffer);
         return buffer.ToArray();
+    }
+
+    /// <summary>
+    /// Puts a current page-1 thumbnail in the package. Shared by the crash snapshot and (from M24)
+    /// by saving to the user's own file, so a saved `.tboard` carries the same picture the restore
+    /// dialog and the file picker use to tell one newsletter from another (PLAN.md §2).
+    /// </summary>
+    private void RefreshThumbnail(TboardPackage package)
+    {
+        if (_source is not { PageCount: > 0 })
+        {
+            return;
+        }
+
+        try
+        {
+            package.Thumbnails["page-1.png"] = _source.RenderPageToPng(0, scale: 0.35f);
+        }
+        catch (InvalidOperationException)
+        {
+            // A thumbnail is a nicety; the document bytes are the point.
+        }
     }
 
     /// <summary>
@@ -643,8 +688,12 @@ public partial class MainWindow : Window
         }
 
         _documentPath = snapshot.OriginalPath;
-        ShowPackage(package);
-        Announce("Your work is back. Save it when you are ready.");
+
+        // Restored work is by definition work no file holds — that is why it was in the recovery
+        // store. M24 makes the app agree: the title says "not saved yet", Ctrl+S is live, and the
+        // sentence below finally points at a command that exists.
+        ShowPackage(package, startsDirty: true);
+        Announce("Your work is back. Press Ctrl+S to save it now.");
         return true;
     }
 
@@ -652,6 +701,11 @@ public partial class MainWindow : Window
 
     internal async Task OpenNewsletterAsync()
     {
+        if (await ConfirmSaveFirstAsync("and open another newsletter") == SaveFirst.Stay)
+        {
+            return;
+        }
+
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Open a newsletter",
@@ -684,6 +738,21 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// M24: the same thing, for the one caller that can arrive while a newsletter is already open —
+    /// a second `.tboard` dropped on the running app, or double-clicked in the file manager. It used
+    /// to replace whatever was on screen without a word.
+    /// </summary>
+    internal async Task OpenDocumentFromPathAsync(string path)
+    {
+        if (await ConfirmSaveFirstAsync("and open that newsletter") == SaveFirst.Stay)
+        {
+            return;
+        }
+
+        OpenDocumentFromPath(path);
+    }
+
+    /// <summary>
     /// Opens a newsletter by path — the file association's landing point (docs/M10-spec.md §3).
     /// Returns false when the file is missing or is not a newsletter, having already told the user
     /// so in the status bar; the caller then falls through to the normal start flow rather than
@@ -713,6 +782,11 @@ public partial class MainWindow : Window
 
     internal async Task NewFromTemplateAsync()
     {
+        if (await ConfirmSaveFirstAsync("and start another newsletter") == SaveFirst.Stay)
+        {
+            return;
+        }
+
         var start = new StartDialog(canStartFromLastMonth: _package is not null);
         await start.ShowDialog(this);
 
@@ -766,6 +840,288 @@ public partial class MainWindow : Window
                 "The PDF could not be saved. Make sure the file is not open in another program and try again. "
                 + $"({ex.Message})");
         }
+    }
+
+    // ---- Keeping the work (PLAN.md §11 M24) ---------------------------------------------------
+
+    /// <summary>
+    /// What the user chose when told their newsletter has unsaved changes.
+    /// </summary>
+    internal enum SaveFirst
+    {
+        /// <summary>Write it, then carry on with whatever prompted the question.</summary>
+        Save,
+
+        /// <summary>Throw the changes away and carry on.</summary>
+        Discard,
+
+        /// <summary>Do not carry on at all — the user changed their mind.</summary>
+        Stay,
+    }
+
+    /// <summary>M24: true when this newsletter holds edits its file does not.</summary>
+    internal bool HasUnsavedChangesForTest => _unsavedChanges;
+
+    /// <summary>M24: where this newsletter lives, or null when it has never been saved.</summary>
+    internal string? DocumentPathForTest => _documentPath;
+
+    /// <summary>
+    /// Set by tests in place of the three-button dialog, which cannot be answered headlessly.
+    /// Null means "ask the user"; a value means "this is what they would have said".
+    /// </summary>
+    internal SaveFirst? SaveFirstAnswerForTest { get; set; }
+
+    /// <summary>
+    /// Saving to a named path, which is what <see cref="SaveAsAsync"/> does once the file picker has
+    /// answered. The picker cannot be driven headlessly, so the tests come in here instead — through
+    /// the same write, the same failure handling and the same bookkeeping the user's Ctrl+S uses.
+    /// </summary>
+    internal Task<bool> SaveToPathForTest(string path) => WriteDocumentAsync(path);
+
+    /// <summary>
+    /// Writes the newsletter back to its own file, or asks where to put it if it has never had one.
+    /// Returns true when the work is on disk.
+    /// </summary>
+    internal async Task<bool> SaveAsync()
+    {
+        if (_package is null)
+        {
+            return false;
+        }
+
+        return _documentPath is { } path
+            ? await WriteDocumentAsync(path)
+            : await SaveAsAsync();
+    }
+
+    /// <summary>
+    /// Asks where to put it and writes it there; that file becomes the newsletter's home, so the
+    /// next Ctrl+S goes straight to it.
+    /// </summary>
+    internal async Task<bool> SaveAsAsync()
+    {
+        if (_package is null)
+        {
+            return false;
+        }
+
+        Core.Model.DocumentMetadata meta = _package.Document.Metadata;
+        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save this newsletter",
+            DefaultExtension = "tboard",
+            SuggestedFileName =
+                $"{meta.Title} {meta.IssueYear}-{meta.IssueMonth:00}.tboard",
+            FileTypeChoices = [new FilePickerFileType("TrestleBoard newsletter") { Patterns = ["*.tboard"] }],
+        });
+
+        // No local path means somewhere this app cannot write atomically — a phone over MTP, say.
+        // Saying so beats writing a file the user will never find again.
+        if (file?.TryGetLocalPath() is not { } path)
+        {
+            if (file is not null)
+            {
+                await ShowErrorAsync(
+                    "Could not save it there",
+                    "TrestleBoard can only save onto this computer or a drive attached to it. "
+                    + "Choose a folder on the computer, or your USB stick.");
+            }
+
+            return false;
+        }
+
+        return await WriteDocumentAsync(path);
+    }
+
+    /// <summary>
+    /// The one place a newsletter is written to a file the user chose. Failure is reported in plain
+    /// language and leaves everything exactly as it was — including <see cref="_unsavedChanges"/>,
+    /// so the app never claims work is safe when it is not.
+    /// </summary>
+    private async Task<bool> WriteDocumentAsync(string path)
+    {
+        if (_package is not { } package)
+        {
+            return false;
+        }
+
+        try
+        {
+            RefreshThumbnail(package);
+            TboardContainer.SaveToFile(package, path);
+        }
+        catch (Exception ex) when (ex is IOException
+            or UnauthorizedAccessException
+            or ArgumentException
+            or NotSupportedException)
+        {
+            await ShowErrorAsync(
+                "Could not save the newsletter",
+                "Your work has NOT been lost — it is still here on the screen. TrestleBoard could "
+                + "not write it to that file. Make sure it is not open in another program, then try "
+                + $"saving again, or use \"Save it as a new file…\" to put it somewhere else. ({ex.Message})");
+            return false;
+        }
+
+        _documentPath = path;
+        _unsavedChanges = false;
+
+        // The crash snapshot exists to hold work the user's own file does not. It does now, so
+        // there is nothing left to recover; the next edit starts a fresh one.
+        _recovery?.Complete();
+
+        UpdateTitle();
+        Announce($"Saved to {Path.GetFileName(path)}.");
+        RefreshActions();
+        return true;
+    }
+
+    /// <summary>
+    /// Asks the three-button question, and performs the "Save it" answer before returning it, so
+    /// every caller can treat anything but <see cref="SaveFirst.Stay"/> as "go ahead".
+    /// </summary>
+    /// <param name="whatHappensNext">
+    /// The sentence naming what the user asked for — "opening another newsletter" — so the dialog
+    /// says what the changes would be lost TO rather than asking in the abstract.
+    /// </param>
+    private async Task<SaveFirst> ConfirmSaveFirstAsync(string whatHappensNext)
+    {
+        if (!_unsavedChanges || _package is null)
+        {
+            return SaveFirst.Discard;
+        }
+
+        // A modal three-button dialog cannot be answered by a headless run, and the same flag that
+        // already keeps the start screen and the update check out of the test session keeps this
+        // out of it too. A test that wants the question asked answers it with
+        // SaveFirstAnswerForTest, which is why that check comes first.
+        SaveFirst choice = SaveFirstAnswerForTest
+            ?? (SuppressStartupForTest ? SaveFirst.Discard : await AskSaveFirstAsync(whatHappensNext));
+        if (choice != SaveFirst.Save)
+        {
+            return choice;
+        }
+
+        // A save the user asked for that then failed must not be read as permission to discard.
+        return await SaveAsync() ? SaveFirst.Save : SaveFirst.Stay;
+    }
+
+    /// <summary>
+    /// The dialog itself: three buttons, all full size, the safe one first and focused (PLAN.md §6).
+    /// Esc and the title-bar close both mean "Stay" — the answer that loses nothing.
+    /// </summary>
+    private async Task<SaveFirst> AskSaveFirstAsync(string whatHappensNext)
+    {
+        SaveFirst answer = SaveFirst.Stay;
+        var dialog = new Window
+        {
+            Title = "You have changes you have not saved",
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+        };
+
+        var save = new Button { Content = "Save it", FontSize = 18, MinHeight = 44, MinWidth = 150, IsDefault = true };
+        var discard = new Button { Content = "Do not save it", FontSize = 18, MinHeight = 44, MinWidth = 150 };
+        var stay = new Button { Content = "Go back", FontSize = 18, MinHeight = 44, MinWidth = 150, IsCancel = true };
+
+        save.Click += (_, _) => { answer = SaveFirst.Save; dialog.Close(); };
+        discard.Click += (_, _) => { answer = SaveFirst.Discard; dialog.Close(); };
+        stay.Click += (_, _) => { answer = SaveFirst.Stay; dialog.Close(); };
+
+        string where = _documentPath is { } path
+            ? $"The saved copy is {Path.GetFileName(path)}, from before these changes."
+            : "This newsletter has never been saved, so there is no copy of it anywhere yet.";
+
+        dialog.Content = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(24),
+            Spacing = 16,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = "You have changed this newsletter since it was last saved.",
+                    FontSize = 20,
+                    FontWeight = Avalonia.Media.FontWeight.Bold,
+                    MaxWidth = 460,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                new TextBlock
+                {
+                    Text = $"{where} If you carry on {whatHappensNext} without saving, "
+                        + "those changes will be gone.",
+                    FontSize = 18,
+                    MaxWidth = 460,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Horizontal,
+                    Spacing = 12,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                    Children = { stay, discard, save },
+                },
+            },
+        };
+
+        Avalonia.Automation.AutomationProperties.SetName(dialog, "You have changes you have not saved");
+        await dialog.ShowDialog(this);
+        return answer;
+    }
+
+    /// <summary>
+    /// The last gate before the window goes away. Cancels the close, asks, and closes again only
+    /// once the answer is in — the standard Avalonia shape, because the event cannot be awaited.
+    /// </summary>
+    private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (_closeAgreed || !_unsavedChanges || _package is null)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        _ = FinishClosingAsync();
+    }
+
+    private async Task FinishClosingAsync()
+    {
+        try
+        {
+            if (await ConfirmSaveFirstAsync("and close TrestleBoard") == SaveFirst.Stay)
+            {
+                return;
+            }
+
+            _closeAgreed = true;
+            Close();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // The window stays open, which is the outcome that keeps the work. Saying why matters
+            // more than closing: an exception escaping here would take the app down with the very
+            // edits this method exists to protect.
+            Announce($"TrestleBoard could not finish closing. Your work is still here. ({ex.Message})");
+        }
+    }
+
+    /// <summary>
+    /// "TrestleBoard — September 2026" while saved, and the same with a plain-language marker while
+    /// not. An asterisk is the convention and means nothing to somebody who has not been taught it.
+    /// </summary>
+    private void UpdateTitle()
+    {
+        if (_package is not { } package)
+        {
+            Title = "TrestleBoard";
+            return;
+        }
+
+        string name = package.Document.Metadata.Title;
+        Title = _unsavedChanges
+            ? $"TrestleBoard — {name} — not saved yet"
+            : $"TrestleBoard — {name}";
     }
 
     // ---- Updates (PLAN.md §11-M10, docs/M10-spec.md §2) --------------------------------------
@@ -847,8 +1203,25 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// M24: carry-forward replaces this month's newsletter with next month's, so it asks about
+    /// unsaved work first. The runner calls this one; the synchronous
+    /// <see cref="StartFromLastMonth"/> under it is the carry-forward itself.
+    /// </summary>
+    internal async Task StartFromLastMonthAsync()
+    {
+        if (await ConfirmSaveFirstAsync("and start next month's newsletter") == SaveFirst.Stay)
+        {
+            return;
+        }
+
+        StartFromLastMonth();
+    }
+
+    /// <summary>
     /// Start-from-last-month: carries the data forward, bumps the date, clears the prose
-    /// (docs/M9-spec.md §3). The result is a NEW unsaved newsletter, so the path is cleared.
+    /// (docs/M9-spec.md §3). The result is a NEW unsaved newsletter, so the path is cleared — and
+    /// from M24 it is marked unsaved from the outset, because a carried-forward issue exists in no
+    /// file anywhere until somebody saves it.
     /// </summary>
     internal bool StartFromLastMonth()
     {
@@ -859,8 +1232,10 @@ public partial class MainWindow : Window
 
         TboardPackage next = CarryForward.NextIssue(_package);
         _documentPath = null;
-        ShowPackage(next);
-        Announce("Carried forward. Last month's articles have been cleared for you to rewrite.");
+        ShowPackage(next, startsDirty: true);
+        Announce(
+            "Carried forward. Last month's articles have been cleared for you to rewrite. "
+            + "This is a new newsletter — save it when you are ready (Ctrl+S).");
         return true;
     }
 
@@ -2557,7 +2932,12 @@ public partial class MainWindow : Window
 
     // ---- Document lifecycle -----------------------------------------------------------------
 
-    private void ShowPackage(TboardPackage package)
+    /// <param name="startsDirty">
+    /// M24: true when what is about to be shown exists nowhere on disk — a carry-forward, or work
+    /// put back by the recovery dialog. False for a newsletter opened from its own file and for a
+    /// fresh template, so closing one of those untouched asks the user nothing.
+    /// </param>
+    private void ShowPackage(TboardPackage package, bool startsDirty = false)
     {
         // Before the first paint, not during it (PLAN.md M14). The document is never rewritten —
         // the unknown family stays in styles.json, so a round trip through this build is lossless
@@ -2600,9 +2980,23 @@ public partial class MainWindow : Window
         PageCanvas.Editor = editor;
         PageCanvas.FrameEditor = frames;
         PageCanvas.PageIndex = 0;
-        Title = $"TrestleBoard — {package.Document.Metadata.Title}";
 
-        session.Changed += (_, _) => RefreshActions();
+        // M24: a newsletter just opened from a file matches that file; one carried forward or put
+        // back by the recovery dialog matches nothing on disk and says so from the first moment.
+        _unsavedChanges = startsDirty;
+        _closeAgreed = false;
+        UpdateTitle();
+
+        session.Changed += (_, _) =>
+        {
+            if (!_unsavedChanges)
+            {
+                _unsavedChanges = true;
+                UpdateTitle();
+            }
+
+            RefreshActions();
+        };
         StartRecovery(package);
         editor.Changed += (_, _) => RefreshActions();
         frames.Changed += (_, _) => RefreshActions();

@@ -73,18 +73,44 @@ public static class TboardContainer
         }
     }
 
-    /// <summary>Atomic file save: write temp beside target, then rename over it (PLAN.md §4).</summary>
+    /// <summary>
+    /// Atomic file save: write temp beside target, flush it to the device, then rename over it
+    /// (PLAN.md §4). The existing file is untouched until the rename, so a failure anywhere leaves
+    /// yesterday's newsletter exactly as it was.
+    ///
+    /// <para>M24: the temp file is removed when the write fails. It used to be left behind for ever,
+    /// so a full disk quietly littered <c>Newsletter.tboard.tmp</c> beside the user's document and a
+    /// later successful save silently overwrote whatever the failed one had managed to put there.</para>
+    /// </summary>
     public static void SaveToFile(TboardPackage package, string path)
     {
         ArgumentNullException.ThrowIfNull(package);
         ArgumentException.ThrowIfNullOrEmpty(path);
         string temp = path + ".tmp";
-        using (FileStream fs = File.Create(temp))
+        try
         {
-            Save(package, fs);
-        }
+            using (var fs = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                Save(package, fs);
+                fs.Flush(flushToDisk: true);
+            }
 
-        File.Move(temp, path, overwrite: true);
+            File.Move(temp, path, overwrite: true);
+        }
+        catch
+        {
+            try
+            {
+                File.Delete(temp);
+            }
+            catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException)
+            {
+                // The original failure is the one worth reporting; a temp file we could not remove
+                // must not replace it with a second, less useful, exception.
+            }
+
+            throw;
+        }
     }
 
     public static TboardPackage Load(Stream stream)

@@ -555,10 +555,17 @@ public sealed class ActionCatalogTests
             "Change the caption…",
             ActionCatalog.TitleFor(ActionId.CaptionPicture, Photo() with { SelectedPictureHasCaption = true }));
 
+        // M24: saving is the third command whose name depends on the state — with no file behind
+        // it, it has to ask where to put the newsletter, and the ellipsis is that promise.
+        var neverSaved = new ActionContext { HasDocument = true, DocumentHasFile = false };
+        var saved = new ActionContext { HasDocument = true, DocumentHasFile = true };
+        Assert.Equal("Save this newsletter…", ActionCatalog.TitleFor(ActionId.Save, neverSaved));
+        Assert.Equal("Save this newsletter", ActionCatalog.TitleFor(ActionId.Save, saved));
+
         // Everything else answers with its declared title, unchanged.
         foreach (EditorAction action in ActionCatalog.All)
         {
-            if (action.Id is ActionId.ReplacePicture or ActionId.CaptionPicture)
+            if (action.Id is ActionId.ReplacePicture or ActionId.CaptionPicture or ActionId.Save)
             {
                 continue;
             }

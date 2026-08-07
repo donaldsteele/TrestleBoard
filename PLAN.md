@@ -1917,6 +1917,26 @@ its text is plain language.
   and the M17-era action-catalog machinery it reuses. M23 exists only as the scope-cut landing spot
   if M22's stale-crop notice doesn't fit.
 
+### M24 — Keep the work (delivered 2026-08-07, `docs/M24-spec.md`)
+
+The first milestone drawn from §14, and the only one §14 makes urgent: it closes §14.1 in full.
+Through v0.9.1 the app had **no Save command of any kind** — no `ActionId`, no menu item, no Ctrl+S —
+and the clean-close path wrote a crash snapshot and then deleted it under the same id, so a normal
+day's work survived only if the program crashed. Nothing asked before replacing an open newsletter,
+and a transient read failure on `roster.json` produced an empty address book that the next edit wrote
+over the real one.
+
+Delivered: `newsletter.save` (Ctrl+S) and `newsletter.saveAs` (Ctrl+Shift+S) declared through all
+five M11 surfaces; unsaved-changes tracking shown in the title bar in words rather than an asterisk;
+one three-button "Save it / Do not save it / Go back" question in front of every path that replaces
+or drops the open newsletter, including the window close; `RecoveryService.Complete()` called only
+where the work is genuinely elsewhere; and four data-loss fixes in the layers below — the roster's
+unreadable-vs-empty distinction, write-before-believe ordering in `RosterService.Apply`,
+flush-to-disk before both temp-then-rename saves, and temp-file cleanup on a failed container write.
+
+Chrome and leaf projects only: no file in `Layout`, `Rendering` or `Export.Pdf` was opened and no
+snapshot baseline moved. **§14.5 groupings 2–5 remain unscheduled.**
+
 ---
 
 ## 12. Verification (end-to-end)
@@ -2220,3 +2240,283 @@ Each stays out of §11 for the stated reason; none is forgotten, none is schedul
   **Measured at M15:** the eighteen images came to 1.4 MB rather than 4–5 MB, and `.git` still about
   doubled (≈6 MB → ≈12 MB, mostly loose objects). The never-delta point stands unchanged, and
   `--only` exists for exactly this reason.
+
+## 14. Top-down review findings (2026-08-07)
+
+A full-codebase review after v0.9.1: four per-subsystem bug reviews, a code-level UX audit, and a
+visual pass over every screenshot in `docs/images/`. **Record only — nothing here is designed or
+scheduled; each item awaits the owner's triage.** Findings labelled PLAUSIBLE were argued from the
+code but not reproduced; verify before fixing. Everything else was confirmed by reading the code.
+
+### 14.1 Critical — the lost-work cluster
+
+> **Closed by M24, 2026-08-07** (`docs/M24-spec.md`). All four items below are fixed and each carries
+> a regression test. They are left here in full, as found, because the record of what was wrong is
+> what stops it being reintroduced — and because item 1 had already been recorded as fixed once, in
+> `docs/M9-spec.md`, by a change that could not work.
+
+These four compound into one user story: *the app cannot keep the user's work*.
+
+1. **A clean exit deletes the only saved copy.** The close path and every open-another-document path
+   call `_recovery.SaveNow()` then `_recovery.Complete()` — and `Complete()` deletes the snapshot
+   `SaveNow()` just wrote (same store id "session"). `MainWindow.axaml.cs:158-172`, `:512-531`,
+   `RecoveryService.cs:132-137`. Work survives only if the app *crashes*. `docs/M9-spec.md`
+   records this exact bug as fixed; the shipped fix is a no-op.
+2. **There is no Save command.** No Save/Save As/Print `ActionId`, no menu item, no Ctrl+S in
+   `KeyboardMap.cs`. The user can never write their `.tboard` to a path they chose; only PDF export
+   and roster-xlsx export write user files. `FileRecoveryStore.RotateBackups` is called only from
+   tests. §4's presumption of a user file with `.bak` rotation was never wired to the UI. The
+   recovery toast even says "Save it when you are ready" (`MainWindow.axaml.cs:647`) — an
+   instruction pointing at a command that does not exist. No dirty indicator, no "saved at HH:MM".
+3. **No unsaved-changes prompt anywhere.** Open, Start-from-last-month, template start, Explorer
+   file-activation and window close all silently replace or discard the current session
+   (`MainWindow.axaml.cs:653-684`, `:714-731`, `:843-865`, `App.axaml.cs:52`).
+4. **The roster can overwrite itself with nothing.** A transient `IOException` on load (AV/backup
+   tool holding `roster.json`) silently yields `RosterBook.Empty`; the next save writes the empty
+   book over the real roster (`RosterStore.cs:54-72`). Recoverable only via the backup ring, and
+   nothing tells the user it happened. PLAUSIBLE but the code path is plain.
+
+### 14.2 Bugs by project
+
+Severity: Critical = data loss/crash/corruption · Major = wrong output or broken flow ·
+Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
+
+**Core + Editing**
+
+- Major — `TextEditorController.cs:1114-1121`: the session-Changed handler clamps the selection via
+  `CurrentStory()`, which throws when the story was deleted. Add a text frame, click into it,
+  Ctrl+Z: the composite revert removes the story, the handler throws, the app crashes.
+  (`FrameEditorController.OnDocumentChanged` handles the deleted-block case; this handler has no
+  equivalent guard.)
+- Major — `FrameEditorController.cs:495-530` (`DeleteSelected`): deleting the *middle* frame of a
+  link chain never repoints the downstream frame's `StoryRef` — two chain heads share one story,
+  the article renders twice, and the `AnyOtherBlockUsesStory` guard is broken for that story
+  afterward. (`Unlink` at `:743` preserves the invariant; delete does not.)
+- Minor — `FileRecoveryStore.cs:39-45`: the sidecar (new `SavedAt`) is written *before* the document
+  bytes, so a crash between the two atomic writes pairs the new timestamp with the old bytes —
+  recovery overstates how fresh the snapshot is. Also `:70-75`, `:147-157`:
+  `UnauthorizedAccessException` is not caught — it aborts the whole startup recovery scan, or
+  escapes `RecoveryService.Complete()` on the clean-close path.
+- Minor — `MigrationRunner.cs:38-49` + `TboardContainer.cs:95-101`: an unparseable
+  `formatVersion` or malformed JSON escapes as a raw `FormatException`/`JsonException` instead of
+  `UnsupportedFormatException` — a damaged `.tboard` gets the unhandled-exception dialog instead of
+  "This newsletter file is damaged…", the exact case the contract exists for.
+- ~~Minor — `TboardContainer.cs:81-88`: a failed save leaves `path + ".tmp"` behind permanently.~~ —
+  **fixed at M24**, along with a missing flush-to-disk before the rename.
+- Minor — `StyleOverrides.cs:34-45`: the size slug strips "." so 8.5 pt and 85 pt collide;
+  `UseFontJustHere` (`TextEditorController.cs:754-758`) matches the derived style *by name* without
+  checking `SizePt` — ask for EB Garamond 85 pt after 8.5 pt exists and you get 8.5 pt.
+- PLAUSIBLE — `DocumentSession.cs:49-53`: no rollback if a composite child throws mid-`Apply` —
+  partial mutation with no undo record. · `PhotoController.cs:388-397`: the stale-crop aspect test
+  ignores `RotationSteps` — wrong stretched-picture warning on rotated photos. ·
+  `PhotoController.cs:140-141,199-201`: undone insert/swap leaves asset bytes registered — the
+  `.tboard` grows monotonically. · `TextEditorController.cs:1123-1129`: tabs are control chars to
+  `Sanitize`, so pasted columnar text collapses words together. ·
+  `FrameEditorController.cs:92-95`: re-selecting the link-mode source frame leaves link mode armed
+  with a stale prompt. · `ActionCatalog.cs:266-267`: `TryGet`'s `out action!` is null on the false
+  path. · `PageFlowController.cs:169-178`: auto-flow continuation frames get `ZOrder = 0` and can
+  land behind existing blocks — every other insert path uses `Max(ZOrder)+1`.
+- Verified sound: culture-invariant parsing throughout, zip `/` separators, undo/redo re-capture
+  symmetry in every command, text-merge arithmetic, distribute math.
+
+**Layout + Rendering**
+
+- Major PLAUSIBLE — `TextLayoutEngine.cs:127-142` (same shape at 84-99): infinite loop when
+  `para.LineHeight <= 0`; `LineSpacing` is unvalidated (`StyleSheet.cs:54`), so a hand-edited or
+  corrupt `.tboard` with `lineSpacing: 0` plus a full-width wrap exclusion hangs the first paint.
+- Major — `TextLayoutEngine.cs:552`: a run's `EndChar` is last cluster index + 1, wrong when the
+  final glyph is a multi-char ligature ("fi"/"ffl") — caret and selection geometry stop short of
+  the line end; clicking the right half of a trailing ligature puts the caret inside it.
+- Major (deliberate design, recorded as a limitation) — `HarfBuzzShaper.cs:76-78`: hardwired
+  LTR/Latin/"en". Arabic/Hebrew/Devanagari input renders as disconnected, unreordered forms.
+- Major PLAUSIBLE — `DocumentRenderSource.cs:333` + `DocumentLayoutAdapter.cs:72`: the speculative
+  "would one more frame fix the overset?" layout is built without the caption-extended picture
+  rects the real layout uses — auto-flow can commit a frame that does not fix the overset, or
+  refuse one that would.
+- Minor — `TextLayoutEngine.cs:69-73`: space-before is consumed even when the frame fills before
+  the paragraph places a line, contradicting `PushOrphansForward`'s re-owe rule — same paragraph,
+  two outcomes. · `StoryTextGeometry.cs:350-369`: spurious 3 pt selection stub on the line before a
+  multi-paragraph selection. · PLAUSIBLE `FontPreviewRenderer.cs:119`: zero-count positioned-run
+  allocation on empty preview text (PageRenderer guards this; the preview does not). ·
+  `DocumentRenderSource.cs:217-455`: overset/overflow id getters return the live internal list,
+  cleared on the next relayout; `RenderPageToPng`/`DescribeBlocks` skip the bounds check their
+  siblings perform.
+- Verified sound: line filling always advances (no hang at positive line height), font-cache double
+  dispose is idempotent, SKObject lifetimes are using-scoped, dirty tracking is consistent,
+  zoom/DPI math is correct.
+
+**Imaging**
+
+- Major PLAUSIBLE — `RecipeCache.cs:51-90`: LRU `Trim()` disposes evicted `SKImage`s immediately; a
+  paint pass touching more than 32 distinct photos can use-after-dispose an image it obtained
+  earlier in the same pass.
+- Major PLAUSIBLE — `AutoLevels.cs:56-65`: draws through an `SKCanvas` over an `Unpremul` bitmap;
+  Skia raster targets must be premul/opaque, so on some builds the stretch is a silent no-op or a
+  black result.
+- Minor PLAUSIBLE — `AutoLevels.cs:87-104`: the histogram reads premultiplied RGBA, so transparency
+  skews the black/white points. · `RecipeCache.cs:30,61-68`: unescaped `|` in the cache key makes
+  `InvalidateAsset`'s prefix match ambiguous.
+- Verified sound: all eight EXIF orientation matrices, crop/rotate ordering, `NormalizedRect`
+  clamping, auto-crop integral-image math.
+
+**Widgets**
+
+- Major PLAUSIBLE — `OfficersRosterProjection.cs:191-210` vs `:127-167`: `Plan` proposes candidates
+  for all twelve standard positions, but `Apply` only rewrites rows already present — a decision
+  for a missing position is silently dropped; the sync dialog promises a change that never lands.
+- Minor — `WizardValidators.cs:116-128` (and `Member.HasBirthday`): impossible dates (2/30, 4/31)
+  are accepted, stored, and printed as birthdays. · Fingerprints concatenate fields with no
+  separator (`BirthdayRosterProjection.cs:197`, `OfficersRosterProjection.cs:275`) —
+  boundary-shifted rosters can hash identical and report "not stale". · PLAUSIBLE
+  `CommitteeListLayouter.cs:74-93`: a long committee name drives the first line's available width
+  zero or negative and draws past the right margin. · `DistrictCalendarLayouter.cs:129-133`:
+  hanging indent measured with the " — " separator even when `DateText` is blank.
+
+**Roster** (real personal data — data-loss items first; §14.1 item 4 is the headline)
+
+- Major — `FieldValues.cs:25-27,53-63`: `SmallestPlausibleSerial = 1` contradicts its own doc
+  comment; a bare "7" imports as birthday 1/7, a year "1968" as 5/21, and age/year columns poison
+  `ColumnGuesser` into classifying them as Birthday columns.
+- Minor — `FieldValues.cs:30-34`: "February 29" parses against the *current* year and is silently
+  dropped in non-leap years — a time-dependent import bug. · PLAUSIBLE `FieldValues.cs:78-88`:
+  month-first is hardwired, so d/M-formatted lists silently swap month and day for days ≤ 12. ·
+  ~~PLAUSIBLE `RosterStore.cs:87-89`: temp-then-rename with no flush-to-disk — power loss can persist
+  the rename without the data blocks.~~ (**fixed at M24**) · `RosterStore.cs:108-159`: unparsable
+  backups are never counted against `BackupsKept` nor deleted — they accumulate forever. ·
+  ~~`RosterService.cs:113-124`: in-memory state mutates before `Save`; on throw the UI is stale, the
+  edit unsaved, `Changed` never raised.~~ (**fixed at M24** — it writes first, then believes it) ·
+  PLAUSIBLE `CsvTableReader.cs:36`: BOM-less Windows-1252 CSVs decode as UTF-8 —
+  accented names arrive as U+FFFD. · Header hints misfire ("Member Number" → Name, "Mailing
+  address" → Email; `RosterField.cs:33-49`); `RosterImportSession.cs:150-159` accepts a header row
+  ≥ `RowCount`, yielding an empty, non-erroring plan.
+
+**Export.Pdf**
+
+- Minor PLAUSIBLE — `DocumentPdfExporter.cs:34-48`: export toggles the *shared* render source's
+  `ShowEmptyPrompts` for the duration — a mid-export repaint draws the editor without prompts. ·
+  `DocumentPdfExporter.cs:38-44` (same in `PdfExporter.cs:50-57`): a throw mid-document disposes
+  `SKDocument` without `Close()`, leaving a truncated PDF at the target path.
+- Verified: PDF Author metadata is the lodge name (`MainWindow.axaml.cs:759`), never an OS
+  username. No path found where roster data reaches logs, temp files, or committed artifacts.
+
+**App shell** (criticals listed in §14.1)
+
+- Major — `KeyboardMap.cs:48` vs `ActionCatalog.cs:357-359`: Ctrl+V is scoped `WhileTyping`, but
+  M18's paste-a-picture is available document-wide and the Edit menu advertises Ctrl+V — the
+  keyboard path for pasting a photo is dead. (Ctrl+X/C similarly inert outside typing.)
+- Major — `MainWindow.axaml.cs:207` et al.: every action runs as `_ = RunAsync(...)` — a handler
+  exception is swallowed with no user feedback and possible half-applied state. `Opened += async`
+  (`:151`), `OnCanvasDrop` (`:1519`) and wizard cancel (`WizardWindow.cs:218`) are async-void and
+  *crash* instead.
+- Major — `PeopleWindow.cs:140`: `_roster.Changed` is subscribed and never unsubscribed from an
+  app-lifetime service — every open of the People window leaks the closed window forever.
+- Major PLAUSIBLE — `PageCanvasControl.cs:1258-1311` + `MainWindow.axaml.cs:2576`: the compositor-
+  thread draw op renders against the shared `DocumentRenderSource` while the UI thread mutates or
+  disposes it (`ShowPackage`) — use-after-dispose race on the render thread.
+- Minor — Birthday/officers sync selects the widget *then* calls `GoToPage`, which clears the
+  selection (`MainWindow.axaml.cs:1837-1838`, `:2056-2057` vs `:2647`) — the "show the user where
+  it is" gesture never shows. · No `OnPointerCaptureLost` override: a lost capture leaves
+  drag/pan/marquee armed and the next unrelated release commits a stale drag. · Wizard Esc is
+  handled twice (KeyDown + `IsCancel`) and can stack two confirm dialogs. · The grid editor's
+  Cancel/Esc discards a dirty session with no confirmation, while the step wizard over the same
+  session confirms. · `PositionPhotoWindow`/`RestoreDialog` never dispose their bitmaps. · The
+  standard error dialog's OK has neither `IsDefault` nor `IsCancel` (Enter/Esc dead);
+  `StartDialog` has no Esc path. · Startup and manual update checks are unsynchronised — duplicate
+  downloads possible.
+- Tools verified clean: the screenshot harness redirects `AppPaths.Root` before Avalonia starts and
+  sanitises PNG text chunks; PdfImport reads and writes only inside the gitignored `Examples/` tree.
+
+### 14.3 Interaction issues (code-level UX audit)
+
+- **The save model is the product's biggest usability hole** — see §14.1. Everything below assumes
+  it gets fixed first.
+- **Hidden click mode on the canvas.** The same click on a text frame places a caret or selects the
+  frame depending on whether it was already selected (`PageCanvasControl.cs:654-722`, 4 pt edge
+  band) — a mode with no indicator anywhere. Enter/F2/Esc enter and leave typing but appear in no
+  menu, no panel entry, and no catalog action; Tab is swallowed inside a text session, so the only
+  keyboard way out is Esc-then-Tab.
+- **The photo adjust window edits the live document with no exit but forward.** Sliders apply
+  immediately and the window has only "Done" — no Cancel, no `IsCancel`, Esc does nothing
+  (`PhotoAdjustWindow.cs:99-108`). The only retreat is "Start over" or Ctrl+Z afterwards.
+- **Keyboard coverage gaps** (an explicit §6 mandate): no keyboard equivalent for marquee
+  selection, add-to-selection (Shift+click only), pan, snap suppression (Alt — itself advertised
+  nowhere), or pointer-anchored zoom; keyboard photo insertion always lands at the default
+  placement. About 25 commands have no shortcut at all, including every align/distribute, all four
+  picture-geometry commands, and page management.
+- **Two disability models in one window.** Menus and toolbar grey out; the action panel never greys
+  and explains instead. Same command, two behaviours, and dialogs (officers sync's disabled
+  checkbox) follow neither — the M11 "nothing unavailable without saying why" rule stops at the
+  panel's edge.
+- **Raw style ids reach the user.** Format ▸ Paragraph style shows `body`, `table-row`,
+  `lodge-table` (`MainWindow.axaml.cs:378-382`); `StyleLabels.Describe` was written to prevent
+  exactly this and is not called there. The fallback `"Style: {id}"` leaks ids too.
+- **Selection chrome ignores the theme.** Outline, handles, snap guides and the overset badge are
+  hard-coded ARGB (`FrameOverlayRenderer.cs:41-45`) — the one part of the UI that does not follow
+  High Contrast.
+- **The 16 pt floor is broken** in the canvas hints (14 pt, `PageCanvasControl.cs:448`), the
+  panel's reason text (14 pt, `ActionPanel.cs:323`), several 15 pt strings, and the licence text.
+- **Toolbar and menu disagree on names for the same command**: Smaller/Bigger vs Zoom out/Zoom in;
+  Back/Next vs Previous page/Next page — and Back/Next collides with the wizard's own buttons.
+- Assorted: the M23 stretched-picture dismissal is session-only and keyed by frame aspect, so the
+  note returns after any reshape or restart; no tooltips exist anywhere in the App project; no
+  rulers, guides, margin display, or grid — snap guides appear only mid-drag; page change clears
+  the selection; Backspace deletes a frame but is absent from `KeyboardMap`; the context menu uses
+  static titles where the panel uses context-aware ones ("Put a picture here…" over a filled
+  frame); two undo stacks (document vs address book) are disclosed only inside the People menu.
+- **Jargon inventory** (user-facing strings that assume desktop-publishing or programmer
+  vocabulary): "text frame", "Wrap text around this", "Fit to contents", "Bring forward / Send
+  backward", "Export as PDF", "placeholders", "This item" (the heading M17 dissolved as a menu
+  survives as a panel group), "A shape is selected" (nothing creates a shape), "Show all at once"
+  vs "Save it" as two commit verbs for the same session, and the four near-synonym picture verbs
+  (next section).
+
+### 14.4 Visual / confusing UI (screenshot pass)
+
+- **Grey means two things everywhere.** Secondary-but-available buttons (start-screen cards, panel
+  items, "Change this", Stop/Back/Next) use the same grey as genuinely disabled controls (Undo/Redo
+  when empty). On the start screen, "Open a newsletter" and "Start from a template" look disabled
+  next to the navy "Start from last month". Elderly users read grey as "not clickable". In High
+  Contrast the enabled/disabled distinction is weaker still (grey on black).
+- **"Smaller / Bigger" means zoom in the toolbar and point size in the font window** — same words,
+  different effects, both prominent.
+- **Four near-synonym picture verbs in one panel**: "Fix this picture", "Adjust the picture…",
+  "Trim the edges…", "Position the picture in its frame…" (plus "Swap"). The Adjust window then
+  *contains* trim sliders and a "Position…" button — the same commands at a different level.
+- **The position dialog contradicts itself**: the instruction says "The crop stays the same size —
+  this only moves it" while the dialog offers Zoom out/Zoom in; the text names a "blue crop
+  window" but the crop rectangle is drawn black.
+- "Turn a quarter" does not say which way, and there is no counter-clockwise turn.
+- The overset marker is a small glyph at the frame edge, explained only in the status bar — easy to
+  miss at typical zoom for the audience this app serves.
+- People window: "Save this person" is per-person manual save — switching people with unsaved edits
+  risks silent loss; the raised/initiated date field has no format hint though the birthday field
+  has one; "Remove this person…" is styled identically to neutral buttons.
+- Wizard: fourteen one-question steps with the "Show all at once" escape easy to miss; the final
+  step puts Cancel directly beside "Save it" — one misclick discards fourteen answers (whether
+  Cancel confirms there is the grid-vs-wizard inconsistency of §14.2).
+- Import mapping dialog: "Stop" is ambiguous (abandon everything?), and "Next" is grey rather than
+  the navy primary every other dialog uses.
+- Settings: the UI-scale slider shows only the current value — no min/max/ticks.
+- **Partly addressed at M24**: there is now a Save command and the title bar says "not saved yet" in
+  words, so the state is visible somewhere. The toolbar itself still carries neither Save nor New,
+  and the toolbar is where this audience looks first — the original finding stands for that surface.
+  The main toolbar has Open but no New and (before §14.1 was closed) no Save; no save-state
+  indicator exists anywhere in the frame.
+
+### 14.5 Suggested groupings for future milestones (record only)
+
+1. ~~**Keep the work** — §14.1 wholesale: real Save/Save As + Ctrl+S, dirty tracking, close/open
+   prompts, fix the snapshot-delete-on-exit inversion, harden the roster load path.~~ —
+   **delivered as M24, 2026-08-07.** It also took four §14.2 items that belong to the same story:
+   `RosterService.Apply`'s write-before-believe ordering, flush-to-disk on both temp-then-rename
+   saves, and `TboardContainer.SaveToFile`'s abandoned temp file. Still outstanding from §4: the
+   rotating `.bak` ring beside the user's own file and its "Restore an earlier version" menu — half
+   a feature without each other, and deliberately not started.
+2. **Don't crash, don't corrupt** — undo-into-deleted-story crash, link-chain delete, swallowed
+   action exceptions, render-thread race, RecipeCache eviction, damaged-file messaging.
+3. **Import honestly** — roster serial/date/encoding fixes, impossible-date validation, officers
+   sync Plan/Apply parity.
+4. **Say what you mean** — grey-vs-disabled palette split, one name per command, picture-verb
+   consolidation, style labels, jargon list, position-dialog copy.
+5. **Reach everything from the keyboard** — shortcut coverage, Tab out of text, keyboard placement,
+   advertised modifiers; then the 16 pt floor and themed selection chrome.

@@ -29,6 +29,16 @@
                   Click="OnActionClicked"
                   AutomationProperties.Name="Start this month from last month's newsletter" />
         <Separator />
+        <!-- M24: the two commands the app shipped without. Save sits above Export because saving
+             the newsletter and making the PDF are different jobs, and the user reaches for this
+             one far more often. -->
+        <MenuItem x:Name="SaveMenuItem" Header="Sa_ve this newsletter" Tag="newsletter.save"
+                  InputGesture="Ctrl+S" Click="OnActionClicked"
+                  AutomationProperties.Name="Save this newsletter" />
+        <MenuItem Header="Save it as a ne_w file…" Tag="newsletter.saveAs"
+                  InputGesture="Ctrl+Shift+S" Click="OnActionClicked"
+                  AutomationProperties.Name="Save this newsletter as a new file" />
+        <Separator />
         <MenuItem Header="_Export as PDF…" Tag="newsletter.exportPdf"
                   InputGesture="Ctrl+E" Click="OnActionClicked"
                   AutomationProperties.Name="Export as PDF" />

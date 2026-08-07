@@ -37,7 +37,9 @@ internal sealed class ActionRunner
             [ActionId.Open] = _ => window.OpenNewsletterAsync(),
             [ActionId.OpenSample] = Sync(window.OpenSample),
             [ActionId.NewFromTemplate] = _ => window.NewFromTemplateAsync(),
-            [ActionId.StartFromLastMonth] = Sync(() => window.StartFromLastMonth()),
+            [ActionId.StartFromLastMonth] = _ => window.StartFromLastMonthAsync(),
+            [ActionId.Save] = _ => window.SaveAsync(),
+            [ActionId.SaveAs] = _ => window.SaveAsAsync(),
             [ActionId.ExportPdf] = _ => window.ExportPdfAsync(),
             [ActionId.Exit] = Sync(window.Close),
 

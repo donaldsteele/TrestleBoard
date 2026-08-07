@@ -49,6 +49,25 @@ public sealed record ActionContext
     /// <summary>Somewhere in the newsletter, text does not fit its frame.</summary>
     public bool HasOversetText { get; init; }
 
+    /// <summary>
+    /// M24: the newsletter has been edited since it was last written to its file. Deliberately
+    /// separate from <see cref="CanUndo"/> — a document can have a full undo stack and still be
+    /// saved, and one that was undone all the way back to its opening state is still dirty on disk
+    /// terms only if something was written in between.
+    /// </summary>
+    public bool HasUnsavedChanges { get; init; }
+
+    /// <summary>M24: this newsletter has a file of its own, so Save knows where to put it.</summary>
+    public bool DocumentHasFile { get; init; }
+
+    /// <summary>
+    /// M24: the file name alone — "September 2026.tboard" — for the sentences that tell the user
+    /// where their work is. Never the full path: a folder full of directory names is not what
+    /// someone reading a status bar needs, and PLAN.md §0 keeps real paths out of anything shown
+    /// or captured.
+    /// </summary>
+    public string? DocumentFileName { get; init; }
+
     // ---- The selection ------------------------------------------------------------------------
 
     public SelectionKind Selection { get; init; } = SelectionKind.None;

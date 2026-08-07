@@ -29,6 +29,8 @@ namespace TrestleBoard.Editing.Actions;
 /// <param name="RosterCanUndo">M12: there is one address-book change to take back.</param>
 /// <param name="RosterUndoDescription">M12: what that change was, in the user's words.</param>
 /// <param name="RosterHasEarlierVersions">M12: the backup ring holds something to restore.</param>
+/// <param name="HasUnsavedChanges">M24: edited since it was last written to its file.</param>
+/// <param name="DocumentFileName">M24: the file name this newsletter lives in, or null if it has none.</param>
 public readonly record struct ShellFacts(
     bool ExportedPdfThisSession = false,
     bool SelectedWidgetHasListEditor = false,
@@ -43,7 +45,9 @@ public readonly record struct ShellFacts(
     int RosterCount = 0,
     bool RosterCanUndo = false,
     string? RosterUndoDescription = null,
-    bool RosterHasEarlierVersions = false);
+    bool RosterHasEarlierVersions = false,
+    bool HasUnsavedChanges = false,
+    string? DocumentFileName = null);
 
 /// <summary>
 /// Takes one snapshot of the editing state for the action catalog to reason about. Reading the
@@ -99,6 +103,9 @@ public static class ActionContextFactory
             PageIndex = pageIndex,
             CanStartFromLastMonth = hasDocument,
             HasOversetText = source is { IsOverset: true },
+            HasUnsavedChanges = hasDocument && shell.HasUnsavedChanges,
+            DocumentHasFile = shell.DocumentFileName is not null,
+            DocumentFileName = shell.DocumentFileName,
 
             Selection = selection,
             SelectedBlockId = blockId,

@@ -38,6 +38,14 @@ internal static class KeyboardMap
     [
         // ---- The newsletter -----------------------------------------------------------------
         new(Key.O, Ctrl, ActionId.Open),
+
+        // M24. Ctrl+S is the one gesture every user of this app already has in their fingers from
+        // Word, and until now it did nothing at all — there was no command behind it. KeyScope.Always
+        // on purpose: reaching for Ctrl+S in the middle of typing a paragraph is exactly when it is
+        // wanted, and the text session is untouched by a save.
+        new(Key.S, Ctrl, ActionId.Save),
+        new(Key.S, CtrlShift, ActionId.SaveAs),
+
         new(Key.E, Ctrl, ActionId.ExportPdf),
 
         // ---- Edit ---------------------------------------------------------------------------

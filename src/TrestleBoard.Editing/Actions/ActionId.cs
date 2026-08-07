@@ -13,6 +13,17 @@ public static class ActionId
     public const string OpenSample = "newsletter.openSample";
     public const string NewFromTemplate = "newsletter.newFromTemplate";
     public const string StartFromLastMonth = "newsletter.startFromLastMonth";
+
+    /// <summary>
+    /// M24: writes the newsletter back to its own file. The app shipped through v0.9.1 with no such
+    /// command at all — autosave held a crash snapshot that a clean exit then deleted, so a normal
+    /// day's work could not be kept. Everything else in this milestone exists to serve this one.
+    /// </summary>
+    public const string Save = "newsletter.save";
+
+    /// <summary>M24: writes it to a file the user picks, and that file becomes its home.</summary>
+    public const string SaveAs = "newsletter.saveAs";
+
     public const string ExportPdf = "newsletter.exportPdf";
     public const string Exit = "newsletter.exit";
 
