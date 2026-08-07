@@ -89,7 +89,12 @@ public sealed class FrameEditorController
 
     public void Select(string? blockId)
     {
-        if (_selectedBlockId == blockId && _alsoSelected.Count == 0)
+        // The early return skipped the link-mode reset below, so clicking the ALREADY-selected
+        // source frame while link mode was armed left it armed, with its "now click the frame to
+        // continue into" prompt still in the status bar and no way to tell it was still live
+        // (review §14.2). Re-selecting what is already selected is a way of saying "never mind",
+        // and it now means that.
+        if (_selectedBlockId == blockId && _alsoSelected.Count == 0 && !IsLinkModeActive)
         {
             return;
         }

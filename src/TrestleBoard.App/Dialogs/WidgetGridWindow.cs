@@ -51,7 +51,7 @@ public sealed class WidgetGridWindow : Window
 
         Button save = MakeButton("Save it", (_, _) => Commit());
         save.IsDefault = true;
-        Button cancel = MakeButton("Cancel", (_, _) => Close());
+        Button cancel = MakeButton("Cancel", (_, _) => CancelWithConfirmation());
         cancel.IsCancel = true;
 
         Content = new DockPanel
@@ -417,4 +417,100 @@ public sealed class WidgetGridWindow : Window
         AutomationProperties.SetName(button, text);
         return button;
     }
+    /// <summary>
+    /// The same question the step wizard asks, for the same session (M35, review §14.2).
+    ///
+    /// <para>These two windows edit ONE <c>WizardSession</c> — "Show all at once" swaps between
+    /// them mid-edit — and only one of them used to ask before throwing the answers away. The fast
+    /// path was the one that lost more: a user who chose the grid has typed twelve rows into it,
+    /// and Esc discarded the lot without a word while the slower path confirmed.</para>
+    /// </summary>
+    private async void CancelWithConfirmation()
+    {
+        if (_confirming)
+        {
+            return;
+        }
+
+        if (!_session.IsDirty)
+        {
+            Close();
+            return;
+        }
+
+        _confirming = true;
+        try
+        {
+            var keepGoing = new Button
+            {
+                Content = "Keep going",
+                FontSize = 20,
+                MinHeight = 44,
+                MinWidth = 180,
+                IsDefault = true,
+            };
+            var discard = new Button
+            {
+                Content = "Throw it away",
+                FontSize = 20,
+                MinHeight = 44,
+                MinWidth = 180,
+            };
+
+            var confirm = new Window
+            {
+                Title = "Throw away what you typed?",
+                SizeToContent = SizeToContent.WidthAndHeight,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                CanResize = false,
+                Content = new StackPanel
+                {
+                    Margin = new Avalonia.Thickness(24),
+                    Spacing = 16,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = "You have filled some of this in. Nothing has been put on the "
+                                + "page yet, so closing now throws away what you typed.",
+                            FontSize = 18,
+                            MaxWidth = 460,
+                            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                        },
+                        new StackPanel
+                        {
+                            Orientation = Orientation.Horizontal,
+                            Spacing = 12,
+                            HorizontalAlignment = HorizontalAlignment.Right,
+                            Children = { discard, keepGoing },
+                        },
+                    },
+                },
+            };
+
+            bool discarded = false;
+            keepGoing.Click += (_, _) => confirm.Close();
+            discard.Click += (_, _) =>
+            {
+                discarded = true;
+                confirm.Close();
+            };
+
+            AutomationProperties.SetName(confirm, "Throw away what you typed?");
+            await confirm.ShowDialog(this);
+
+            if (discarded)
+            {
+                Close();
+            }
+        }
+        finally
+        {
+            _confirming = false;
+        }
+    }
+
+    /// <summary>A confirm dialog is already open; a second Esc must not stack another.</summary>
+    private bool _confirming;
+
 }

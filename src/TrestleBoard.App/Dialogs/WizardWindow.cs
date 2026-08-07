@@ -20,6 +20,9 @@ public sealed class WizardWindow : Window
     /// <summary>One brother picked from the address book, and where he was picked.</summary>
     private sealed record PersonPick(IWizardStep Step, int RowIndex, string? PhoneFieldKey, PersonSuggestion Person);
 
+    /// <summary>A confirm dialog is already open; a second Esc must not stack another.</summary>
+    private bool _confirming;
+
     private readonly WizardSession _session;
     private readonly IReadOnlyList<PersonSuggestion> _people;
     private readonly List<PersonPick> _picks = [];
@@ -217,75 +220,94 @@ public sealed class WizardWindow : Window
     /// </summary>
     private async void CancelWithConfirmation()
     {
+        // Esc reaches this twice: once through OnKeyDown and once through the Cancel button's
+        // IsCancel. One press could therefore stack two confirm dialogs, the second sitting behind
+        // the first, so answering the question left another copy of it waiting (review §14.2). The
+        // guard is on the method rather than on either caller, because both are legitimate and
+        // neither should have to know about the other.
+        if (_confirming)
+        {
+            return;
+        }
+
         if (!_session.IsDirty)
         {
             Close();
             return;
         }
 
-        var keepGoing = new Button
+        _confirming = true;
+        try
         {
-            Content = "Keep going",
-            FontSize = 20,
-            MinHeight = 44,
-            MinWidth = 180,
-            IsDefault = true,
-        };
-        var discard = new Button
-        {
-            Content = "Throw it away",
-            FontSize = 20,
-            MinHeight = 44,
-            MinWidth = 180,
-        };
-
-        var confirm = new Window
-        {
-            Title = "Throw away what you typed?",
-            SizeToContent = SizeToContent.WidthAndHeight,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false,
-            Content = new StackPanel
+            var keepGoing = new Button
             {
-                Margin = new Avalonia.Thickness(24),
-                Spacing = 16,
-                Children =
+                Content = "Keep going",
+                FontSize = 20,
+                MinHeight = 44,
+                MinWidth = 180,
+                IsDefault = true,
+            };
+            var discard = new Button
+            {
+                Content = "Throw it away",
+                FontSize = 20,
+                MinHeight = 44,
+                MinWidth = 180,
+            };
+
+            var confirm = new Window
+            {
+                Title = "Throw away what you typed?",
+                SizeToContent = SizeToContent.WidthAndHeight,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                CanResize = false,
+                Content = new StackPanel
                 {
-                    new TextBlock
+                    Margin = new Avalonia.Thickness(24),
+                    Spacing = 16,
+                    Children =
                     {
-                        Text = "Throw away what you typed? Nothing has been added to the newsletter yet.",
-                        FontSize = 20,
-                        TextWrapping = TextWrapping.Wrap,
-                        MaxWidth = 460,
-                        HorizontalAlignment = HorizontalAlignment.Left,
-                    },
-                    new StackPanel
-                    {
-                        Orientation = Orientation.Horizontal,
-                        Spacing = 12,
-                        HorizontalAlignment = HorizontalAlignment.Right,
-                        Children = { discard, keepGoing },
+                        new TextBlock
+                        {
+                            Text = "Throw away what you typed? Nothing has been added to the newsletter yet.",
+                            FontSize = 20,
+                            TextWrapping = TextWrapping.Wrap,
+                            MaxWidth = 460,
+                            HorizontalAlignment = HorizontalAlignment.Left,
+                        },
+                        new StackPanel
+                        {
+                            Orientation = Orientation.Horizontal,
+                            Spacing = 12,
+                            HorizontalAlignment = HorizontalAlignment.Right,
+                            Children = { discard, keepGoing },
+                        },
                     },
                 },
-            },
-        };
+            };
 
-        bool discarded = false;
-        keepGoing.Click += (_, _) => confirm.Close();
-        discard.Click += (_, _) =>
+            bool discarded = false;
+            keepGoing.Click += (_, _) => confirm.Close();
+            discard.Click += (_, _) =>
+            {
+                discarded = true;
+                confirm.Close();
+            };
+
+            AutomationProperties.SetName(confirm, "Throw away what you typed?");
+            await confirm.ShowDialog(this);
+
+            if (discarded)
+            {
+                Close();
+            }
+        }
+        finally
         {
-            discarded = true;
-            confirm.Close();
-        };
-
-        AutomationProperties.SetName(confirm, "Throw away what you typed?");
-        await confirm.ShowDialog(this);
-
-        if (discarded)
-        {
-            Close();
+            _confirming = false;
         }
     }
+
 
     private void Commit()
     {

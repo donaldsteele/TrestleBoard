@@ -78,7 +78,7 @@ public sealed class FileRecoveryStore : IRecoveryStore
             {
                 bytes = File.ReadAllBytes(path);
             }
-            catch (IOException)
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
                 continue;
             }
@@ -159,7 +159,7 @@ public sealed class FileRecoveryStore : IRecoveryStore
         {
             File.Delete(path);
         }
-        catch (IOException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             // A file we cannot delete is not worth failing a save over.
         }
@@ -172,8 +172,13 @@ public sealed class FileRecoveryStore : IRecoveryStore
             return JsonSerializer.Deserialize<Sidecar>(File.ReadAllBytes(path))
                 ?? new Sidecar(null, DateTimeOffset.MinValue);
         }
-        catch (Exception e) when (e is IOException or JsonException)
+        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)
         {
+            // M35: UnauthorizedAccessException joins the other two here, and at the three sites
+            // above. A read-only file, an ACL change or an antivirus hold used to escape — and from
+            // FindRecoverable that aborted the whole startup scan, hiding every OTHER recoverable
+            // snapshot, while from Remove it escaped RecoveryService.Complete() on the clean-close
+            // path (review §14.2). Neither is worth failing over.
             return new Sidecar(null, DateTimeOffset.MinValue);
         }
     }

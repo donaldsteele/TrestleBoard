@@ -272,8 +272,17 @@ public static class ActionCatalog
     /// <summary>The declaration for one id. Throws for an unknown id — that is a programming error.</summary>
     public static EditorAction Get(string actionId) => ById[actionId];
 
-    public static bool TryGet(string actionId, out EditorAction action) =>
-        ById.TryGetValue(actionId, out action!);
+    /// <summary>
+    /// M35: <c>NotNullWhen</c>, and a nullable out. The signature promised a non-null
+    /// <see cref="EditorAction"/> on every path and handed back null on the false one, so a caller
+    /// that ignored the bool got a NullReferenceException somewhere later instead of a compiler
+    /// warning here (review §14.2). The `out action!` that used to suppress it was the compiler
+    /// being told to stop noticing.
+    /// </summary>
+    public static bool TryGet(
+        string actionId,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out EditorAction? action) =>
+        ById.TryGetValue(actionId, out action);
 
     /// <summary>
     /// What this action is called RIGHT NOW (PLAN.md §11 M18). Almost every action has one name; two

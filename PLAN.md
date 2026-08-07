@@ -2096,6 +2096,17 @@ and white only — 21:1, and every one of these marks is a shape as well as a co
 lost — with the handles inverting against the outline so eight white squares on a white line still
 read as grab points.
 
+### M35 — Six more small ones (delivered 2026-08-07, `docs/M35-spec.md`)
+
+`FileRecoveryStore` caught `IOException` and let `UnauthorizedAccessException` through, so a
+read-only file aborted the whole startup recovery scan and hid every other snapshot. Re-selecting
+the link-mode source frame left link mode armed with a stale prompt. `ActionCatalog.TryGet` promised
+a non-null action and returned null on the false path, with `out action!` telling the compiler to
+stop noticing. The district calendar indented continuation lines under a separator it had not
+printed. One Esc could stack two confirm dialogs in the wizard. And the grid editor threw away typed
+answers without asking, while the step wizard over the SAME session confirmed — the fast path losing
+more than the slow one.
+
 **Grouping 4 is half done; grouping 5 is part done.**
 
 ---
@@ -2476,8 +2487,8 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   `PhotoController.cs:140-141,199-201`: undone insert/swap leaves asset bytes registered — the
   `.tboard` grows monotonically. · ~~`TextEditorController.cs:1123-1129`: tabs are control chars to `Sanitize`, so pasted columnar
   text collapses words together.~~ (**fixed at M31**: a tab becomes a space) ·
-  `FrameEditorController.cs:92-95`: re-selecting the link-mode source frame leaves link mode armed
-  with a stale prompt. · `ActionCatalog.cs:266-267`: `TryGet`'s `out action!` is null on the false
+  ~~`FrameEditorController.cs:92-95`: re-selecting the link-mode source frame leaves link mode armed
+  with a stale prompt.~~ (**fixed at M35**) · `ActionCatalog.cs:266-267`: `TryGet`'s `out action!` is null on the false
   path. · ~~`PageFlowController.cs:169-178`: auto-flow continuation frames get `ZOrder = 0` and can
   land behind existing blocks — every other insert path uses `Max(ZOrder)+1`.~~
   (**confirmed and fixed at M31**)
@@ -2547,8 +2558,9 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   boundary-shifted rosters can hash identical and report "not stale".~~ (**fixed at M29**:
   U+001F between fields) · PLAUSIBLE
   ~~`CommitteeListLayouter.cs:74-93`: a long committee name drives the first line's available width
-  zero or negative and draws past the right margin.~~ (**confirmed and fixed at M29**) · `DistrictCalendarLayouter.cs:129-133`:
-  hanging indent measured with the " — " separator even when `DateText` is blank.
+  zero or negative and draws past the right margin.~~ (**confirmed and fixed at M29**) · ~~`DistrictCalendarLayouter.cs:129-133`:
+  hanging indent measured with the " — " separator even when `DateText` is blank.~~
+  (**fixed at M35**)
 
 **Roster** (real personal data — data-loss items first; §14.1 item 4 is the headline)
 
@@ -2601,10 +2613,10 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 - ~~Minor — Birthday/officers sync selects the widget *then* calls `GoToPage`, which clears the
   selection — the "show the user where it is" gesture never shows.~~ (**fixed at M29**) · ~~No
   `OnPointerCaptureLost` override: a lost capture leaves drag/pan/marquee armed and the next
-  unrelated release commits a stale drag.~~ (**fixed at M29**) · Wizard Esc is
-  handled twice (KeyDown + `IsCancel`) and can stack two confirm dialogs. · The grid editor's
-  Cancel/Esc discards a dirty session with no confirmation, while the step wizard over the same
-  session confirms. · ~~`PositionPhotoWindow`/`RestoreDialog` never dispose their bitmaps.~~ (**fixed at M29**) · ~~The
+  unrelated release commits a stale drag.~~ (**fixed at M29**) · ~~Wizard Esc is
+  handled twice (KeyDown + `IsCancel`) and can stack two confirm dialogs.~~ (**fixed at M35**) ·
+  ~~The grid editor's Cancel/Esc discards a dirty session with no confirmation, while the step
+  wizard over the same session confirms.~~ (**fixed at M35**) · ~~`PositionPhotoWindow`/`RestoreDialog` never dispose their bitmaps.~~ (**fixed at M29**) · ~~The
   standard error dialog's OK has neither `IsDefault` nor `IsCancel` (Enter/Esc dead).~~
   (**fixed at M29**) ·
   `StartDialog` has no Esc path. · Startup and manual update checks are unsynchronised — duplicate

@@ -126,9 +126,16 @@ public sealed class DistrictCalendarLayouter : IWidgetLayouter
                 continue;
             }
 
-            float hangingIndentPt = Math.Min(
-                shaper.MeasureWidthPt(entry.DateText + " — ", style.Body),
-                widthPt * 0.4f);
+            // Measured from what is ACTUALLY on the row. JoinPresent omits the " — " separator when
+            // the date is blank, but this measured it regardless — so a date-less event's
+            // continuation lines were indented past a separator that was never printed, and hung in
+            // mid-air under nothing (review §14.2).
+            string prefix = string.IsNullOrWhiteSpace(entry.DateText)
+                ? string.Empty
+                : entry.DateText + " — ";
+            float hangingIndentPt = prefix.Length == 0
+                ? 0f
+                : Math.Min(shaper.MeasureWidthPt(prefix, style.Body), widthPt * 0.4f);
             y = WidgetLayoutHelpers.WrappedParagraph(
                 builder, shaper, rowText, style.Body, style.LineSpacing, 0f, widthPt, y, hangingIndentPt);
 
