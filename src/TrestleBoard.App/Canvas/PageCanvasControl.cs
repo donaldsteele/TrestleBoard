@@ -445,7 +445,13 @@ public sealed class PageCanvasControl : Control
             System.Globalization.CultureInfo.InvariantCulture,
             FlowDirection.LeftToRight,
             Typeface.Default,
-            14d,
+
+            // M27: 16, like every other piece of chrome text. This is the hint that teaches a
+            // first-time user what an empty frame is for ("Click here and start typing"), drawn at
+            // the one size in the app that broke §6's floor — smallest where it mattered most.
+            // It is painted with Skia rather than laid out as a TextBlock, so PlainLanguageTests
+            // cannot see it; this comment is the only guard there is.
+            16d,
             brush);
 
         Rect box = ToControlRect(rect);

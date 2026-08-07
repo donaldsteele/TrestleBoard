@@ -1970,7 +1970,25 @@ Deliberately unchanged and now documented as decisions: month-first date reading
 South Carolina), which the review had raised as a possible bug. Still open: CSV encoding detection,
 the header-hint misfires, `ChooseHeaderRow` bounds, and unparsable backups never being trimmed.
 
-**§14.5 groupings 4–5 remain unscheduled.**
+### M27 — Say what you mean (delivered 2026-08-07, `docs/M27-spec.md`)
+
+§14.5 grouping 4, **in part**. Format ▸ Paragraph style and the panel flyout under it were built
+with `Header = styleRef`, so the committee was shown `body`, `heading`, `caption` — `StyleLabels`
+exists for exactly this and was never called from either. The toolbar said "Smaller"/"Bigger" for
+zoom, which is also what the font window's size stepper says for point size, and "Back"/"Next" for
+pages, which is what the officers wizard's buttons say. `PhotoAdjustWindow` applied every slider to
+the live document and offered only "Done" — no Cancel, no `IsCancel`, Esc dead — so it now unwinds
+the real undo stack back to where it stood when the window opened (`DocumentSession.UndoDepth`).
+"Turn a quarter" now says which way; the position dialog no longer describes a "blue crop window"
+over a black rectangle while promising the crop cannot resize beside two Zoom buttons; and the 16pt
+floor is repaired in all five places the review found.
+
+**Deliberately not in it**, and listed in `docs/M27-spec.md` §5 rather than left to be re-derived:
+the grey-means-two-things palette split (a look-and-feel decision across thirteen dialogs, and
+`Controls.axaml` documents why a blanket Button selector is unavailable), the selection chrome's
+hard-coded ARGB, consolidating the four picture verbs, and the rest of the jargon inventory.
+
+**§14.5 grouping 5 remains unscheduled, and grouping 4 is half done.**
 
 ---
 
@@ -2480,9 +2498,10 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   band) — a mode with no indicator anywhere. Enter/F2/Esc enter and leave typing but appear in no
   menu, no panel entry, and no catalog action; Tab is swallowed inside a text session, so the only
   keyboard way out is Esc-then-Tab.
-- **The photo adjust window edits the live document with no exit but forward.** Sliders apply
-  immediately and the window has only "Done" — no Cancel, no `IsCancel`, Esc does nothing
-  (`PhotoAdjustWindow.cs:99-108`). The only retreat is "Start over" or Ctrl+Z afterwards.
+- ~~**The photo adjust window edits the live document with no exit but forward.** Sliders apply
+  immediately and the window has only "Done" — no Cancel, no `IsCancel`, Esc does nothing. The only
+  retreat is "Start over" or Ctrl+Z afterwards.~~ — **fixed at M27**: Cancel unwinds the real undo
+  stack to where it stood when the window opened.
 - **Keyboard coverage gaps** (an explicit §6 mandate): no keyboard equivalent for marquee
   selection, add-to-selection (Shift+click only), pan, snap suppression (Alt — itself advertised
   nowhere), or pointer-anchored zoom; keyboard photo insertion always lands at the default
@@ -2492,16 +2511,20 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   and explains instead. Same command, two behaviours, and dialogs (officers sync's disabled
   checkbox) follow neither — the M11 "nothing unavailable without saying why" rule stops at the
   panel's edge.
-- **Raw style ids reach the user.** Format ▸ Paragraph style shows `body`, `table-row`,
-  `lodge-table` (`MainWindow.axaml.cs:378-382`); `StyleLabels.Describe` was written to prevent
-  exactly this and is not called there. The fallback `"Style: {id}"` leaks ids too.
+- ~~**Raw style ids reach the user.** Format ▸ Paragraph style shows `body`, `table-row`,
+  `lodge-table`; `StyleLabels.Describe` was written to prevent exactly this and is not called
+  there.~~ — **fixed at M27** in both the menu and the panel flyout. (`table-row` and `lodge-table`
+  are character styles and never appeared in this menu; every paragraph role a real document
+  carries has a hand-written label, so the `"Style: {id}"` fallback is unreachable in practice.)
 - **Selection chrome ignores the theme.** Outline, handles, snap guides and the overset badge are
   hard-coded ARGB (`FrameOverlayRenderer.cs:41-45`) — the one part of the UI that does not follow
   High Contrast.
-- **The 16 pt floor is broken** in the canvas hints (14 pt, `PageCanvasControl.cs:448`), the
-  panel's reason text (14 pt, `ActionPanel.cs:323`), several 15 pt strings, and the licence text.
-- **Toolbar and menu disagree on names for the same command**: Smaller/Bigger vs Zoom out/Zoom in;
-  Back/Next vs Previous page/Next page — and Back/Next collides with the wizard's own buttons.
+- ~~**The 16 pt floor is broken** in the canvas hints (14 pt), the panel's reason text (14 pt),
+  several 15 pt strings, and the licence text.~~ — **fixed at M27**, with a standing test over the
+  main window's chrome; the canvas hint is Skia-painted and outside what that test can see.
+- ~~**Toolbar and menu disagree on names for the same command**: Smaller/Bigger vs Zoom out/Zoom in;
+  Back/Next vs Previous page/Next page — and Back/Next collides with the wizard's own buttons.~~ —
+  **fixed at M27**, with a test comparing every toolbar label against the catalog.
 - Assorted: the M23 stretched-picture dismissal is session-only and keyed by frame aspect, so the
   note returns after any reshape or restart; no tooltips exist anywhere in the App project; no
   rulers, guides, margin display, or grid — snap guides appear only mid-drag; page change clears
@@ -2527,10 +2550,12 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 - **Four near-synonym picture verbs in one panel**: "Fix this picture", "Adjust the picture…",
   "Trim the edges…", "Position the picture in its frame…" (plus "Swap"). The Adjust window then
   *contains* trim sliders and a "Position…" button — the same commands at a different level.
-- **The position dialog contradicts itself**: the instruction says "The crop stays the same size —
+- ~~**The position dialog contradicts itself**: the instruction says "The crop stays the same size —
   this only moves it" while the dialog offers Zoom out/Zoom in; the text names a "blue crop
-  window" but the crop rectangle is drawn black.
-- "Turn a quarter" does not say which way, and there is no counter-clockwise turn.
+  window" but the crop rectangle is drawn black.~~ — **fixed at M27**.
+- ~~"Turn a quarter" does not say which way~~ — **fixed at M27** ("Turn it right ↻"). There is
+  still no counter-clockwise turn; three presses reach it, which is the same trade every phone
+  gallery makes.
 - The overset marker is a small glyph at the frame edge, explained only in the status bar — easy to
   miss at typical zoom for the audience this app serves.
 - People window: "Save this person" is per-person manual save — switching people with unsaved edits
@@ -2565,6 +2590,9 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
    sync Plan/Apply parity.~~ — **delivered as M26, 2026-08-07**, except CSV encoding detection,
    which is left for a milestone that can carry that decision properly.
 4. **Say what you mean** — grey-vs-disabled palette split, one name per command, picture-verb
-   consolidation, style labels, jargon list, position-dialog copy.
+   consolidation, style labels, jargon list, position-dialog copy. — **half delivered as M27,
+   2026-08-07**: style labels, one-name-per-command, the position-dialog copy, the missing Cancel
+   in the photo adjust window, and the 16pt floor. The palette split, the picture verbs and the
+   rest of the jargon list are still open; `docs/M27-spec.md` §5 says why each was left.
 5. **Reach everything from the keyboard** — shortcut coverage, Tab out of text, keyboard placement,
    advertised modifiers; then the 16 pt floor and themed selection chrome.

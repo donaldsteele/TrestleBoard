@@ -54,6 +54,25 @@ public sealed class PhotoController
     /// <summary>Plain-language feedback for the shell's status line.</summary>
     public string? StatusMessage { get; private set; }
 
+    /// <summary>
+    /// M27: the undo depth, so a live-preview dialog can offer a real Cancel — see
+    /// <see cref="DocumentSession.UndoDepth"/>. Exposed here rather than handing the whole session
+    /// to a window, which would let a dialog execute commands the controller knows nothing about.
+    /// </summary>
+    public int UndoDepth => _session.UndoDepth;
+
+    /// <summary>
+    /// Takes back everything done since <paramref name="depth"/> was noted. Used by "Cancel" in a
+    /// window whose sliders apply to the document as they move.
+    /// </summary>
+    public void UndoBackTo(int depth)
+    {
+        while (_session.UndoDepth > depth && _session.CanUndo)
+        {
+            _session.Undo();
+        }
+    }
+
     public bool IsPhoto(string? blockId) =>
         blockId is not null
         && _session.Document.Pages.SelectMany(p => p.Blocks).Any(b => b.Id == blockId && b is ImageFrame);

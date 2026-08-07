@@ -39,6 +39,18 @@ public sealed class DocumentSession(Document document, TimeProvider? timeProvide
 
     public bool CanUndo => _undo.Count > 0;
 
+    /// <summary>
+    /// How many commands are on the undo stack right now.
+    ///
+    /// <para>M27: this is what lets a live-preview dialog offer a real Cancel. The photo adjust
+    /// window applies each slider to the document as it moves, which is the whole point of it —
+    /// the user watches the page change — but it left them no way back except Ctrl+Z pressed an
+    /// unknown number of times. A window that notes this number when it opens can put the document
+    /// back exactly as it found it, using the same undo the rest of the app uses rather than a
+    /// second, parallel notion of "before".</para>
+    /// </summary>
+    public int UndoDepth => _undo.Count;
+
     public bool CanRedo => _redo.Count > 0;
 
     /// <summary>Plain-language label for the Edit menu, e.g. "Undo Move block".</summary>

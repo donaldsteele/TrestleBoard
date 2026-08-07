@@ -218,6 +218,17 @@ public partial class MainWindow : Window
 
     internal ActionRunner ActionsForTest => _actions;
 
+    /// <summary>
+    /// The toolbar, as a list. Extracted from <see cref="RefreshActions"/> at M27 so the wording
+    /// test walks exactly the buttons the availability pass walks — a button reachable by one and
+    /// not the other is how a surface drifts out of the catalog's reach unnoticed.
+    /// </summary>
+    internal Button[] ToolbarButtons =>
+    [
+        OpenButton, UndoButton, RedoButton, PrevPageButton, NextPageButton,
+        ZoomOutButton, ZoomInButton, FitButton,
+    ];
+
     internal ActionPanel PanelForTest => _panel;
 
     /// <summary>
@@ -267,11 +278,7 @@ public partial class MainWindow : Window
             Avalonia.Automation.AutomationProperties.SetHelpText(item, availability.Reason);
         }
 
-        foreach (Button button in new[]
-                 {
-                     OpenButton, UndoButton, RedoButton, PrevPageButton, NextPageButton,
-                     ZoomOutButton, ZoomInButton, FitButton,
-                 })
+        foreach (Button button in ToolbarButtons)
         {
             if (button.Tag is string actionId && ActionCatalog.TryGet(actionId, out _))
             {
@@ -426,8 +433,14 @@ public partial class MainWindow : Window
         foreach (string style in _editor?.AvailableParagraphStyles ?? [])
         {
             string styleRef = style;
-            var item = new MenuItem { Header = styleRef, FontSize = 16 };
-            Avalonia.Automation.AutomationProperties.SetName(item, styleRef);
+
+            // M27: what the user reads is the role's plain-language name — "Body text", not `body`;
+            // "Tables", not `lodge-table`. StyleLabels exists precisely to keep raw style ids off
+            // the screen and was not being called here, so this menu and the panel flyout under it
+            // were the one place in the app that still showed them (review §14.3).
+            string label = Core.Text.StyleLabels.Describe(styleRef);
+            var item = new MenuItem { Header = label, FontSize = 16 };
+            Avalonia.Automation.AutomationProperties.SetName(item, label);
             item.Click += (_, _) =>
             {
                 _editor?.ApplyParagraphStyle(styleRef);
@@ -1383,8 +1396,11 @@ public partial class MainWindow : Window
         foreach (string style in _editor?.AvailableParagraphStyles ?? [])
         {
             string styleRef = style;
-            var item = new MenuItem { Header = styleRef, FontSize = 16 };
-            Avalonia.Automation.AutomationProperties.SetName(item, styleRef);
+
+            // Same rule as the Format menu above: the role's plain-language name, never its id.
+            string label = Core.Text.StyleLabels.Describe(styleRef);
+            var item = new MenuItem { Header = label, FontSize = 16 };
+            Avalonia.Automation.AutomationProperties.SetName(item, label);
             item.Click += (_, _) =>
             {
                 _editor?.ApplyParagraphStyle(styleRef);
@@ -3239,7 +3255,7 @@ public partial class MainWindow : Window
             Text = body,
             IsReadOnly = true,
             AcceptsReturn = true,
-            FontSize = 14,
+            FontSize = 16,
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
             Height = 520,
         };

@@ -309,7 +309,14 @@
     </LayoutTransformControl>
 
     <!-- Nine controls, down from eighteen (M11). Bold, italic, paragraph style, wrap, insert and
-         arrange all moved into the panel, where they sit beside the thing they act on. -->
+         arrange all moved into the panel, where they sit beside the thing they act on.
+
+         M27: every label here is the label the menu uses for the same command. They used to differ
+         — "Smaller"/"Bigger" against the View menu's "Zoom out"/"Zoom in", and a bare "Back"/"Next"
+         against "Previous page"/"Next page". Two of those were worse than merely inconsistent:
+         "Smaller"/"Bigger" is also what the font window's size stepper says, where it changes point
+         size rather than zoom, and "Back"/"Next" is what the officers wizard's own buttons say. The
+         same word doing two jobs in one program is how a user learns not to trust any of them. -->
     <LayoutTransformControl x:Name="ToolbarScale" DockPanel.Dock="Top">
     <Border Padding="8"
             Background="{DynamicResource TrestleBoard.Chrome.Background}"
@@ -327,19 +334,19 @@
                 AutomationProperties.Name="Redo">Redo</Button>
         <Separator Width="12" Background="Transparent" />
         <Button x:Name="PrevPageButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="page.previous" Click="OnActionClicked"
-                AutomationProperties.Name="Previous page">Back</Button>
+                AutomationProperties.Name="Previous page">Previous page</Button>
         <TextBlock x:Name="PageLabel" FontSize="16" VerticalAlignment="Center" MinWidth="110"
                    TextAlignment="Center" Text="No newsletter"
                    AutomationProperties.Name="Current page" AutomationProperties.LiveSetting="Polite" />
         <Button x:Name="NextPageButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="page.next" Click="OnActionClicked"
-                AutomationProperties.Name="Next page">Next</Button>
+                AutomationProperties.Name="Next page">Next page</Button>
         <Button x:Name="ZoomOutButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="view.zoomOut" Click="OnActionClicked"
-                AutomationProperties.Name="Zoom out">Smaller</Button>
+                AutomationProperties.Name="Zoom out">Zoom out</Button>
         <TextBlock x:Name="ZoomLabel" FontSize="16" VerticalAlignment="Center" MinWidth="64"
                    TextAlignment="Center" Text="100%"
                    AutomationProperties.Name="Current zoom" AutomationProperties.LiveSetting="Polite" />
         <Button x:Name="ZoomInButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="view.zoomIn" Click="OnActionClicked"
-                AutomationProperties.Name="Zoom in">Bigger</Button>
+                AutomationProperties.Name="Zoom in">Zoom in</Button>
         <Button x:Name="FitButton" FontSize="16" MinHeight="44" Tag="view.fitPage" Click="OnActionClicked"
                 AutomationProperties.Name="Fit the whole page in the window">Fit page</Button>
       </StackPanel>

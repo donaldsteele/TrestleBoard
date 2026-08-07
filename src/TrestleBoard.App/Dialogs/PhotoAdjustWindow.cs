@@ -32,10 +32,25 @@ public sealed class PhotoAdjustWindow : Window
     private readonly CheckBox _autoLevels;
     private bool _suppress;
 
+    /// <summary>
+    /// Where the undo stack stood when this window opened, so "Cancel" can put the picture back
+    /// exactly as it was (M27, review §14.3).
+    ///
+    /// <para>Every slider here applies to the document as it moves — that is the point of the
+    /// window, the user watches the page change — but until now the only way out was "Done", which
+    /// kept everything. There was no Cancel, no <c>IsCancel</c>, and so Esc did nothing at all: a
+    /// window with no way back, in an app for people who are learning what the sliders do by
+    /// moving them. "Start over" was the nearest thing and it is not the same promise; it resets
+    /// the picture to the original file, discarding adjustments made before this window opened.
+    /// </para>
+    /// </summary>
+    private readonly int _undoMark;
+
     public PhotoAdjustWindow(PhotoController photos, string blockId, bool startOnTrim = false)
     {
         _photos = photos ?? throw new ArgumentNullException(nameof(photos));
         _blockId = blockId;
+        _undoMark = photos.UndoDepth;
 
         Title = "Adjust the picture";
         SizeToContent = SizeToContent.WidthAndHeight;
@@ -73,9 +88,12 @@ public sealed class PhotoAdjustWindow : Window
             }
         };
 
-        var turn = new Button { Content = "Turn a quarter", FontSize = 18, MinHeight = 44, MinWidth = 180 };
+        // M27: which way it turns, said out loud. "Turn a quarter" left the user to press it and
+        // find out, and four presses to undo a wrong guess is four undo steps (review §14.4).
+        var turn = new Button { Content = "Turn it right ↻", FontSize = 18, MinHeight = 44, MinWidth = 180 };
         turn.Click += (_, _) => _photos.Rotate(_blockId, 1);
-        Avalonia.Automation.AutomationProperties.SetName(turn, "Turn the picture a quarter turn");
+        Avalonia.Automation.AutomationProperties.SetName(
+            turn, "Turn the picture a quarter turn to the right, clockwise");
 
         var reset = new Button { Content = "Start over", FontSize = 18, MinHeight = 44, MinWidth = 140 };
         reset.Click += (_, _) =>
@@ -105,7 +123,19 @@ public sealed class PhotoAdjustWindow : Window
             IsDefault = true,
         };
         done.Click += (_, _) => Close();
-        Avalonia.Automation.AutomationProperties.SetName(done, "Done, close this window");
+        Avalonia.Automation.AutomationProperties.SetName(done, "Done, keep these changes");
+
+        var cancel = new Button
+        {
+            Content = "Cancel — change nothing",
+            FontSize = 18,
+            MinHeight = 44,
+            MinWidth = 200,
+            IsCancel = true,
+        };
+        cancel.Click += (_, _) => CancelAndClose();
+        Avalonia.Automation.AutomationProperties.SetName(
+            cancel, "Cancel, put the picture back as it was before this window opened");
 
         Content = new StackPanel
         {
@@ -136,7 +166,7 @@ public sealed class PhotoAdjustWindow : Window
                 {
                     Text = "These take the edges off the picture on the page. The picture in your "
                         + "file is never changed, so you can put an edge back at any time.",
-                    FontSize = 15,
+                    FontSize = 16,
                     TextWrapping = TextWrapping.Wrap,
                     MaxWidth = 420,
                 },
@@ -155,7 +185,7 @@ public sealed class PhotoAdjustWindow : Window
                     Orientation = Orientation.Horizontal,
                     Spacing = 12,
                     HorizontalAlignment = HorizontalAlignment.Right,
-                    Children = { done },
+                    Children = { cancel, done },
                 },
             },
         };
@@ -273,4 +303,19 @@ public sealed class PhotoAdjustWindow : Window
         _trimBottom.Value = crop is { } b ? Math.Clamp(1d - b.Y - b.Height, 0d, MaxTrimFraction) : 0d;
         _suppress = false;
     }
+
+    /// <summary>
+    /// Puts the document back to where it stood when this window opened, then closes.
+    ///
+    /// <para>Unwinding the real undo stack rather than restoring a remembered recipe: the sliders
+    /// commit through the same commands as everything else, so the undo stack already IS the record
+    /// of what this window did, and replaying a snapshot would be a second, parallel notion of
+    /// "before" that could disagree with it.</para>
+    /// </summary>
+    private void CancelAndClose()
+    {
+        _photos.UndoBackTo(_undoMark);
+        Close();
+    }
+
 }

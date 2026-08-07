@@ -115,13 +115,15 @@ public sealed class PositionPhotoWindow : Window
         stage.PointerReleased += OnPointerReleased;
         _stage = stage;
 
-        var zoomIn = new Button { Content = "Zoom in", FontSize = 16, MinHeight = 44, MinWidth = 110 };
-        var zoomOut = new Button { Content = "Zoom out", FontSize = 16, MinHeight = 44, MinWidth = 110 };
+        // "this preview", not bare "Zoom": beside a sentence promising the crop does not change
+        // size, an unqualified Zoom button reads as the thing that would change it.
+        var zoomIn = new Button { Content = "Show it larger", FontSize = 16, MinHeight = 44, MinWidth = 130 };
+        var zoomOut = new Button { Content = "Show it smaller", FontSize = 16, MinHeight = 44, MinWidth = 130 };
         _zoomLabel = new TextBlock { FontSize = 16, VerticalAlignment = VerticalAlignment.Center, MinWidth = 60 };
         zoomIn.Click += (_, _) => StepZoom(+1);
         zoomOut.Click += (_, _) => StepZoom(-1);
-        AutomationProperties.SetName(zoomIn, "Zoom in, for finer panning");
-        AutomationProperties.SetName(zoomOut, "Zoom out");
+        AutomationProperties.SetName(zoomIn, "Show this preview larger, for finer positioning");
+        AutomationProperties.SetName(zoomOut, "Show this preview smaller");
 
         _status = new TextBlock
         {
@@ -130,8 +132,14 @@ public sealed class PositionPhotoWindow : Window
             MaxWidth = 420,
             Text = _decoded is null
                 ? "That picture could not be read, so it cannot be repositioned."
-                : "Drag the picture, or use the arrow keys, to slide it inside the blue crop window. "
-                    + "The crop stays the same size — this only moves it.",
+                // M27: this sentence used to describe a "blue crop window" over a rectangle drawn
+                // black, and promised the crop "stays the same size" beside two Zoom buttons that
+                // look like they change it. Both were true statements that read as contradictions
+                // (review §14.4). It now names what is on screen and says what the buttons do.
+                : "Drag the picture, or use the arrow keys, to slide it inside the frame outline. "
+                    + "You are choosing which part of the picture shows — the frame on the page is "
+                    + "not resized. Zoom only makes this preview larger so you can nudge it "
+                    + "accurately; it does not change the newsletter.",
         };
 
         var apply = new Button

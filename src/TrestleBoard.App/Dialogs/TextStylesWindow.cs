@@ -150,7 +150,7 @@ public sealed class TextStylesWindow : Window
         _search = new TextBox { FontSize = 24, MinHeight = 48, Watermark = "Search for a font" };
         AutomationProperties.SetName(_search, "Search for a font");
 
-        _searchCount = new TextBlock { FontSize = 15, TextWrapping = TextWrapping.Wrap };
+        _searchCount = new TextBlock { FontSize = 16, TextWrapping = TextWrapping.Wrap };
         AutomationProperties.SetLiveSetting(_searchCount, AutomationLiveSetting.Polite);
 
         _fontList = new ListBox { FontSize = 16, ItemTemplate = BuildFontRowTemplate() };
@@ -172,7 +172,7 @@ public sealed class TextStylesWindow : Window
             HorizontalAlignment = HorizontalAlignment.Left,
         };
 
-        _reflowWarning = new TextBlock { FontSize = 15, TextWrapping = TextWrapping.Wrap, MaxWidth = 560 };
+        _reflowWarning = new TextBlock { FontSize = 16, TextWrapping = TextWrapping.Wrap, MaxWidth = 560 };
         AutomationProperties.SetLiveSetting(_reflowWarning, AutomationLiveSetting.Polite);
 
         _status = new TextBlock
@@ -183,7 +183,7 @@ public sealed class TextStylesWindow : Window
         };
         AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
 
-        _overrideFooter = new TextBlock { FontSize = 15, TextWrapping = TextWrapping.Wrap };
+        _overrideFooter = new TextBlock { FontSize = 16, TextWrapping = TextWrapping.Wrap };
         _showOverrides = SmallButton("Show me");
         _clearOverrides = SmallButton("Put them all back");
         _showOverrides.Click += (_, _) => { ShowOverridesRequested = true; _cancelled = true; Close(); };
@@ -619,7 +619,7 @@ public sealed class TextStylesWindow : Window
         stack.Children.Add(new TextBlock
         {
             Text = $"{entry.Family}, {StyleOverrides.Size(entry.SizePt)}",
-            FontSize = 14,
+            FontSize = 16,
         });
         stack.Children.Add(PreviewImage(entry.Family, PreviewSizePt, _sampleText));
         AutomationProperties.SetName(
@@ -652,7 +652,7 @@ public sealed class TextStylesWindow : Window
             var missing = new TextBlock
             {
                 Text = row.Label,
-                FontSize = 15,
+                FontSize = 16,
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 520,
                 Margin = new Avalonia.Thickness(0, 10, 0, 6),
@@ -674,7 +674,7 @@ public sealed class TextStylesWindow : Window
         stack.Children.Add(new TextBlock
         {
             Text = family.Description,
-            FontSize = 14,
+            FontSize = 16,
             TextWrapping = TextWrapping.Wrap,
             MaxWidth = 520,
         });

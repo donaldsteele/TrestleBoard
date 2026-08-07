@@ -132,7 +132,7 @@ internal sealed class ActionPanel : Border
             var caption = new TextBlock
             {
                 Text = hint,
-                FontSize = 15,
+                FontSize = 16,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Avalonia.Thickness(0, 0, 0, 8),
             };
@@ -148,7 +148,7 @@ internal sealed class ActionPanel : Border
             var line = new TextBlock
             {
                 Text = note,
-                FontSize = 15,
+                FontSize = 16,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Avalonia.Thickness(0, 0, 0, 8),
             };
@@ -163,7 +163,7 @@ internal sealed class ActionPanel : Border
             var line = new TextBlock
             {
                 Text = staleCropNote,
-                FontSize = 15,
+                FontSize = 16,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Avalonia.Thickness(0, 0, 0, 8),
             };
@@ -265,7 +265,7 @@ internal sealed class ActionPanel : Border
         var heading = new TextBlock
         {
             Text = text,
-            FontSize = 15,
+            FontSize = 16,
             FontWeight = FontWeight.Bold,
             TextWrapping = TextWrapping.Wrap,
             Margin = new Avalonia.Thickness(0, 0, 0, 4),
@@ -320,7 +320,7 @@ internal sealed class ActionPanel : Border
         stack.Children.Add(new TextBlock
         {
             Text = offer.Availability.Reason,
-            FontSize = 14,
+            FontSize = 16,
             TextWrapping = TextWrapping.Wrap,
             Margin = new Avalonia.Thickness(4, 0, 4, 4),
         });
@@ -342,7 +342,7 @@ internal sealed class ActionPanel : Border
             stack.Children.Add(new TextBlock
             {
                 Text = step.Why,
-                FontSize = 14,
+                FontSize = 16,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Avalonia.Thickness(4, 4, 4, 0),
             });

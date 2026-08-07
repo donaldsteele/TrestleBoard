@@ -87,7 +87,7 @@ internal sealed class IconText : ContentControl
             Secondary = new TextBlock
             {
                 Text = secondary,
-                FontSize = 14,
+                FontSize = 16,
                 TextWrapping = TextWrapping.Wrap,
             };
 
