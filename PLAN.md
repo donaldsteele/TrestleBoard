@@ -2084,6 +2084,18 @@ without any caption bands on it. And `CompositeCommand.Apply` had no unwind — 
 way through left the document half-changed while `Execute` never reached the line that pushes onto
 the undo stack, so the user could not take it back.
 
+### M34 — Selection chrome that follows the theme (delivered 2026-08-07, `docs/M34-spec.md`)
+
+An accessibility defect rather than a preference. The selection outline, the resize handles, the
+snap guides and the overset badge were five `const uint` literals — a mid blue, a mid pink, a mid
+red — and they stayed exactly that with High Contrast on, on a black page. A user turns High
+Contrast on because they cannot see the interface; what they could not see afterwards was the
+selection. `FrameOverlayColours` now carries two sets, and the SHELL picks between them, because
+`TrestleBoard.Rendering` knows nothing about themes and §1 keeps it that way. High Contrast is black
+and white only — 21:1, and every one of these marks is a shape as well as a colour, so nothing is
+lost — with the handles inverting against the outline so eight white squares on a white line still
+read as grab points.
+
 **Grouping 4 is half done; grouping 5 is part done.**
 
 ---
@@ -2628,9 +2640,9 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   there.~~ — **fixed at M27** in both the menu and the panel flyout. (`table-row` and `lodge-table`
   are character styles and never appeared in this menu; every paragraph role a real document
   carries has a hand-written label, so the `"Style: {id}"` fallback is unreachable in practice.)
-- **Selection chrome ignores the theme.** Outline, handles, snap guides and the overset badge are
+- ~~**Selection chrome ignores the theme.** Outline, handles, snap guides and the overset badge are
   hard-coded ARGB (`FrameOverlayRenderer.cs:41-45`) — the one part of the UI that does not follow
-  High Contrast.
+  High Contrast.~~ — **fixed at M34.**
 - ~~**The 16 pt floor is broken** in the canvas hints (14 pt), the panel's reason text (14 pt),
   several 15 pt strings, and the licence text.~~ — **fixed at M27**, with a standing test over the
   main window's chrome; the canvas hint is Skia-painted and outside what that test can see.
@@ -2735,9 +2747,8 @@ hang, and the whole of §14.2's Minor list bar two entries.
    dialogs — **the owner's, not a coding one**, which is why M27 left it.
 2. **Consolidating the four picture verbs** ("Fix", "Adjust", "Trim", "Position"). Information
    architecture, not a rename. Same reason.
-3. **Selection chrome ignores the theme** (`FrameOverlayRenderer`'s hard-coded ARGB). Needs the
-   palette to reach the Skia renderer, which nothing does yet — a small piece of plumbing that does
-   not exist.
+3. ~~**Selection chrome ignores the theme.**~~ — **closed at M34**, by passing a colour SET in from
+   the shell rather than letting the renderer read a palette it should not know about.
 4. ~~**The ligature caret** (`TextLayoutEngine.cs:552`, confirmed Major).~~ — **closed at M32**,
    as its own milestone with snapshot review, exactly as this entry asked for. No baseline moved.
 5. ~~**The remaining PLAUSIBLEs** — `AutoLevels`' `Unpremul` target, the caption-blind speculative

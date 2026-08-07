@@ -44,19 +44,25 @@ public static class FrameOverlayRenderer
     public const uint OversetArgb = 0xFFC62828;
     public const uint LinkTargetArgb = 0x662A6FCF;
 
-    public static void Draw(SKCanvas canvas, FrameOverlay overlay, float overlayScale)
+    public static void Draw(
+        SKCanvas canvas,
+        FrameOverlay overlay,
+        float overlayScale,
+        FrameOverlayColours? colours = null)
     {
         ArgumentNullException.ThrowIfNull(canvas);
         ArgumentNullException.ThrowIfNull(overlay);
 
+        FrameOverlayColours palette = colours ?? FrameOverlayColours.Default;
+
         foreach (SnapGuide guide in overlay.SnapGuides)
         {
-            DrawSnapGuide(canvas, guide, overlayScale);
+            DrawSnapGuide(canvas, guide, overlayScale, palette);
         }
 
         foreach (RectPt target in overlay.LinkTargetRects)
         {
-            using var fill = new SKPaint { Color = new SKColor(LinkTargetArgb), Style = SKPaintStyle.Fill };
+            using var fill = new SKPaint { Color = new SKColor(palette.LinkTarget), Style = SKPaintStyle.Fill };
             canvas.DrawRect(ToRect(target), fill);
         }
 
@@ -65,7 +71,7 @@ public static class FrameOverlayRenderer
             // Tab landed here: a heavier outline so the keyboard path is as clear as the pointer's.
             using var stroke = new SKPaint
             {
-                Color = new SKColor(SelectionArgb),
+                Color = new SKColor(palette.Selection),
                 Style = SKPaintStyle.Stroke,
                 StrokeWidth = 3f * overlayScale,
                 IsAntialias = true,
@@ -75,12 +81,12 @@ public static class FrameOverlayRenderer
 
         foreach (RectPt linked in overlay.LinkedRects)
         {
-            DrawLinkBadge(canvas, linked, overlayScale);
+            DrawLinkBadge(canvas, linked, overlayScale, palette);
         }
 
         foreach (RectPt overset in overlay.OversetRects)
         {
-            DrawOversetBadge(canvas, overset, overlayScale);
+            DrawOversetBadge(canvas, overset, overlayScale, palette);
         }
 
         if (overlay.SelectedRect is not { } rect)
@@ -90,7 +96,7 @@ public static class FrameOverlayRenderer
 
         using var outline = new SKPaint
         {
-            Color = new SKColor(SelectionArgb),
+            Color = new SKColor(palette.Selection),
             Style = SKPaintStyle.Stroke,
             StrokeWidth = overlayScale,
             IsAntialias = true,
@@ -102,7 +108,7 @@ public static class FrameOverlayRenderer
             return;
         }
 
-        using var handleFill = new SKPaint { Color = new SKColor(HandleFillArgb), Style = SKPaintStyle.Fill };
+        using var handleFill = new SKPaint { Color = new SKColor(palette.HandleFill), Style = SKPaintStyle.Fill };
         foreach (FrameHandle handle in FrameGeometry.HandleOrder)
         {
             SKRect square = ToRect(FrameGeometry.HandleVisualRect(rect, handle, overlayScale));
@@ -111,11 +117,11 @@ public static class FrameOverlayRenderer
         }
     }
 
-    private static void DrawSnapGuide(SKCanvas canvas, SnapGuide guide, float overlayScale)
+    private static void DrawSnapGuide(SKCanvas canvas, SnapGuide guide, float overlayScale, FrameOverlayColours palette)
     {
         using var paint = new SKPaint
         {
-            Color = new SKColor(SnapGuideArgb),
+            Color = new SKColor(palette.SnapGuide),
             Style = SKPaintStyle.Stroke,
             StrokeWidth = overlayScale,
         };
@@ -131,16 +137,19 @@ public static class FrameOverlayRenderer
 
     /// <summary>Red square with a white "+" hung off the bottom-right corner (InDesign convention).
     /// Colour is never the only signal — the shell also shows a plain-language status line.</summary>
-    private static void DrawOversetBadge(SKCanvas canvas, RectPt frame, float overlayScale)
+    private static void DrawOversetBadge(SKCanvas canvas, RectPt frame, float overlayScale, FrameOverlayColours palette)
     {
         float side = 12f * overlayScale;
         var badge = new SKRect(frame.Right - side, frame.Bottom, frame.Right, frame.Bottom + side);
-        using var fill = new SKPaint { Color = new SKColor(OversetArgb), Style = SKPaintStyle.Fill };
+        using var fill = new SKPaint { Color = new SKColor(palette.Overset), Style = SKPaintStyle.Fill };
         canvas.DrawRect(badge, fill);
 
         using var glyph = new SKPaint
         {
-            Color = new SKColor(0xFFFFFFFF),
+            // The glyph has to contrast with the badge it sits on, and HandleFill is exactly the
+            // colour that does: white against the red badge in Light and Dark, black against the
+            // white one in High Contrast. Reusing it keeps the pair inverting together.
+            Color = new SKColor(palette.HandleFill),
             Style = SKPaintStyle.Stroke,
             StrokeWidth = 1.5f * overlayScale,
         };
@@ -150,11 +159,11 @@ public static class FrameOverlayRenderer
     }
 
     /// <summary>Small arrow marking "this frame continues in another frame".</summary>
-    private static void DrawLinkBadge(SKCanvas canvas, RectPt frame, float overlayScale)
+    private static void DrawLinkBadge(SKCanvas canvas, RectPt frame, float overlayScale, FrameOverlayColours palette)
     {
         float side = 10f * overlayScale;
         var badge = new SKRect(frame.Right - side, frame.Bottom - side, frame.Right, frame.Bottom);
-        using var fill = new SKPaint { Color = new SKColor(SelectionArgb), Style = SKPaintStyle.Fill };
+        using var fill = new SKPaint { Color = new SKColor(palette.Selection), Style = SKPaintStyle.Fill };
         using var path = new SKPath();
         path.MoveTo(badge.Left, badge.Top);
         path.LineTo(badge.Right, badge.MidY);

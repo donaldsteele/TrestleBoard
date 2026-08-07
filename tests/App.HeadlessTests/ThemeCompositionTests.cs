@@ -10,6 +10,7 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using TrestleBoard.App.Settings;
 using TrestleBoard.App.Theme;
+using TrestleBoard.Rendering;
 using Xunit;
 
 namespace TrestleBoard.App.HeadlessTests;
@@ -552,4 +553,45 @@ public sealed class ThemeCompositionTests
         ISolidColorBrush brush => brush.Color.ToString(),
         _ => value.ToString() ?? "(null)",
     };
+    /// <summary>
+    /// M34, review §14.3: the selection chrome follows the theme like everything else.
+    ///
+    /// <para>The outline, the resize handles, the snap guides and the overset badge were five
+    /// <c>const uint</c> literals — a mid blue, a mid pink and a mid red — and they stayed exactly
+    /// that with High Contrast on. A user who turned High Contrast on because they could not see
+    /// the interface still could not see the part of it that says WHAT IS SELECTED.</para>
+    ///
+    /// <para>The rule High Contrast is held to (PLAN.md §6) is a 7:1 floor. Black and white against
+    /// each other is 21:1, and every one of these marks is a shape as well as a colour, so nothing
+    /// is lost by dropping the hue.</para>
+    /// </summary>
+    [Fact]
+    public void TheSelectionChromeIsBlackAndWhiteInHighContrast()
+    {
+        FrameOverlayColours hc = FrameOverlayColours.HighContrast;
+
+        foreach ((string name, uint argb) in new[]
+                 {
+                     ("selection outline", hc.Selection),
+                     ("handle fill", hc.HandleFill),
+                     ("snap guide", hc.SnapGuide),
+                     ("overset badge", hc.Overset),
+                 })
+        {
+            byte r = (byte)(argb >> 16);
+            byte g = (byte)(argb >> 8);
+            byte b = (byte)argb;
+            Assert.True(
+                (r == 0 && g == 0 && b == 0) || (r == 255 && g == 255 && b == 255),
+                $"the {name} is #{r:X2}{g:X2}{b:X2} in High Contrast, which is neither black nor white");
+        }
+
+        // The handles must invert against the outline, or eight solid squares sitting on a line of
+        // the same colour read as one thick line rather than as grab points.
+        Assert.NotEqual(hc.Selection, hc.HandleFill);
+
+        // And High Contrast really is a different set from the ordinary one, which is the bug.
+        Assert.NotEqual(FrameOverlayColours.Default, hc);
+    }
+
 }

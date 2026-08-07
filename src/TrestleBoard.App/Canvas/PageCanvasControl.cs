@@ -318,7 +318,7 @@ public sealed class PageCanvasControl : Control
 
         context.Custom(new PageDrawOperation(
             new Rect(Bounds.Size), _source, PageIndex, Zoom, PagePaddingPx, selection, caret,
-            frameOverlay, pageFrames, fontOverrides, BackdropColour()));
+            frameOverlay, pageFrames, fontOverrides, BackdropColour(), OverlayColours()));
 
         DrawAdornments(context);
     }
@@ -476,6 +476,21 @@ public sealed class PageCanvasControl : Control
     /// and it must stay the same value <c>MainWindow.axaml</c> gives <c>CanvasScroller</c>, because
     /// the two meet wherever the page does not fill the scroller.
     /// </summary>
+    /// <summary>
+    /// Which set of selection-chrome colours this theme wants (M33, review §14.3).
+    ///
+    /// <para>The shell answers this rather than the renderer, because <c>TrestleBoard.Rendering</c>
+    /// knows nothing about Avalonia or about themes and PLAN.md §1 keeps it that way. It is decided
+    /// by the theme VARIANT rather than by reading a palette token, because the overlay's colours
+    /// are not tokens — they are a set that has to stay internally consistent (the handles invert
+    /// against the outline), and picking them one at a time out of the palette would let that
+    /// relationship drift.</para>
+    /// </summary>
+    private FrameOverlayColours OverlayColours() =>
+        ActualThemeVariant == AppTheme.HighContrast
+            ? FrameOverlayColours.HighContrast
+            : FrameOverlayColours.Default;
+
     private SKColor BackdropColour()
     {
         if (this.TryFindResource("TrestleBoard.Page.Backdrop", ActualThemeVariant, out object? value)
@@ -1281,7 +1296,8 @@ public sealed class PageCanvasControl : Control
         FrameOverlay frameOverlay,
         IReadOnlyList<FrameLayout> pageFrames,
         IReadOnlyList<SourceSpan> fontOverrides,
-        SKColor backdrop) : ICustomDrawOperation
+        SKColor backdrop,
+        FrameOverlayColours overlayColours) : ICustomDrawOperation
     {
         public Rect Bounds => bounds;
 
@@ -1340,7 +1356,8 @@ public sealed class PageCanvasControl : Control
                 }
 
                 // Frame chrome on top of everything, sized in screen points.
-                FrameOverlayRenderer.Draw(canvas, frameOverlay, (float)(1d / Math.Max(zoom, 0.01)));
+                FrameOverlayRenderer.Draw(
+                    canvas, frameOverlay, (float)(1d / Math.Max(zoom, 0.01)), overlayColours);
             }
             catch (Exception e) when (e is ObjectDisposedException
                 or ArgumentOutOfRangeException
