@@ -32,6 +32,20 @@ public sealed class TextLayoutEngine
 {
     private const float Epsilon = 1e-4f;
 
+    /// <summary>
+    /// The smallest multiple of natural line height the engine will lay out at. Tighter than any
+    /// typographer would set and far tighter than anything this app's own styles use — it is a
+    /// backstop against a corrupt file, not a design choice.
+    /// </summary>
+    private const float MinimumLineSpacing = 0.25f;
+
+    /// <summary>
+    /// And an absolute floor in points, for the degenerate case where the natural height is itself
+    /// zero — a font with no metrics, or a run at size zero. Without it the multiple above is zero
+    /// too, and zero is the value that hangs the band loops.
+    /// </summary>
+    private const float MinimumLineHeightPt = 0.5f;
+
     private readonly FontStore _fonts;
     private readonly LayoutOptions _options;
     private readonly Dictionary<(FontKey Key, float SizePt), FontMetrics> _metricsCache = new();
@@ -272,7 +286,22 @@ public sealed class TextLayoutEngine
             maxLeading = m.LeadingPt;
         }
 
-        float lineHeight = paragraph.Style.LineSpacing * (maxAscent + maxDescent + maxLeading);
+        // The line height has a FLOOR, and it is what stops the engine hanging.
+        //
+        // Two loops in LayOut advance by `para.LineHeight` while looking for a band with usable
+        // segments, and both exit on `y + LineHeight > frame.Rect.Bottom`. At zero that test can
+        // never become true and `y` never moves, so the app locks up inside its first paint with no
+        // error and nothing to see. Negative is worse: `y` walks upward for ever.
+        //
+        // `LineSpacing` is a plain settable float on ParagraphStyleDef with no validation anywhere,
+        // and it is deserialised straight out of the file — so a hand-edited or corrupted `.tboard`
+        // carrying `"lineSpacing": 0` was enough (review §14.2). Clamping here rather than at the
+        // model means every path into layout is covered by one line, including documents already
+        // saved with a bad value.
+        float naturalHeight = maxAscent + maxDescent + maxLeading;
+        float lineHeight = Math.Max(
+            paragraph.Style.LineSpacing * naturalHeight,
+            Math.Max(naturalHeight * MinimumLineSpacing, MinimumLineHeightPt));
         List<WordCluster> words = BuildWords(text, glyphs);
         return new ParagraphPlan(storyId, paragraphIndex, paragraph.Style, text, glyphs, words,
             lineHeight, maxAscent, maxDescent);

@@ -2022,6 +2022,21 @@ an empty plan with no error. Unreadable roster backups were never counted or del
 committee name longer than its column gave the first line a negative width, which the wrapper reads
 as "do not break" — so it ran across the right margin and off the page.
 
+### M30 — The layout hang (delivered 2026-08-07, `docs/M30-spec.md`)
+
+One defect, upgraded from PLAUSIBLE to **confirmed** by building the case the review described.
+`TextLayoutEngine` advances down a frame by the paragraph's line height while hunting for a band
+that is not fully blocked by a wrap exclusion, and exits on `y + LineHeight > frame.Bottom`. At zero
+that test never becomes true and `y` never moves, so the app locks up inside its first paint with no
+exception and nothing on screen; negative walks `y` upward for ever. `LineSpacing` is unvalidated
+and comes straight out of the file, so a hand-edited or corrupt `.tboard` is enough.
+
+The first regression test **passed without the fix** — the loop is only entered when a band is
+fully blocked, which the ordinary fixture never does — and that is the only reason it was noticed
+the test proved nothing. It now widens the fixture's picture to span the whole column, and two of
+its four cases hang without the floor. A hang has no exception to catch, so the bounded join is
+the assertion.
+
 **Grouping 4 is half done; grouping 5 is part done.**
 
 ---
@@ -2410,9 +2425,12 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 
 **Layout + Rendering**
 
-- Major PLAUSIBLE — `TextLayoutEngine.cs:127-142` (same shape at 84-99): infinite loop when
+- ~~Major PLAUSIBLE — `TextLayoutEngine.cs:127-142` (same shape at 84-99): infinite loop when
   `para.LineHeight <= 0`; `LineSpacing` is unvalidated (`StyleSheet.cs:54`), so a hand-edited or
-  corrupt `.tboard` with `lineSpacing: 0` plus a full-width wrap exclusion hangs the first paint.
+  corrupt `.tboard` with `lineSpacing: 0` plus a full-width wrap exclusion hangs the first paint.~~
+  — **confirmed and fixed at M30.** The "full-width wrap exclusion" clause is load-bearing: without
+  one the loop is never entered, which is why the first regression test passed against the unfixed
+  engine and had to be rebuilt.
 - Major — `TextLayoutEngine.cs:552`: a run's `EndChar` is last cluster index + 1, wrong when the
   final glyph is a multi-char ligature ("fi"/"ffl") — caret and selection geometry stop short of
   the line end; clicking the right half of a trailing ligature puts the caret inside it.

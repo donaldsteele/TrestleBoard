@@ -167,4 +167,58 @@ public sealed class DocumentRelayoutTests
         StoryLayoutPlan plan = Assert.Single(DocumentLayoutAdapter.BuildPlans(doc));
         Assert.Empty(plan.Request.Frames[0].Exclusions);
     }
+    /// <summary>
+    /// Review §14.2: a corrupt or hand-edited line spacing must not hang the engine.
+    ///
+    /// <para>Two loops in <c>LayOut</c> advance by the paragraph's line height while hunting for a
+    /// band with usable segments, and both exit on <c>y + LineHeight &gt; frame.Bottom</c>. At zero
+    /// that test never becomes true and <c>y</c> never moves, so the app locks up inside its first
+    /// paint with nothing to see; negative walks <c>y</c> upward for ever. <c>LineSpacing</c> is a
+    /// plain settable float with no validation and is deserialised straight out of the file, so a
+    /// `.tboard` carrying <c>"lineSpacing": 0</c> was enough.</para>
+    ///
+    /// <para>The timeout is the assertion. A hang has no exception to catch, so the only way to
+    /// fail on one is to bound the wait — without the floor this test does not fail, it never
+    /// returns.</para>
+    /// </summary>
+    [Theory]
+    [InlineData(0f)]
+    [InlineData(-1f)]
+    [InlineData(-0.0001f)]
+    [InlineData(float.Epsilon)]
+    public void ACorruptLineSpacingLaysOutInsteadOfHanging(float lineSpacing)
+    {
+        Document doc = BuildFixtureDocument();
+        doc.StyleSheet.ParagraphStyles.Single(p => p.Name == "body").LineSpacing = lineSpacing;
+
+        // The picture is widened to cover the WHOLE column, so every band the engine tries is
+        // fully blocked and it falls into the advance-and-retry loop. That loop is where a
+        // zero-or-negative line height never terminates; without a fully blocking exclusion the
+        // first ComputeSegments succeeds and the loop is never entered, which is why this has to be
+        // set up deliberately rather than taken from the ordinary fixture.
+        (_, Block blocker) = doc.FindBlock("img-1");
+        blocker.FrameRect = new RectPt(40f, 100f, 540f, 400f);
+        blocker.ZOrder = 10;
+        blocker.WrapMode = WrapMode.Rectangle;
+        blocker.WrapMarginPt = 8f;
+
+        LayoutResult? result = null;
+        var worker = new Thread(() =>
+        {
+            StoryLayoutPlan plan = DocumentLayoutAdapter.BuildPlans(doc)[0];
+            result = TestData.Engine().Layout(plan.Request);
+        })
+        {
+            IsBackground = true,
+        };
+
+        worker.Start();
+        Assert.True(
+            worker.Join(TimeSpan.FromSeconds(20)),
+            $"laying out with lineSpacing={lineSpacing} did not finish — the engine is hanging");
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(result!.Frames);
+    }
+
 }
