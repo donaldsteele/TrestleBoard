@@ -54,7 +54,7 @@ public sealed class PositionPhotoWindow : Window
         _photos = photos ?? throw new ArgumentNullException(nameof(photos));
         _blockId = blockId;
 
-        Title = "Position the picture";
+        Title = "Which part of the picture shows";
         SizeToContent = SizeToContent.WidthAndHeight;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         CanResize = false;

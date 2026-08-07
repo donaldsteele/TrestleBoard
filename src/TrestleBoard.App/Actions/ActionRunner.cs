@@ -81,7 +81,6 @@ internal sealed class ActionRunner
             [ActionId.FixPhoto] = Sync(window.FixPhoto),
             [ActionId.AdjustPhoto] = _ => window.AdjustPhotoAsync(),
             [ActionId.ReplacePicture] = _ => window.ReplacePictureAsync(),
-            [ActionId.TrimPicture] = _ => window.TrimPictureAsync(),
             [ActionId.PositionPicture] = _ => window.PositionPictureAsync(),
             [ActionId.DismissCropNotice] = Sync(window.DismissCropNotice),
             [ActionId.CaptionPicture] = _ => window.CaptionPictureAsync(),

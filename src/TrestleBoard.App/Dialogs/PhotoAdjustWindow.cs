@@ -53,7 +53,7 @@ public sealed class PhotoAdjustWindow : Window
         _blockId = blockId;
         _undoMark = photos.UndoDepth;
 
-        Title = "Adjust the picture";
+        Title = "Change how the picture looks";
         SizeToContent = SizeToContent.WidthAndHeight;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         CanResize = false;
@@ -108,7 +108,7 @@ public sealed class PhotoAdjustWindow : Window
 
         // M22: re-centring an already-sized crop is a separate step from resizing one — opening it
         // from here, rather than only from the action panel, keeps the two discoverable together.
-        var position = new Button { Content = "Position…", FontSize = 18, MinHeight = 44, MinWidth = 140 };
+        var position = new Button { Content = "Which part shows…", FontSize = 18, MinHeight = 44, MinWidth = 200 };
         position.Action();
         position.Click += async (_, _) =>
         {
@@ -116,7 +116,7 @@ public sealed class PhotoAdjustWindow : Window
             await window.ShowDialog(this);
             LoadFromDocument();
         };
-        Avalonia.Automation.AutomationProperties.SetName(position, "Position the picture in its frame");
+        Avalonia.Automation.AutomationProperties.SetName(position, "Choose which part of the picture shows");
 
         var done = new Button
         {

@@ -88,7 +88,19 @@ public static class ActionId
     /// <summary>M18: the words printed under the picture.</summary>
     public const string CaptionPicture = "picture.caption";
 
-    /// <summary>M18: take the edges off the picture without touching the original file.</summary>
+    /// <summary>
+    /// M18: take the edges off the picture without touching the original file.
+    ///
+    /// <para><b>Retired as a command at M38 and kept only as a name.</b> It was a second entry
+    /// point onto the SAME window as <see cref="AdjustPhoto"/> — <c>TrimPictureAsync</c> was
+    /// <c>ShowAdjustWindowAsync(startOnTrim: true)</c>, identical dialog, different focus target —
+    /// and two names for one door was most of what the review's "four near-synonym picture verbs"
+    /// meant (§14.4). The trim sliders still carry their own heading inside that window.</para>
+    ///
+    /// <para>The constant stays because a `.tboard` never referenced it and no user setting holds
+    /// it, but deleting an id outright makes the history unreadable to the next person who greps
+    /// for "picture.trim" and finds nothing.</para>
+    /// </summary>
     public const string TrimPicture = "picture.trim";
 
     /// <summary>M22: pan/recentre the already-sized crop window without changing its size.</summary>

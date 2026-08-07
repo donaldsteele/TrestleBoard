@@ -117,12 +117,16 @@
           <Separator />
           <MenuItem Header="_Fix this picture" Tag="picture.fix" InputGesture="Ctrl+Shift+F"
                     Click="OnActionClicked" AutomationProperties.Name="Fix this picture" />
-          <MenuItem Header="_Adjust the picture…" Tag="picture.adjust" InputGesture="Ctrl+Shift+A"
-                    Click="OnActionClicked" AutomationProperties.Name="Adjust the picture" />
-          <MenuItem Header="_Trim the edges…" Tag="picture.trim"
-                    Click="OnActionClicked" AutomationProperties.Name="Trim the edges of the picture" />
-          <MenuItem Header="Positio_n the picture…" Tag="picture.position"
-                    Click="OnActionClicked" AutomationProperties.Name="Position the picture in its frame" />
+          <!-- M38: two entries, not three. "Trim the edges…" opened the SAME window as
+               "Adjust the picture…" — a second door with a different name — and the trim sliders
+               still carry their own heading inside it. The two survivors are named for what the
+               user gets rather than for the operation: "Fix" does it for you, "Change how it
+               looks" lets you do it, and "Choose which part shows" is the one that moves the
+               picture rather than altering it. -->
+          <MenuItem Header="Change how it _looks…" Tag="picture.adjust" InputGesture="Ctrl+Shift+A"
+                    Click="OnActionClicked" AutomationProperties.Name="Change how the picture looks" />
+          <MenuItem Header="Choose _which part shows…" Tag="picture.position"
+                    Click="OnActionClicked" AutomationProperties.Name="Choose which part of the picture shows" />
           <MenuItem Header="Dis_miss this note" Tag="picture.dismissCropNotice"
                     Click="OnActionClicked" AutomationProperties.Name="Dismiss the stretched-picture note" />
           <Separator />

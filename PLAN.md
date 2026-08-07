@@ -2140,8 +2140,31 @@ insides of every ScrollBar and ComboBox - and what makes opting in un-forgettabl
 walks the window and fails on any app-made button carrying neither treatment. It found all sixteen
 misses on its first run.
 
-**Grouping 4: only the picture-verb consolidation and the jargon list remain. Grouping 5 is part
-done.**
+### M38 - Two picture verbs, not four (delivered 2026-08-07, `docs/M38-spec.md`)
+
+The second of section 14.4's two owner decisions. Decided: merge the duplicate, rename the survivors.
+
+The finding was understated. "Adjust the picture..." and "Trim the edges..." were not merely
+near-synonyms - `TrimPictureAsync` was `ShowAdjustWindowAsync(startOnTrim: true)`, the SAME window
+with a different control focused. So five entries in "This picture" were really three things, and
+the Adjust window already held brightness, colour, rotate, all four trim sliders AND a button
+through to Position.
+
+"Trim the edges..." is retired as a command; the trim sliders keep their heading inside the window,
+so the words are still findable. The survivors are named for the outcome: "Adjust the picture..."
+becomes "Change how it looks...", "Position the picture in its frame..." becomes "Choose which part
+shows...", and "Fix this picture" is unchanged because it is the one-press path and "Fix" is right
+for it. The wording follows into the windows themselves, so nothing is called two things. M22's
+decision stands - positioning a crop is still its own top-level command.
+
+`ActionId.TrimPicture` is kept as a constant and documented as retired: nothing on disk references
+it, but deleting an id outright makes the history unreadable to whoever greps for it next.
+
+The access key clashed with "Swap this picture..." on S - visible only at runtime, because that
+header is rewritten when the frame holds a photograph. `NoTwoItemsInOneMenuShareAnAccessKey` caught
+it, which is what that test is for.
+
+**Grouping 4: only the jargon list remains. Grouping 5 is part done.**
 
 ---
 
@@ -2723,9 +2746,11 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 - ~~**"Smaller / Bigger" means zoom in the toolbar and point size in the font window** — same words,
   different effects, both prominent.~~ — **fixed at M27**; the toolbar now uses the catalog's words
   and a test compares every toolbar label against it.
-- **Four near-synonym picture verbs in one panel**: "Fix this picture", "Adjust the picture…",
-  "Trim the edges…", "Position the picture in its frame…" (plus "Swap"). The Adjust window then
-  *contains* trim sliders and a "Position…" button — the same commands at a different level.
+- ~~**Four near-synonym picture verbs in one panel**~~ - **fixed at M38.** Worse than synonymy:
+  "Adjust the picture..." and "Trim the edges..." opened the SAME window, differing only in
+  which control took focus. Five entries were three things. Now four, named for the outcome -
+  Fix / Change how it looks / Choose which part shows - with the wording following into the
+  windows so nothing is called two things.
 - ~~**The position dialog contradicts itself**: the instruction says "The crop stays the same size —
   this only moves it" while the dialog offers Zoom out/Zoom in; the text names a "blue crop
   window" but the crop rectangle is drawn black.~~ — **fixed at M27**.
@@ -2794,8 +2819,8 @@ hang, and the whole of §14.2's Minor list bar two entries.
    a border marks what can be pressed. The `ControlTheme` is opted into with `Tokens.Action()`,
    and a test that walks the window makes a miss fail the build rather than ship looking
    disabled.
-2. **Consolidating the four picture verbs** ("Fix", "Adjust", "Trim", "Position"). Information
-   architecture, not a rename. Same reason.
+2. ~~**Consolidating the four picture verbs.**~~ - **decided by the owner and closed at M38**:
+   the duplicate entry point was merged and the survivors renamed for the outcome.
 3. ~~**Selection chrome ignores the theme.**~~ — **closed at M34**, by passing a colour SET in from
    the shell rather than letting the renderer read a palette it should not know about.
 4. ~~**The ligature caret** (`TextLayoutEngine.cs:552`, confirmed Major).~~ — **closed at M32**,

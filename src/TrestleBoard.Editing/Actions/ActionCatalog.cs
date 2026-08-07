@@ -151,12 +151,23 @@ public static class ActionCatalog
             ActionGroup.Picture, "Ctrl+Shift+O", IsPrimary: true),
         new(ActionId.FixPhoto, "Fix this picture", "Crops it to the frame and brightens it in one step.",
             ActionGroup.Picture, "Ctrl+Shift+F", IsPrimary: true),
-        new(ActionId.AdjustPhoto, "Adjust the picture…", "Opens the sliders for brightness, contrast and colour.",
+        // M38: these two names describe the OUTCOME rather than the operation, and there are two of
+        // them rather than three.
+        //
+        // "Adjust the picture…" and "Trim the edges…" were separate entries that opened the SAME
+        // window — TrimPictureAsync is ShowAdjustWindowAsync(startOnTrim: true), identical dialog,
+        // different focus target. Two names for one door is most of what "four near-synonym picture
+        // verbs" meant (review §14.4). The trim sliders keep their own heading INSIDE the window, so
+        // anybody scanning for the word still finds it.
+        //
+        // "Adjust" and "Fix" are near-synonyms in English and gave no clue which did what. They now
+        // read as a pair: Fix does it for you, Change how it looks lets you do it.
+        new(ActionId.AdjustPhoto, "Change how it looks…",
+            "Brightness, colour, turning it, and taking the edges off.",
             ActionGroup.Picture, "Ctrl+Shift+A"),
-        new(ActionId.TrimPicture, "Trim the edges…", "Takes the edges off without changing the original file.",
+        new(ActionId.PositionPicture, "Choose which part shows…",
+            "Slides the picture inside its frame without changing how much of it shows.",
             ActionGroup.Picture),
-        new(ActionId.PositionPicture, "Position the picture in its frame…",
-            "Slides the picture around without changing its crop size.", ActionGroup.Picture),
         new(ActionId.DismissCropNotice, "Dismiss this note",
             "Hides the stretched-picture warning until the frame changes shape again.",
             ActionGroup.Picture),
@@ -481,7 +492,7 @@ public static class ActionCatalog
                 context.Selection == SelectionKind.Photo
                     ? ActionAvailability.Available
                     : ActionAvailability.NotApplicable(NeedsPicture),
-            ActionId.FixPhoto or ActionId.AdjustPhoto or ActionId.TrimPicture
+            ActionId.FixPhoto or ActionId.AdjustPhoto
                 or ActionId.PositionPicture or ActionId.CaptionPicture => context.Selection != SelectionKind.Photo
                 ? ActionAvailability.NotApplicable(NeedsPicture)
                 : context.SelectedPictureIsEmpty

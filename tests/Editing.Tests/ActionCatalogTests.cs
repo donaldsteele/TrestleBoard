@@ -587,7 +587,7 @@ public sealed class ActionCatalogTests
 
         foreach (string id in new[]
                  {
-                     ActionId.FixPhoto, ActionId.AdjustPhoto, ActionId.TrimPicture,
+                     ActionId.FixPhoto, ActionId.AdjustPhoto,
                      ActionId.PositionPicture, ActionId.CaptionPicture,
                  })
         {
@@ -598,10 +598,11 @@ public sealed class ActionCatalogTests
             Assert.Equal(ActionId.ReplacePicture, availability.RemedyId);
         }
 
-        // With a picture in it, all four are simply available.
+        // With a picture in it, they are simply available. (M38 merged picture.trim into
+        // picture.adjust — it was a second door onto the same window.)
         foreach (string id in new[]
                  {
-                     ActionId.FixPhoto, ActionId.AdjustPhoto, ActionId.TrimPicture,
+                     ActionId.FixPhoto, ActionId.AdjustPhoto,
                      ActionId.PositionPicture, ActionId.CaptionPicture,
                  })
         {
