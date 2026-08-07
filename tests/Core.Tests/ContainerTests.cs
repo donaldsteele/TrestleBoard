@@ -196,6 +196,50 @@ public sealed class ContainerTests
     }
 
     /// <summary>
+    /// Review §14.2: a damaged file gets the plain-language sentence, not an unhandled-exception
+    /// dialog. The shell catches <c>UnsupportedFormatException</c> and <c>InvalidDataException</c>;
+    /// an unparseable version string used to escape as <c>FormatException</c> and a truncated entry
+    /// as <c>JsonException</c>, so the corrupt file — the exact case this contract exists for — was
+    /// the one case that crashed.
+    /// </summary>
+    [Theory]
+    [InlineData("1.0.0-beta")]
+    [InlineData("")]
+    [InlineData("not a version")]
+    public void ADamagedVersionStringIsReportedInPlainLanguage(string version)
+    {
+        TboardPackage package = Fixtures.BuildPackage();
+        using var ms = new MemoryStream();
+        TboardContainer.Save(package, ms);
+        RewriteEntry(ms, "manifest.json", root => root["formatVersion"] = version);
+        ms.Position = 0;
+
+        var ex = Assert.Throws<Migrations.UnsupportedFormatException>(() => TboardContainer.Load(ms));
+        Assert.Contains("damaged", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ATruncatedEntryIsReportedInPlainLanguage()
+    {
+        TboardPackage package = Fixtures.BuildPackage();
+        using var ms = new MemoryStream();
+        TboardContainer.Save(package, ms);
+
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Update, leaveOpen: true))
+        {
+            ZipArchiveEntry entry = zip.GetEntry("document.json")!;
+            entry.Delete();
+            using Stream write = zip.CreateEntry("document.json").Open();
+            using var writer = new StreamWriter(write);
+            writer.Write("{\"pages\": [ this file was cut off");
+        }
+
+        ms.Position = 0;
+        var ex = Assert.Throws<Migrations.UnsupportedFormatException>(() => TboardContainer.Load(ms));
+        Assert.Contains("damaged", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// M24: a save that fails leaves the folder as it found it. The temp file used to be abandoned
     /// beside the user's document for ever, so a full disk quietly littered
     /// <c>Newsletter.tboard.tmp</c> and a later successful save overwrote whatever the failed one

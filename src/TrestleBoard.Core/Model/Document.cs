@@ -54,6 +54,20 @@ public sealed class Document
         Stories.Find(s => s.Id == storyId)
             ?? throw new KeyNotFoundException($"Story not found: {storyId}");
 
+    /// <summary>
+    /// Non-throwing story lookup, the counterpart of <see cref="TryFindBlock"/> and there for the
+    /// same reason (M24 review §14.2): undo can remove a story out from under something still
+    /// holding its id. Adding a text frame is one composite command over a story and a block, so
+    /// its revert drops both — and the open text session finds out by asking.
+    /// </summary>
+    public bool TryGetStory(
+        string storyId,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Story? story)
+    {
+        story = Stories.Find(s => s.Id == storyId);
+        return story is not null;
+    }
+
     public PageMaster GetMaster(string masterId) =>
         PageMasters.Find(m => m.Id == masterId)
             ?? throw new KeyNotFoundException($"Page master not found: {masterId}");

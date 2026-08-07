@@ -504,9 +504,21 @@ public sealed class FrameEditorController
         (Page page, Block block) = document.FindBlock(blockId);
         var children = new List<IDocumentCommand>();
 
+        // Deleting a frame out of the MIDDLE of a chain heals the chain across the gap: A→B→C
+        // becomes A→C, and the article keeps flowing.
+        //
+        // Nulling the predecessor unconditionally, as this did, broke the one invariant the whole
+        // linking model rests on — that a story has exactly one head. A→B→C with B deleted left A
+        // and C both pointing at nothing and both still referencing the same story, so the article
+        // was drawn TWICE, from its first paragraph, in two places on the page. It also silently
+        // disabled the story-cleanup guard below for that story ever afterwards, since two blocks
+        // genuinely did use it. Unlink() at the bottom of this file guards the same invariant from
+        // the other direction, by minting a new story for the frame it detaches.
+        string? healTo = block is TextBlock { LinkNext: { } continuation } ? continuation : null;
+
         if (FindPredecessor(document, blockId) is { } predecessor)
         {
-            children.Add(new SetLinkNextCommand(predecessor.Id, null));
+            children.Add(new SetLinkNextCommand(predecessor.Id, healTo));
         }
 
         if (block is TextBlock { LinkNext: not null } textBlock)

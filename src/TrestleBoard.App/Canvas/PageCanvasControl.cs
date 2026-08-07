@@ -1304,6 +1304,21 @@ public sealed class PageCanvasControl : Control
                 // Frame chrome on top of everything, sized in screen points.
                 FrameOverlayRenderer.Draw(canvas, frameOverlay, (float)(1d / Math.Max(zoom, 0.01)));
             }
+            catch (Exception e) when (e is ObjectDisposedException
+                or ArgumentOutOfRangeException
+                or InvalidOperationException
+                or KeyNotFoundException)
+            {
+                // This runs on the compositor thread, against a render source the UI thread owns.
+                // A draw operation is built with a page index and handed over; by the time it runs,
+                // the user may have opened another newsletter (disposing that source) or removed
+                // the page it was told to draw. Neither is a bug to fix here — the frame is simply
+                // out of date, and the repaint that follows the change draws the right thing.
+                //
+                // What matters is that it must not throw: an exception on the render thread takes
+                // the process down, and unlike a dropped frame the user notices that (review
+                // §14.2). A skipped frame is invisible; the next one is already on its way.
+            }
             finally
             {
                 canvas.RestoreToCount(save);

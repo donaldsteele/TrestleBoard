@@ -1935,7 +1935,27 @@ unreadable-vs-empty distinction, write-before-believe ordering in `RosterService
 flush-to-disk before both temp-then-rename saves, and temp-file cleanup on a failed container write.
 
 Chrome and leaf projects only: no file in `Layout`, `Rendering` or `Export.Pdf` was opened and no
-snapshot baseline moved. **§14.5 groupings 2–5 remain unscheduled.**
+snapshot baseline moved.
+
+### M25 — Don't crash, don't corrupt (delivered 2026-08-07, `docs/M25-spec.md`)
+
+§14.5 grouping 2. Two confirmed defects, each demonstrated by a test run against the unfixed code:
+undoing straight after clicking into a newly added text frame took the app down (the composite
+"add a text frame" command's revert removes the story the open session points at, and the change
+handler clamped through a throwing lookup), and deleting the middle frame of a linked chain left
+two heads on one story, so the article was laid out twice on the page.
+
+Also: command exceptions no longer vanish into `_ = RunAsync(...)`; the startup flow, the canvas
+drop handler and the compositor-thread draw operation can no longer take the process down; an
+unparseable version string or a truncated entry in a `.tboard` reads as "this file is damaged"
+rather than as an unhandled-exception dialog; and `PeopleWindow` stops leaking itself into an
+app-lifetime event.
+
+The `RecipeCache` eviction finding was investigated and **deliberately not changed** — the only
+call site draws the image immediately and never holds one across a fetch, so it is not reachable;
+see `docs/M25-spec.md` §5 for why that is recorded rather than "fixed".
+
+**§14.5 groupings 3–5 remain unscheduled.**
 
 ---
 
@@ -2283,24 +2303,24 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 
 **Core + Editing**
 
-- Major — `TextEditorController.cs:1114-1121`: the session-Changed handler clamps the selection via
+- ~~Major — `TextEditorController.cs:1114-1121`: the session-Changed handler clamps the selection via
   `CurrentStory()`, which throws when the story was deleted. Add a text frame, click into it,
   Ctrl+Z: the composite revert removes the story, the handler throws, the app crashes.
   (`FrameEditorController.OnDocumentChanged` handles the deleted-block case; this handler has no
-  equivalent guard.)
-- Major — `FrameEditorController.cs:495-530` (`DeleteSelected`): deleting the *middle* frame of a
+  equivalent guard.)~~ — **fixed at M25**, with `Document.TryGetStory` and a regression test.
+- ~~Major — `FrameEditorController.cs:495-530` (`DeleteSelected`): deleting the *middle* frame of a
   link chain never repoints the downstream frame's `StoryRef` — two chain heads share one story,
   the article renders twice, and the `AnyOtherBlockUsesStory` guard is broken for that story
-  afterward. (`Unlink` at `:743` preserves the invariant; delete does not.)
+  afterward. (`Unlink` at `:743` preserves the invariant; delete does not.)~~ — **fixed at M25**: the chain now heals A→C.
 - Minor — `FileRecoveryStore.cs:39-45`: the sidecar (new `SavedAt`) is written *before* the document
   bytes, so a crash between the two atomic writes pairs the new timestamp with the old bytes —
   recovery overstates how fresh the snapshot is. Also `:70-75`, `:147-157`:
   `UnauthorizedAccessException` is not caught — it aborts the whole startup recovery scan, or
   escapes `RecoveryService.Complete()` on the clean-close path.
-- Minor — `MigrationRunner.cs:38-49` + `TboardContainer.cs:95-101`: an unparseable
+- ~~Minor — `MigrationRunner.cs:38-49` + `TboardContainer.cs:95-101`: an unparseable
   `formatVersion` or malformed JSON escapes as a raw `FormatException`/`JsonException` instead of
   `UnsupportedFormatException` — a damaged `.tboard` gets the unhandled-exception dialog instead of
-  "This newsletter file is damaged…", the exact case the contract exists for.
+  "This newsletter file is damaged…", the exact case the contract exists for.~~ — **fixed at M25**.
 - ~~Minor — `TboardContainer.cs:81-88`: a failed save leaves `path + ".tmp"` behind permanently.~~ —
   **fixed at M24**, along with a missing flush-to-disk before the rename.
 - Minor — `StyleOverrides.cs:34-45`: the size slug strips "." so 8.5 pt and 85 pt collide;
@@ -2349,7 +2369,10 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 
 - Major PLAUSIBLE — `RecipeCache.cs:51-90`: LRU `Trim()` disposes evicted `SKImage`s immediately; a
   paint pass touching more than 32 distinct photos can use-after-dispose an image it obtained
-  earlier in the same pass.
+  earlier in the same pass. — **Investigated at M25 and found not reachable**: the only call site,
+  `DocumentRenderSource.RenderImage`, draws each image immediately and never holds one across
+  another `GetOrAdd`. Left on the record rather than "fixed", because what makes it safe is a
+  property of the caller and could quietly stop being true; see `docs/M25-spec.md` §5.
 - Major PLAUSIBLE — `AutoLevels.cs:56-65`: draws through an `SKCanvas` over an `Unpremul` bitmap;
   Skia raster targets must be premul/opaque, so on some builds the stretch is a silent no-op or a
   black result.
@@ -2404,15 +2427,17 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 - Major — `KeyboardMap.cs:48` vs `ActionCatalog.cs:357-359`: Ctrl+V is scoped `WhileTyping`, but
   M18's paste-a-picture is available document-wide and the Edit menu advertises Ctrl+V — the
   keyboard path for pasting a photo is dead. (Ctrl+X/C similarly inert outside typing.)
-- Major — `MainWindow.axaml.cs:207` et al.: every action runs as `_ = RunAsync(...)` — a handler
+- ~~Major — `MainWindow.axaml.cs:207` et al.: every action runs as `_ = RunAsync(...)` — a handler
   exception is swallowed with no user feedback and possible half-applied state. `Opened += async`
   (`:151`), `OnCanvasDrop` (`:1519`) and wizard cancel (`WizardWindow.cs:218`) are async-void and
-  *crash* instead.
-- Major — `PeopleWindow.cs:140`: `_roster.Changed` is subscribed and never unsubscribed from an
-  app-lifetime service — every open of the People window leaks the closed window forever.
-- Major PLAUSIBLE — `PageCanvasControl.cs:1258-1311` + `MainWindow.axaml.cs:2576`: the compositor-
+  *crash* instead.~~ — **fixed at M25** (all three guarded).
+- ~~Major — `PeopleWindow.cs:140`: `_roster.Changed` is subscribed and never unsubscribed from an
+  app-lifetime service — every open of the People window leaks the closed window forever.~~ —
+  **fixed at M25**.
+- ~~Major PLAUSIBLE — `PageCanvasControl.cs:1258-1311` + `MainWindow.axaml.cs:2576`: the compositor-
   thread draw op renders against the shared `DocumentRenderSource` while the UI thread mutates or
-  disposes it (`ShowPackage`) — use-after-dispose race on the render thread.
+  disposes it (`ShowPackage`) — use-after-dispose race on the render thread.~~ — **contained at
+  M25**: a stale frame is skipped rather than thrown from the render thread.
 - Minor — Birthday/officers sync selects the widget *then* calls `GoToPage`, which clears the
   selection (`MainWindow.axaml.cs:1837-1838`, `:2056-2057` vs `:2647`) — the "show the user where
   it is" gesture never shows. · No `OnPointerCaptureLost` override: a lost capture leaves
@@ -2512,8 +2537,10 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
    saves, and `TboardContainer.SaveToFile`'s abandoned temp file. Still outstanding from §4: the
    rotating `.bak` ring beside the user's own file and its "Restore an earlier version" menu — half
    a feature without each other, and deliberately not started.
-2. **Don't crash, don't corrupt** — undo-into-deleted-story crash, link-chain delete, swallowed
-   action exceptions, render-thread race, RecipeCache eviction, damaged-file messaging.
+2. ~~**Don't crash, don't corrupt** — undo-into-deleted-story crash, link-chain delete, swallowed
+   action exceptions, render-thread race, RecipeCache eviction, damaged-file messaging.~~ —
+   **delivered as M25, 2026-08-07.** RecipeCache turned out not to be reachable and is recorded as
+   such rather than changed. It also took the `PeopleWindow` leak, which belongs to the same story.
 3. **Import honestly** — roster serial/date/encoding fixes, impossible-date validation, officers
    sync Plan/Apply parity.
 4. **Say what you mean** — grey-vs-disabled palette split, one name per command, picture-verb

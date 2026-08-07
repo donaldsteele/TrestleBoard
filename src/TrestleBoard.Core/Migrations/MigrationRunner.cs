@@ -18,7 +18,8 @@ public interface IDocumentMigration
     void Apply(JsonObject manifest, JsonObject documentBody, JsonObject styles);
 }
 
-public sealed class UnsupportedFormatException(string message) : Exception(message);
+public sealed class UnsupportedFormatException(string message, Exception? inner = null)
+    : Exception(message, inner);
 
 public static class MigrationRunner
 {
@@ -35,8 +36,8 @@ public static class MigrationRunner
         ArgumentNullException.ThrowIfNull(documentBody);
         ArgumentNullException.ThrowIfNull(styles);
 
-        string fileVersion = manifest["formatVersion"]?.GetValue<string>() ?? TboardManifest.CurrentFormatVersion;
-        string minReader = manifest["minReaderVersion"]?.GetValue<string>() ?? TboardManifest.CurrentMinReaderVersion;
+        string fileVersion = ReadVersionText(manifest, "formatVersion", TboardManifest.CurrentFormatVersion);
+        string minReader = ReadVersionText(manifest, "minReaderVersion", TboardManifest.CurrentMinReaderVersion);
 
         if (Parse(minReader) > Parse(TboardManifest.CurrentFormatVersion))
         {
@@ -62,6 +63,45 @@ public static class MigrationRunner
             manifest["formatVersion"] = step.ToVersion;
         }
     }
+
+    /// <summary>
+    /// Reads a version string from the manifest without trusting it to be one.
+    ///
+    /// <para>A damaged or hand-edited file can carry <c>"1.0.0-beta"</c>, a number, an empty string
+    /// or a JSON object where a version belongs. Every one of those used to escape as a raw
+    /// <see cref="FormatException"/> or <see cref="InvalidOperationException"/> — so the corrupt
+    /// file, the exact case this class's plain-language contract exists for, was the one case that
+    /// produced an unhandled-exception dialog instead of a sentence (review §14.2).</para>
+    /// </summary>
+    private static string ReadVersionText(JsonObject manifest, string property, string fallback)
+    {
+        if (manifest[property] is not { } node)
+        {
+            return fallback;
+        }
+
+        string? text;
+        try
+        {
+            text = node.GetValue<string>();
+        }
+        catch (Exception e) when (e is InvalidOperationException or FormatException)
+        {
+            throw new UnsupportedFormatException(DamagedMessage(property));
+        }
+
+        if (string.IsNullOrWhiteSpace(text) || !Version.TryParse(text, out _))
+        {
+            throw new UnsupportedFormatException(DamagedMessage(property));
+        }
+
+        return text;
+    }
+
+    private static string DamagedMessage(string property) =>
+        "This newsletter file is damaged — the part of it that says which version of TrestleBoard "
+        + $"made it ({property}) cannot be read. If you have an earlier copy of the newsletter, or "
+        + "a `.bak` beside it, open that one instead.";
 
     private static Version Parse(string semver) => Version.Parse(semver);
 }

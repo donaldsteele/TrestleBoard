@@ -181,7 +181,25 @@ public static class TboardContainer
             ?? throw new UnsupportedFormatException(
                 $"This newsletter file is missing its '{entryName}' part and could not be opened.");
         using Stream s = entry.Open();
-        return JsonNode.Parse(s) as JsonObject
+
+        // A truncated or hand-edited entry throws JsonException out of Parse, and that used to
+        // travel all the way to the shell — which catches UnsupportedFormatException and
+        // InvalidDataException, so a damaged newsletter got an unhandled-exception dialog rather
+        // than the plain-language sentence written for exactly that case (review §14.2).
+        JsonNode? parsed;
+        try
+        {
+            parsed = JsonNode.Parse(s);
+        }
+        catch (System.Text.Json.JsonException e)
+        {
+            throw new UnsupportedFormatException(
+                $"This newsletter file is damaged — its '{entryName}' part could not be read. "
+                + "If you have an earlier copy of the newsletter, open that one instead.",
+                e);
+        }
+
+        return parsed as JsonObject
             ?? throw new UnsupportedFormatException("This newsletter file is damaged and could not be read.");
     }
 

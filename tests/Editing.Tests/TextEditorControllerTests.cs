@@ -315,4 +315,44 @@ public sealed class TextEditorControllerTests
         h.Controller.InsertText("!");
         Assert.EndsWith("!", h.ParagraphText(0), StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// Review §14.2: undo can take the story out from under an open text session, and the session
+    /// has to end rather than throw.
+    ///
+    /// "Add a text frame" is one composite command over a story AND a block, so pressing Ctrl+Z
+    /// straight after clicking into the new frame removes the story the caret is in. The change
+    /// handler clamped the selection against <c>CurrentStory()</c>, which throws
+    /// KeyNotFoundException for a story that is gone — out of an event handler, so it took the app
+    /// down. FrameEditorController has handled the same case for its block since M5.
+    /// </summary>
+    [Fact]
+    public void UndoingTheFrameTheCaretIsInEndsTheSessionInsteadOfThrowing()
+    {
+        using var h = new EditorTestHarness(Prose, frameHeightPt: 200, withExclusion: false);
+        var frames = new FrameEditorController(h.Session, h.Source);
+
+        string added = frames.AddTextFrame(0);
+        var block = (Core.Model.TextBlock)h.Session.Document.FindBlock(added).Block;
+        string newStoryId = block.StoryRef;
+
+        // Click into the frame that was just added, the way a user reaches it.
+        Assert.True(h.Controller.TryBeginAt(
+            0,
+            block.FrameRect.X + (block.FrameRect.Width / 2f),
+            block.FrameRect.Y + 8f));
+        Assert.True(h.Controller.IsActive);
+        Assert.Equal(added, h.Controller.BlockId);
+
+        // The whole point: this used to throw out of DocumentSession.Changed.
+        h.Session.Undo();
+
+        Assert.False(h.Controller.IsActive);
+        Assert.False(h.Session.Document.TryGetStory(newStoryId, out _));
+
+        // And the editor is still usable afterwards — the original frame takes the caret again.
+        Assert.True(h.ClickIntoFrame());
+        h.Controller.InsertText("!");
+        Assert.Contains("!", h.ParagraphText(0), StringComparison.Ordinal);
+    }
 }

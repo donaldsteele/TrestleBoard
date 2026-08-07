@@ -1105,15 +1105,28 @@ public sealed class TextEditorController
             return;
         }
 
-        // Undo/redo can move text under the caret; clamp both endpoints to valid document
+        // Undo/redo can take the story out from under the caret altogether, not merely move text
+        // inside it: "add a text frame" is one composite command over a story AND a block, so
+        // Ctrl+Z straight after clicking into the new frame removes the story this session is
+        // pointing at. Clamping cannot describe that, and trying threw KeyNotFoundException out of
+        // an event handler — the app went down. A session whose story has gone is simply over.
+        // FrameEditorController.OnDocumentChanged has handled the same case for its block since M5;
+        // this is that guard, for the other half of the pair.
+        if (!_session.Document.TryGetStory(_selection.StoryId, out Story? story)
+            || story.Paragraphs.Count == 0)
+        {
+            End();
+            return;
+        }
+
+        // Undo/redo can also move text under the caret; clamp both endpoints to valid document
         // coordinates snapped to grapheme boundaries (docs/M4-spec.md §7.4).
-        _selection = new TextSelection(Clamp(_selection.Anchor), Clamp(_selection.Extent));
+        _selection = new TextSelection(Clamp(story, _selection.Anchor), Clamp(story, _selection.Extent));
         RaiseChanged();
     }
 
-    private CaretPosition Clamp(CaretPosition caret)
+    private static CaretPosition Clamp(Story story, CaretPosition caret)
     {
-        Story story = CurrentStory();
         int paragraph = Math.Clamp(caret.ParagraphIndex, 0, story.Paragraphs.Count - 1);
         string text = StoryNavigator.GetParagraphText(story.Paragraphs[paragraph]);
         int offset = StoryNavigator.SnapToGrapheme(text, Math.Clamp(caret.Offset, 0, text.Length));

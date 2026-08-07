@@ -478,4 +478,65 @@ public sealed class FrameEditorControllerTests
         Assert.Null(harness.Frames.SelectedBlockId);
         Assert.False(harness.Frames.HasSelection);
     }
+
+    /// <summary>
+    /// Review §14.2: deleting a frame out of the MIDDLE of a chain heals it across the gap.
+    ///
+    /// The predecessor's link used to be nulled unconditionally, which left A and C both pointing
+    /// at nothing while both still referenced the same story — two heads on one story, so the
+    /// article was drawn twice, from its first paragraph, in two places. It also disabled the
+    /// story-cleanup guard for that story ever afterwards, since two blocks genuinely did use it.
+    /// </summary>
+    [Fact]
+    public void DeletingTheMiddleOfAChainJoinsTheTwoEndsRatherThanSplittingTheStory()
+    {
+        using var harness = new EditorTestHarness(Prose(18), frameHeightPt: 90, withExclusion: false);
+        string middle = harness.Frames.AddTextFrame(0);
+        string tail = harness.Frames.AddTextFrame(0);
+
+        harness.Frames.Select(EditorTestHarness.BlockId);
+        harness.Frames.BeginLink();
+        Assert.True(harness.Frames.CompleteLink(middle));
+        harness.Frames.Select(middle);
+        harness.Frames.BeginLink();
+        Assert.True(harness.Frames.CompleteLink(tail));
+
+        var headBefore = (TextBlock)harness.Session.Document.FindBlock(EditorTestHarness.BlockId).Block;
+        string storyId = headBefore.StoryRef;
+        Assert.Equal(middle, headBefore.LinkNext);
+
+        harness.Frames.Select(middle);
+        Assert.True(harness.Frames.DeleteSelected());
+
+        // A→C: one chain, still one story, and every frame in it is reached from the one head.
+        var head = (TextBlock)harness.Session.Document.FindBlock(EditorTestHarness.BlockId).Block;
+        var end = (TextBlock)harness.Session.Document.FindBlock(tail).Block;
+        Assert.Equal(tail, head.LinkNext);
+        Assert.Null(end.LinkNext);
+        Assert.Equal(storyId, end.StoryRef);
+
+        // The decisive one: nothing else points into the chain, so the story has exactly one head.
+        List<TextBlock> heads = harness.Session.Document.Pages
+            .SelectMany(p => p.Blocks)
+            .OfType<TextBlock>()
+            .Where(b => b.StoryRef == storyId)
+            .Where(b => !harness.Session.Document.Pages
+                .SelectMany(p => p.Blocks)
+                .OfType<TextBlock>()
+                .Any(other => other.LinkNext == b.Id))
+            .ToList();
+        Assert.Single(heads);
+        Assert.Equal(EditorTestHarness.BlockId, heads[0].Id);
+
+        // And the article is laid out once, across the two surviving frames.
+        Assert.True(harness.Source.TryGetStoryGeometry(storyId, out StoryTextGeometry geometry));
+        Assert.Equal(2, geometry.FrameCount);
+
+        // Undo puts the middle frame, and the chain, back exactly as they were.
+        harness.Session.Undo();
+        var headAgain = (TextBlock)harness.Session.Document.FindBlock(EditorTestHarness.BlockId).Block;
+        var middleAgain = (TextBlock)harness.Session.Document.FindBlock(middle).Block;
+        Assert.Equal(middle, headAgain.LinkNext);
+        Assert.Equal(tail, middleAgain.LinkNext);
+    }
 }

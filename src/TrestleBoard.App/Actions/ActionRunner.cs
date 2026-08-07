@@ -187,7 +187,26 @@ internal sealed class ActionRunner
 
         if (_handlers.TryGetValue(actionId, out Func<Control?, Task>? handler))
         {
-            await handler(source);
+            try
+            {
+                await handler(source);
+            }
+            catch (Exception ex)
+            {
+                // Every surface in the app starts a command with `_ = RunAsync(...)`, so before
+                // this an exception from any handler went into a discarded Task and was never seen
+                // by anyone: the button did nothing, the app said nothing, and whatever the handler
+                // had half-finished stayed half-finished (review §14.2).
+                //
+                // Deliberately catching everything. This is the boundary between "a command" and
+                // "the app", and on this side of it there is no caller left to handle anything —
+                // the alternative is not a better error, it is the process going down and taking
+                // the newsletter with it. What the user gets instead is a sentence and a window
+                // that still holds their work.
+                _window.Announce(
+                    $"Something went wrong while doing that, so TrestleBoard stopped part way. "
+                    + $"Your newsletter is still here. ({ex.Message})");
+            }
         }
 
         _window.RefreshActions();

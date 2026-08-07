@@ -137,12 +137,20 @@ public sealed class PeopleWindow : Window
         };
 
         // The book can be changed from under this window by an import; the list has to follow.
-        _roster.Changed += (_, _) => RefreshList();
+        //
+        // Unsubscribed on close, because RosterService lives as long as the app does: a handler
+        // left attached kept every People window that had ever been opened alive for the rest of
+        // the session, and ran RefreshList on all of the dead ones at every roster change (review
+        // §14.2). Named rather than a lambda so there is something to detach.
+        _roster.Changed += OnRosterChanged;
+        Closed += (_, _) => _roster.Changed -= OnRosterChanged;
         Opened += (_, _) => _search.Focus();
 
         RefreshList();
         Clear();
     }
+
+    private void OnRosterChanged(object? sender, EventArgs e) => RefreshList();
 
     /// <summary>The rows the list is showing, for the headless tests.</summary>
     internal IReadOnlyList<Member> ShownForTest => _shown;

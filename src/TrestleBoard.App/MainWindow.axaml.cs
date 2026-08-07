@@ -164,9 +164,23 @@ public partial class MainWindow : Window
         // but nobody ever sees them.
         Opened += async (_, _) =>
         {
-            if (!SuppressStartupForTest)
+            if (SuppressStartupForTest)
+            {
+                return;
+            }
+
+            try
             {
                 await RunStartupAsync();
+            }
+            catch (Exception ex)
+            {
+                // The startup flow reads the recovery directory, parses a snapshot and opens
+                // whatever the command line named — all disk work, all before there is a newsletter
+                // to lose. An exception here used to take the app down at launch, leaving the user
+                // with a window that flashed and vanished and no way to find out why. Landing on
+                // the start screen with a sentence is strictly better (review §14.2).
+                Announce($"TrestleBoard could not finish starting up. ({ex.Message})");
             }
         };
         Closing += OnWindowClosing;
@@ -1891,28 +1905,43 @@ public partial class MainWindow : Window
     /// <para>A drop onto a picture frame replaces what is in it — one undo step — because that is
     /// the only thing dropping a photograph onto a photograph can sensibly mean.</para>
     /// </summary>
+    /// <summary>
+    /// An <c>async void</c> event handler, because Avalonia's drop event gives no other shape — and
+    /// therefore one whose exceptions have nowhere to go but the process. Everything it does is
+    /// inside the guard for that reason: a dropped file that turns out to be unreadable, or a
+    /// picture Skia refuses, must not take the newsletter down with it (review §14.2).
+    /// </summary>
     private async void OnCanvasDrop(object? sender, DragEventArgs e)
     {
         e.Handled = true;
-        if (_photos is null
-            || e.DataTransfer.TryGetFiles()?.OfType<IStorageFile>().FirstOrDefault() is not { } file)
+        try
         {
-            return;
-        }
+            if (_photos is null
+                || e.DataTransfer.TryGetFiles()?.OfType<IStorageFile>().FirstOrDefault() is not { } file)
+            {
+                return;
+            }
 
-        (float x, float y) = PageCanvas.ToClampedPagePoint(e.GetPosition(PageCanvas));
-        if (await ReadPictureBytesAsync(file) is not { } bytes)
+            (float x, float y) = PageCanvas.ToClampedPagePoint(e.GetPosition(PageCanvas));
+            if (await ReadPictureBytesAsync(file) is not { } bytes)
+            {
+                return;
+            }
+
+            if (_source?.HitTestBlock(_pageIndex, x, y) is { } hit && _source.IsImageBlock(hit))
+            {
+                await ReplacePictureFromBytesAsync(hit, bytes, file.Name);
+                return;
+            }
+
+            await PlacePictureAsync(bytes, file.Name, (x, y));
+        }
+        catch (Exception ex)
         {
-            return;
+            Announce(
+                "TrestleBoard could not put that file on the page. Your newsletter is unchanged. "
+                + $"({ex.Message})");
         }
-
-        if (_source?.HitTestBlock(_pageIndex, x, y) is { } hit && _source.IsImageBlock(hit))
-        {
-            await ReplacePictureFromBytesAsync(hit, bytes, file.Name);
-            return;
-        }
-
-        await PlacePictureAsync(bytes, file.Name, (x, y));
     }
 
     /// <summary>
