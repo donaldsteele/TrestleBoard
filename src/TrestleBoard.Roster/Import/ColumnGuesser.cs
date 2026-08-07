@@ -139,7 +139,21 @@ public static class ColumnGuesser
         return mapping;
     }
 
-    /// <summary>Does this header name this field? Substring rather than equality — "Member Name" is a name column.</summary>
+    /// <summary>
+    /// Does this header name this field? Substring, so "Member Name" is a name column — but the
+    /// substring has to sit on WORD boundaries.
+    ///
+    /// <para>A bare <c>Contains</c> matched inside other words, and the misfires were all in the
+    /// same direction: "Member Number" scored as Name (hint "member"), "Mailing address" as Email
+    /// (hint "mail"), "Member No." as Phone (hint "number"). The mapping screen presents its guesses
+    /// as "We guessed these. Change any that are wrong.", so a wrong guess is correctable — but only
+    /// by somebody who notices, and the whole point of guessing is that they should not have to
+    /// check every row (review §14.2).</para>
+    ///
+    /// <para>Word boundary here means "not flanked by another letter or digit", which lets
+    /// "Member Name", "e-mail" and "Phone#" all still match while "Member Number" no longer claims
+    /// to be a name.</para>
+    /// </summary>
     private static bool Matches(string header, RosterFieldInfo field)
     {
         if (string.IsNullOrWhiteSpace(header))
@@ -148,7 +162,31 @@ public static class ColumnGuesser
         }
 
         string value = header.Trim().ToLowerInvariant();
-        return field.HeaderHints.Any(hint => value.Contains(hint, StringComparison.Ordinal));
+        return field.HeaderHints.Any(hint => ContainsWord(value, hint));
+    }
+
+    private static bool ContainsWord(string haystack, string needle)
+    {
+        if (needle.Length == 0)
+        {
+            return false;
+        }
+
+        int at = 0;
+        while ((at = haystack.IndexOf(needle, at, StringComparison.Ordinal)) >= 0)
+        {
+            bool startsClean = at == 0 || !char.IsLetterOrDigit(haystack[at - 1]);
+            int after = at + needle.Length;
+            bool endsClean = after >= haystack.Length || !char.IsLetterOrDigit(haystack[after]);
+            if (startsClean && endsClean)
+            {
+                return true;
+            }
+
+            at = after;
+        }
+
+        return false;
     }
 
     private static RosterField? GuessFromValues(IReadOnlyList<string> sample)

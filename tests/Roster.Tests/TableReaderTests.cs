@@ -1,3 +1,4 @@
+using System.Text;
 using TrestleBoard.Roster.Import;
 using TrestleBoard.Roster.Tables;
 using Xunit;
@@ -159,4 +160,79 @@ public sealed class TableReaderTests
     [InlineData(52, "BA")]
     public void ColumnsAreNamedTheWayASpreadsheetNamesThem(int index, string expected) =>
         Assert.Equal(expected, TableWorkbook.ColumnLetter(index));
+    /// <summary>
+    /// Review §14.2: a BOM-less Windows-1252 CSV keeps its accented names.
+    ///
+    /// <para>An older Excel "Save as CSV" on Windows writes Windows-1252 with no byte-order mark.
+    /// Decoded as UTF-8, every accented letter became U+FFFD — silently — and the brother's name
+    /// was simply wrong in the address book from then on. UTF-8 is now tried with a THROWING
+    /// decoder, and the exception is the signal to fall back; a file that really is UTF-8 cannot
+    /// produce it.</para>
+    ///
+    /// <para>Every person here is fictional (PLAN.md §0 rule 2).</para>
+    /// </summary>
+    [Fact]
+    public void ABomlessWindows1252FileKeepsItsAccentedNames()
+    {
+        string folder = Directory.CreateTempSubdirectory("tb-csv-").FullName;
+        try
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            Encoding legacy = Encoding.GetEncoding(1252);
+
+            string path = Path.Combine(folder, "legacy.csv");
+            const string content = "Name,Office\nRené Placeholder,Tyler\nBjörn Sample,Marshall\n";
+            File.WriteAllBytes(path, legacy.GetBytes(content));
+
+            // No BOM, and not valid UTF-8 — which is exactly the case that used to be mangled.
+            byte[] raw = File.ReadAllBytes(path);
+            Assert.NotEqual(0xEF, raw[0]);
+
+            TableWorkbook book = CsvTableReader.Read(path);
+            string all = string.Join("|", book.Sheets.SelectMany(sheet => sheet.Rows).SelectMany(r => r));
+
+            Assert.Contains("René Placeholder", all, StringComparison.Ordinal);
+            Assert.Contains("Björn Sample", all, StringComparison.Ordinal);
+            Assert.DoesNotContain("\uFFFD", all, StringComparison.Ordinal);
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+    }
+
+    /// <summary>A genuine UTF-8 file is still read as UTF-8 — the fallback must not capture it.</summary>
+    [Fact]
+    public void AUtf8FileIsStillReadAsUtf8()
+    {
+        string folder = Directory.CreateTempSubdirectory("tb-csv-utf8-").FullName;
+        try
+        {
+            string path = Path.Combine(folder, "modern.csv");
+            File.WriteAllText(path, "Name,Office\nRené Placeholder,Tyler\n", new UTF8Encoding(false));
+
+            TableWorkbook book = CsvTableReader.Read(path);
+            Assert.Contains(
+                "René Placeholder",
+                string.Join("|", book.Sheets.SelectMany(sheet => sheet.Rows).SelectMany(r => r)),
+                StringComparison.Ordinal);
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+        }
+    }
+
 }

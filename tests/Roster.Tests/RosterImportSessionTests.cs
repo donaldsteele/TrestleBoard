@@ -192,4 +192,42 @@ public sealed class RosterImportSessionTests
         Assert.False(second.Plan().ChangesAnything);
         Assert.Equal(after.Members, second.Commit().Members);
     }
+    /// <summary>
+    /// Review §14.2: a header hint has to sit on word boundaries.
+    ///
+    /// <para>A bare substring match misfired in one direction every time — "Member Number" scored
+    /// as Name on the hint "member", "Mailing address" as Email on "mail", "Member No." as Phone on
+    /// "number". The mapping screen says "We guessed these. Change any that are wrong.", so a wrong
+    /// guess is correctable — but only by somebody who notices, and the point of guessing is that
+    /// they should not have to check every column.</para>
+    /// </summary>
+    [Theory]
+    [InlineData("Member Number", RosterField.Name)]
+    [InlineData("Mailing address", RosterField.Email)]
+    [InlineData("Membership", RosterField.Name)]
+    public void AHeaderDoesNotMatchAHintBuriedInsideAnotherWord(string header, RosterField wrongGuess)
+    {
+        var sheet = new TableSheet("Sheet1", [[header], ["12"], ["13"]]);
+        Dictionary<RosterField, int> mapping = ColumnGuesser.GuessMapping(sheet, headerRow: 0);
+
+        Assert.False(
+            mapping.TryGetValue(wrongGuess, out int column) && column == 0,
+            $"\"{header}\" was guessed as {wrongGuess}");
+    }
+
+    /// <summary>And the headers that genuinely do name a field still match.</summary>
+    [Theory]
+    [InlineData("Member Name", RosterField.Name)]
+    [InlineData("Name", RosterField.Name)]
+    [InlineData("E-Mail", RosterField.Email)]
+    [InlineData("Phone", RosterField.Phone)]
+    public void ARealHeaderStillMatchesItsField(string header, RosterField expected)
+    {
+        var sheet = new TableSheet("Sheet1", [[header], ["something"], ["another"]]);
+        Dictionary<RosterField, int> mapping = ColumnGuesser.GuessMapping(sheet, headerRow: 0);
+
+        Assert.True(mapping.TryGetValue(expected, out int column), $"\"{header}\" matched nothing");
+        Assert.Equal(0, column);
+    }
+
 }

@@ -2107,6 +2107,17 @@ printed. One Esc could stack two confirm dialogs in the wizard. And the grid edi
 answers without asking, while the step wizard over the SAME session confirmed — the fast path losing
 more than the slow one.
 
+### M36 — Reading files, and naming things (delivered 2026-08-07, `docs/M36-spec.md`)
+
+`CsvTableReader` read every BOM-less file as UTF-8, so an older Excel "Save as CSV" on Windows —
+Windows-1252, no BOM — turned every accented name into U+FFFD, silently and permanently. UTF-8 is
+now tried with a THROWING decoder, and the exception is the signal to fall back; a file that really
+is UTF-8 cannot produce one. The mapping screen's header hints matched inside other words
+("Mailing address" as Email), and narrowing to word boundaries was not enough on its own — "Member
+Number" contains "member" as a genuine whole word, so the over-broad hints had to go too. And the
+right-click flyout used static command names while the panel beside it used context-aware ones, so
+right-clicking a filled picture frame offered "Put a picture here…".
+
 **Grouping 4 is half done; grouping 5 is part done.**
 
 ---
@@ -2579,9 +2590,10 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   (**fixed at M29**) ·
   ~~`RosterService.cs:113-124`: in-memory state mutates before `Save`; on throw the UI is stale, the
   edit unsaved, `Changed` never raised.~~ (**fixed at M24** — it writes first, then believes it) ·
-  PLAUSIBLE `CsvTableReader.cs:36`: BOM-less Windows-1252 CSVs decode as UTF-8 —
-  accented names arrive as U+FFFD. · Header hints misfire ("Member Number" → Name, "Mailing
-  address" → Email; `RosterField.cs:33-49`); ~~`RosterImportSession.cs:150-159` accepts a header row ≥ `RowCount`, yielding an
+  ~~PLAUSIBLE `CsvTableReader.cs:36`: BOM-less Windows-1252 CSVs decode as UTF-8 — accented names
+  arrive as U+FFFD.~~ (**confirmed and fixed at M36**) · ~~Header hints misfire ("Member Number" → Name, "Mailing
+  address" → Email; `RosterField.cs:33-49`)~~ (**fixed at M36**, by word boundaries AND by
+  narrowing the hints); ~~`RosterImportSession.cs:150-159` accepts a header row ≥ `RowCount`, yielding an
   empty, non-erroring plan.~~ (**fixed at M29**)
 
 **Export.Pdf**

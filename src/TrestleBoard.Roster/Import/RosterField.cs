@@ -30,12 +30,17 @@ public sealed record RosterFieldInfo(
 {
     public static IReadOnlyList<RosterFieldInfo> All { get; } =
     [
+        // "member" and "number" are NOT hints, and that is the point of this list being explicit.
+        // Both are words that appear in headers naming something else entirely — "Member Number" is
+        // a membership number, not a name and not a telephone — and a bare hint for either claimed
+        // that column for the wrong field (review §14.2). Word-boundary matching does not help:
+        // "member" really is a whole word there. The hint has to be the thing itself.
         new(RosterField.Name, "Name — which column has it?", "Name", true,
-            ["name", "member", "brother", "person", "full name"]),
+            ["name", "member name", "brother", "person", "full name"]),
         new(RosterField.Birthday, "Birthday — which column has it?", "Birthday", false,
             ["birthday", "birth", "dob", "bday", "born"]),
         new(RosterField.Phone, "Telephone number — which column has it?", "Telephone", false,
-            ["phone", "tel", "cell", "mobile", "number"]),
+            ["phone", "tel", "cell", "mobile", "phone number", "telephone number"]),
         new(RosterField.Email, "Email address — which column has it?", "Email", false,
             ["email", "e-mail", "mail"]),
         new(RosterField.Office, "Lodge office — which column has it?", "Office", false,

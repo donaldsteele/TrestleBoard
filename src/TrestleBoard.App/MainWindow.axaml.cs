@@ -475,14 +475,19 @@ public partial class MainWindow : Window
         var flyout = new MenuFlyout();
         foreach (ActionOffer offer in offers)
         {
+            // TitleFor, not Title. Three commands are named for the state they are in — the two
+            // picture ones since M18 and Save since M24 — and the panel has always used the
+            // context-aware name while this flyout used the static one. Right-clicking a frame that
+            // already holds a photograph offered "Put a picture here…" (review §14.3).
+            string title = ActionCatalog.TitleFor(offer.Action.Id, _context);
             var item = new MenuItem
             {
-                Header = offer.Action.Title,
+                Header = title,
                 FontSize = 16,
                 IsEnabled = offer.IsAvailable,
                 Tag = offer.Action.Id,
             };
-            Avalonia.Automation.AutomationProperties.SetName(item, offer.Action.Title);
+            Avalonia.Automation.AutomationProperties.SetName(item, title);
             Avalonia.Automation.AutomationProperties.SetHelpText(
                 item, offer.IsAvailable ? offer.Action.ShortDescription : offer.Availability.Reason);
             item.Click += OnActionClicked;

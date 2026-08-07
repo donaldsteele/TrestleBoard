@@ -31,10 +31,18 @@ public static class CsvTableReader
         string text;
         try
         {
-            // detectEncodingFromByteOrderMarks strips the BOM; a file without one is read as UTF-8,
-            // which is right for anything a modern Excel or Google Sheets writes.
-            using var reader = new StreamReader(path, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
-            text = reader.ReadToEnd();
+            // detectEncodingFromByteOrderMarks strips the BOM; a file WITH one is decoded by it.
+            //
+            // A file without one is read as UTF-8 first, which is right for anything a modern Excel
+            // or Google Sheets writes — but an older Excel "Save as CSV" on Windows writes
+            // Windows-1252 with no BOM at all, and decoding that as UTF-8 turns every accented
+            // name into U+FFFD. Silently. The brother's name is simply wrong in the address book
+            // from then on (review §14.2).
+            //
+            // So UTF-8 is tried STRICTLY: an invalid byte sequence throws rather than being
+            // replaced, and that is the signal to fall back. A file that really is UTF-8 always
+            // decodes, so the fallback can only be reached by a file that is not one.
+            text = ReadStrictUtf8OrFallBack(path);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -218,4 +226,52 @@ public static class CsvTableReader
 
         return trimmed;
     }
+    /// <summary>
+    /// The file's text, decoded as UTF-8 when it is UTF-8 and as Windows-1252 when it is not.
+    ///
+    /// <para>UTF-8 is tried with a throwing decoder, so an invalid byte sequence raises rather than
+    /// being silently replaced with U+FFFD. That exception is the whole signal: a file that really
+    /// is UTF-8 cannot produce it, so reaching the fallback means the file genuinely is not.</para>
+    ///
+    /// <para>Windows-1252 is the fallback rather than Latin-1 because it is what an older Excel on
+    /// Windows actually writes, and it is a superset of Latin-1 over the bytes that differ. It also
+    /// cannot fail — every byte maps to something — so there is no third case to handle.</para>
+    /// </summary>
+    private static string ReadStrictUtf8OrFallBack(string path)
+    {
+        byte[] bytes = File.ReadAllBytes(path);
+        try
+        {
+            using var strict = new StreamReader(
+                new MemoryStream(bytes),
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true),
+                detectEncodingFromByteOrderMarks: true);
+            return strict.ReadToEnd();
+        }
+        catch (DecoderFallbackException)
+        {
+            // CodePagesEncodingProvider is registered once in the static constructor below; without
+            // it 1252 is not available on .NET outside Windows.
+            using var legacy = new StreamReader(new MemoryStream(bytes), LegacyEncoding);
+            return legacy.ReadToEnd();
+        }
+    }
+
+    private static readonly Encoding LegacyEncoding = ResolveLegacyEncoding();
+
+    private static Encoding ResolveLegacyEncoding()
+    {
+        try
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            return Encoding.GetEncoding(1252);
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException)
+        {
+            // Latin-1 is in the box everywhere and agrees with 1252 on every byte that matters for
+            // a name; it differs only in the 0x80-0x9F range, which holds punctuation.
+            return Encoding.Latin1;
+        }
+    }
+
 }
