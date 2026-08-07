@@ -2037,6 +2037,18 @@ the test proved nothing. It now widens the fixture's picture to span the whole c
 its four cases hang without the floor. A hang has no exception to catch, so the bounded join is
 the assertion.
 
+### M31 — Four more from the list (delivered 2026-08-07, `docs/M31-spec.md`)
+
+Four §14.2 items, all labelled PLAUSIBLE or Minor and all real on reading the code. `Sanitize`
+deleted tabs rather than replacing them, so columnar text pasted from a spreadsheet arrived with its
+words run together. Auto-flow created continuation frames at `ZOrder = 0` regardless of what was
+already on the target page, so an article could land beneath a picture and be wrap-shadowed by it —
+every other insert path in the app uses `Max(ZOrder)+1`. The two overset-id getters returned their
+live internal list, which the next relayout clears in place. And three page-indexed methods threw a
+bare `IndexOutOfRangeException` rather than the guarded kind their siblings throw — which matters
+because M25's compositor-thread guard catches `ArgumentOutOfRangeException` by name, and the stale
+page index it exists to survive arrives through `GetPageSize`.
+
 **Grouping 4 is half done; grouping 5 is part done.**
 
 ---
@@ -2414,12 +2426,13 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   partial mutation with no undo record. · `PhotoController.cs:388-397`: the stale-crop aspect test
   ignores `RotationSteps` — wrong stretched-picture warning on rotated photos. ·
   `PhotoController.cs:140-141,199-201`: undone insert/swap leaves asset bytes registered — the
-  `.tboard` grows monotonically. · `TextEditorController.cs:1123-1129`: tabs are control chars to
-  `Sanitize`, so pasted columnar text collapses words together. ·
+  `.tboard` grows monotonically. · ~~`TextEditorController.cs:1123-1129`: tabs are control chars to `Sanitize`, so pasted columnar
+  text collapses words together.~~ (**fixed at M31**: a tab becomes a space) ·
   `FrameEditorController.cs:92-95`: re-selecting the link-mode source frame leaves link mode armed
   with a stale prompt. · `ActionCatalog.cs:266-267`: `TryGet`'s `out action!` is null on the false
-  path. · `PageFlowController.cs:169-178`: auto-flow continuation frames get `ZOrder = 0` and can
-  land behind existing blocks — every other insert path uses `Max(ZOrder)+1`.
+  path. · ~~`PageFlowController.cs:169-178`: auto-flow continuation frames get `ZOrder = 0` and can
+  land behind existing blocks — every other insert path uses `Max(ZOrder)+1`.~~
+  (**confirmed and fixed at M31**)
 - Verified sound: culture-invariant parsing throughout, zip `/` separators, undo/redo re-capture
   symmetry in every command, text-merge arithmetic, distribute math.
 
@@ -2445,9 +2458,10 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   two outcomes. · `StoryTextGeometry.cs:350-369`: spurious 3 pt selection stub on the line before a
   multi-paragraph selection. · PLAUSIBLE `FontPreviewRenderer.cs:119`: zero-count positioned-run
   allocation on empty preview text (PageRenderer guards this; the preview does not). ·
-  `DocumentRenderSource.cs:217-455`: overset/overflow id getters return the live internal list,
+  ~~`DocumentRenderSource.cs:217-455`: overset/overflow id getters return the live internal list,
   cleared on the next relayout; `RenderPageToPng`/`DescribeBlocks` skip the bounds check their
-  siblings perform.
+  siblings perform.~~ (**fixed at M31**; `GetPageSize` was missing the check too, and that is the
+  one M25's render-thread guard depends on)
 - Verified sound: line filling always advances (no hang at positive line height), font-cache double
   dispose is idempotent, SKObject lifetimes are using-scoped, dirty tracking is consistent,
   zoom/DPI math is correct.

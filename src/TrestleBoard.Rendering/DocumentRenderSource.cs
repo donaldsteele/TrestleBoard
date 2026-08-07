@@ -218,7 +218,11 @@ public sealed class DocumentRenderSource : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         EnsureLayout();
-        return _oversetTailBlockIds;
+
+        // A COPY. This used to hand out the live internal list, which the next relayout clears in
+        // place — so a caller that held onto the result watched it silently empty itself, with no
+        // hint that the thing it was reading had been recycled underneath it (review §14.2).
+        return [.. _oversetTailBlockIds];
     }
 
     /// <summary>True when the block is a text frame (the canvas needs it for mode arbitration).</summary>
@@ -445,7 +449,8 @@ public sealed class DocumentRenderSource : IDisposable
             }
         }
 
-        return _widgetOverflowBlockIds;
+        // A copy, for the reason given on GetOversetTailBlockIds.
+        return [.. _widgetOverflowBlockIds];
     }
 
     /// <summary>
@@ -485,6 +490,8 @@ public sealed class DocumentRenderSource : IDisposable
     public IReadOnlyList<(string BlockId, string Name)> DescribeBlocks(int pageIndex)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(pageIndex, _document.Pages.Count);
         EnsureLayout();
 
         var described = new List<(string BlockId, string Name)>();
@@ -587,6 +594,14 @@ public sealed class DocumentRenderSource : IDisposable
 
     public Core.Model.SizePt GetPageSize(int pageIndex)
     {
+        // Validated, like every other page-indexed method here. This one, RenderPageToPng and
+        // DescribeBlocks all indexed the list raw and so threw a bare IndexOutOfRangeException
+        // instead of the guarded ArgumentOutOfRangeException their siblings produce — which matters
+        // because the compositor-thread draw path calls this with a page index that may have gone
+        // stale (review §14.2, and M25's guard in PageDrawOperation.Render).
+        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(pageIndex, _document.Pages.Count);
+
         Page page = _document.Pages[pageIndex];
         return _document.GetMaster(page.MasterRef).Size;
     }

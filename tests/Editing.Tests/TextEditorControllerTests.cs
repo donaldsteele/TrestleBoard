@@ -355,4 +355,23 @@ public sealed class TextEditorControllerTests
         h.Controller.InsertText("!");
         Assert.Contains("!", h.ParagraphText(0), StringComparison.Ordinal);
     }
+    /// <summary>
+    /// Review §14.2: a tab becomes a space, not nothing.
+    ///
+    /// <para><c>char.IsControl('	')</c> is true, so Sanitize's filter deleted tabs outright and
+    /// columnar text pasted from a spreadsheet or an email arrived with its words run together.
+    /// This engine has no tab stops, so a tab cannot be honoured — but the separator it was
+    /// standing in for can be.</para>
+    /// </summary>
+    [Fact]
+    public void PastedTabsBecomeSpacesRatherThanVanishing()
+    {
+        using var h = new EditorTestHarness("");
+        Assert.True(h.ClickIntoFrame());
+
+        h.Controller.InsertText("Name	Office	Phone");
+
+        Assert.Equal("Name Office Phone", h.ParagraphText(0));
+    }
+
 }

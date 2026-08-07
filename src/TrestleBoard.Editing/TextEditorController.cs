@@ -1136,8 +1136,15 @@ public sealed class TextEditorController
     private static string Sanitize(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
+        // Tabs become a SPACE, not nothing. char.IsControl('\t') is true, so the filter below was
+        // deleting them outright and columnar text pasted from a spreadsheet or an email arrived
+        // with its words run together — "Name\tOffice" pasted as "NameOffice" (review §14.2).
+        // This engine has no tab stops, so a tab cannot be honoured; turning it into the separator
+        // it was standing in for at least keeps the words apart.
         return string.Concat(
-            text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n')
+            text.Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Replace('\r', '\n')
+                .Replace('\t', ' ')
                 .Where(c => c == '\n' || !char.IsControl(c)));
     }
 

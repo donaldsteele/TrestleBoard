@@ -171,7 +171,13 @@ public sealed class PageFlowController
                 Id = $"frame-{nextFrameOrdinal++}",
                 StoryRef = storyRef,
                 FrameRect = BodyArea(master),
-                ZOrder = 0,
+
+                // Above whatever is already on the target page. ZOrder = 0 put a continuation
+                // frame BENEATH existing blocks, so an article flowed onto a page that already had
+                // a picture on it could be wrap-shadowed by that picture — text vanishing into a
+                // frame the user cannot see it in. Every other insert path in the app uses
+                // Max(ZOrder)+1; this one did not (review §14.2).
+                ZOrder = NextZOrder(document, targetPageId),
 
                 // A continuation of a story must not push its own text aside.
                 WrapMode = WrapMode.None,
@@ -335,4 +341,22 @@ public sealed class PageFlowController
     }
 
     private void Raise() => Changed?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>
+    /// One above everything already on the page, matching every other insert path in the app
+    /// (FrameEditorController, PhotoController, WidgetController all do exactly this). Frames added
+    /// during the same auto-flow are counted as they land, so a run of new pages does not give
+    /// every continuation the same z-order.
+    /// </summary>
+    private static int NextZOrder(Document document, string pageId)
+    {
+        if (!document.Pages.Any(p => p.Id == pageId))
+        {
+            return 0;
+        }
+
+        Page page = document.GetPage(pageId);
+        return page.Blocks.Count == 0 ? 0 : page.Blocks.Max(b => b.ZOrder) + 1;
+    }
+
 }
