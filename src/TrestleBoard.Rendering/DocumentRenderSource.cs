@@ -334,7 +334,10 @@ public sealed class DocumentRenderSource : IDisposable
             }
         }
 
-        LayoutRequest request = DocumentLayoutAdapter.BuildSpeculativeRequest(_document, head, planned);
+        // The caption-extended rects the REAL layout is using go in too, or this answers a
+        // question about a different page from the one on screen.
+        LayoutRequest request = DocumentLayoutAdapter.BuildSpeculativeRequest(
+            _document, head, planned, _layoutRects);
         return _engine.Layout(request).IsOverset;
     }
 

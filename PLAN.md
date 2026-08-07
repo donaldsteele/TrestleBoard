@@ -2064,6 +2064,26 @@ The first version of the test ended in "coffin", whose last cluster is a plain "
 against the unfixed engine. **That is the third regression test in M24–M32 to do so** — see
 `docs/M32-spec.md` §4.
 
+### M33 — The three PLAUSIBLEs (delivered 2026-08-07, `docs/M33-spec.md`)
+
+The review's three remaining "argued from the code, never observed" findings, each taken as far as
+evidence allowed before anything was changed.
+
+**Not reproduced, nothing changed:** `AutoLevels` drawing onto an `Unpremul` target. Three existing
+tests call `Apply` and read the pixels back, and a no-op draw fails all of them loudly — on all
+three CI platforms. The existing tests are already the guard.
+
+**Reproduced and fixed:** the related histogram finding, which turned out to be the real one. A ramp
+with a floor of 80, stored at 50% alpha, measured a black point of **40** — partly transparent
+pixels were counted with their colour still scaled by their alpha, so the picture was stretched
+against a level no pixel had.
+
+**Confirmed and fixed:** the speculative overset check passed `rectOverrides: null` while the real
+layout passes `_layoutRects`, so "would one more frame be enough?" was answered against a page
+without any caption bands on it. And `CompositeCommand.Apply` had no unwind — a child throwing part
+way through left the document half-changed while `Execute` never reached the line that pushes onto
+the undo stack, so the user could not take it back.
+
 **Grouping 4 is half done; grouping 5 is part done.**
 
 ---
@@ -2437,8 +2457,9 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   `UseFontJustHere` (`TextEditorController.cs:754-758`) matches the derived style *by name* without
   checking `SizePt` — ask for EB Garamond 85 pt after 8.5 pt exists and you get 8.5 pt.~~ —
   **fixed at M29**: the decimal point survives as "p" (`body~lora-8p5` against `body~lora-85`).
-- PLAUSIBLE — `DocumentSession.cs:49-53`: no rollback if a composite child throws mid-`Apply` —
-  partial mutation with no undo record. · `PhotoController.cs:388-397`: the stale-crop aspect test
+- ~~PLAUSIBLE — `DocumentSession.cs:49-53`: no rollback if a composite child throws mid-`Apply` —
+  partial mutation with no undo record.~~ — **confirmed and fixed at M33** in `CompositeCommand`,
+  where the children are known. · `PhotoController.cs:388-397`: the stale-crop aspect test
   ignores `RotationSteps` — wrong stretched-picture warning on rotated photos. ·
   `PhotoController.cs:140-141,199-201`: undone insert/swap leaves asset bytes registered — the
   `.tboard` grows monotonically. · ~~`TextEditorController.cs:1123-1129`: tabs are control chars to `Sanitize`, so pasted columnar
@@ -2465,10 +2486,9 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   **fixed at M32**, with the cluster arrays measured rather than assumed.
 - Major (deliberate design, recorded as a limitation) — `HarfBuzzShaper.cs:76-78`: hardwired
   LTR/Latin/"en". Arabic/Hebrew/Devanagari input renders as disconnected, unreordered forms.
-- Major PLAUSIBLE — `DocumentRenderSource.cs:333` + `DocumentLayoutAdapter.cs:72`: the speculative
+- ~~Major PLAUSIBLE — `DocumentRenderSource.cs:333` + `DocumentLayoutAdapter.cs:72`: the speculative
   "would one more frame fix the overset?" layout is built without the caption-extended picture
-  rects the real layout uses — auto-flow can commit a frame that does not fix the overset, or
-  refuse one that would.
+  rects the real layout uses.~~ — **confirmed and fixed at M33**; the overrides are threaded through.
 - Minor — `TextLayoutEngine.cs:69-73`: space-before is consumed even when the frame fills before
   the paragraph places a line, contradicting `PushOrphansForward`'s re-owe rule — same paragraph,
   two outcomes. · `StoryTextGeometry.cs:350-369`: spurious 3 pt selection stub on the line before a
@@ -2490,11 +2510,14 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   `DocumentRenderSource.RenderImage`, draws each image immediately and never holds one across
   another `GetOrAdd`. Left on the record rather than "fixed", because what makes it safe is a
   property of the caller and could quietly stop being true; see `docs/M25-spec.md` §5.
-- Major PLAUSIBLE — `AutoLevels.cs:56-65`: draws through an `SKCanvas` over an `Unpremul` bitmap;
+- ~~Major PLAUSIBLE — `AutoLevels.cs:56-65`: draws through an `SKCanvas` over an `Unpremul` bitmap;
   Skia raster targets must be premul/opaque, so on some builds the stretch is a silent no-op or a
-  black result.
-- Minor PLAUSIBLE — `AutoLevels.cs:87-104`: the histogram reads premultiplied RGBA, so transparency
-  skews the black/white points. · ~~`RecipeCache.cs:30,61-68`: unescaped `|` in the cache key makes
+  black result.~~ — **investigated at M33 and NOT reproduced.** Three existing tests call `Apply`
+  and read the pixels back; a no-op draw fails all of them, on all three CI platforms. Left on the
+  record because "we looked, and here is why it is fine" is worth more than silence.
+- ~~Minor PLAUSIBLE — `AutoLevels.cs:87-104`: the histogram reads premultiplied RGBA, so
+  transparency skews the black/white points.~~ — **reproduced and fixed at M33**: a ramp with a
+  floor of 80, stored at 50% alpha, measured a black point of 40. · ~~`RecipeCache.cs:30,61-68`: unescaped `|` in the cache key makes
   `InvalidateAsset`'s prefix match ambiguous.~~ (**fixed at M29**)
 - Verified sound: all eight EXIF orientation matrices, crop/rotate ordering, `NormalizedRect`
   clamping, auto-crop integral-image math.
@@ -2717,9 +2740,10 @@ hang, and the whole of §14.2's Minor list bar two entries.
    not exist.
 4. ~~**The ligature caret** (`TextLayoutEngine.cs:552`, confirmed Major).~~ — **closed at M32**,
    as its own milestone with snapshot review, exactly as this entry asked for. No baseline moved.
-5. **The remaining PLAUSIBLEs** — `AutoLevels`' `Unpremul` target, the caption-blind speculative
-   overset check, `DocumentSession`'s missing rollback. Each needs reproduction before it needs a
-   fix; guessing at them is how a "fix" becomes a new defect.
+5. ~~**The remaining PLAUSIBLEs** — `AutoLevels`' `Unpremul` target, the caption-blind speculative
+   overset check, `DocumentSession`'s missing rollback.~~ — **closed at M33.** Two reproduced and
+   were fixed; the `Unpremul` one did not reproduce and is recorded as covered by tests that
+   already exist, rather than being quietly dropped.
 6. **Keyboard equivalents for marquee, add-to-selection and pan.** Each is a NEW command needing
    real design — "select everything on this page" is not quite a marquee.
 7. **The `.bak` ring beside the user's file** and its "Restore an earlier version" menu (§4). Half a

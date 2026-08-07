@@ -84,6 +84,15 @@ public static class AutoLevels
         }
 
         bool bgra = colorType is SKColorType.Bgra8888;
+
+        // Premultiplied pixels are un-premultiplied before they are counted. ImageDecoder decodes
+        // to Premul, so a half-transparent pixel arrives with its colour already scaled by its
+        // alpha — a mid grey at 50% alpha reads as a dark grey. Counting those raw dragged the
+        // black point down and the whole picture was then stretched against a level no pixel
+        // actually had (review §14.2). Fully opaque pixels, which is nearly every pixel of nearly
+        // every photograph, are unaffected: the divide is skipped for them.
+        bool premultiplied = bitmap.AlphaType is SKAlphaType.Premul;
+
         for (int i = 0; i + 3 < pixels.Length; i += bytesPerPixel)
         {
             byte r = bgra ? pixels[i + 2] : pixels[i];
@@ -93,6 +102,13 @@ public static class AutoLevels
             if (a == 0)
             {
                 continue; // fully transparent pixels are not part of the picture
+            }
+
+            if (premultiplied && a < 255)
+            {
+                r = Unpremultiply(r, a);
+                g = Unpremultiply(g, a);
+                b = Unpremultiply(b, a);
             }
 
             red[r]++;
@@ -105,6 +121,14 @@ public static class AutoLevels
 
         return (red, green, blue, luma, counted);
     }
+
+    /// <summary>
+    /// The colour a premultiplied channel had before its alpha was folded in. Rounded rather than
+    /// truncated, and clamped, because premultiplication is lossy and the inverse of a rounded
+    /// value can land a shade above 255.
+    /// </summary>
+    private static byte Unpremultiply(byte channel, byte alpha) =>
+        (byte)Math.Min(255, ((channel * 255) + (alpha / 2)) / alpha);
 
     private static (byte Low, byte High) ClipPoints(int[] histogram, int counted)
     {

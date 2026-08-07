@@ -103,6 +103,51 @@ public sealed class ImagingAlgorithmTests
         Assert.InRange(afterMax, 243, 255);
     }
 
+    /// <summary>
+    /// Review §14.2: the histogram reads a premultiplied bitmap correctly.
+    ///
+    /// <para><c>ImageDecoder</c> decodes to <c>Premul</c>, so a half-transparent pixel arrives with
+    /// its colour already scaled by its alpha — a mid grey at 50% alpha sits in memory as a dark
+    /// grey. Counted raw, those pixels dragged the measured black point down, and the picture was
+    /// then stretched against a level no pixel actually had.</para>
+    ///
+    /// <para>Two bitmaps here hold the SAME colours; only the storage differs. The levels must
+    /// agree, because the picture does.</para>
+    /// </summary>
+    [Fact]
+    public void PartlyTransparentPixelsAreMeasuredByTheirRealColourNotTheirPremultipliedOne()
+    {
+        const byte low = 80;
+        const byte high = 160;
+
+        using SKBitmap opaque = TestImages.LowContrastRamp(120, 40, low, high);
+        AutoLevels.Levels expected = AutoLevels.Measure(opaque);
+
+        // The same ramp at half alpha, stored premultiplied — which is what a decoded PNG with a
+        // soft edge looks like in memory.
+        using var premultiplied = new SKBitmap(new SKImageInfo(
+            opaque.Width, opaque.Height, SKColorType.Rgba8888, SKAlphaType.Premul));
+        for (int y = 0; y < opaque.Height; y++)
+        {
+            for (int x = 0; x < opaque.Width; x++)
+            {
+                // SetPixel takes an UNpremultiplied colour and premultiplies it for a Premul
+                // bitmap, so the halving happens once, in Skia, exactly as it does on decode.
+                SKColor c = opaque.GetPixel(x, y);
+                premultiplied.SetPixel(x, y, c.WithAlpha(128));
+            }
+        }
+
+        AutoLevels.Levels actual = AutoLevels.Measure(premultiplied);
+
+        // Within a shade or two: premultiplication is lossy, so exact equality is not available.
+        Assert.InRange(actual.RedLow, expected.RedLow - 3, expected.RedLow + 3);
+        Assert.InRange(actual.RedHigh, expected.RedHigh - 3, expected.RedHigh + 3);
+
+        // And the point of it: the black point is near the ramp's real floor, not near half of it.
+        Assert.InRange(actual.RedLow, low - 8, low + 12);
+    }
+
     [Fact]
     public void AutoLevelsClipsHalfAPercentAtEachEnd()
     {

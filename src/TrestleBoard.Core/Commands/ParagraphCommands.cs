@@ -168,12 +168,50 @@ public sealed class CompositeCommand(
 
     public ChangeScope Scope { get; } = scope;
 
+    /// <summary>
+    /// All of the children, or none of them.
+    ///
+    /// <para>A composite is the app's unit of "one undoable thing" — adding a text frame is a story
+    /// and a block, filling in the officers is a dozen row rewrites. If a child throws part way
+    /// through, the ones before it have already mutated the document, and
+    /// <see cref="DocumentSession.Execute"/> never reaches the line that pushes the command onto
+    /// the undo stack. The result was a half-applied change the user could not take back, because
+    /// as far as the stack was concerned it never happened (review §14.2).</para>
+    ///
+    /// <para>So a failure unwinds what it managed to do first. The unwind is best-effort — a
+    /// Revert that throws while cleaning up after another throw has nothing useful to say, and
+    /// letting it escape would replace the real exception with a confusing one — but the original
+    /// exception always reaches the caller, which is what tells the shell to say something.</para>
+    /// </summary>
     public void Apply(Document document)
     {
         ArgumentNullException.ThrowIfNull(document);
-        for (int i = 0; i < Children.Count; i++)
+
+        int applied = 0;
+        try
         {
-            Children[i].Apply(document);
+            for (; applied < Children.Count; applied++)
+            {
+                Children[applied].Apply(document);
+            }
+        }
+        catch
+        {
+            for (int i = applied - 1; i >= 0; i--)
+            {
+                try
+                {
+                    Children[i].Revert(document);
+                }
+                catch (Exception cleanup) when (cleanup is InvalidOperationException
+                    or KeyNotFoundException
+                    or ArgumentOutOfRangeException)
+                {
+                    // Nothing to be done, and the exception below is the one worth reporting.
+                }
+            }
+
+            throw;
         }
     }
 

@@ -121,4 +121,48 @@ public sealed class CommandTests
             Assert.Contains(type, covered);
         }
     }
+    /// <summary>
+    /// Review §14.2: a composite that fails part way through leaves the document as it found it.
+    ///
+    /// <para>A composite is the app's unit of "one undoable thing". If a child throws, the ones
+    /// before it have already mutated the document — and <c>DocumentSession.Execute</c> never
+    /// reaches the line that pushes the command onto the undo stack, so the half-applied change
+    /// could not be taken back: as far as the stack was concerned it never happened.</para>
+    /// </summary>
+    [Fact]
+    public void ACompositeThatFailsPartWayThroughUndoesWhatItAlreadyDid()
+    {
+        Document document = Fixtures.BuildDocument();
+        string before = Fixtures.Snapshot(document);
+
+        var session = new DocumentSession(document);
+        var composite = new CompositeCommand(
+            "Half a change",
+            new ChangeScope(ChangeKind.PageStructure),
+            [
+                new SetLinkNextCommand("text-1", null),
+                new ThrowingCommand(),
+            ]);
+
+        Assert.Throws<InvalidOperationException>(() => session.Execute(composite));
+
+        // Nothing the first child did survives, and nothing is on the undo stack to suggest it did.
+        Assert.Equal(before, Fixtures.Snapshot(document));
+        Assert.False(session.CanUndo);
+    }
+
+    /// <summary>A child that always fails, for the composite rollback test above.</summary>
+    private sealed class ThrowingCommand : IDocumentCommand
+    {
+        public string Description => "Always fails";
+
+        public ChangeScope Scope => new(ChangeKind.PageStructure);
+
+        public void Apply(Document document) => throw new InvalidOperationException("no");
+
+        public void Revert(Document document) => throw new InvalidOperationException("no");
+
+        public bool TryMerge(IDocumentCommand newer) => false;
+    }
+
 }

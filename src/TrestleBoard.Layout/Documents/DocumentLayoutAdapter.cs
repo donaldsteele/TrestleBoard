@@ -60,23 +60,34 @@ public static class DocumentLayoutAdapter
     /// asks "would one more frame be enough?" without touching the document (docs/M8-spec.md §2).
     /// A planned frame on a page that does not exist yet simply has no exclusions.
     /// </summary>
+    /// <param name="rectOverrides">
+    /// The same substitutions the REAL layout is using, and passing them is the whole point.
+    ///
+    /// <para>This used to pass null while the live layout passed the render source's
+    /// <c>_layoutRects</c> — which hold the caption-extended rect of every captioned photo. So the
+    /// speculative layout wrapped text around a smaller obstacle than the real one, fitted more
+    /// text than reality would, and could answer "yes, one more frame is enough" for an article
+    /// that is still overset after the frame is committed (review §14.2). The answer has to be
+    /// computed against the same page the user is looking at.</para>
+    /// </param>
     public static LayoutRequest BuildSpeculativeRequest(
         Document document,
         TextBlock head,
-        IReadOnlyList<(string PageId, TextBlock Frame)> plannedFrames)
+        IReadOnlyList<(string PageId, TextBlock Frame)> plannedFrames,
+        IReadOnlyDictionary<string, RectPt>? rectOverrides = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(head);
         ArgumentNullException.ThrowIfNull(plannedFrames);
 
-        StoryLayoutPlan real = BuildPlan(document, document.FindBlock(head.Id).Page, head, null);
+        StoryLayoutPlan real = BuildPlan(document, document.FindBlock(head.Id).Page, head, rectOverrides);
         var frames = new List<LayoutFrame>(real.Request.Frames);
         foreach ((string pageId, TextBlock frame) in plannedFrames)
         {
             Page? page = document.Pages.Find(p => p.Id == pageId);
             frames.Add(new LayoutFrame(
-                ToFrameRect(frame.FrameRect),
-                page is null ? [] : BuildExclusions(page, frame, null),
+                ToFrameRect(EffectiveRect(frame, rectOverrides)),
+                page is null ? [] : BuildExclusions(page, frame, rectOverrides),
                 frame.ColumnCount));
         }
 
