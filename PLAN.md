@@ -2488,8 +2488,8 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   `.tboard` grows monotonically. · ~~`TextEditorController.cs:1123-1129`: tabs are control chars to `Sanitize`, so pasted columnar
   text collapses words together.~~ (**fixed at M31**: a tab becomes a space) ·
   ~~`FrameEditorController.cs:92-95`: re-selecting the link-mode source frame leaves link mode armed
-  with a stale prompt.~~ (**fixed at M35**) · `ActionCatalog.cs:266-267`: `TryGet`'s `out action!` is null on the false
-  path. · ~~`PageFlowController.cs:169-178`: auto-flow continuation frames get `ZOrder = 0` and can
+  with a stale prompt.~~ (**fixed at M35**) · ~~`ActionCatalog.cs:266-267`: `TryGet`'s `out action!` is null on the
+  false path.~~ (**fixed at M35**) · ~~`PageFlowController.cs:169-178`: auto-flow continuation frames get `ZOrder = 0` and can
   land behind existing blocks — every other insert path uses `Max(ZOrder)+1`.~~
   (**confirmed and fixed at M31**)
 - Verified sound: culture-invariant parsing throughout, zip `/` separators, undo/redo re-capture
