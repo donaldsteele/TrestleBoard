@@ -307,4 +307,58 @@ public sealed class StoryTextGeometryTests
         Assert.Equal(TextAffinity.Leading, left.Caret.Affinity);
         Assert.Equal(firstLine.Source.StartChar, left.Caret.Offset);
     }
+    /// <summary>
+    /// Review §14.2: a run's source span covers its last CLUSTER, not one past that cluster's
+    /// first character.
+    ///
+    /// <para>A cluster is not a character. Shaping "affix coffin fi" through the bundled body font
+    /// with standard ligatures on — the default — produces clusters 0,1,4,5,6,7,8,11,12,13: the
+    /// "ffi" at 1 is ONE glyph covering three characters, and the trailing "fi" at 13 is one glyph
+    /// covering two. So `clusters[^1] + 1` gave 14 for a fifteen-character paragraph, and
+    /// everything built on that span inherited the error — SegmentSpan stopped short, and XToOffset
+    /// used it as the last cluster's exclusive end, so clicking the right half of a trailing
+    /// ligature put the caret inside it.</para>
+    ///
+    /// <para>The text ends in a ligature deliberately. An earlier version of this test ended in
+    /// "coffin", whose last cluster is the plain "n" — and it passed against the unfixed engine,
+    /// which is the whole reason the ending matters.</para>
+    /// </summary>
+    [Fact]
+    public void ARunEndingInALigatureSpansTheWholeOfIt()
+    {
+        const string text = "affix coffin fi";
+
+        ParagraphStyle style = TestData.Para();
+        var request = new LayoutRequest(
+            new LayoutStory(StoryId, [new(style, [new LayoutRun(text, style.DefaultRun)])]),
+            [new LayoutFrame(new FrameRect(40, 40, 440, 400), [])]);
+        LayoutResult layout = TestData.Engine().Layout(request);
+
+        int furthest = 0;
+        foreach (FrameLayout frame in layout.Frames)
+        {
+            foreach (LineBox line in frame.Lines)
+            {
+                foreach (LineSegment segment in line.Segments)
+                {
+                    foreach (PositionedGlyphRun run in segment.Runs)
+                    {
+                        furthest = Math.Max(furthest, run.Source.EndChar);
+
+                        // No span may claim more than the paragraph holds, either.
+                        Assert.True(
+                            run.Source.EndChar <= text.Length,
+                            $"a run ends at {run.Source.EndChar}, past the {text.Length}-character paragraph");
+                        Assert.True(run.Source.EndChar > run.Source.StartChar);
+                    }
+                }
+            }
+        }
+
+        // The trailing "fi" is one glyph covering two characters; the span has to reach both.
+        Assert.Equal(text.Length, furthest);
+    }
+
+
+
 }

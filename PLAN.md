@@ -2049,6 +2049,21 @@ bare `IndexOutOfRangeException` rather than the guarded kind their siblings thro
 because M25's compositor-thread guard catches `ArgumentOutOfRangeException` by name, and the stale
 page index it exists to survive arrives through `GetPageSize`.
 
+### M32 — The ligature caret (delivered 2026-08-07, `docs/M32-spec.md`)
+
+The last confirmed Major from §14.2, held back for a milestone of its own because it moves caret and
+selection geometry. `BuildSegment` ended each run's source span at `clusters[^1] + 1`, but a cluster
+is a RANGE of characters, not one: shaping "affix coffin fi" gives clusters 0,1,4,5,6,7,8,11,12,13,
+where the "ffi" at 1 is one glyph covering three characters and the trailing "fi" at 13 covers two.
+So the span ended at 14 for a fifteen-character paragraph, and everything built on it inherited the
+error — selection stopping short of the last ligature, and a click on the right half of one
+resolving to a caret position inside it. `ShapedRun.ClusterEnd` now answers where a cluster really
+ends. No snapshot baseline moved: glyph positions were always right, only the spans describing them.
+
+The first version of the test ended in "coffin", whose last cluster is a plain "n", and passed
+against the unfixed engine. **That is the third regression test in M24–M32 to do so** — see
+`docs/M32-spec.md` §4.
+
 **Grouping 4 is half done; grouping 5 is part done.**
 
 ---
@@ -2444,9 +2459,10 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   — **confirmed and fixed at M30.** The "full-width wrap exclusion" clause is load-bearing: without
   one the loop is never entered, which is why the first regression test passed against the unfixed
   engine and had to be rebuilt.
-- Major — `TextLayoutEngine.cs:552`: a run's `EndChar` is last cluster index + 1, wrong when the
+- ~~Major — `TextLayoutEngine.cs:552`: a run's `EndChar` is last cluster index + 1, wrong when the
   final glyph is a multi-char ligature ("fi"/"ffl") — caret and selection geometry stop short of
-  the line end; clicking the right half of a trailing ligature puts the caret inside it.
+  the line end; clicking the right half of a trailing ligature puts the caret inside it.~~ —
+  **fixed at M32**, with the cluster arrays measured rather than assumed.
 - Major (deliberate design, recorded as a limitation) — `HarfBuzzShaper.cs:76-78`: hardwired
   LTR/Latin/"en". Arabic/Hebrew/Devanagari input renders as disconnected, unreordered forms.
 - Major PLAUSIBLE — `DocumentRenderSource.cs:333` + `DocumentLayoutAdapter.cs:72`: the speculative
@@ -2699,9 +2715,8 @@ hang, and the whole of §14.2's Minor list bar two entries.
 3. **Selection chrome ignores the theme** (`FrameOverlayRenderer`'s hard-coded ARGB). Needs the
    palette to reach the Skia renderer, which nothing does yet — a small piece of plumbing that does
    not exist.
-4. **The ligature caret** (`TextLayoutEngine.cs:552`, confirmed Major). Real, and the riskiest thing
-   left: it moves caret and selection geometry, so it needs its own milestone with snapshot review
-   rather than being folded into a sweep.
+4. ~~**The ligature caret** (`TextLayoutEngine.cs:552`, confirmed Major).~~ — **closed at M32**,
+   as its own milestone with snapshot review, exactly as this entry asked for. No baseline moved.
 5. **The remaining PLAUSIBLEs** — `AutoLevels`' `Unpremul` target, the caption-blind speculative
    overset check, `DocumentSession`'s missing rollback. Each needs reproduction before it needs a
    fix; guessing at them is how a "fix" becomes a new defect.
@@ -2716,9 +2731,11 @@ hang, and the whole of §14.2's Minor list bar two entries.
 reachable because the only call site draws each image immediately (`docs/M25-spec.md` §5). It stays
 on the list because what makes it safe is a property of the caller.
 
-**And one methodological note worth keeping.** Every regression test written for M24–M31 was run
-against the *unfixed* code first. Two of them passed — the M30 layout-hang test and one 16pt
-assertion — which is how it was discovered they proved nothing. Both were rebuilt until they failed
-for the right reason. A test written after the fix, and never seen to fail, is a comment.
+**And one methodological note worth keeping.** Every regression test written for M24–M32 was run
+against the *unfixed* code first. Three of them passed — the M30 layout-hang test and one 16pt
+assertion, and the M32 ligature test — which is how it was discovered they proved nothing. Each was
+rebuilt until it failed for the right reason; the ligature one needed a throwaway probe dumping the
+actual cluster arrays before the right test text was even knowable. A test written after the fix,
+and never seen to fail, is a comment.
 
 ---

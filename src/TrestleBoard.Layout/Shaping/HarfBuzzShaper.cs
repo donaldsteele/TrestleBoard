@@ -40,6 +40,34 @@ public sealed class ShapedRun
     public int ParagraphCharStart { get; }
 
     public IReadOnlyList<ShapedGlyph> Glyphs { get; }
+
+    /// <summary>
+    /// Where the cluster beginning at <paramref name="cluster"/> ENDS, in paragraph coordinates.
+    ///
+    /// <para>A cluster is not one character. "fi" shaped with standard ligatures on — which is the
+    /// default — is a single glyph whose cluster is the index of the "f" and which covers two
+    /// characters. Callers that treated the end as <c>cluster + 1</c> were therefore one or two
+    /// characters short whenever a run ended in a ligature, and the caret and selection geometry
+    /// built on top of that span stopped short of the text (review §14.2).</para>
+    ///
+    /// <para>The answer is the next cluster boundary in this run, or the run's own end when there
+    /// is none. It is asked of the whole shaped run rather than of the glyphs placed on one line,
+    /// because the boundary may be a glyph that landed on the following line — and that is still
+    /// where this cluster stops.</para>
+    /// </summary>
+    public int ClusterEnd(int cluster)
+    {
+        int next = int.MaxValue;
+        foreach (ShapedGlyph glyph in Glyphs)
+        {
+            if (glyph.Cluster > cluster && glyph.Cluster < next)
+            {
+                next = glyph.Cluster;
+            }
+        }
+
+        return next == int.MaxValue ? ParagraphCharStart + Text.Length : next;
+    }
 }
 
 public readonly record struct ShapeOptions(bool Ligatures, bool Kerning);

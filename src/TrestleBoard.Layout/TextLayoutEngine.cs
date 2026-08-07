@@ -578,7 +578,14 @@ public sealed class TextLayoutEngine
                 offsets.ToArray(),
                 clusters.ToArray(),
                 penXs.ToArray(),
-                new SourceSpan(para.StoryId, paragraphIndex, clusters[0], clusters[^1] + 1),
+                // The END of the last cluster, not one past its start. A cluster is not a
+                // character: "fi" with standard ligatures on — the default — is one glyph covering
+                // two of them, so `clusters[^1] + 1` landed inside the ligature. Everything built
+                // on this span inherited the error: SegmentSpan stopped a character or two short,
+                // and XToOffset used it as the last cluster's exclusive end, so clicking the right
+                // half of a trailing ligature put the caret in the middle of it (review §14.2).
+                new SourceSpan(
+                    para.StoryId, paragraphIndex, clusters[0], currentRun.ClusterEnd(clusters[^1])),
                 advance));
             glyphIds = [];
             offsets = [];
