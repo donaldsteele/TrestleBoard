@@ -1055,7 +1055,9 @@ public partial class MainWindow : Window
 
         var save = new Button { Content = "Save it", FontSize = 18, MinHeight = 44, MinWidth = 150, IsDefault = true };
         var discard = new Button { Content = "Do not save it", FontSize = 18, MinHeight = 44, MinWidth = 150 };
+        discard.Action();
         var stay = new Button { Content = "Go back", FontSize = 18, MinHeight = 44, MinWidth = 150, IsCancel = true };
+        stay.Action();
 
         save.Click += (_, _) => { answer = SaveFirst.Save; dialog.Close(); };
         discard.Click += (_, _) => { answer = SaveFirst.Discard; dialog.Close(); };
@@ -2713,6 +2715,11 @@ public partial class MainWindow : Window
     {
         foreach (Button button in ToolbarScale.GetLogicalDescendants().OfType<Button>())
         {
+            // M37: the affordance that says "you can press this". Applied in the loop that already
+            // walks the toolbar, so a button added to the XAML cannot miss it — and before the
+            // early-out below, because a button without an icon still needs to look pressable.
+            button.Action();
+
             if (button is not { Tag: string actionId, Content: string label })
             {
                 continue;

@@ -92,6 +92,7 @@ public sealed class PictureWordsDialog : Window
             MinWidth = 120,
             IsCancel = true,
         };
+        cancel.Action();
         Avalonia.Automation.AutomationProperties.SetName(cancel, "Cancel, change nothing");
         cancel.Click += (_, _) => Close();
 

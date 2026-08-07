@@ -241,9 +241,16 @@ internal sealed class ActionPanel : Border
             HorizontalContentAlignment = HorizontalAlignment.Left,
         };
 
+        // Primary carries its own treatment; everything else takes the action affordance. Panel
+        // items are never disabled (M11) — they explain instead — so this is the case the review
+        // named most directly: they looked exactly like the toolbar's dead buttons.
         if (isPrimary)
         {
             button.Primary();
+        }
+        else
+        {
+            button.Action();
         }
 
         return button;

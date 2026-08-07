@@ -114,6 +114,7 @@ public sealed class FindWindow : Window
             MinWidth = 120,
             IsCancel = true,
         };
+        close.Action();
         Avalonia.Automation.AutomationProperties.SetName(close, "Close the find window");
         close.Click += (_, _) => Close();
 
@@ -244,6 +245,9 @@ public sealed class FindWindow : Window
         };
         Avalonia.Automation.AutomationProperties.SetName(button, label);
         button.Click += (_, _) => onClick();
-        return button;
+        // M37: the affordance that says "you can press this". IsDefault buttons take the
+        // primary treatment instead, via the property-qualified selector in Controls.axaml, and
+        // the Style there wins over this class.
+        return button.Action();
     }
 }

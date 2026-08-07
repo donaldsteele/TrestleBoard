@@ -56,6 +56,7 @@ public sealed class RestoreDialog : Window
             MinHeight = 44,
             MinWidth = 160,
         };
+        discard.Action();
         discard.Click += (_, _) => Close();
         AutomationProperties.SetName(discard, "Start fresh without recovering");
 

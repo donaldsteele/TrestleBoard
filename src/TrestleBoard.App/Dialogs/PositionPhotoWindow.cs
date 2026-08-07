@@ -123,7 +123,9 @@ public sealed class PositionPhotoWindow : Window
         // "this preview", not bare "Zoom": beside a sentence promising the crop does not change
         // size, an unqualified Zoom button reads as the thing that would change it.
         var zoomIn = new Button { Content = "Show it larger", FontSize = 16, MinHeight = 44, MinWidth = 130 };
+        zoomIn.Action();
         var zoomOut = new Button { Content = "Show it smaller", FontSize = 16, MinHeight = 44, MinWidth = 130 };
+        zoomOut.Action();
         _zoomLabel = new TextBlock { FontSize = 16, VerticalAlignment = VerticalAlignment.Center, MinWidth = 60 };
         zoomIn.Click += (_, _) => StepZoom(+1);
         zoomOut.Click += (_, _) => StepZoom(-1);
@@ -160,6 +162,7 @@ public sealed class PositionPhotoWindow : Window
         AutomationProperties.SetName(apply, "Apply this position");
 
         var cancel = new Button { Content = "Cancel", FontSize = 18, MinHeight = 44, MinWidth = 120, IsCancel = true };
+        cancel.Action();
         cancel.Click += (_, _) => Close();
         AutomationProperties.SetName(cancel, "Cancel, leave the picture where it was");
 

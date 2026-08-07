@@ -5,6 +5,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using TrestleBoard.Widgets.Builtins.BirthdayList;
 using TrestleBoard.Widgets.Roster;
+using TrestleBoard.App.Theme;
 
 namespace TrestleBoard.App.Dialogs;
 
@@ -168,6 +169,6 @@ internal sealed class BirthdaySyncDialog : Window
     {
         var button = new Button { Content = text, FontSize = 20, MinHeight = 44, MinWidth = 200 };
         AutomationProperties.SetName(button, text);
-        return button;
+        return (button).Action();
     }
 }

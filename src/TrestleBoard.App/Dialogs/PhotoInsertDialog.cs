@@ -87,6 +87,7 @@ public sealed class PhotoInsertDialog : Window
             MinWidth = 120,
             IsCancel = true,
         };
+        cancel.Action();
         Avalonia.Automation.AutomationProperties.SetName(cancel, "Cancel, do not add this picture");
         cancel.Click += (_, _) => Close();
 

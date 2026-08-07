@@ -2118,7 +2118,30 @@ Number" contains "member" as a genuine whole word, so the over-broad hints had t
 right-click flyout used static command names while the panel beside it used context-aware ones, so
 right-clicking a filled picture frame offered "Put a picture here…".
 
-**Grouping 4 is half done; grouping 5 is part done.**
+### M37 - Grey stops meaning two things (delivered 2026-08-07, `docs/M37-spec.md`)
+
+Section 14.4's largest visual item, held back through M27 as the owner's decision. Decided: a border
+marks what can be pressed.
+
+Measured from the shipped screenshots, an enabled toolbar button and a disabled one had the
+**identical** fill - `#BEBFC2` for both - and differed only in label contrast, 11.42:1 against
+2.61:1. The second number is the sharper problem: not a weak signal but an unreadable one, so a user
+could not make out what the button they cannot press even says. Meanwhile the action panel's items,
+never disabled by M11's design, wore the same grey slab. One appearance meant "press me" and "you
+cannot" at once, in one window.
+
+Enabled buttons now carry a border in `Chrome.Foreground` (9.68:1 - `Chrome.Border` is 2.36:1 and
+fails section 6's 3:1 floor); disabled ones lose both border and fill and sit flat on the chrome,
+with the label raised to 6.54:1. The border is a shape, so "colour is never the only signal" holds,
+and High Contrast gains most.
+
+It is opted into with `Tokens.Action()` rather than a bare Button selector, which would restyle the
+insides of every ScrollBar and ComboBox - and what makes opting in un-forgettable is a test that
+walks the window and fails on any app-made button carrying neither treatment. It found all sixteen
+misses on its first run.
+
+**Grouping 4: only the picture-verb consolidation and the jargon list remain. Grouping 5 is part
+done.**
 
 ---
 
@@ -2690,11 +2713,13 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 
 ### 14.4 Visual / confusing UI (screenshot pass)
 
-- **Grey means two things everywhere.** Secondary-but-available buttons (start-screen cards, panel
+- ~~**Grey means two things everywhere.** Secondary-but-available buttons (start-screen cards, panel
   items, "Change this", Stop/Back/Next) use the same grey as genuinely disabled controls (Undo/Redo
   when empty). On the start screen, "Open a newsletter" and "Start from a template" look disabled
   next to the navy "Start from last month". Elderly users read grey as "not clickable". In High
-  Contrast the enabled/disabled distinction is weaker still (grey on black).
+  Contrast the enabled/disabled distinction is weaker still (grey on black).~~ - **fixed at
+  M37.** The fills were literally identical (`#BEBFC2` in both states); the disabled label was
+  2.61:1, which is unreadable rather than merely dim.
 - ~~**"Smaller / Bigger" means zoom in the toolbar and point size in the font window** — same words,
   different effects, both prominent.~~ — **fixed at M27**; the toolbar now uses the catalog's words
   and a test compares every toolbar label against it.
@@ -2765,10 +2790,10 @@ hang, and the whole of §14.2's Minor list bar two entries.
 
 **Open, and honestly assessed:**
 
-1. **The grey-means-two-things palette split** (§14.4's largest visual item). Needs a token pair and
-   a `ControlTheme` every secondary button opts into, because `Controls.axaml` documents why a
-   blanket `Style Selector="Button"` is unavailable. A look-and-feel decision across thirteen
-   dialogs — **the owner's, not a coding one**, which is why M27 left it.
+1. ~~**The grey-means-two-things palette split.**~~ - **decided by the owner and closed at M37**:
+   a border marks what can be pressed. The `ControlTheme` is opted into with `Tokens.Action()`,
+   and a test that walks the window makes a miss fail the build rather than ship looking
+   disabled.
 2. **Consolidating the four picture verbs** ("Fix", "Adjust", "Trim", "Position"). Information
    architecture, not a rename. Same reason.
 3. ~~**Selection chrome ignores the theme.**~~ — **closed at M34**, by passing a colour SET in from

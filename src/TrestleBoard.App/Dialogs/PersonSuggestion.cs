@@ -2,6 +2,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using TrestleBoard.App.Theme;
 
 namespace TrestleBoard.App.Dialogs;
 
@@ -133,6 +134,6 @@ internal sealed class PersonPickerDialog : Window
             FontWeight = FontWeight.Normal,
         };
         AutomationProperties.SetName(button, text);
-        return button;
+        return (button).Action();
     }
 }

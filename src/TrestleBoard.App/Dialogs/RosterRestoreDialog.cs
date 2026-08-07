@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using TrestleBoard.Roster;
+using TrestleBoard.App.Theme;
 
 namespace TrestleBoard.App.Dialogs;
 
@@ -65,6 +66,7 @@ public sealed class RosterRestoreDialog : Window
             MinWidth = 140,
             IsCancel = true,
         };
+        cancel.Action();
         AutomationProperties.SetName(cancel, "Cancel");
         cancel.Click += (_, _) => Close();
 

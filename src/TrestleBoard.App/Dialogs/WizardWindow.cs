@@ -254,6 +254,7 @@ public sealed class WizardWindow : Window
                 MinHeight = 44,
                 MinWidth = 180,
             };
+            discard.Action();
 
             var confirm = new Window
             {
@@ -917,6 +918,9 @@ public sealed class WizardWindow : Window
         };
         button.Click += click;
         AutomationProperties.SetName(button, text);
-        return button;
+        // M37: the affordance that says "you can press this". IsDefault buttons take the
+        // primary treatment instead, via the property-qualified selector in Controls.axaml, and
+        // the Style there wins over this class.
+        return button.Action();
     }
 }

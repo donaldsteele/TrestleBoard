@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
 using TrestleBoard.App.Settings;
+using TrestleBoard.App.Theme;
 
 namespace TrestleBoard.App.Dialogs;
 
@@ -103,6 +104,7 @@ public sealed class SettingsDialog : Window
             MinWidth = 140,
             IsCancel = true,
         };
+        cancel.Action();
         cancel.Click += (_, _) => Close();
         AutomationProperties.SetName(cancel, "Cancel");
 

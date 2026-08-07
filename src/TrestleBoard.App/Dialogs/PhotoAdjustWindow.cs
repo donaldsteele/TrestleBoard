@@ -4,6 +4,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using CoreModel = TrestleBoard.Core.Model;
 using TrestleBoard.Editing;
+using TrestleBoard.App.Theme;
 
 namespace TrestleBoard.App.Dialogs;
 
@@ -91,11 +92,13 @@ public sealed class PhotoAdjustWindow : Window
         // M27: which way it turns, said out loud. "Turn a quarter" left the user to press it and
         // find out, and four presses to undo a wrong guess is four undo steps (review §14.4).
         var turn = new Button { Content = "Turn it right ↻", FontSize = 18, MinHeight = 44, MinWidth = 180 };
+        turn.Action();
         turn.Click += (_, _) => _photos.Rotate(_blockId, 1);
         Avalonia.Automation.AutomationProperties.SetName(
             turn, "Turn the picture a quarter turn to the right, clockwise");
 
         var reset = new Button { Content = "Start over", FontSize = 18, MinHeight = 44, MinWidth = 140 };
+        reset.Action();
         reset.Click += (_, _) =>
         {
             _photos.ResetPhoto(_blockId);
@@ -106,6 +109,7 @@ public sealed class PhotoAdjustWindow : Window
         // M22: re-centring an already-sized crop is a separate step from resizing one — opening it
         // from here, rather than only from the action panel, keeps the two discoverable together.
         var position = new Button { Content = "Position…", FontSize = 18, MinHeight = 44, MinWidth = 140 };
+        position.Action();
         position.Click += async (_, _) =>
         {
             var window = new PositionPhotoWindow(_photos, _blockId);
@@ -133,6 +137,7 @@ public sealed class PhotoAdjustWindow : Window
             MinWidth = 200,
             IsCancel = true,
         };
+        cancel.Action();
         cancel.Click += (_, _) => CancelAndClose();
         Avalonia.Automation.AutomationProperties.SetName(
             cancel, "Cancel, put the picture back as it was before this window opened");

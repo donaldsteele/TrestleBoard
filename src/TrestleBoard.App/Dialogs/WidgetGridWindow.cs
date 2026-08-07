@@ -415,7 +415,10 @@ public sealed class WidgetGridWindow : Window
         var button = new Button { Content = text, FontSize = 20, MinHeight = 44, MinWidth = 160 };
         button.Click += click;
         AutomationProperties.SetName(button, text);
-        return button;
+        // M37: the affordance that says "you can press this". IsDefault buttons take the
+        // primary treatment instead, via the property-qualified selector in Controls.axaml, and
+        // the Style there wins over this class.
+        return button.Action();
     }
     /// <summary>
     /// The same question the step wizard asks, for the same session (M35, review §14.2).
@@ -456,6 +459,7 @@ public sealed class WidgetGridWindow : Window
                 MinHeight = 44,
                 MinWidth = 180,
             };
+            discard.Action();
 
             var confirm = new Window
             {

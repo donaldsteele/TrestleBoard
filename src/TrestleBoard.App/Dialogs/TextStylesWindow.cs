@@ -9,6 +9,7 @@ using TrestleBoard.Core.Text;
 using TrestleBoard.Layout.Fonts;
 using TrestleBoard.Rendering;
 using TextBlock = Avalonia.Controls.TextBlock;
+using TrestleBoard.App.Theme;
 
 namespace TrestleBoard.App.Dialogs;
 
@@ -409,6 +410,7 @@ public sealed class TextStylesWindow : Window
     private static Button SmallButton(string text)
     {
         var button = new Button { Content = text, FontSize = 18, MinHeight = 44, MinWidth = 140 };
+        button.Action();
         AutomationProperties.SetName(button, text);
         return button;
     }
@@ -439,6 +441,7 @@ public sealed class TextStylesWindow : Window
             MinWidth = 140,
             IsCancel = true,
         };
+        cancel.Action();
         cancel.Click += (_, _) => { _cancelled = true; Close(); };
         AutomationProperties.SetName(cancel, "Cancel — change nothing");
 

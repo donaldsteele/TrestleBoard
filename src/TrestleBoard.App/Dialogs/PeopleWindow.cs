@@ -4,6 +4,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using TrestleBoard.Roster;
 using TrestleBoard.Roster.Import;
+using TrestleBoard.App.Theme;
 
 namespace TrestleBoard.App.Dialogs;
 
@@ -189,6 +190,7 @@ public sealed class PeopleWindow : Window
     private static Button Action(string content, string automationName)
     {
         var button = new Button { Content = content, FontSize = 20, MinHeight = 44, MinWidth = 180 };
+        button.Action();
         AutomationProperties.SetName(button, automationName);
         return button;
     }

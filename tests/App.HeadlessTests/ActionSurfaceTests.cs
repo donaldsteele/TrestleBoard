@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.LogicalTree;
 using TrestleBoard.App.Actions;
+using TrestleBoard.App.Theme;
 using TrestleBoard.Editing.Actions;
 using Xunit;
 
@@ -264,4 +265,65 @@ public sealed class ActionSurfaceTests
             yield return window.WidgetsForTest!.InsertWidget(0, typeId);
         }
     }
+    /// <summary>
+    /// M37, review §14.4: every button the APP made says whether it can be pressed.
+    ///
+    /// <para>Measured from the shipped screenshots, an enabled toolbar button and a disabled one
+    /// had the identical fill — #BEBFC2 for both — and differed only in label contrast, 11.42:1
+    /// against 2.61:1. Meanwhile the action panel's items, which by M11 are NEVER disabled, looked
+    /// exactly like the disabled ones. "Grey slab" meant "press me" and "you cannot" at once.</para>
+    ///
+    /// <para>The affordance is opted into with <c>Tokens.Action()</c> rather than applied by a bare
+    /// Button selector, because a ScrollBar's repeat buttons and a ComboBox's toggle are Buttons too
+    /// and would take it with them. This test is what makes opting in un-forgettable: a new button
+    /// that carries neither treatment fails here rather than quietly shipping looking dead.</para>
+    ///
+    /// <para><c>TemplatedParent is null</c> is the discriminator. A button the app constructed has
+    /// none; one that Fluent built inside a ScrollBar or ComboBox template has its host.</para>
+    /// </summary>
+    [Fact]
+    public async Task EveryButtonTheAppMadeSaysWhetherItCanBePressed()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenIssueSample();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            var bare = new List<string>();
+            int checkedCount = 0;
+
+            foreach (Button button in window.GetLogicalDescendants().OfType<Button>())
+            {
+                // Framework internals are not ours to restyle.
+                if (button.TemplatedParent is not null)
+                {
+                    continue;
+                }
+
+                checkedCount++;
+                bool marked = button.Classes.Contains("action")
+                    || button.IsDefault
+                    || ReferenceEquals(button.Theme, window.TryFindResource(Tokens.PrimaryButtonTheme, out object? t) ? t : null);
+
+                if (!marked)
+                {
+                    bare.Add(ActionPanel.LabelOf(button) is { Length: > 0 } label
+                        ? label
+                        : button.Name ?? "(unnamed)");
+                }
+            }
+
+            Assert.True(checkedCount >= 8, $"only {checkedCount} app-made buttons were found");
+            Assert.True(
+                bare.Count == 0,
+                "these buttons carry neither the action nor the primary treatment, so they look "
+                    + "the same whether or not they can be pressed: " + string.Join(", ", bare));
+
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
 }

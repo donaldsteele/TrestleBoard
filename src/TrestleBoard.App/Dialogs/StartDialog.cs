@@ -153,6 +153,16 @@ public sealed class StartDialog : Window
             },
         };
 
+        // M37. These three tiles are what the review pointed at first: on the start screen, "Open a
+        // newsletter" and "Start from a template" were flat grey slabs beside the navy primary one,
+        // and read as disabled — the very first thing a new user sees, offering them two choices
+        // that look like they are not available. The primary tile has IsDefault and takes its own
+        // treatment; the other two take the border.
+        if (!primary)
+        {
+            button.Action();
+        }
+
         // The heading alone is the accessible name; the detail is help text, so a screen reader
         // announces "Start from last month, button" rather than a paragraph.
         AutomationProperties.SetName(button, heading);

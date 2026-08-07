@@ -6,6 +6,7 @@ using Avalonia.Platform.Storage;
 using TrestleBoard.Roster;
 using TrestleBoard.Roster.Import;
 using TrestleBoard.Roster.Tables;
+using TrestleBoard.App.Theme;
 
 namespace TrestleBoard.App.Dialogs;
 
@@ -124,6 +125,7 @@ public sealed class RosterImportWindow : Window
     private static Button Big(string content, string automationName)
     {
         var button = new Button { Content = content, FontSize = 20, MinHeight = 44, MinWidth = 140 };
+        button.Action();
         AutomationProperties.SetName(button, automationName);
         return button;
     }

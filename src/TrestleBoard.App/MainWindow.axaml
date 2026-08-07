@@ -376,7 +376,7 @@
     </LayoutTransformControl>
 
     <Border x:Name="CollapsedPanelHost" DockPanel.Dock="Right" Padding="4" IsVisible="False">
-      <Button x:Name="ShowPanelButton" FontSize="16" MinHeight="44" VerticalAlignment="Top"
+      <Button x:Name="ShowPanelButton" Classes="action" FontSize="16" MinHeight="44" VerticalAlignment="Top"
               Tag="view.toggleActionPanel" Click="OnActionClicked"
               AutomationProperties.Name="Show what I can do">What can I do? ▸</Button>
     </Border>

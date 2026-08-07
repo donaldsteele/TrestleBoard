@@ -40,6 +40,53 @@
       </Style>
     </ControlTheme>
 
+    <!--
+      THE ACTION BUTTON (M37). What tells a user "you can press this".
+
+      Measured from the shipped screenshots, an ENABLED toolbar button and a DISABLED one had the
+      IDENTICAL fill — #BEBFC2 for both — and the only difference between them was the label's
+      contrast: 11.42:1 against 2.61:1. So "grey slab" was simultaneously the look of a live button,
+      the look of a dead one, and the look of the action panel's items, which are never disabled at
+      all. The same appearance meant "press me" in one place and "you cannot" in another.
+
+      The signal is now a BORDER, which is a shape and not only a colour (PLAN.md §6). Border
+      present, label at full contrast: pressable. Border gone, fill gone, label dimmed: not.
+      Removing the fill as well as the border matters — a disabled control that still has a slab
+      under it is still competing for attention it does not deserve.
+
+      Chrome.Border cannot serve as this border: it is 2.36:1 against the button fill, under §6's
+      3:1 floor for a boundary that must be perceived. Chrome.Foreground is 9.68:1 and is what is
+      used. Border.Thickness is a token so High Contrast can step it up, exactly as every other
+      rule in the app does.
+    -->
+    <ControlTheme x:Key="TrestleBoard.ActionButton"
+                  TargetType="Button"
+                  BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="BorderBrush" Value="{DynamicResource TrestleBoard.Chrome.Foreground}" />
+      <Setter Property="BorderThickness" Value="{DynamicResource TrestleBoard.Border.Thickness}" />
+
+      <!-- Fluent's own :pointerover and :pressed rules target the template's ContentPresenter, so
+           the border has to be restated there or it vanishes the instant the pointer arrives —
+           the same trap the primary button above documents. -->
+      <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource TrestleBoard.Chrome.Foreground}" />
+      </Style>
+
+      <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource TrestleBoard.Focus}" />
+      </Style>
+
+      <!-- Unavailable: no border, no fill, and a label that can still be READ. Fluent's disabled
+           foreground came out at 2.61:1 on the slab, which is not a weak signal but an unreadable
+           one — an elderly user could not make out what the button they cannot press even says,
+           and the reason it is unavailable is written in its HelpText (M11). -->
+      <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TrestleBoard.Chrome.Muted}" />
+      </Style>
+    </ControlTheme>
+
   </Styles.Resources>
 
   <!--
@@ -50,6 +97,17 @@
   -->
   <Style Selector="Button[IsDefault=True]">
     <Setter Property="Theme" Value="{DynamicResource TrestleBoard.PrimaryButton}" />
+  </Style>
+
+  <!--
+    Opted into by class, not by a bare element selector, for the reason at the top of this file: a
+    ScrollBar's repeat buttons and a ComboBox's drop-down toggle ARE Buttons, and would take this
+    border with them. `Tokens.Action()` is the one way to ask for it, and ActionSurfaceTests walks
+    every window asserting that every button the APP made has either this or the primary treatment
+    — so a new button cannot quietly ship looking disabled.
+  -->
+  <Style Selector="Button.action">
+    <Setter Property="Theme" Value="{DynamicResource TrestleBoard.ActionButton}" />
   </Style>
 
   <!--

@@ -68,6 +68,30 @@ internal static class Tokens
     /// every other button on the screen, which is most of what "every button is the same grey slab"
     /// meant.</para>
     /// </summary>
+    /// <summary>The ControlTheme that <see cref="Action{T}"/> applies.</summary>
+    internal const string ActionButtonTheme = "TrestleBoard.ActionButton";
+
+    /// <summary>
+    /// Marks a button as one the APP made, and gives it the affordance that says so (M37).
+    ///
+    /// <para>Enabled it has a border and a full-contrast label; disabled it has neither border nor
+    /// fill. Before this, an enabled toolbar button and a disabled one shared the identical fill
+    /// and differed only in label contrast — and the action panel's items, which are never disabled
+    /// at all, looked like the disabled ones.</para>
+    ///
+    /// <para>Called rather than inferred, because the alternative is a bare <c>Button</c> selector
+    /// that would also restyle the insides of every ScrollBar and ComboBox. What stops it being
+    /// forgotten is not discipline but <c>ActionSurfaceTests</c>, which walks every window and
+    /// fails on a button that has neither this nor <see cref="Primary{T}"/>.</para>
+    /// </summary>
+    internal static T Action<T>(this T button)
+        where T : Avalonia.Controls.Button
+    {
+        ArgumentNullException.ThrowIfNull(button);
+        button.Classes.Add("action");
+        return button;
+    }
+
     internal static T Primary<T>(this T button)
         where T : Avalonia.Controls.Button
     {
