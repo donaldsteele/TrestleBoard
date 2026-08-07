@@ -2563,8 +2563,8 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 
 ### 14.3 Interaction issues (code-level UX audit)
 
-- **The save model is the product's biggest usability hole** — see §14.1. Everything below assumes
-  it gets fixed first.
+- ~~**The save model is the product's biggest usability hole** — see §14.1.~~ — **closed at M24.**
+  Everything else in this section was written assuming it would be fixed first, and it was.
 - **Hidden click mode on the canvas.** The same click on a text frame places a caret or selects the
   frame depending on whether it was already selected (`PageCanvasControl.cs:654-722`, 4 pt edge
   band) — a mode with no indicator anywhere. Enter/F2/Esc enter and leave typing but appear in no
@@ -2574,11 +2574,12 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   immediately and the window has only "Done" — no Cancel, no `IsCancel`, Esc does nothing. The only
   retreat is "Start over" or Ctrl+Z afterwards.~~ — **fixed at M27**: Cancel unwinds the real undo
   stack to where it stood when the window opened.
-- **Keyboard coverage gaps** (an explicit §6 mandate): no keyboard equivalent for marquee
-  selection, add-to-selection (Shift+click only), pan, snap suppression (Alt — itself advertised
-  nowhere), or pointer-anchored zoom; keyboard photo insertion always lands at the default
-  placement. About 25 commands have no shortcut at all, including every align/distribute, all four
-  picture-geometry commands, and page management.
+- **Keyboard coverage gaps** (an explicit §6 mandate) — **part closed at M28**: the dead Ctrl+V,
+  Backspace's unregistered path, and gestures for add-a-page and settings. **Still open**: no
+  keyboard equivalent for marquee selection, add-to-selection (Shift+click only), pan, snap
+  suppression (Alt — itself advertised nowhere), or pointer-anchored zoom; keyboard photo insertion
+  always lands at the default placement. The remaining ~20 shortcut-less commands are deliberate —
+  align, distribute and the picture-geometry commands are typed into once and left alone.
 - **Two disability models in one window.** Menus and toolbar grey out; the action panel never greys
   and explains instead. Same command, two behaviours, and dialogs (officers sync's disabled
   checkbox) follow neither — the M11 "nothing unavailable without saying why" rule stops at the
@@ -2619,8 +2620,9 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   when empty). On the start screen, "Open a newsletter" and "Start from a template" look disabled
   next to the navy "Start from last month". Elderly users read grey as "not clickable". In High
   Contrast the enabled/disabled distinction is weaker still (grey on black).
-- **"Smaller / Bigger" means zoom in the toolbar and point size in the font window** — same words,
-  different effects, both prominent.
+- ~~**"Smaller / Bigger" means zoom in the toolbar and point size in the font window** — same words,
+  different effects, both prominent.~~ — **fixed at M27**; the toolbar now uses the catalog's words
+  and a test compares every toolbar label against it.
 - **Four near-synonym picture verbs in one panel**: "Fix this picture", "Adjust the picture…",
   "Trim the edges…", "Position the picture in its frame…" (plus "Swap"). The Adjust window then
   *contains* trim sliders and a "Position…" button — the same commands at a different level.
@@ -2674,3 +2676,49 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
    audit tests that make the whole class of "advertised but unreachable" fail the build. The 16 pt
    floor went with M27. Marquee/add-to-selection/pan equivalents and the themed selection chrome
    are still open.
+
+### 14.6 Where the review stands (as at 2026-08-07)
+
+Eight milestones, M24–M31, were taken from §14 in one sitting. This section is the running total, so
+a future session does not have to re-read the whole of §14 to find out what is left.
+
+**Closed.** §14.1 entirely — the lost-work cluster, which was the only part of the review that made
+the product unusable. Every confirmed Major in §14.2 except the ligature caret geometry. Both
+crashes, the duplicated article, the silently-dropped officers decision, the roster's
+unreadable-vs-empty confusion, the import's serial/leap-year/impossible-date defects, the layout
+hang, and the whole of §14.2's Minor list bar two entries.
+
+**Open, and honestly assessed:**
+
+1. **The grey-means-two-things palette split** (§14.4's largest visual item). Needs a token pair and
+   a `ControlTheme` every secondary button opts into, because `Controls.axaml` documents why a
+   blanket `Style Selector="Button"` is unavailable. A look-and-feel decision across thirteen
+   dialogs — **the owner's, not a coding one**, which is why M27 left it.
+2. **Consolidating the four picture verbs** ("Fix", "Adjust", "Trim", "Position"). Information
+   architecture, not a rename. Same reason.
+3. **Selection chrome ignores the theme** (`FrameOverlayRenderer`'s hard-coded ARGB). Needs the
+   palette to reach the Skia renderer, which nothing does yet — a small piece of plumbing that does
+   not exist.
+4. **The ligature caret** (`TextLayoutEngine.cs:552`, confirmed Major). Real, and the riskiest thing
+   left: it moves caret and selection geometry, so it needs its own milestone with snapshot review
+   rather than being folded into a sweep.
+5. **The remaining PLAUSIBLEs** — `AutoLevels`' `Unpremul` target, the caption-blind speculative
+   overset check, `DocumentSession`'s missing rollback. Each needs reproduction before it needs a
+   fix; guessing at them is how a "fix" becomes a new defect.
+6. **Keyboard equivalents for marquee, add-to-selection and pan.** Each is a NEW command needing
+   real design — "select everything on this page" is not quite a marquee.
+7. **The `.bak` ring beside the user's file** and its "Restore an earlier version" menu (§4). Half a
+   feature without each other.
+8. The rest of the jargon inventory, tooltips, rulers and guides, and the wizard/People-window
+   interaction notes in §14.4.
+
+**One finding was investigated and deliberately not changed**: `RecipeCache` eviction, which is not
+reachable because the only call site draws each image immediately (`docs/M25-spec.md` §5). It stays
+on the list because what makes it safe is a property of the caller.
+
+**And one methodological note worth keeping.** Every regression test written for M24–M31 was run
+against the *unfixed* code first. Two of them passed — the M30 layout-hang test and one 16pt
+assertion — which is how it was discovered they proved nothing. Both were rebuilt until they failed
+for the right reason. A test written after the fix, and never seen to fail, is a comment.
+
+---
