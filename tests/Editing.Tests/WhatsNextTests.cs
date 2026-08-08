@@ -44,7 +44,8 @@ public sealed class WhatsNextTests
 
         Assert.Equal(ActionId.ReplacePicture, only.ActionId);
         Assert.Contains("photos", only.Title, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("placeholders", only.Why, StringComparison.OrdinalIgnoreCase);
+        // M46: "placeholders" is a word for people who build software.
+        Assert.Contains("empty picture frames", only.Why, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

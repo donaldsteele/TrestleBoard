@@ -2352,6 +2352,32 @@ canvas (grouped with rulers and guides, and hover text over a page is the wrong 
 
 ---
 
+### M46 - The app stops speaking typography (delivered 2026-08-08, `docs/M46-spec.md`)
+
+Closes the jargon inventory in section 14.3 - the last item in grouping 4. "Add a text frame"
+becomes "Add a box for writing"; "Wrap text around this" becomes "Make the writing flow around it";
+"Fit to contents", "Bring forward", "Send backward", "Bring to front" and "Send to back" all become
+sentences about moving a thing; "Export as PDF..." becomes "Make the PDF..."; the panel's "This
+item" group becomes "The thing you chose"; "A text frame is selected" becomes "A box of writing is
+chosen"; "You are typing" becomes "You are writing"; and "placeholders" becomes "empty picture
+frames".
+
+Two decisions: **"PDF" stays** - it is the thing they email and has no plain synonym, and "Export"
+was the jargon in that phrase. And **"selected" became "chosen"** - selection is a computer word for
+a computer idea; a person chooses a thing.
+
+**The renaming is the small part.** The finding is a class of defect, so it is now a standing rule:
+`NoCommandSpeaksToTheUserInTradeVocabulary` walks every catalog entry and fails on seventeen banned
+words, including ones not in the app today (overset, z-order, kerning, leading, gutter, bleed,
+recto, verso) that should not arrive. Verified failing against the old catalog, naming all seven
+offending commands.
+
+Recorded, not fixed: `SelectionKind.Shape` still says "A shape is selected". Nothing in this app
+creates a shape - the kind is only the fall-through for a block that is none of the three real
+kinds - so renaming a string nobody can see would be tidying rather than fixing.
+
+---
+
 ## 12. Verification (end-to-end)
 
 1. **Per-milestone:** `dotnet build && dotnet test` locally + 3-OS CI matrix green; cavecrew-reviewer findings addressed; snapshot diffs reviewed as CI artifacts.
@@ -2917,7 +2943,8 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   the selection; ~~the context menu uses
   static titles where the panel uses context-aware ones ("Put a picture here…" over a filled
   frame)~~ (**fixed at M36**); two undo stacks (document vs address book) are disclosed only inside the People menu.
-- **Jargon inventory** (user-facing strings that assume desktop-publishing or programmer
+- ~~**Jargon inventory**~~ — **fixed at M46**, and enforced by a standing test rather than a one-off
+  pass. (user-facing strings that assume desktop-publishing or programmer
   vocabulary): "text frame", "Wrap text around this", "Fit to contents", "Bring forward / Send
   backward", "Export as PDF", "placeholders", "This item" (the heading M17 dissolved as a menu
   survives as a panel group), "A shape is selected" (nothing creates a shape), "Show all at once"

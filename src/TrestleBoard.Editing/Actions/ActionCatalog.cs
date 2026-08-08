@@ -78,7 +78,7 @@ public static class ActionCatalog
         new(ActionId.RestoreDocument, "Go back to an earlier version…",
             "Opens one of the copies TrestleBoard kept each time you saved.",
             ActionGroup.Newsletter),
-        new(ActionId.ExportPdf, "Export as PDF…", "Makes the file you email to the lodge.",
+        new(ActionId.ExportPdf, "Make the PDF…", "Makes the file you email to the lodge.",
             ActionGroup.Newsletter, "Ctrl+E", IsPrimary: true),
         new(ActionId.Exit, "Exit", "Closes TrestleBoard.", ActionGroup.Newsletter),
 
@@ -117,7 +117,7 @@ public static class ActionCatalog
             ActionGroup.Text),
 
         // ---- Putting things on the page ---------------------------------------------------------
-        new(ActionId.AddTextFrame, "Add a text frame", "Puts an empty box on the page for you to write in.",
+        new(ActionId.AddTextFrame, "Add a box for writing", "Puts an empty box on the page for you to write in.",
             ActionGroup.Insert, "Ctrl+Shift+T", IsPrimary: true),
         new(ActionId.InsertPhoto, "Insert a picture…", "Puts a photograph on the page.",
             ActionGroup.Insert, "Ctrl+Shift+P", IsPrimary: true),
@@ -138,7 +138,7 @@ public static class ActionCatalog
             ActionGroup.Item, "Ctrl+Shift+E", IsPrimary: true),
         new(ActionId.EditWidgetList, "Edit the list…", "Shows the whole list at once, with big rows.",
             ActionGroup.Item, "Ctrl+Shift+G"),
-        new(ActionId.FitToContents, "Fit to contents", "Makes the box exactly as tall as what is in it.",
+        new(ActionId.FitToContents, "Make it fit what is in it", "Makes the box exactly as tall as what is in it.",
             ActionGroup.Item, "Ctrl+Shift+Y"),
         new(ActionId.SyncBirthdays, "Bring in birthdays from the address book",
             "Fills the birthday list in from your address book, showing you the changes first.",
@@ -180,7 +180,7 @@ public static class ActionCatalog
             "Writes what somebody who cannot see it should be told.", ActionGroup.Picture),
 
         // ---- How text flows ---------------------------------------------------------------------
-        new(ActionId.ToggleWrap, "Wrap text around this", "Makes the writing on the page flow around it.",
+        new(ActionId.ToggleWrap, "Make the writing flow around it", "Makes the writing on the page flow around it.",
             ActionGroup.TextFlow, "Ctrl+Shift+W", IsPrimary: true),
         new(ActionId.LinkFrames, "Continue this text in another frame…",
             "Lets a long article carry on in a second box.", ActionGroup.TextFlow, "Ctrl+Shift+L"),
@@ -191,13 +191,13 @@ public static class ActionCatalog
             ActionGroup.TextFlow, "Ctrl+Shift+M"),
 
         // ---- Arranging --------------------------------------------------------------------------
-        new(ActionId.BringForward, "Bring forward", "Moves it one step towards the front.",
+        new(ActionId.BringForward, "Move it forward", "Moves it one step towards the front.",
             ActionGroup.Arrange, "Ctrl+]"),
-        new(ActionId.SendBackward, "Send backward", "Moves it one step towards the back.",
+        new(ActionId.SendBackward, "Move it back", "Moves it one step towards the back.",
             ActionGroup.Arrange, "Ctrl+["),
-        new(ActionId.BringToFront, "Bring to front", "Puts it in front of everything else.",
+        new(ActionId.BringToFront, "Move it to the front", "Puts it in front of everything else.",
             ActionGroup.Arrange, "Ctrl+Shift+]"),
-        new(ActionId.SendToBack, "Send to back", "Puts it behind everything else.",
+        new(ActionId.SendToBack, "Move it to the back", "Puts it behind everything else.",
             ActionGroup.Arrange, "Ctrl+Shift+["),
 
         // ---- Lining things up (M21) -------------------------------------------------------------
@@ -635,8 +635,8 @@ public static class ActionCatalog
 
         return context.Selection switch
         {
-            SelectionKind.Text => "You are typing",
-            SelectionKind.TextFrame => "A text frame is selected",
+            SelectionKind.Text => "You are writing",
+            SelectionKind.TextFrame => "A box of writing is chosen",
             SelectionKind.Photo => "A photo is selected",
             SelectionKind.Widget => $"{context.WidgetDisplayName ?? "An item"} is selected",
             SelectionKind.Shape => "A shape is selected",
@@ -731,7 +731,7 @@ public static class ActionCatalog
         ActionGroup.Edit => "Editing",
         ActionGroup.Text => "The words",
         ActionGroup.Insert => "Add to the page",
-        ActionGroup.Item => "This item",
+        ActionGroup.Item => "The thing you chose",
         ActionGroup.Picture => "This picture",
         ActionGroup.TextFlow => "How text flows",
         ActionGroup.Arrange => "Front and back",

@@ -210,7 +210,7 @@ public sealed class ActionSurfaceTests
 
             Assert.Contains(steps, s => s.ActionId == ActionId.ExportPdf);
             Assert.Contains(steps, s => s.Why.Contains("remind you", StringComparison.Ordinal));
-            Assert.Contains(window.PanelForTest.ButtonsForTest, b => ActionPanel.LabelOf(b) == "Export the PDF");
+            Assert.Contains(window.PanelForTest.ButtonsForTest, b => ActionPanel.LabelOf(b) == "Make the PDF");
 
             window.Close();
         }, TestContext.Current.CancellationToken);

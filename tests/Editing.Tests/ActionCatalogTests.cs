@@ -441,7 +441,9 @@ public sealed class ActionCatalogTests
         Assert.Equal("Nothing is selected", ActionCatalog.DescribeSelection(Document()));
         Assert.Equal("A photo is selected", ActionCatalog.DescribeSelection(Photo()));
         Assert.Equal("Lodge officers is selected", ActionCatalog.DescribeSelection(Widget()));
-        Assert.Equal("You are typing", ActionCatalog.DescribeSelection(Typing()));
+        // M46: "typing" and "selected" were the app talking about itself. It says "writing"
+        // and "chosen" now, in the panel heading a screen reader reads out.
+        Assert.Equal("You are writing", ActionCatalog.DescribeSelection(Typing()));
     }
 
     [Fact]
@@ -630,5 +632,49 @@ public sealed class ActionCatalogTests
             .Evaluate(ActionId.ReplacePicture, Typing() with { HasPicturePlaceholder = true })
             .IsAvailable);
         Assert.False(ActionCatalog.Evaluate(ActionId.ReplacePicture, Document()).IsAvailable);
+    }
+
+    /// <summary>
+    /// M46, review §14.3: the jargon inventory, as a standing rule rather than a one-off pass.
+    ///
+    /// <para>Every word here was in a title or a description this app showed to a lodge secretary.
+    /// They are the vocabulary of desktop publishing and of programming — "text frame", "wrap",
+    /// "bring forward", "placeholder" — and each one asks the reader to already know the trade the
+    /// app is trying to spare them. The point of a test rather than a commit is that the next
+    /// command added cannot quietly bring them back.</para>
+    ///
+    /// <para>The exceptions are named and small: "PDF" is the thing they email and has no plain
+    /// synonym, and "Undo"/"Redo" are the two words every program on the machine agrees on.</para>
+    /// </summary>
+    [Fact]
+    public void NoCommandSpeaksToTheUserInTradeVocabulary()
+    {
+        string[] banned =
+        [
+            "text frame", "frame of text", "wrap ", "bring forward", "send backward",
+            "bring to front", "send to back", "fit to contents", "placeholder", "overset",
+            "z-order", "kerning", "leading", "gutter", "bleed", "recto", "verso",
+        ];
+
+        var offences = new List<string>();
+        foreach (EditorAction action in ActionCatalog.All)
+        {
+            foreach (string word in banned)
+            {
+                if (action.Title.Contains(word, StringComparison.OrdinalIgnoreCase))
+                {
+                    offences.Add($"{action.Id} title says \"{word}\"");
+                }
+
+                if (action.ShortDescription.Contains(word, StringComparison.OrdinalIgnoreCase))
+                {
+                    offences.Add($"{action.Id} description says \"{word}\"");
+                }
+            }
+        }
+
+        Assert.True(
+            offences.Count == 0,
+            "these say something only a typesetter would recognise: " + string.Join("; ", offences));
     }
 }

@@ -66,7 +66,7 @@ public static class WhatsNext
         {
             steps.Add(new NextStep(
                 "Put your photos in",
-                "The photo pages are still showing placeholders. Double-click a grey picture frame, "
+                "The photo pages are still showing empty picture frames. Double-click a grey one, "
                 + "or choose one and use 'Put a picture here…'.",
                 Actions.ActionId.ReplacePicture));
         }
@@ -98,8 +98,8 @@ public static class WhatsNext
         if (!context.ExportedPdfThisSession)
         {
             steps.Add(new NextStep(
-                "Export the PDF",
-                "The PDF is the file you email to the lodge. Nothing has been exported since this was opened.",
+                "Make the PDF",
+                "The PDF is the file you email to the lodge. One has not been made since this was opened.",
                 Actions.ActionId.ExportPdf));
         }
 

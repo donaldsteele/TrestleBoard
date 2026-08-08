@@ -45,9 +45,9 @@
                   Click="OnActionClicked"
                   AutomationProperties.Name="Go back to an earlier version of this newsletter" />
         <Separator />
-        <MenuItem Header="_Export as PDF…" Tag="newsletter.exportPdf"
+        <MenuItem Header="Make the _PDF…" Tag="newsletter.exportPdf"
                   InputGesture="Ctrl+E" Click="OnActionClicked"
-                  AutomationProperties.Name="Export as PDF" />
+                  AutomationProperties.Name="Make the PDF to email" />
         <Separator />
         <MenuItem Header="E_xit" Tag="newsletter.exit" Click="OnActionClicked"
                   AutomationProperties.Name="Exit TrestleBoard" />
@@ -150,8 +150,8 @@
            photograph — at the top, above the separator. "Insert a picture…" used to hide at
            This item ▸ Picture ▸ Insert a picture…, which is not where anybody looks for it. -->
       <MenuItem Header="_Insert" AutomationProperties.Name="Insert menu">
-        <MenuItem Header="A _text frame" Tag="insert.textFrame" InputGesture="Ctrl+Shift+T"
-                  Click="OnActionClicked" AutomationProperties.Name="Add a text frame" />
+        <MenuItem Header="A box for _writing" Tag="insert.textFrame" InputGesture="Ctrl+Shift+T"
+                  Click="OnActionClicked" AutomationProperties.Name="Add a box for writing" />
         <MenuItem Header="A _picture…" Tag="insert.photo" InputGesture="Ctrl+Shift+P"
                   Click="OnActionClicked" AutomationProperties.Name="Insert a picture" />
         <Separator />
@@ -191,8 +191,8 @@
            picture ones to Format, and everything about WHERE a thing sits on the page is here.
            Nine top-level menus before, nine after — the chrome budget at 200% is the reason. -->
       <MenuItem Header="A_rrange" AutomationProperties.Name="Arrange menu">
-        <MenuItem Header="_Wrap text around this" Tag="flow.wrap" InputGesture="Ctrl+Shift+W"
-                  Click="OnActionClicked" AutomationProperties.Name="Wrap text around this frame" />
+        <MenuItem Header="Make the _writing flow around it" Tag="flow.wrap" InputGesture="Ctrl+Shift+W"
+                  Click="OnActionClicked" AutomationProperties.Name="Make the writing flow around it" />
         <MenuItem Header="_Continue this text in another frame…" Tag="flow.link" InputGesture="Ctrl+Shift+L"
                   Click="OnActionClicked" AutomationProperties.Name="Continue this text in another frame" />
         <MenuItem Header="_Stop continuing into the next frame" Tag="flow.unlink" InputGesture="Ctrl+Shift+K"
@@ -200,17 +200,17 @@
         <MenuItem Header="_Make the rest fit" Tag="flow.auto" InputGesture="Ctrl+Shift+M"
                   Click="OnActionClicked" AutomationProperties.Name="Make the rest of this text fit" />
         <Separator />
-        <MenuItem Header="_Fit to contents" Tag="item.fitToContents" InputGesture="Ctrl+Shift+Y"
-                  Click="OnActionClicked" AutomationProperties.Name="Fit this item to its contents" />
+        <MenuItem Header="Make it _fit what is in it" Tag="item.fitToContents" InputGesture="Ctrl+Shift+Y"
+                  Click="OnActionClicked" AutomationProperties.Name="Make it fit what is in it" />
         <Separator />
-        <MenuItem Header="Bring f_orward" Tag="arrange.bringForward" InputGesture="Ctrl+OemCloseBrackets"
-                  Click="OnActionClicked" AutomationProperties.Name="Bring forward" />
-        <MenuItem Header="Send _backward" Tag="arrange.sendBackward" InputGesture="Ctrl+OemOpenBrackets"
-                  Click="OnActionClicked" AutomationProperties.Name="Send backward" />
-        <MenuItem Header="Bring to f_ront" Tag="arrange.bringToFront" InputGesture="Ctrl+Shift+OemCloseBrackets"
-                  Click="OnActionClicked" AutomationProperties.Name="Bring to front" />
-        <MenuItem Header="Send to bac_k" Tag="arrange.sendToBack" InputGesture="Ctrl+Shift+OemOpenBrackets"
-                  Click="OnActionClicked" AutomationProperties.Name="Send to back" />
+        <MenuItem Header="Move it f_orward" Tag="arrange.bringForward" InputGesture="Ctrl+OemCloseBrackets"
+                  Click="OnActionClicked" AutomationProperties.Name="Move it forward" />
+        <MenuItem Header="Move it _back" Tag="arrange.sendBackward" InputGesture="Ctrl+OemOpenBrackets"
+                  Click="OnActionClicked" AutomationProperties.Name="Move it back" />
+        <MenuItem Header="Move it to the f_ront" Tag="arrange.bringToFront" InputGesture="Ctrl+Shift+OemCloseBrackets"
+                  Click="OnActionClicked" AutomationProperties.Name="Move it to the front" />
+        <MenuItem Header="Move it to the bac_k" Tag="arrange.sendToBack" InputGesture="Ctrl+Shift+OemOpenBrackets"
+                  Click="OnActionClicked" AutomationProperties.Name="Move it to the back" />
         <Separator />
         <!-- M21: the eight commands that act on MORE than one thing. They live flat rather than in
              a submenu — M17's ruling on three-deep menus — and they carry no shortcuts: eight

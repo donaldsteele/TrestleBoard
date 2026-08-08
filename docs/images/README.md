@@ -18,7 +18,7 @@ regeneration adds a full copy to the repository's history:
 dotnet run --project tools/TrestleBoard.Screenshots -- --only font-picker
 ```
 
-Last regenerated: **2026-08-07**, TrestleBoard **0.1.0**.
+Last regenerated: **2026-08-08**, TrestleBoard **0.1.0**.
 That date covers the run that last touched this file; a `--only` run rewrites it
 while leaving the other images as they were, which is the honest reading of it.
 
