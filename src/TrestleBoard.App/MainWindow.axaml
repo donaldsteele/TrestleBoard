@@ -49,6 +49,9 @@
         <MenuItem Header="Loo_k it over with me…" Tag="newsletter.review"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Look the newsletter over with me" />
+        <MenuItem Header="Check my spelli_ng…" Tag="newsletter.checkSpelling"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Check my spelling" />
         <MenuItem Header="Make the _PDF…" Tag="newsletter.exportPdf"
                   InputGesture="Ctrl+E" Click="OnActionClicked"
                   AutomationProperties.Name="Make the PDF to email" />
@@ -271,6 +274,10 @@
         <MenuItem Header="Show _where fonts were changed" Tag="view.showFontChanges"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Show where fonts were changed" />
+        <!-- M52: on by default, unlike the two above. -->
+        <MenuItem Header="Show my spelling mista_kes" Tag="view.showSpelling"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Show my spelling mistakes" />
         <MenuItem Header="Move to the _next part of the window" Tag="view.nextRegion" InputGesture="F6"
                   Click="OnActionClicked" AutomationProperties.Name="Move to the next part of the window" />
         <!-- M17: Shift+F6 has worked since M11 and was the one ActionId in the whole app with no

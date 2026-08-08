@@ -2561,7 +2561,25 @@ baseline moves. The stale-date check is a heuristic and must be phrased as a que
 assertion. Every finding screen meets §6 (18–20pt, keyboard path, polite live-region announcement),
 and a fixture document seeded with one of each defect surfaces all of them.
 
-### M52 — Catch my spelling (M/L)
+### M52 — Catch my spelling (M/L) — **delivered 2026-08-08, `docs/M52-spec.md`**
+
+> WeCantSpell.Hunspell (pure managed — the deciding property, since every alternative wanted a
+> native library per RID) and a SCOWL en_US dictionary in a new leaf, `TrestleBoard.Spelling`. The
+> dictionary's terms are three licences rather than one, so the whole README ships; gate 22's
+> manifest carries the hashes and fails both ways round.
+>
+> **The "squiggles never reach the PDF" acceptance is met structurally, not by a snapshot.** A test
+> that exports a page and looks would pass today and keep passing until somebody added a spelling
+> colour to the renderer. Instead `TheCheckerCannotReachThePageTests` holds the reference graph: the
+> six projects that produce a page do not reference `Spelling`, the four that put ink on it do not
+> mention spelling, App is the only meeting point, and the checker stays a leaf. A squiggle in the
+> PDF needs a csproj line that fails the build.
+>
+> The wizard, not the underline, is the primary path — an underline asks for a right-click on a
+> small target, which is the fine-motor work §6 exists to avoid. Marks recompute on page change and
+> when the caret leaves a frame, never per keystroke. `TextReplacement` came out of `FindController`
+> so both features share one "delete these, put those, one undo step". M51's checklist gained an
+> `extraStations` parameter and this is its first station, which is what M51 was scheduled first for.
 
 **Goal.** Offline spell check — the classic newsletter embarrassment, and the gap §13 recorded as
 "recommended but unscheduled" awaiting the owner's word. This pass is that word.

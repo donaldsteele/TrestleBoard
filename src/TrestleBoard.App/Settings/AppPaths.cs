@@ -43,6 +43,13 @@ public static class AppPaths
     /// <summary>The lodge address book (M12). Real personal data — see PLAN.md §0 rule 5.</summary>
     public static string RosterFile => Path.Combine(Root, "roster.json");
 
+    /// <summary>
+    /// Words the user has told the spell checker are not mistakes (M52). Real personal data — most
+    /// of them will be members' surnames, so PLAN.md §0 rule 7 applies exactly as rule 5 does to
+    /// the file above.
+    /// </summary>
+    public static string PersonalDictionaryFile => Path.Combine(Root, "personal-dictionary.txt");
+
     /// <summary>Puts the root back to the default. For tests that set it.</summary>
     public static void ResetRootToDefault() => _root = null;
 }

@@ -24,6 +24,8 @@ using TrestleBoard.Core.Workflow;
 using TrestleBoard.Editing;
 using TrestleBoard.Editing.Actions;
 using TrestleBoard.Editing.Review;
+using TrestleBoard.App.Integration;
+using TrestleBoard.Spelling;
 using TrestleBoard.Export.Pdf;
 using TrestleBoard.Layout.Fonts;
 using TrestleBoard.Rendering;
@@ -1118,7 +1120,45 @@ public partial class MainWindow : Window
             }
         }
 
-        return ReviewChecklist.Build(_package.Document, _source.GetOversetTailBlockIds(), emptyPictures);
+        return ReviewChecklist.Build(
+            _package.Document,
+            _source.GetOversetTailBlockIds(),
+            emptyPictures,
+            SpellingStation());
+    }
+
+    /// <summary>
+    /// M52 joins M51's checklist as a station, which is what PLAN.md scheduled M51 first for. One
+    /// screen — "there are eleven words I do not know" — with the wizard behind a button, because
+    /// eleven words inside the review would bury the six questions the review is actually for.
+    ///
+    /// <para>It is built here rather than in <c>ReviewChecklist</c> because <c>TrestleBoard.Editing</c>
+    /// does not reference <c>TrestleBoard.Spelling</c> and must not: that reference is what keeps the
+    /// checker out of everything downstream of it.</para>
+    /// </summary>
+    private IEnumerable<ReviewFinding> SpellingStation()
+    {
+        if (_package is null)
+        {
+            yield break;
+        }
+
+        int words = Spelling.ScanDocument(_package.Document).Count;
+        if (words == 0)
+        {
+            yield break;
+        }
+
+        yield return new ReviewFinding(
+            ReviewFindingKind.SpellingToCheck,
+            PageNumber: 1,
+            BlockId: null,
+            words == 1
+                ? "There is 1 word I do not know"
+                : $"There are {words} words I do not know",
+            "Some of them will be names, and names are not mistakes. Would you like to go through "
+            + "them one at a time?",
+            ActionId.CheckSpelling);
     }
 
     /// <summary>
@@ -1136,6 +1176,180 @@ public partial class MainWindow : Window
         }
 
         RefreshActions();
+    }
+
+    // ---- Check my spelling (PLAN.md §11 M52) --------------------------------------------------
+
+    private SpellingWindow? _spellingWindow;
+    private SpellingService? _spelling;
+
+    /// <summary>
+    /// Built on first use, never at startup. Loading half a megabyte of word list is noticeable on
+    /// an old machine, and somebody who only ever opens a newsletter to look at it should not pay
+    /// for a checker they never ask a question of.
+    /// </summary>
+    internal SpellingService Spelling
+    {
+        get
+        {
+            if (_spelling is null)
+            {
+                _spelling = new SpellingService();
+                _spelling.SeedIfEmpty(RosterSurnamesForSpelling());
+            }
+
+            return _spelling;
+        }
+    }
+
+    internal SpellingWindow? SpellingWindowForTest => _spellingWindow;
+
+    /// <summary>Correcting a word without the wizard, so a test can drive the document half alone.</summary>
+    internal bool ChangeTheWordForTest(Misspelling word, string replacement) =>
+        ChangeTheWord(word, replacement);
+
+    /// <summary>
+    /// Names from the address book, so the checker does not ask about half the lodge on the first
+    /// run. §0 rule 7: these are real people's surnames and they go into a gitignored AppData file
+    /// and nowhere else.
+    /// </summary>
+    private IEnumerable<string> RosterSurnamesForSpelling()
+    {
+        if (_roster is null)
+        {
+            return [];
+        }
+
+        char[] separators = [' ', '\t', ',', '.'];
+        return _roster.Book.Members
+            .SelectMany(m => m.DisplayName.Split(
+                separators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Where(part => part.Length > 1)
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Opens the word-by-word pass (M52). Not modal — it points at the page behind it.</summary>
+    internal void ShowSpellingCheck()
+    {
+        if (_source is null || _package is null)
+        {
+            return;
+        }
+
+        if (_spellingWindow is not null)
+        {
+            _spellingWindow.Activate();
+            return;
+        }
+
+        IReadOnlyList<Misspelling> words = Spelling.ScanDocument(_package.Document);
+        _spellingWindow = new SpellingWindow(
+            words, Spelling.Checker, TakeMeToTheWord, ChangeTheWord, Announce);
+        _spellingWindow.Closed += (_, _) =>
+        {
+            _spellingWindow = null;
+
+            // Words taught to the checker while the wizard was open change what is underlined.
+            RefreshSpellingMarks();
+        };
+        _spellingWindow.Show(this);
+        _spellingWindow.Activate();
+
+        Announce(words.Count == 0
+            ? "I knew every word in the newsletter."
+            : $"There {(words.Count == 1 ? "is 1 word" : $"are {words.Count} words")} I do not know.");
+    }
+
+    /// <summary>Page first, then the words — the M21 ordering lesson, same as M51's.</summary>
+    private void TakeMeToTheWord(Misspelling word)
+    {
+        if (_package is null || _editor is null)
+        {
+            return;
+        }
+
+        if (PageOfStory(word.StoryId) is { } page)
+        {
+            GoToPage(page);
+        }
+
+        _editor.SelectRange(word.StoryId, word.ParagraphIndex, word.Offset, word.Word.Length);
+        RefreshActions();
+    }
+
+    /// <summary>
+    /// Swaps the word for the suggestion, through the same one-undo-step composite find-and-replace
+    /// uses. Returns false when the word is no longer where the scan said it was — somebody typed
+    /// while the wizard was open — because changing the wrong six characters is far worse than
+    /// saying so.
+    /// </summary>
+    private bool ChangeTheWord(Misspelling word, string replacement)
+    {
+        if (_session is null
+            || !_session.Document.TryGetStory(word.StoryId, out Core.Model.Story? story)
+            || word.ParagraphIndex >= story.Paragraphs.Count)
+        {
+            return false;
+        }
+
+        string text = Core.Text.StoryNavigator.GetParagraphText(story.Paragraphs[word.ParagraphIndex]);
+        if (word.Offset + word.Length > text.Length
+            || !text.AsSpan(word.Offset, word.Length).SequenceEqual(word.Word))
+        {
+            return false;
+        }
+
+        _session.Execute(Editing.TextReplacement.Build(
+            word.StoryId, word.ParagraphIndex, word.Offset, word.Length, replacement, "Correct a word"));
+        RefreshSpellingMarks();
+        RefreshActions();
+        return true;
+    }
+
+    /// <summary>Recomputes the dotted underlines for the page on show.</summary>
+    internal void RefreshSpellingMarks()
+    {
+        if (_source is null || _package is null || !_settings.ShowSpelling)
+        {
+            PageCanvas.SpellingRects = [];
+            return;
+        }
+
+        PageCanvas.SpellingRects = Spelling.MarksOnPage(_package.Document, _source, _pageIndex);
+    }
+
+    internal void ToggleShowSpelling()
+    {
+        _settings = _settings with { ShowSpelling = !_settings.ShowSpelling };
+        _settings.Save();
+        PageCanvas.ShowSpelling = _settings.ShowSpelling;
+        RefreshSpellingMarks();
+        Announce(_settings.ShowSpelling
+            ? "Words TrestleBoard does not know now have a dotted line under them. This never prints."
+            : "The dotted lines are hidden again.");
+        RefreshActions();
+    }
+
+    private int? PageOfStory(string storyId)
+    {
+        if (_package is null)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < _package.Document.Pages.Count; i++)
+        {
+            foreach (Core.Model.Block block in _package.Document.Pages[i].Blocks)
+            {
+                if (block is Core.Model.TextBlock text
+                    && string.Equals(text.StoryRef, storyId, StringComparison.Ordinal))
+                {
+                    return i;
+                }
+            }
+        }
+
+        return null;
     }
 
     // ---- Keeping the work (PLAN.md §11 M24) ---------------------------------------------------
@@ -1996,9 +2210,28 @@ public partial class MainWindow : Window
         RefreshActions();
     }
 
-    /// <summary>Help → "Fonts and licences": the OFL text the licence requires we ship (OFL §II(3)).</summary>
+    /// <summary>
+    /// Help → "Fonts and licences": the OFL text the licence requires we ship (OFL §II(3)), and
+    /// from M52 the spelling dictionary's terms underneath it.
+    ///
+    /// <para>The dictionary is here rather than behind a third menu item for the reason the app's
+    /// own licence is NOT here: this window is "the things that came with TrestleBoard and whose
+    /// terms are somebody else's", and a word list is one of those. The app's own grant is a
+    /// different question and keeps its own command (M68).</para>
+    /// </summary>
     internal Task ShowFontLicencesAsync() =>
-        ShowScrollingTextAsync("Fonts and licences", BundledFonts.ReadLicenceText());
+        ShowScrollingTextAsync("Fonts and licences", BundledLicences());
+
+    internal static string BundledLicences() =>
+        BundledFonts.ReadLicenceText()
+        + "\n\n\n"
+        + "═══════════════════════════════════════════════════════════════════════\n"
+        + $"The spelling dictionary — {BundledDictionary.Language}\n"
+        + "═══════════════════════════════════════════════════════════════════════\n\n"
+        + "TrestleBoard checks your spelling against the word list reproduced below, which came\n"
+        + "from the SCOWL project by way of the LibreOffice dictionaries. It may be passed on only\n"
+        + "with the notices that follow, which is why they are here.\n\n"
+        + BundledDictionary.ReadLicenceText();
 
     /// <summary>
     /// Help → "Licence": TrestleBoard's own terms (M68). PolyForm Noncommercial's <i>Notices</i>
@@ -3261,6 +3494,7 @@ public partial class MainWindow : Window
         }
 
         ApplyPanelVisibility();
+        PageCanvas.ShowSpelling = _settings.ShowSpelling;
     }
 
     internal AppSettings SettingsForTest => _settings;
@@ -3565,6 +3799,14 @@ public partial class MainWindow : Window
         PageCanvas.FrameEditor = frames;
         PageCanvas.PageIndex = 0;
 
+        // M52: the underlines are recomputed when the page changes, when a newsletter is opened,
+        // and when the user stops typing in a frame — NOT on every keystroke. Marks appearing and
+        // vanishing under a half-typed word is exactly the jitter this audience does not need, and
+        // a whole page re-checked per character is work nobody asked for. The dotted line is a
+        // reminder, not a running commentary.
+        _spellingWindow?.Close();
+        RefreshSpellingMarks();
+
         // M24: a newsletter just opened from a file matches that file; one carried forward or put
         // back by the recovery dialog matches nothing on disk and says so from the first moment.
         _unsavedChanges = startsDirty;
@@ -3582,7 +3824,18 @@ public partial class MainWindow : Window
             RefreshActions();
         };
         StartRecovery(package);
-        editor.Changed += (_, _) => RefreshActions();
+        editor.Changed += (_, _) =>
+        {
+            // M52: when the caret leaves a frame, whatever was typed in it is finished writing, and
+            // that is the moment to re-mark it. While the session is active the marks stay as they
+            // were — see the note where the newsletter is adopted.
+            if (!editor.IsActive)
+            {
+                RefreshSpellingMarks();
+            }
+
+            RefreshActions();
+        };
         frames.Changed += (_, _) => RefreshActions();
         photos.Changed += (_, _) => RefreshActions();
         widgets.Changed += (_, _) => RefreshActions();
@@ -3628,6 +3881,7 @@ public partial class MainWindow : Window
             ApplyFitZoom();
         }
 
+        RefreshSpellingMarks();
         RefreshActions();
     }
 

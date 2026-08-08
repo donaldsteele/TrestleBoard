@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Offline spell check (PLAN.md §9, M52): the bundled dictionary, the personal dictionary, and
+       the word-by-word walk over a newsletter. A leaf — Core plus WeCantSpell.Hunspell, and nothing
+       else. It is deliberately NOT referenced by Layout, Rendering or Export.Pdf: the checker must
+       be provably absent from the pipeline that produces a page, which is what makes "a squiggle
+       can never reach the PDF" a fact about the reference graph rather than a promise.
+
+       Like TrestleBoard.Roster, it gets its own assembly partly so §0 has somewhere to point: the
+       personal dictionary will fill up with real members' surnames. -->
+  <ItemGroup>
+    <PackageReference Include="WeCantSpell.Hunspell" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TrestleBoard.Core\TrestleBoard.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The M14 font precedent, and PLAN.md §12 gate 22: the data ships inside the assembly, and
+         the licence ships with it. The SCOWL word lists are free to redistribute only on condition
+         that the copyright notice travels with them, so README_en_US.txt is not documentation here
+         — it is part of what we are required to hand over. assets-src/dictionaries/dictionaries.json
+         records the hash of all three files and DictionaryManifestTests fails on drift. -->
+    <EmbeddedResource Include="..\..\assets-src\dictionaries\en-US\en_US.aff"
+                      Link="Assets\Dictionaries\en_US.aff"
+                      LogicalName="TrestleBoard.Spelling.Dictionaries.en_US.aff" />
+    <EmbeddedResource Include="..\..\assets-src\dictionaries\en-US\en_US.dic"
+                      Link="Assets\Dictionaries\en_US.dic"
+                      LogicalName="TrestleBoard.Spelling.Dictionaries.en_US.dic" />
+    <EmbeddedResource Include="..\..\assets-src\dictionaries\en-US\README_en_US.txt"
+                      Link="Assets\Dictionaries\README_en_US.txt"
+                      LogicalName="TrestleBoard.Spelling.Dictionaries.README_en_US.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Spelling.Tests" />
+  </ItemGroup>
+</Project>

@@ -140,7 +140,8 @@ public sealed class FindController
         var children = new List<IDocumentCommand>();
         for (int i = hits.Count - 1; i >= 0; i--)
         {
-            children.AddRange(ReplacementChildren(hits[i], ReplacementText));
+            children.AddRange(TextReplacement.Steps(
+                hits[i].StoryId, hits[i].ParagraphIndex, hits[i].Offset, hits[i].Length, ReplacementText));
         }
 
         _session.Execute(new CompositeCommand(
@@ -160,20 +161,15 @@ public sealed class FindController
         Raise();
     }
 
-    private static IEnumerable<IDocumentCommand> ReplacementChildren(FindHit hit, string replacement)
-    {
-        yield return new DeleteTextCommand(hit.StoryId, hit.ParagraphIndex, hit.Offset, hit.Length);
-        if (replacement.Length > 0)
-        {
-            yield return new InsertTextCommand(hit.StoryId, hit.ParagraphIndex, hit.Offset, replacement);
-        }
-    }
-
+    /// <summary>
+    /// M52 moved the composite itself into <see cref="TextReplacement"/>: the spell check needs the
+    /// identical "delete these characters, put those there, as ONE undo step", and two copies of
+    /// that rule would eventually disagree — at which point one of the two features would start
+    /// needing two presses of Ctrl+Z to take back one thing the user did.
+    /// </summary>
     private static CompositeCommand BuildReplacement(FindHit hit, string replacement, string description) =>
-        new CompositeCommand(
-            description,
-            new ChangeScope(ChangeKind.Text, StoryId: hit.StoryId),
-            [.. ReplacementChildren(hit, replacement)]);
+        TextReplacement.Build(
+            hit.StoryId, hit.ParagraphIndex, hit.Offset, hit.Length, replacement, description);
 
     /// <summary>Is the remembered hit still the words we are looking for?</summary>
     private bool Matches(FindHit hit)

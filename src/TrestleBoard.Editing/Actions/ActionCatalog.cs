@@ -81,6 +81,9 @@ public static class ActionCatalog
         new(ActionId.ReviewNewsletter, "Look it over with me…",
             "Goes through the newsletter with you before you make the PDF, one question at a time.",
             ActionGroup.Newsletter),
+        new(ActionId.CheckSpelling, "Check my spelling…",
+            "Shows you one word at a time that TrestleBoard does not know, with the sentence it is in.",
+            ActionGroup.Newsletter),
         new(ActionId.ExportPdf, "Make the PDF…", "Makes the file you email to the lodge.",
             ActionGroup.Newsletter, "Ctrl+E", IsPrimary: true),
         new(ActionId.Exit, "Exit", "Closes TrestleBoard.", ActionGroup.Newsletter),
@@ -273,6 +276,9 @@ public static class ActionCatalog
         new(ActionId.ShowFontChanges, "Show where fonts were changed",
             "Underlines, on screen only, any writing whose font was changed by hand.",
             ActionGroup.View),
+        new(ActionId.ShowSpelling, "Show my spelling mistakes",
+            "Puts a dotted line, on screen only, under any word TrestleBoard does not know.",
+            ActionGroup.View),
 
         // ---- The address book (M12) ---------------------------------------------------------------
         new(ActionId.ShowPeople, "People…", "Opens your lodge address book.",
@@ -420,7 +426,8 @@ public static class ActionCatalog
                         "You have saved this newsletter once, so there is nothing earlier to go back "
                         + "to yet. TrestleBoard keeps a copy every time you save over it."),
 
-            ActionId.ReviewNewsletter or ActionId.ExportPdf => RequiresDocument(context),
+            ActionId.ReviewNewsletter or ActionId.CheckSpelling or ActionId.ExportPdf =>
+                RequiresDocument(context),
 
             // ---- Edit ---------------------------------------------------------------------------
             // M49, review §14.3: this app has TWO undo stacks — the newsletter's and the address
@@ -484,7 +491,8 @@ public static class ActionCatalog
                     ? ActionAvailability.Available
                     : ActionAvailability.NotApplicable(
                         "This writing already uses the font its kind of writing normally uses."),
-            ActionId.ShowFontChanges or ActionId.ShowMargins => RequiresDocument(context),
+            ActionId.ShowFontChanges or ActionId.ShowMargins or ActionId.ShowSpelling =>
+                RequiresDocument(context),
 
             // M50. Same rule as SelectAllFrames: there has to be something on the page. It is
             // deliberately NOT gated on there already being a selection — with nothing chosen,

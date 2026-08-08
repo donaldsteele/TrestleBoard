@@ -14,6 +14,13 @@ roster*.xlsx
 *.roster.bak.json
 !tests/Roster.Tests/Fixtures/**
 
+# The personal spelling dictionary is real personal data too (PLAN.md §0 rule 7, M52). "It's a
+# name — never ask again" is how most of the checker's questions get answered, so within a month
+# this file is a list of the lodge's surnames. It lives in %AppData%, but it is a plain text file
+# somebody may well copy somewhere to look at, and the successor pack (M64) writes one too.
+personal-dictionary*.txt
+*.tbpack
+
 # ── Build output ─────────────────────────────────────────────────
 bin/
 obj/

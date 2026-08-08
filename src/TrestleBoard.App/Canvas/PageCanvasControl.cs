@@ -153,6 +153,45 @@ public sealed class PageCanvasControl : Control
         }
     }
 
+    /// <summary>
+    /// M52's spelling underlines, in page points, for the page being shown. The shell computes
+    /// them; the canvas only draws.
+    ///
+    /// <para>An EDITOR adornment, and the strongest form of it in this file: the checker lives in
+    /// <c>TrestleBoard.Spelling</c>, which <c>Rendering</c> does not reference and cannot. There is
+    /// no path from a squiggle to <c>SKDocument</c>, in the reference graph rather than in a
+    /// promise.</para>
+    /// </summary>
+    public IReadOnlyList<Core.Model.RectPt> SpellingRects
+    {
+        get;
+        set
+        {
+            field = value ?? [];
+            InvalidateVisual();
+        }
+    } = [];
+
+    /// <summary>
+    /// M52's View → "Show my spelling mistakes". On by default, unlike the font-change underline:
+    /// this one is about the reader's newsletter rather than about hunting a stray setting, and a
+    /// misspelling nobody is shown is one that prints.
+    /// </summary>
+    public bool ShowSpelling
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            InvalidateVisual();
+        }
+    } = true;
+
     /// <summary>The laid-out document; not an AvaloniaProperty because it is set wholesale on open.</summary>
     /// <summary>
     /// Without this the canvas is one opaque control and a screen reader sees nothing inside it
@@ -374,6 +413,40 @@ public sealed class PageCanvasControl : Control
     /// the newsletter's, and there is no path from here to <c>SKDocument</c> at all. A hint that
     /// reached the renderer would print.</para>
     /// </summary>
+    /// <summary>
+    /// M52's spelling marks: a dotted line under a word the checker does not know.
+    ///
+    /// <para>Dotted rather than coloured-and-solid, and that is the §6 decision, not a style
+    /// choice. The font-change underline (M14) is already a solid line in this same place, so
+    /// colour would have been the only thing separating "this font was changed by hand" from "this
+    /// might be a spelling mistake" — and §6 bans colour as the only carrier of meaning. Two
+    /// different shapes of line say two different things to somebody who cannot tell the colours
+    /// apart.</para>
+    ///
+    /// <para>The dots are sized in screen points, not page points, so they stay dots at every zoom
+    /// rather than turning into a smear at 50% and a row of dashes at 400%.</para>
+    /// </summary>
+    private void DrawSpellingMarks(DrawingContext context)
+    {
+        if (!ShowSpelling || SpellingRects.Count == 0 || BrushFor(Tokens.AdornmentHint) is not { } brush)
+        {
+            return;
+        }
+
+        var dotted = new Pen(brush, 1.4d)
+        {
+            DashStyle = new DashStyle([1d, 1.5d], 0d),
+            LineCap = PenLineCap.Round,
+        };
+
+        foreach (Core.Model.RectPt rect in SpellingRects)
+        {
+            Rect where = ToControlRect(rect);
+            double y = where.Bottom - 1d;
+            context.DrawLine(dotted, new Point(where.Left, y), new Point(where.Right, y));
+        }
+    }
+
     private void DrawAdornments(DrawingContext context)
     {
         if (_source is null)
@@ -405,6 +478,7 @@ public sealed class PageCanvasControl : Control
 
         DrawMultiSelection(context);
         DrawMarquee(context);
+        DrawSpellingMarks(context);
 
         if (BrushFor(Tokens.AdornmentHint) is not { } hintBrush)
         {

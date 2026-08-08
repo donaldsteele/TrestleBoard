@@ -38,6 +38,12 @@ public static class ActionId
     /// </summary>
     public const string ReviewNewsletter = "newsletter.review";
 
+    /// <summary>
+    /// M52: the word-by-word pass, one word to a screen. A station of M51's review as well as a
+    /// command of its own — PLAN.md scheduled M51 first for exactly that reason.
+    /// </summary>
+    public const string CheckSpelling = "newsletter.checkSpelling";
+
     public const string ExportPdf = "newsletter.exportPdf";
     public const string Exit = "newsletter.exit";
 
@@ -183,6 +189,13 @@ public static class ActionId
 
     /// <summary>M14: underline the text whose font was changed by hand. Off by default.</summary>
     public const string ShowFontChanges = "view.showFontChanges";
+
+    /// <summary>
+    /// M52: the dotted underline under a word the checker does not know. ON by default, unlike the
+    /// two marks above — those are for hunting down a setting, and this one is about the reader's
+    /// newsletter. A misspelling nobody is shown is one that prints.
+    /// </summary>
+    public const string ShowSpelling = "view.showSpelling";
 
     /// <summary>
     /// M47: draw the edge the printed page keeps clear, so somebody can see whether a frame they

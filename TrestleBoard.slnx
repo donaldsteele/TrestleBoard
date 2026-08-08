@@ -8,6 +8,7 @@
     <Project Path="src/TrestleBoard.Layout/TrestleBoard.Layout.csproj" />
     <Project Path="src/TrestleBoard.Rendering/TrestleBoard.Rendering.csproj" />
     <Project Path="src/TrestleBoard.Roster/TrestleBoard.Roster.csproj" />
+    <Project Path="src/TrestleBoard.Spelling/TrestleBoard.Spelling.csproj" />
     <Project Path="src/TrestleBoard.Widgets/TrestleBoard.Widgets.csproj" />
   </Folder>
   <!-- Compiled by CI so it cannot rot; never run by CI (PLAN.md §11 M15). -->
@@ -23,6 +24,7 @@
     <Project Path="tests/Layout.Tests/Layout.Tests.csproj" />
     <Project Path="tests/Rendering.SnapshotTests/Rendering.SnapshotTests.csproj" />
     <Project Path="tests/Roster.Tests/Roster.Tests.csproj" />
+    <Project Path="tests/Spelling.Tests/Spelling.Tests.csproj" />
     <Project Path="tests/Widgets.Tests/Widgets.Tests.csproj" />
   </Folder>
 </Solution>

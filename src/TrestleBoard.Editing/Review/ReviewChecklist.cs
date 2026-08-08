@@ -50,10 +50,17 @@ public static class ReviewChecklist
     /// From <c>DocumentRenderSource.GetPlaceholderPictureRects</c>, gathered over every page.
     /// "Empty" there means the bytes do not decode, which is the same thing the user sees.
     /// </param>
+    /// <param name="extraStations">
+    /// Screens produced by something this project cannot see (M52's spelling, M58's read-aloud).
+    /// They arrive already written and go in after the defects and before the page-by-page look,
+    /// which is where a whole-newsletter question belongs. PLAN.md scheduled M51 first precisely so
+    /// that the later milestones could add stations to this frame instead of building their own.
+    /// </param>
     public static IReadOnlyList<ReviewFinding> Build(
         Document document,
         IEnumerable<string>? oversetTailBlockIds = null,
-        IEnumerable<string>? emptyPictureBlockIds = null)
+        IEnumerable<string>? emptyPictureBlockIds = null,
+        IEnumerable<ReviewFinding>? extraStations = null)
     {
         ArgumentNullException.ThrowIfNull(document);
 
@@ -82,6 +89,8 @@ public static class ReviewChecklist
                 }
             }
         }
+
+        findings.AddRange(extraStations ?? []);
 
         // The last station, and the only one that is not about a defect: no checklist replaces
         // looking at the thing. One screen per page, in order.

@@ -50,6 +50,13 @@ public sealed record AppSettings
     /// </summary>
     public bool OfferTheReviewBeforeExport { get; init; } = true;
 
+    /// <summary>
+    /// Whether words the checker does not know get a dotted line under them (M52). On by default,
+    /// unlike the two diagnostic overlays: those help somebody hunt down a setting, and this one is
+    /// about the reader's newsletter. A misspelling nobody is shown is one that prints.
+    /// </summary>
+    public bool ShowSpelling { get; init; } = true;
+
     [JsonIgnore]
     public double UiScale => Math.Clamp(UiScalePercent, MinScalePercent, MaxScalePercent) / 100d;
 

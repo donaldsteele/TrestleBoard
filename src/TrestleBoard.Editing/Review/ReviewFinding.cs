@@ -21,6 +21,9 @@ public enum ReviewFindingKind
     /// <summary>A month named in the writing that is not this issue's month. A guess, always asked.</summary>
     DateFromAnotherMonth,
 
+    /// <summary>M52: words the spell checker does not know, offered as one screen of the review.</summary>
+    SpellingToCheck,
+
     /// <summary>The last station: look at each page with your own eyes.</summary>
     LookAtThePage,
 }

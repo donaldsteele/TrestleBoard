@@ -197,6 +197,11 @@ internal static class ActionIcons
         // means something else here or would be read as "this is finished", which is the one thing
         // the review must not promise before it has run.
         [ActionId.ReviewNewsletter] = "no symbol means 'go through it with me' without over-promising",
+
+        // M52. Every spell-check glyph in circulation is the letters ABC with a tick, which is
+        // two abstractions deep for a reader who is being asked to trust it.
+        [ActionId.CheckSpelling] = "the usual ABC-and-a-tick means nothing to somebody meeting it cold",
+        [ActionId.ShowSpelling] = "a diagnostic overlay; no picture explains it",
         [ActionId.ShowExampleIssue] = "read once, never hunted for",
     };
 

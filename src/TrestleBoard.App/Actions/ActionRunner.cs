@@ -42,6 +42,7 @@ internal sealed class ActionRunner
             [ActionId.SaveAs] = _ => window.SaveAsAsync(),
             [ActionId.RestoreDocument] = _ => window.RestoreEarlierVersionAsync(),
             [ActionId.ReviewNewsletter] = Sync(window.ShowReview),
+            [ActionId.CheckSpelling] = Sync(window.ShowSpellingCheck),
             [ActionId.ExportPdf] = _ => window.ExportPdfAsync(),
             [ActionId.Exit] = Sync(window.Close),
 
@@ -131,6 +132,7 @@ internal sealed class ActionRunner
             [ActionId.PreviousRegion] = Sync(() => window.CycleRegion(forward: false)),
             [ActionId.ToggleActionPanel] = Sync(window.ToggleActionPanel),
             [ActionId.ShowFontChanges] = Sync(window.ToggleShowFontChanges),
+            [ActionId.ShowSpelling] = Sync(window.ToggleShowSpelling),
             [ActionId.ShowMargins] = Sync(window.ToggleShowMargins),
 
             // ---- The address book (M12) --------------------------------------------------------------

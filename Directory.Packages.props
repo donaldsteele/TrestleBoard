@@ -64,6 +64,15 @@
     <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
   </ItemGroup>
 
+  <!-- M52's spell checker. WeCantSpell.Hunspell is a from-scratch managed port of Hunspell, not a
+       P/Invoke wrapper: no native assets, so it costs the 4-RID packaging nothing and behaves the
+       same on all four. That was the deciding property — NHunspell and the various libhunspell
+       bindings would each have added a native library per RID for a feature that must never be the
+       reason a platform stops working. MIT. Confined to TrestleBoard.Spelling, which is a leaf. -->
+  <ItemGroup>
+    <PackageVersion Include="WeCantSpell.Hunspell" Version="7.0.1" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
