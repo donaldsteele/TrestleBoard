@@ -68,6 +68,12 @@ public sealed record ActionContext
     /// </summary>
     public string? DocumentFileName { get; init; }
 
+    /// <summary>
+    /// M39: at least one generation of the rotating <c>.bak</c> ring survives beside the user's own
+    /// file, so there is an earlier version to go back to (PLAN.md §4).
+    /// </summary>
+    public bool DocumentHasEarlierVersions { get; init; }
+
     // ---- The selection ------------------------------------------------------------------------
 
     public SelectionKind Selection { get; init; } = SelectionKind.None;

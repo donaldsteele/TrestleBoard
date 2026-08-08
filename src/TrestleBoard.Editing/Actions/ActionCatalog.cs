@@ -75,6 +75,9 @@ public static class ActionCatalog
         new(ActionId.SaveAs, "Save it as a new file…",
             "Keeps your work in a file you choose, leaving the one you started from alone.",
             ActionGroup.Newsletter, "Ctrl+Shift+S"),
+        new(ActionId.RestoreDocument, "Go back to an earlier version…",
+            "Opens one of the copies TrestleBoard kept each time you saved.",
+            ActionGroup.Newsletter),
         new(ActionId.ExportPdf, "Export as PDF…", "Makes the file you email to the lodge.",
             ActionGroup.Newsletter, "Ctrl+E", IsPrimary: true),
         new(ActionId.Exit, "Exit", "Closes TrestleBoard.", ActionGroup.Newsletter),
@@ -378,6 +381,19 @@ public static class ActionCatalog
                             : "There is nothing new to save.",
                         ActionId.SaveAs),
             ActionId.SaveAs => RequiresDocument(context),
+
+            // M39. Two different "no" here, because they send the user somewhere different: a
+            // newsletter with no file of its own has never been saved over, and one with a file but
+            // no ring has been saved exactly once.
+            ActionId.RestoreDocument => !context.DocumentHasFile
+                ? ActionAvailability.Blocked(
+                    "This newsletter has not been saved yet, so there are no earlier versions of it.",
+                    ActionId.SaveAs)
+                : context.DocumentHasEarlierVersions
+                    ? ActionAvailability.Available
+                    : ActionAvailability.Blocked(
+                        "You have saved this newsletter once, so there is nothing earlier to go back "
+                        + "to yet. TrestleBoard keeps a copy every time you save over it."),
 
             ActionId.ExportPdf => RequiresDocument(context),
 

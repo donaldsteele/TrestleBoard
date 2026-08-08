@@ -6,6 +6,7 @@ using TrestleBoard.App.Startup;
 using TrestleBoard.App.Updates;
 using TrestleBoard.Core.Container;
 using TrestleBoard.Core.Templates;
+using TrestleBoard.Editing.Actions;
 using Xunit;
 
 namespace TrestleBoard.App.HeadlessTests;
@@ -248,13 +249,17 @@ public sealed class PackagingTests
     [Fact]
     public async Task HelpOffersAnUpdateCheckThatReportsBackToTheStatusBar()
     {
-        await Session.Dispatch(async () =>
+        await HeadlessSession.DispatchAsync(async () =>
         {
             var window = new MainWindow();
             window.OpenSample();
 
+            // By Tag, which is how every surface in the shell names the action it performs. This
+            // used to look for x:Name "CheckForUpdatesMenuItem", which no menu item has ever had —
+            // and the test passed anyway, because its whole body was being dropped unawaited
+            // (M39; see HeadlessSession.DispatchAsync).
             MenuItem check = window.GetLogicalDescendants().OfType<MenuItem>()
-                .Single(m => m.Name == "CheckForUpdatesMenuItem");
+                .Single(m => (m.Tag as string) == ActionId.CheckForUpdates);
             Assert.True(check.IsEnabled);
             Assert.Equal(
                 "Check for an update",

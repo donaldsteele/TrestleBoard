@@ -141,6 +141,44 @@ public sealed class FileRecoveryStore : IRecoveryStore
         }
     }
 
+    /// <summary>
+    /// The generations of the ring that exist right now, most recent first (PLAN.md §4). M39: the
+    /// other half of <see cref="RotateBackups"/>, which had been writing copies since M9 that no
+    /// code path could ever list, let alone offer back (review §14.4).
+    /// </summary>
+    /// <param name="documentPath">The user's own file — the copies sit beside it.</param>
+    /// <param name="keep">The same ring size the rotation used.</param>
+    public static IReadOnlyList<DocumentBackup> FindBackups(string documentPath, int keep = 5)
+    {
+        ArgumentNullException.ThrowIfNull(documentPath);
+        ArgumentOutOfRangeException.ThrowIfLessThan(keep, 1);
+
+        var found = new List<DocumentBackup>();
+        for (int i = 1; i <= keep; i++)
+        {
+            string path = string.Create(CultureInfo.InvariantCulture, $"{documentPath}.bak{i}");
+            try
+            {
+                var file = new FileInfo(path);
+
+                // A zero-length generation is an interrupted copy. Offering it would put an empty
+                // window in front of somebody who came here to get their work back.
+                if (!file.Exists || file.Length == 0)
+                {
+                    continue;
+                }
+
+                found.Add(new DocumentBackup(path, i, file.LastWriteTimeUtc, file.Length));
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // One unreadable generation must not hide the four that are fine.
+            }
+        }
+
+        return found;
+    }
+
     private static void WriteAtomic(string path, byte[] bytes)
     {
         string temp = path + TempExtension;

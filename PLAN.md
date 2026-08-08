@@ -2168,6 +2168,40 @@ it, which is what that test is for.
 
 ---
 
+### M39 - The backup ring, and the test bug behind it (delivered 2026-08-08, `docs/M39-spec.md`)
+
+Closes section 14.6 item 7. `FileRecoveryStore.RotateBackups` was written at M9, does exactly what
+section 4 asks for, and had never been called by anything but its own unit test - so no newsletter
+has ever had a backup kept. M24 is what made that reachable: from the milestone that added Save
+until this one, saving overwrote the user's only copy with no way back. Two lines close the writing
+half (rotate, THEN write - the other order would keep a copy of the version the user wants undone),
+and `FindBackups` plus "Go back to an earlier version..." close the reading half. Nothing is
+written when a version is chosen: it opens on screen, marked unsaved, and the user's file changes
+only if they then save - which is what makes a wrong choice harmless, and what the dialog promises
+in words.
+
+`DocumentPath` became a property, because the milestone hung a second fact off it and seven places
+set the path: six would have been right and one forgotten.
+
+**The milestone's real find was in the test suite.** `Session.Dispatch(async () => ...)` DROPS the
+body - Avalonia has no `Func<Task>` overload, so an async lambda binds to `Func<T>` with `T = Task`,
+and awaiting the resulting `Task<Task>` waits only until the body's first `await`. Every assertion
+after that ran unobserved and every exception was swallowed. Eleven lambdas across six files were in
+that state, which was roughly every asynchronous shell test the project had. Awaiting twice is not
+the fix and is recorded as such: Avalonia tears the Application down when the given task completes,
+so that variant runs the rest of the body against a dead session - 2 failures became 115.
+
+Fixing it surfaced two defects it had been hiding: a menu item looked up by an `x:Name` no control
+has ever had, and a crash when the page the caret is standing on is removed - `IsTextBlock` threw
+`KeyNotFoundException` from inside `BuildContext`, outside any handler's try/catch. Both fixed, the
+crash on both sides: the caret ends before the page goes, and asking whether a vanished block is a
+text frame now answers "no" instead of throwing.
+
+`DispatchDisciplineTests` is a string search over the suite's own sources, because the failure mode
+is a compiler-legal overload choice and there is nothing else left to check it with.
+
+---
+
 ## 12. Verification (end-to-end)
 
 1. **Per-milestone:** `dotnet build && dotnet test` locally + 3-OS CI matrix green; cavecrew-reviewer findings addressed; snapshot diffs reviewed as CI artifacts.
@@ -2802,9 +2836,9 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
    floor went with M27. Marquee/add-to-selection/pan equivalents and the themed selection chrome
    are still open.
 
-### 14.6 Where the review stands (as at 2026-08-07)
+### 14.6 Where the review stands (as at 2026-08-08)
 
-Eight milestones, M24–M31, were taken from §14 in one sitting. This section is the running total, so
+Sixteen milestones, M24–M39, were taken from §14. This section is the running total, so
 a future session does not have to re-read the whole of §14 to find out what is left.
 
 **Closed.** §14.1 entirely — the lost-work cluster, which was the only part of the review that made
@@ -2831,14 +2865,24 @@ hang, and the whole of §14.2's Minor list bar two entries.
    already exist, rather than being quietly dropped.
 6. **Keyboard equivalents for marquee, add-to-selection and pan.** Each is a NEW command needing
    real design — "select everything on this page" is not quite a marquee.
-7. **The `.bak` ring beside the user's file** and its "Restore an earlier version" menu (§4). Half a
-   feature without each other.
+7. ~~**The `.bak` ring beside the user's file** and its "Restore an earlier version" menu (§4).~~ —
+   **closed at M39**, both halves together. The rotation had been written at M9 and called by
+   nothing but its own test; M24's Save command is what turned that from dormant into dangerous.
 8. The rest of the jargon inventory, tooltips, rulers and guides, and the wizard/People-window
    interaction notes in §14.4.
 
 **One finding was investigated and deliberately not changed**: `RecipeCache` eviction, which is not
 reachable because the only call site draws each image immediately (`docs/M25-spec.md` §5). It stays
 on the list because what makes it safe is a property of the caller.
+
+**A second methodological note, from M39, and the sharper of the two.** The rule "run the test
+against the unfixed code" is necessary and was not sufficient. M39's test DID fail first time — but
+on the wrong line, which is what exposed that `Session.Dispatch(async () => ...)` drops the lambda
+body unawaited. Eleven lambdas across six files were in that state: roughly every asynchronous shell
+test the project had, silently proving nothing, and two of them were hiding real failures — a menu
+item looked up by an `x:Name` no control has ever had, and a crash on removing the page the caret is
+on. **Check WHERE a test fails, not just that it does.** A test that fails for the wrong reason is
+as uninformative as one that passes for the wrong reason, and much easier to accept.
 
 **And one methodological note worth keeping.** Every regression test written for M24–M32 was run
 against the *unfixed* code first. Three of them passed — the M30 layout-hang test and one 16pt

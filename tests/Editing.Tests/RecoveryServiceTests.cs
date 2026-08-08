@@ -276,6 +276,80 @@ public sealed class RecoveryServiceTests
         }
     }
 
+    /// <summary>
+    /// M39. The ring is listed back newest-first, which is the order the restore dialog offers it in:
+    /// the version somebody wants is nearly always the one just before the mistake.
+    /// </summary>
+    [Fact]
+    public void TheBackupRingIsListedBackNewestFirst()
+    {
+        string dir = NewTempDir();
+        try
+        {
+            string path = Path.Combine(dir, "july.tboard");
+            File.WriteAllText(path, "generation 1");
+            for (int generation = 2; generation <= 4; generation++)
+            {
+                FileRecoveryStore.RotateBackups(path);
+                File.WriteAllText(path, $"generation {generation}");
+            }
+
+            IReadOnlyList<DocumentBackup> backups = FileRecoveryStore.FindBackups(path);
+
+            Assert.Equal([1, 2, 3], backups.Select(b => b.Generation));
+            Assert.Equal(
+                ["generation 3", "generation 2", "generation 1"],
+                backups.Select(b => File.ReadAllText(b.Path)));
+            Assert.All(backups, b => Assert.True(b.Bytes > 0));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// An interrupted copy leaves a zero-length generation. Offering it would put an empty window in
+    /// front of somebody who came to the dialog to get their work back.
+    /// </summary>
+    [Fact]
+    public void AnEmptyGenerationIsNotOffered()
+    {
+        string dir = NewTempDir();
+        try
+        {
+            string path = Path.Combine(dir, "july.tboard");
+            File.WriteAllText(path, "current");
+            File.WriteAllText(path + ".bak1", string.Empty);
+            File.WriteAllText(path + ".bak2", "real work");
+
+            IReadOnlyList<DocumentBackup> backups = FileRecoveryStore.FindBackups(path);
+
+            Assert.Equal([2], backups.Select(b => b.Generation));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void AFileWithNoBackupsYetListsNone()
+    {
+        string dir = NewTempDir();
+        try
+        {
+            string path = Path.Combine(dir, "july.tboard");
+            File.WriteAllText(path, "only ever saved once");
+
+            Assert.Empty(FileRecoveryStore.FindBackups(path));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
     [Fact]
     public void RotatingBackupsOfAFileThatDoesNotExistYetDoesNothing()
     {

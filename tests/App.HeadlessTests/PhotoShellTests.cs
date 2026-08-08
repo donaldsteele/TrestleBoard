@@ -205,7 +205,7 @@ public sealed class PhotoShellTests
     [Fact]
     public async Task AnEmptyFrameRefusesTheAdjustmentsInPlainLanguage()
     {
-        await Session.Dispatch(async () =>
+        await HeadlessSession.DispatchAsync(async () =>
         {
             var window = new MainWindow();
             window.Show();
@@ -237,7 +237,7 @@ public sealed class PhotoShellTests
     [Fact]
     public async Task PasteWithNothingSelectedIsAboutPicturesAndSaysSoWhenThereIsNone()
     {
-        await Session.Dispatch(async () =>
+        await HeadlessSession.DispatchAsync(async () =>
         {
             var window = new MainWindow();
             window.Show();

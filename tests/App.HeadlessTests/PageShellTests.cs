@@ -76,6 +76,49 @@ public sealed class PageShellTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>
+    /// M39: removing the page the caret is standing on does not take the app down.
+    ///
+    /// <para>It used to. The text session stayed open over a frame that had just been deleted with
+    /// its page, so the next <c>RefreshActions</c> asked <c>DocumentRenderSource.IsTextBlock</c>
+    /// about a block the document no longer held, and that method answered by throwing
+    /// <c>KeyNotFoundException</c> — from inside <c>BuildContext</c>, outside any handler's
+    /// try/catch. Two fixes, because either alone leaves the other half wrong: the caret is ended
+    /// before the page goes, and asking whether a vanished block is a text frame now answers "no"
+    /// instead of throwing.</para>
+    ///
+    /// <para>Found by accident, when fixing the swallowed-dispatch bug made an unrelated test start
+    /// reporting what it had always been hiding (see DispatchDisciplineTests).</para>
+    /// </summary>
+    [Fact]
+    public async Task RemovingThePageTheCaretIsOnDoesNotCrash()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenIssueSample();
+
+            // The caret goes into a frame on page 1, and then page 1 goes.
+            Assert.True(window.EditorForTest!.TryBeginAt(0, 100f, 200f));
+            window.EditorForTest.InsertText("Brethren, ");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.True(window.CurrentActionContext.IsEditingText);
+
+            int pagesBefore = window.PagesForTest!.PageCount;
+            window.RemovePage();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(pagesBefore - 1, window.PagesForTest.PageCount);
+
+            // The context still builds, and it no longer claims a caret in a deleted frame.
+            Assert.False(window.CurrentActionContext.IsEditingText);
+
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
     [Fact]
     public async Task TheWholeIssueFixtureOpensAndFits()
     {

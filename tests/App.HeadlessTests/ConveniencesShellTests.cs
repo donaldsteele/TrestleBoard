@@ -161,7 +161,7 @@ public sealed class ConveniencesShellTests
     [Fact]
     public async Task LiningUpThreeChosenFramesIsOneUndoStepThroughTheRunner()
     {
-        await Session.Dispatch(async () =>
+        await HeadlessSession.DispatchAsync(async () =>
         {
             MainWindow window = OpenLaidOut();
             FrameEditorController frames = window.FramesForTest!;

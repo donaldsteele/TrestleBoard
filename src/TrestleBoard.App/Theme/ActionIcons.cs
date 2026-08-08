@@ -96,6 +96,10 @@ internal static class ActionIcons
         [ActionId.StartFromLastMonth] = "a sentence, not a symbol",
         [ActionId.Exit] = "a menu command, and the panel never offers it",
 
+        // M39. A clock-with-arrow would be the obvious choice and is exactly wrong: it is the
+        // undo glyph in every other program, and this is not undo — it replaces what is on screen.
+        [ActionId.RestoreDocument] = "the obvious clock-arrow reads as undo, which this is not",
+
         // --- Clipboard. Universally recognised and barely used on a layout canvas: this app's text
         //     editing happens inside frames, and the scissors/clipboard trio would take three slots
         //     in the Edit group to say what everyone already knows.

@@ -106,7 +106,7 @@ public sealed class SaveShellTests : IDisposable
     {
         string path = Path.Combine(_folder, "newsletter.tboard");
 
-        await Session.Dispatch(async () =>
+        await HeadlessSession.DispatchAsync(async () =>
         {
             var window = new MainWindow();
             window.Show();
@@ -157,7 +157,7 @@ public sealed class SaveShellTests : IDisposable
         string path = Path.Combine(_folder, "kept.tboard");
         var store = new SpyRecoveryStore();
 
-        await Session.Dispatch(async () =>
+        await HeadlessSession.DispatchAsync(async () =>
         {
             var window = new MainWindow();
             window.UseRecoveryStoreForTest(store);
@@ -189,7 +189,7 @@ public sealed class SaveShellTests : IDisposable
     [Fact]
     public async Task NothingReplacesUnsavedWorkWithoutAsking()
     {
-        await Session.Dispatch(async () =>
+        await HeadlessSession.DispatchAsync(async () =>
         {
             var window = new MainWindow();
             window.Show();
@@ -216,6 +216,115 @@ public sealed class SaveShellTests : IDisposable
             Assert.True(window.IsVisible);
 
             window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M39, PLAN.md §4 and review §14.4: saving over a newsletter keeps the version it replaced.
+    ///
+    /// <para><c>RotateBackups</c> has existed since M9 and was called by nothing but its own unit
+    /// test — the ring §4 specified was written, never wired, and could not have protected anybody.
+    /// M24 gave the app a Save command, which is what made the omission reachable: from that
+    /// milestone until this one, saving overwrote the user's only copy with no way back.</para>
+    /// </summary>
+    [Fact]
+    public async Task SavingOverANewsletterKeepsTheVersionItReplaced()
+    {
+        string path = Path.Combine(_folder, "september.tboard");
+
+        await HeadlessSession.DispatchAsync(async () =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenIssueSample();
+
+            MakeAnEdit(window);
+            Assert.True(await window.SaveToPathForTest(path));
+
+            // The first save has nothing to keep — there was no previous version of this file.
+            Assert.Empty(FileRecoveryStore.FindBackups(path));
+            long firstSave = new FileInfo(path).Length;
+
+            // The user does the damage: a whole page goes, and they save.
+            int pagesBefore = window.SessionForTest!.Document.Pages.Count;
+            window.RemovePage();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Equal(pagesBefore - 1, window.SessionForTest.Document.Pages.Count);
+
+            Assert.True(await window.SaveToPathForTest(path));
+
+            IReadOnlyList<DocumentBackup> ring = FileRecoveryStore.FindBackups(path);
+            DocumentBackup kept = Assert.Single(ring);
+            Assert.Equal(1, kept.Generation);
+            Assert.Equal(firstSave, kept.Bytes);
+
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+
+        // And the kept copy is a newsletter that opens, with the page still in it.
+        DocumentBackup backup = Assert.Single(FileRecoveryStore.FindBackups(path));
+        using var buffer = new MemoryStream(File.ReadAllBytes(backup.Path));
+        TboardPackage earlier = TboardContainer.Load(buffer);
+
+        using var current = new MemoryStream(File.ReadAllBytes(path));
+        Assert.Equal(TboardContainer.Load(current).Document.Pages.Count + 1, earlier.Document.Pages.Count);
+    }
+
+    /// <summary>
+    /// M39: the ring is offered back, and choosing a version does NOT write to the user's file.
+    ///
+    /// <para>That is the whole safety argument for a command that replaces what is on screen: the
+    /// older version is opened and marked unsaved, so a wrong choice is undone by closing without
+    /// saving. The dialog promises this in words, and this test is what keeps the promise true.</para>
+    /// </summary>
+    [Fact]
+    public async Task AnEarlierVersionIsOfferedBackAndOpeningOneLeavesTheFileAlone()
+    {
+        string path = Path.Combine(_folder, "october.tboard");
+
+        await HeadlessSession.DispatchAsync(async () =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenIssueSample();
+
+            MakeAnEdit(window);
+            Assert.True(await window.SaveToPathForTest(path));
+            int pagesWhenSaved = window.SessionForTest!.Document.Pages.Count;
+
+            // With one save there is nothing earlier, and the refusal says which of the two
+            // reasons it is.
+            ActionAvailability nothingYet =
+                ActionCatalog.Evaluate(ActionId.RestoreDocument, window.CurrentActionContext);
+            Assert.False(nothingYet.IsAvailable);
+            Assert.Contains("saved this newsletter once", nothingYet.Reason, StringComparison.Ordinal);
+
+            // The mistake, and the save that commits it.
+            window.RemovePage();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.True(await window.SaveToPathForTest(path));
+            Assert.Equal(pagesWhenSaved - 1, window.SessionForTest.Document.Pages.Count);
+
+            Assert.True(ActionCatalog.Evaluate(ActionId.RestoreDocument, window.CurrentActionContext).IsAvailable);
+
+            long fileBefore = new FileInfo(path).Length;
+            window.RestoreChoiceForTest = FileRecoveryStore.FindBackups(path)[0];
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            await window.RestoreEarlierVersionAsync();
+
+            // The page is back on screen...
+            Assert.Equal(pagesWhenSaved, window.SessionForTest!.Document.Pages.Count);
+
+            // ...the newsletter still belongs to its own file, and says it is unsaved...
+            Assert.Equal(path, window.DocumentPathForTest);
+            Assert.True(window.HasUnsavedChangesForTest);
+            Assert.Contains("not saved yet", window.Title!, StringComparison.Ordinal);
+
+            // ...and nothing was written. Closing without saving is how a wrong choice is undone.
+            Assert.Equal(fileBefore, new FileInfo(path).Length);
+
             window.Close();
         }, TestContext.Current.CancellationToken);
     }

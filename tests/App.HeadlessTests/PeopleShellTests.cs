@@ -135,7 +135,7 @@ public sealed class PeopleShellTests
     [Fact]
     public async Task TheImportWindowWalksTheSixScreensAndAddsThePeople()
     {
-        await Session.Dispatch(async () =>
+        await HeadlessSession.DispatchAsync(async () =>
         {
             var window = new RosterImportWindow(RosterBook.Empty);
             window.Show();
@@ -185,7 +185,7 @@ public sealed class PeopleShellTests
     [Fact]
     public async Task WithAnEmptyAddressBookSavingItSaysWhyItCannot()
     {
-        await Session.Dispatch(async () =>
+        await HeadlessSession.DispatchAsync(async () =>
         {
             var window = new MainWindow();
             window.Show();

@@ -39,4 +39,39 @@ public static class HeadlessSession
         Directory.CreateDirectory(AppPaths.Root);
         return HeadlessUnitTestSession.StartNew(typeof(TestAppBuilder));
     }
+
+    /// <summary>
+    /// Runs an ASYNC body on the UI thread, and — the whole point — actually waits for it.
+    ///
+    /// <para><b>M39. Never write <c>await Session.Dispatch(async () =&gt; …)</c> again.</b> Avalonia
+    /// offers <c>Dispatch(Action)</c>, <c>Dispatch&lt;T&gt;(Func&lt;T&gt;)</c> and
+    /// <c>Dispatch&lt;T&gt;(Func&lt;Task&lt;T&gt;&gt;)</c> — and no <c>Func&lt;Task&gt;</c> overload
+    /// at all. So an <c>async</c> lambda binds to the middle one with <c>T = Task</c>, the call
+    /// returns <c>Task&lt;Task&gt;</c>, and awaiting it waits only for the lambda to reach its first
+    /// suspension point. The inner task — the body, and every assertion in it — is dropped on the
+    /// floor, exceptions and all.</para>
+    ///
+    /// <para>It was found because a test written to FAIL passed: the assertion proving the new
+    /// backup ring was empty threw on the UI thread and vanished, and the test only failed later,
+    /// outside the lambda, for a different reason. Eleven lambdas across six files were in that
+    /// state.</para>
+    ///
+    /// <para>Awaiting the returned <c>Task&lt;Task&gt;</c> a second time is NOT the fix. Avalonia
+    /// tears the <c>Application</c> down when the task it is given completes, so under the
+    /// <c>Func&lt;T&gt;</c> overload teardown begins at the body's first <c>await</c> — the rest of
+    /// the body then runs against a dead session, which is 115 failures deep in the font manager.
+    /// Returning a value puts the call on the <c>Func&lt;Task&lt;T&gt;&gt;</c> overload instead,
+    /// which is the one that awaits the body before tearing anything down.</para>
+    /// </summary>
+    public static async Task DispatchAsync(Func<Task> body, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        await Instance.Dispatch(
+            async () =>
+            {
+                await body();
+                return true;
+            },
+            cancellationToken);
+    }
 }

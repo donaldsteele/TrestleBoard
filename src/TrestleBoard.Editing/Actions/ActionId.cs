@@ -24,6 +24,13 @@ public static class ActionId
     /// <summary>M24: writes it to a file the user picks, and that file becomes its home.</summary>
     public const string SaveAs = "newsletter.saveAs";
 
+    /// <summary>
+    /// M39: hands back one of the copies the rotating ring keeps beside the user's own file
+    /// (PLAN.md §4). Autosave answers "the power went off"; this answers "I did that on purpose and
+    /// now I want it back", which no crash snapshot can.
+    /// </summary>
+    public const string RestoreDocument = "newsletter.restore";
+
     public const string ExportPdf = "newsletter.exportPdf";
     public const string Exit = "newsletter.exit";
 

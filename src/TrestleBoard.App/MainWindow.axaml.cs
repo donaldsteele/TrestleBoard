@@ -87,7 +87,28 @@ public partial class MainWindow : Window
     private RecoveryService? _recovery;
     private IRecoveryStore? _recoveryStore;
     private DispatcherTimer? _recoveryTimer;
-    private string? _documentPath;
+    private string? _documentPathValue;
+
+    /// <summary>M39: the .bak ring beside <see cref="DocumentPath"/> holds at least one copy.</summary>
+    private bool _documentHasEarlierVersions;
+
+    /// <summary>
+    /// The file this newsletter lives in, or null if it has never been saved.
+    ///
+    /// <para>A property rather than a field because M39 hung a second fact off it — whether the
+    /// rotating <c>.bak</c> ring beside it holds anything — and there are seven places that set the
+    /// path. Six of them would have been right and one would have been forgotten.</para>
+    /// </summary>
+    private string? DocumentPath
+    {
+        get => _documentPathValue;
+        set
+        {
+            _documentPathValue = value;
+            _documentHasEarlierVersions =
+                value is { } path && FileRecoveryStore.FindBackups(path).Count > 0;
+        }
+    }
     private UpdateCoordinator? _updates;
     private AppSettings _settings = AppSettings.Load();
     private RosterService? _roster;
@@ -99,7 +120,7 @@ public partial class MainWindow : Window
     private bool _exportedThisSession;
 
     /// <summary>
-    /// M24: the newsletter has been edited since it was last written to <see cref="_documentPath"/>.
+    /// M24: the newsletter has been edited since it was last written to <see cref="DocumentPath"/>.
     /// Set by the document session's own change event and cleared only by a successful save, so it
     /// tracks the file rather than the undo stack — undoing back to where you started still leaves
     /// the file out of date if something was written in between.
@@ -383,7 +404,12 @@ public partial class MainWindow : Window
                 // read out by the screen reader, and a full path is neither what the user needs nor
                 // something PLAN.md §0 wants on screen when a screenshot is taken.
                 HasUnsavedChanges: _unsavedChanges,
-                DocumentFileName: _documentPath is { } saved ? Path.GetFileName(saved) : null));
+                DocumentFileName: DocumentPath is { } saved ? Path.GetFileName(saved) : null,
+
+                // M39. Tracked, not re-scanned, for the same reason RosterHasEarlierVersions is:
+                // RefreshActions runs on every keystroke, and listing a directory on each one to
+                // answer a menu item's enabled state is a directory listing per keystroke.
+                DocumentHasEarlierVersions: _documentHasEarlierVersions));
     }
 
     /// <summary>
@@ -588,7 +614,7 @@ public partial class MainWindow : Window
         _recovery = new RecoveryService(
             _session!,
             _recoveryStore,
-            () => new RecoveryService.RecoveryPayload(SnapshotBytes(package), _documentPath));
+            () => new RecoveryService.RecoveryPayload(SnapshotBytes(package), DocumentPath));
 
         _recoveryTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _recoveryTimer.Tick -= OnRecoveryTick;
@@ -719,7 +745,7 @@ public partial class MainWindow : Window
             return false;
         }
 
-        _documentPath = snapshot.OriginalPath;
+        DocumentPath = snapshot.OriginalPath;
 
         // Restored work is by definition work no file holds — that is why it was in the recovery
         // store. M24 makes the app agree: the title says "not saved yet", Ctrl+S is live, and the
@@ -760,7 +786,7 @@ public partial class MainWindow : Window
             buffer.Position = 0;
 
             // Recovery offers to put the work back where it came from, so the path has to be known.
-            _documentPath = files[0].TryGetLocalPath();
+            DocumentPath = files[0].TryGetLocalPath();
             ShowPackage(TboardContainer.Load(buffer));
         }
         catch (Exception ex) when (ex is Core.Migrations.UnsupportedFormatException or System.IO.InvalidDataException)
@@ -795,7 +821,7 @@ public partial class MainWindow : Window
         try
         {
             using var buffer = new MemoryStream(File.ReadAllBytes(path));
-            _documentPath = path;
+            DocumentPath = path;
             ShowPackage(TboardContainer.Load(buffer));
             return true;
         }
@@ -806,7 +832,7 @@ public partial class MainWindow : Window
             or InvalidDataException
             or Core.Migrations.UnsupportedFormatException)
         {
-            _documentPath = null;
+            DocumentPath = null;
             Announce($"TrestleBoard could not open {Path.GetFileName(path)}. {ex.Message}");
             return false;
         }
@@ -895,7 +921,7 @@ public partial class MainWindow : Window
     internal bool HasUnsavedChangesForTest => _unsavedChanges;
 
     /// <summary>M24: where this newsletter lives, or null when it has never been saved.</summary>
-    internal string? DocumentPathForTest => _documentPath;
+    internal string? DocumentPathForTest => DocumentPath;
 
     /// <summary>
     /// Set by tests in place of the three-button dialog, which cannot be answered headlessly.
@@ -921,7 +947,7 @@ public partial class MainWindow : Window
             return false;
         }
 
-        return _documentPath is { } path
+        return DocumentPath is { } path
             ? await WriteDocumentAsync(path)
             : await SaveAsAsync();
     }
@@ -966,6 +992,84 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// M39: hands back one of the copies the ring kept, per PLAN.md §4.
+    ///
+    /// <para>Nothing is written. The older version is opened, the newsletter keeps its own file and
+    /// is marked unsaved, so the user's file changes only if they then choose to save — which is
+    /// what makes picking the wrong version harmless, and what the dialog promises in words.</para>
+    /// </summary>
+    /// <summary>Set by tests in place of the modal dialog: the generation the user would choose.</summary>
+    internal DocumentBackup? RestoreChoiceForTest { get; set; }
+
+    internal async Task RestoreEarlierVersionAsync()
+    {
+        if (DocumentPath is not { } path)
+        {
+            return;
+        }
+
+        IReadOnlyList<DocumentBackup> backups = FileRecoveryStore.FindBackups(path);
+        if (backups.Count == 0)
+        {
+            return;
+        }
+
+        // The version on screen is about to be replaced, so it gets the same question every other
+        // path that replaces it asks (M24).
+        if (await ConfirmSaveFirstAsync("and open an earlier version") == SaveFirst.Stay)
+        {
+            return;
+        }
+
+        // A modal dialog cannot be answered headlessly, so the tests say which generation the user
+        // would have picked — the same flag that keeps the start screen out of a test run.
+        DocumentBackup? choice;
+        if (SuppressStartupForTest)
+        {
+            choice = RestoreChoiceForTest;
+        }
+        else
+        {
+            var dialog = new DocumentRestoreDialog(backups, Path.GetFileName(path));
+            await dialog.ShowDialog(this);
+            choice = dialog.Chosen;
+        }
+
+        if (choice is not { } backup)
+        {
+            return;
+        }
+
+        TboardPackage package;
+        try
+        {
+            using var buffer = new MemoryStream(File.ReadAllBytes(backup.Path));
+            package = TboardContainer.Load(buffer);
+        }
+        catch (Exception ex) when (ex is IOException
+            or UnauthorizedAccessException
+            or InvalidDataException
+            or Core.Migrations.UnsupportedFormatException)
+        {
+            await ShowErrorAsync(
+                "Could not open that earlier version",
+                "The copy TrestleBoard kept could not be read, so nothing has changed — the "
+                + $"newsletter on screen is still here. ({ex.Message})");
+            return;
+        }
+
+        // The path stays. This IS that newsletter, at an earlier moment; it is unsaved because the
+        // file still holds the newer version, and that is exactly the state the title bar and
+        // Ctrl+S should be describing.
+        ShowPackage(package, startsDirty: true);
+        DocumentPath = path;
+        UpdateTitle();
+        Announce(
+            $"This is the version from {DocumentRestoreDialog.Describe(backup)}. "
+            + "Your file still holds the newer one until you save.");
+    }
+
+    /// <summary>
     /// The one place a newsletter is written to a file the user chose. Failure is reported in plain
     /// language and leaves everything exactly as it was — including <see cref="_unsavedChanges"/>,
     /// so the app never claims work is safe when it is not.
@@ -980,6 +1084,16 @@ public partial class MainWindow : Window
         try
         {
             RefreshThumbnail(package);
+
+            // ROTATE THEN WRITE, and in that order only (PLAN.md §4). Rotating afterwards would
+            // make .bak1 a copy of the version just saved, so "go back to an earlier version" would
+            // hand back the very thing the user wanted undone.
+            //
+            // M39 wired this up. RotateBackups has existed since M9 and was called by nothing but
+            // its own unit test — and M24, by giving the app a Save command at all, is what made
+            // that omission reachable: between the two milestones, saving overwrote the user's only
+            // copy with no way back (review §14.4).
+            FileRecoveryStore.RotateBackups(path);
             TboardContainer.SaveToFile(package, path);
         }
         catch (Exception ex) when (ex is IOException
@@ -995,7 +1109,7 @@ public partial class MainWindow : Window
             return false;
         }
 
-        _documentPath = path;
+        DocumentPath = path;
         _unsavedChanges = false;
 
         // The crash snapshot exists to hold work the user's own file does not. It does now, so
@@ -1063,7 +1177,7 @@ public partial class MainWindow : Window
         discard.Click += (_, _) => { answer = SaveFirst.Discard; dialog.Close(); };
         stay.Click += (_, _) => { answer = SaveFirst.Stay; dialog.Close(); };
 
-        string where = _documentPath is { } path
+        string where = DocumentPath is { } path
             ? $"The saved copy is {Path.GetFileName(path)}, from before these changes."
             : "This newsletter has never been saved, so there is no copy of it anywhere yet.";
 
@@ -1232,7 +1346,7 @@ public partial class MainWindow : Window
     /// <summary>Opens one of the shipped templates (PLAN.md §7).</summary>
     internal void OpenTemplate(string templateId)
     {
-        _documentPath = null;
+        DocumentPath = null;
         ShowPackage(TemplateLibrary.Create(templateId));
     }
 
@@ -1265,7 +1379,7 @@ public partial class MainWindow : Window
         }
 
         TboardPackage next = CarryForward.NextIssue(_package);
-        _documentPath = null;
+        DocumentPath = null;
         ShowPackage(next, startsDirty: true);
         Announce(
             "Carried forward. Last month's articles have been cleared for you to rewrite. "
@@ -2784,6 +2898,12 @@ public partial class MainWindow : Window
 
     internal void RemovePage()
     {
+        // M39: the caret goes before the page it is standing on does. Leaving a text session open
+        // over a frame that is about to be deleted is what makes every question asked afterwards —
+        // "is this a text frame?", "can it be linked?" — a question about a block that no longer
+        // exists.
+        _editor?.End();
+
         if (_pages is not null && _pages.RemovePage(_pageIndex))
         {
             GoToPage(Math.Min(_pageIndex, _pages.PageCount - 1));

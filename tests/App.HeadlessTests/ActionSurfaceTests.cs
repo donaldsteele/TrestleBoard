@@ -145,7 +145,7 @@ public sealed class ActionSurfaceTests
     [Fact]
     public async Task AnActionThatCannotRunSaysWhyInTheStatusBar()
     {
-        await Session.Dispatch(async () =>
+        await HeadlessSession.DispatchAsync(async () =>
         {
             var window = new MainWindow();
             window.Show();

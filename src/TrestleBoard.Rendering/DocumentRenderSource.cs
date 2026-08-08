@@ -225,17 +225,30 @@ public sealed class DocumentRenderSource : IDisposable
         return [.. _oversetTailBlockIds];
     }
 
-    /// <summary>True when the block is a text frame (the canvas needs it for mode arbitration).</summary>
-    public bool IsTextBlock(string blockId) => _document.FindBlock(blockId).Block is TextBlock;
+    /// <summary>
+    /// True when the block is a text frame (the canvas needs it for mode arbitration).
+    ///
+    /// <para>M39: these three ask a QUESTION, so a block that is no longer in the document answers
+    /// "no" rather than throwing. They used to call <c>FindBlock</c>, which throws — and the caller
+    /// that matters is <c>ActionContextFactory</c>, which asks about the caret's frame. Delete the
+    /// page the caret is on and that frame is gone, so building the action context threw
+    /// <c>KeyNotFoundException</c> from inside <c>RefreshActions</c>, outside any handler's
+    /// try/catch, and took the app down with the newsletter in it.</para>
+    /// </summary>
+    public bool IsTextBlock(string blockId) => Find(blockId) is TextBlock;
 
     /// <summary>
     /// True when the block is one of the lists TrestleBoard fills in — what the canvas needs to
     /// decide whether a double-click should open an editor (M17).
     /// </summary>
-    public bool IsWidgetBlock(string blockId) => _document.FindBlock(blockId).Block is WidgetBlock;
+    public bool IsWidgetBlock(string blockId) => Find(blockId) is WidgetBlock;
 
     /// <summary>A picture frame, whether or not there is a picture in it yet (M18).</summary>
-    public bool IsImageBlock(string blockId) => _document.FindBlock(blockId).Block is ImageFrame;
+    public bool IsImageBlock(string blockId) => Find(blockId) is ImageFrame;
+
+    /// <summary>The block, or null if the document no longer holds it.</summary>
+    private Block? Find(string blockId) =>
+        _document.TryFindBlock(blockId, out _, out Block? block) ? block : null;
 
     /// <summary>
     /// The picture frames on this page with nothing in them yet (PLAN.md §11 M18) — where the shell

@@ -38,6 +38,12 @@
         <MenuItem Header="Save it as a ne_w file…" Tag="newsletter.saveAs"
                   InputGesture="Ctrl+Shift+S" Click="OnActionClicked"
                   AutomationProperties.Name="Save this newsletter as a new file" />
+        <!-- M39: the other half of the rotating .bak ring PLAN.md §4 asked for. It sits with Save
+             because it is about the same file, and below it because it only means anything once
+             that file has been saved over at least once. -->
+        <MenuItem Header="_Go back to an earlier version…" Tag="newsletter.restore"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Go back to an earlier version of this newsletter" />
         <Separator />
         <MenuItem Header="_Export as PDF…" Tag="newsletter.exportPdf"
                   InputGesture="Ctrl+E" Click="OnActionClicked"
