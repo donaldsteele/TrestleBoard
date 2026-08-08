@@ -19,7 +19,8 @@ internal static class Classic414Template
         "The look the committee already knows: a cover banner and message, an officers page, and a birthdays sidebar.",
         PageCount: 3);
 
-    public const string CoverEssayPrompt = "Write the Worshipful Master's message here…";
+    // M51: see PlaceholderPrompts — one set, so the review checklist finds all of them.
+    public const string CoverEssayPrompt = PlaceholderPrompts.CoverEssay;
 
     public static TboardPackage Build()
     {

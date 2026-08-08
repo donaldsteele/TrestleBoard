@@ -16,7 +16,9 @@ namespace TrestleBoard.Core.Workflow;
 /// </summary>
 public static class CarryForward
 {
-    public const string DefaultArticlePrompt = "Write this month's article here…";
+    // M51: the string moved to Templates.PlaceholderPrompts, where the review checklist can see it
+    // beside the other six. The name stays — it is public and callers pass it by name.
+    public const string DefaultArticlePrompt = Templates.PlaceholderPrompts.Article;
 
     private const string CoverBannerWidgetType = "coverBanner";
     private const string MeetingDateTextField = "meetingDateText";

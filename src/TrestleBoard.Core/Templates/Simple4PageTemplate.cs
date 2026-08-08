@@ -17,9 +17,11 @@ internal static class Simple4PageTemplate
         "The fewest moving parts: a cover, two plain text pages, and a back page with an announcement.",
         PageCount: 4);
 
-    public const string CoverEssayPrompt = "Write the Worshipful Master's message here…";
-    public const string Page2Prompt = "Write this month's news here…";
-    public const string Page3Prompt = "Write more news here…";
+    // M51: the strings themselves live in PlaceholderPrompts, so the review checklist can recognise
+    // every one of them. These names stay because the build code below reads better for them.
+    public const string CoverEssayPrompt = PlaceholderPrompts.CoverEssay;
+    public const string Page2Prompt = PlaceholderPrompts.News;
+    public const string Page3Prompt = PlaceholderPrompts.MoreNews;
 
     public static TboardPackage Build()
     {

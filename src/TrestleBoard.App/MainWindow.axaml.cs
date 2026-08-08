@@ -23,6 +23,7 @@ using TrestleBoard.Core.Text;
 using TrestleBoard.Core.Workflow;
 using TrestleBoard.Editing;
 using TrestleBoard.Editing.Actions;
+using TrestleBoard.Editing.Review;
 using TrestleBoard.Export.Pdf;
 using TrestleBoard.Layout.Fonts;
 using TrestleBoard.Rendering;
@@ -876,6 +877,15 @@ public partial class MainWindow : Window
             return;
         }
 
+        // M51. The offer, and only an offer: whatever the answer, the export goes ahead. The one
+        // way this can stop an export is the user choosing to look it over, which is them changing
+        // their mind, not the app refusing. PLAN.md's acceptance is explicit that "Make the PDF" is
+        // never blocked.
+        if (await OfferTheReviewAsync())
+        {
+            return;
+        }
+
         IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Export as PDF",
@@ -905,6 +915,227 @@ public partial class MainWindow : Window
                 "The PDF could not be saved. Make sure the file is not open in another program and try again. "
                 + $"({ex.Message})");
         }
+    }
+
+    // ---- Look it over with me (PLAN.md §11 M51) -----------------------------------------------
+
+    private ReviewWindow? _reviewWindow;
+
+    /// <summary>What the user said when asked whether to look the newsletter over first (M51).</summary>
+    internal enum ReviewOffer
+    {
+        /// <summary>Open the checklist. The export stops here; the user will come back to it.</summary>
+        LookItOver,
+
+        /// <summary>Get on with the PDF.</summary>
+        MakeItNow,
+
+        /// <summary>Get on with the PDF, and stop offering.</summary>
+        MakeItNowAndStopAsking,
+    }
+
+    /// <summary>
+    /// Set by tests in place of the three-button offer, which cannot be answered headlessly — the
+    /// same seam <see cref="SaveFirstAnswerForTest"/> opens for the unsaved-changes dialog. Null
+    /// means "ask the user".
+    /// </summary>
+    internal ReviewOffer? ReviewOfferAnswerForTest { get; set; }
+
+    /// <summary>The review window while it is open, so a test can read the screen it is showing.</summary>
+    internal ReviewWindow? ReviewWindowForTest => _reviewWindow;
+
+    /// <summary>"Take me there", so a test can press it without building the whole window.</summary>
+    internal Action<ReviewFinding> TakeMeToTheFindingForTest => TakeMeToTheFinding;
+
+    /// <summary>
+    /// Puts the offer back after a test has turned it off. The setting is shared app state — the
+    /// headless session redirects <c>AppPaths.Root</c>, but not between tests in one run.
+    /// </summary>
+    internal void SetOfferTheReviewForTest(bool offer)
+    {
+        _settings = _settings with { OfferTheReviewBeforeExport = offer };
+        _settings.Save();
+    }
+
+    /// <summary>
+    /// Asks whether to look it over first, and returns true only when the user chose to. True means
+    /// "the export is not happening right now" — never "the export is refused".
+    /// </summary>
+    private async Task<bool> OfferTheReviewAsync()
+    {
+        if (!_settings.OfferTheReviewBeforeExport)
+        {
+            return false;
+        }
+
+        ReviewOffer answer = ReviewOfferAnswerForTest
+            ?? (SuppressStartupForTest ? ReviewOffer.MakeItNow : await AskAboutTheReviewAsync());
+
+        if (answer == ReviewOffer.MakeItNowAndStopAsking)
+        {
+            _settings = _settings with { OfferTheReviewBeforeExport = false };
+            _settings.Save();
+            return false;
+        }
+
+        if (answer != ReviewOffer.LookItOver)
+        {
+            return false;
+        }
+
+        ShowReview();
+        return true;
+    }
+
+    private async Task<ReviewOffer> AskAboutTheReviewAsync()
+    {
+        ReviewOffer answer = ReviewOffer.MakeItNow;
+        var dialog = new Window
+        {
+            Title = "Before you make the PDF",
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+        };
+
+        var review = new Button
+        {
+            Content = "Look it over with me",
+            FontSize = 18,
+            MinHeight = 44,
+            MinWidth = 200,
+            IsDefault = true,
+        };
+        review.Action();
+        var now = new Button
+        {
+            Content = "Make the PDF now",
+            FontSize = 18,
+            MinHeight = 44,
+            MinWidth = 200,
+            IsCancel = true,
+        };
+        now.Action();
+        var never = new Button
+        {
+            Content = "Make it now, and stop asking",
+            FontSize = 18,
+            MinHeight = 44,
+            MinWidth = 200,
+        };
+        never.Action();
+
+        review.Click += (_, _) => { answer = ReviewOffer.LookItOver; dialog.Close(); };
+        now.Click += (_, _) => { answer = ReviewOffer.MakeItNow; dialog.Close(); };
+        never.Click += (_, _) => { answer = ReviewOffer.MakeItNowAndStopAsking; dialog.Close(); };
+
+        Avalonia.Automation.AutomationProperties.SetName(review, "Look it over with me");
+        Avalonia.Automation.AutomationProperties.SetName(now, "Make the PDF now");
+        Avalonia.Automation.AutomationProperties.SetName(never, "Make it now, and stop asking");
+
+        dialog.Content = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(24),
+            Spacing = 16,
+            Children =
+            {
+                new Avalonia.Controls.TextBlock
+                {
+                    Text = "Would you like to look it over first?",
+                    FontSize = 20,
+                    FontWeight = Avalonia.Media.FontWeight.Bold,
+                    MaxWidth = 480,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                new Avalonia.Controls.TextBlock
+                {
+                    Text = "TrestleBoard can go through the newsletter with you, one question at a "
+                        + "time, before you make the PDF. It never changes anything, and you can "
+                        + "stop at any point.",
+                    FontSize = 18,
+                    MaxWidth = 480,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Vertical,
+                    Spacing = 12,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                    Children = { review, now, never },
+                },
+            },
+        };
+
+        Avalonia.Automation.AutomationProperties.SetName(dialog, "Would you like to look it over first?");
+        await dialog.ShowDialog(this);
+        return answer;
+    }
+
+    /// <summary>
+    /// Opens the review (M51). Not modal — every screen points at something on the page behind it.
+    /// </summary>
+    internal void ShowReview()
+    {
+        if (_source is null || _package is null)
+        {
+            return;
+        }
+
+        if (_reviewWindow is not null)
+        {
+            _reviewWindow.Activate();
+            return;
+        }
+
+        IReadOnlyList<ReviewFinding> findings = BuildReviewFindings();
+        _reviewWindow = new ReviewWindow(findings, TakeMeToTheFinding, id => _actions.RunAsync(id));
+        _reviewWindow.Closed += (_, _) => _reviewWindow = null;
+        _reviewWindow.Show(this);
+        _reviewWindow.Activate();
+
+        int questions = findings.Count(f => f.Kind != ReviewFindingKind.LookAtThePage);
+        Announce(questions == 0
+            ? "Nothing jumped out at me. We will look at each page together."
+            : $"There {(questions == 1 ? "is 1 thing" : $"are {questions} things")} worth asking you about.");
+    }
+
+    /// <summary>
+    /// The checklist reads; this gathers what only the laid-out document knows and hands it over.
+    /// </summary>
+    internal IReadOnlyList<ReviewFinding> BuildReviewFindings()
+    {
+        if (_source is null || _package is null)
+        {
+            return [];
+        }
+
+        var emptyPictures = new List<string>();
+        for (int page = 0; page < _source.PageCount; page++)
+        {
+            foreach ((string blockId, _) in _source.GetPlaceholderPictureRects(page))
+            {
+                emptyPictures.Add(blockId);
+            }
+        }
+
+        return ReviewChecklist.Build(_package.Document, _source.GetOversetTailBlockIds(), emptyPictures);
+    }
+
+    /// <summary>
+    /// "Take me there". Page first, THEN select — <see cref="GoToPage"/> clears the selection, so
+    /// the other order destroys the very selection this exists to make (the M21 lesson, review
+    /// §14.2).
+    /// </summary>
+    private void TakeMeToTheFinding(ReviewFinding finding)
+    {
+        GoToPage(Math.Clamp(finding.PageNumber - 1, 0, Math.Max(0, (_source?.PageCount ?? 1) - 1)));
+        if (finding.BlockId is { } blockId)
+        {
+            _editor?.End();
+            _frames?.Select(blockId);
+        }
+
+        RefreshActions();
     }
 
     // ---- Keeping the work (PLAN.md §11 M24) ---------------------------------------------------
@@ -1457,6 +1688,9 @@ public partial class MainWindow : Window
     internal FontStore FontsForTest => _fonts;
 
     internal void GoToNextPageForTest() => GoToPage(_pageIndex + 1);
+
+    /// <summary>Which page the canvas is showing, counted from 0 (M51's "Take me there" asserts on it).</summary>
+    internal int PageIndexForTest => _pageIndex;
 
     // ---- Edit / Format ------------------------------------------------------------------------
 

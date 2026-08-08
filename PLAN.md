@@ -2526,7 +2526,23 @@ assertion failure on a named line.
 > Avalonia stays App-only, fonts stay bundled, layout stays deterministic, every mutation goes
 > through `IDocumentCommand`, every surface meets §6.
 
-### M51 — Look it over with me (M)
+### M51 — Look it over with me (M) — **delivered 2026-08-08, `docs/M51-spec.md`**
+
+> Seven stations, one question per screen, in a window that is deliberately not modal because every
+> screen points at the page behind it. `ReviewChecklist` is a pure function over the document and two
+> sets of block ids the shell already has from the render source, so read-only is structural rather
+> than careful; `NothingTheChecklistDoesTouchesTheNewsletter` serialises either side and compares.
+> "Make the PDF" asks first and takes any of three answers, one of which stops asking — and that
+> preference lives in `AppSettings`, the one place M43's pattern is deliberately not copied, because
+> writing it into the `.tboard` would mark the newsletter as edited on the way to exporting it.
+>
+> **It found a defect on the way in.** `HoldsAPrompt` matched carry-forward's article prompt and none
+> of the other six, each of which was an `internal` constant in the template that used it. A
+> newsletter started from a template was therefore reported as having no prompts left, and the card
+> that says "you have not written the article yet" stayed quiet on the one route where nothing had
+> been written at all. All seven now live in `Core.Templates.PlaceholderPrompts` and all seven are
+> matched. Failure-first evidence is the clean kind M50 lacked: two deliberate breaks, five named
+> assertion failures, because the judgement lives in a pure function rather than behind a session.
 
 **Goal.** A one-button review before "Make the PDF" that converts "proofread six pages" — the
 hardest task in the cycle for aging eyes — into "answer a short list of questions".

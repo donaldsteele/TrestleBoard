@@ -41,6 +41,7 @@ internal sealed class ActionRunner
             [ActionId.Save] = _ => window.SaveAsync(),
             [ActionId.SaveAs] = _ => window.SaveAsAsync(),
             [ActionId.RestoreDocument] = _ => window.RestoreEarlierVersionAsync(),
+            [ActionId.ReviewNewsletter] = Sync(window.ShowReview),
             [ActionId.ExportPdf] = _ => window.ExportPdfAsync(),
             [ActionId.Exit] = Sync(window.Close),
 

@@ -38,6 +38,18 @@ public sealed record AppSettings
     /// </summary>
     public bool ShowActionPanel { get; init; } = true;
 
+    /// <summary>
+    /// Whether "Make the PDF" offers to look the newsletter over first (M51). On by default,
+    /// because somebody who has never been offered the review cannot decide they do not want it.
+    ///
+    /// <para>It lives here, in the user's settings, rather than in the newsletter — M51's
+    /// acceptance is that the checklist stays read-only over the document, and a "do not ask me
+    /// again" written into the `.tboard` would mark the newsletter as edited on the way to
+    /// exporting it. This is a preference about how the person likes to work, and it should
+    /// outlive any one issue.</para>
+    /// </summary>
+    public bool OfferTheReviewBeforeExport { get; init; } = true;
+
     [JsonIgnore]
     public double UiScale => Math.Clamp(UiScalePercent, MinScalePercent, MaxScalePercent) / 100d;
 

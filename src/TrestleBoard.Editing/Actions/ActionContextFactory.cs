@@ -1,5 +1,6 @@
 using TrestleBoard.Core.Commands;
 using TrestleBoard.Core.Model;
+using TrestleBoard.Core.Templates;
 using TrestleBoard.Core.Workflow;
 using TrestleBoard.Rendering;
 
@@ -171,10 +172,17 @@ public static class ActionContextFactory
         session.Document.TryFindBlock(blockId, out _, out Block? block) ? block : null;
 
     /// <summary>
-    /// Does an article still say "write this month's article here"? That prompt is what
-    /// start-from-last-month leaves behind, and until M11 nothing ever mentioned it again.
+    /// Does anything still say "your words go here"? That prompt is what start-from-last-month
+    /// leaves behind, and until M11 nothing ever mentioned it again.
+    ///
+    /// <para>M51: it used to look for carry-forward's article prompt and nothing else, so a
+    /// newsletter started from a template — whose cover says "Write the Worshipful Master's message
+    /// here…" and whose photo pages say two other things — was reported as having no prompts left.
+    /// The card that exists to say "you have not written the article yet" stayed quiet for the one
+    /// route where nothing had been written at all. All seven prompts now live in
+    /// <see cref="PlaceholderPrompts"/> and all seven are matched.</para>
     /// </summary>
     private static bool HoldsAPrompt(Document document) =>
         document.Stories.Any(story => story.Paragraphs.Any(p => p.Runs.Any(run =>
-            run.Text.Contains(CarryForward.DefaultArticlePrompt, StringComparison.Ordinal))));
+            PlaceholderPrompts.LurksIn(run.Text))));
 }

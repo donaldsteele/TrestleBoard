@@ -31,6 +31,13 @@ public static class ActionId
     /// </summary>
     public const string RestoreDocument = "newsletter.restore";
 
+    /// <summary>
+    /// M51: the newsletter walked top to bottom and turned into a short list of questions. It sits
+    /// beside <see cref="ExportPdf"/> because that is where the committee's month reaches it, and
+    /// it never stands between anyone and the PDF.
+    /// </summary>
+    public const string ReviewNewsletter = "newsletter.review";
+
     public const string ExportPdf = "newsletter.exportPdf";
     public const string Exit = "newsletter.exit";
 

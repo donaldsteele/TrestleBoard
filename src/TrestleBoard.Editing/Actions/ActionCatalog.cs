@@ -78,6 +78,9 @@ public static class ActionCatalog
         new(ActionId.RestoreDocument, "Go back to an earlier version…",
             "Opens one of the copies TrestleBoard kept each time you saved.",
             ActionGroup.Newsletter),
+        new(ActionId.ReviewNewsletter, "Look it over with me…",
+            "Goes through the newsletter with you before you make the PDF, one question at a time.",
+            ActionGroup.Newsletter),
         new(ActionId.ExportPdf, "Make the PDF…", "Makes the file you email to the lodge.",
             ActionGroup.Newsletter, "Ctrl+E", IsPrimary: true),
         new(ActionId.Exit, "Exit", "Closes TrestleBoard.", ActionGroup.Newsletter),
@@ -417,7 +420,7 @@ public static class ActionCatalog
                         "You have saved this newsletter once, so there is nothing earlier to go back "
                         + "to yet. TrestleBoard keeps a copy every time you save over it."),
 
-            ActionId.ExportPdf => RequiresDocument(context),
+            ActionId.ReviewNewsletter or ActionId.ExportPdf => RequiresDocument(context),
 
             // ---- Edit ---------------------------------------------------------------------------
             // M49, review §14.3: this app has TWO undo stacks — the newsletter's and the address

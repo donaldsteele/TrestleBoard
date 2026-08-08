@@ -45,6 +45,10 @@
                   Click="OnActionClicked"
                   AutomationProperties.Name="Go back to an earlier version of this newsletter" />
         <Separator />
+        <!-- M51: above "Make the PDF" because that is the order of the month, and never in its way. -->
+        <MenuItem Header="Loo_k it over with me…" Tag="newsletter.review"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Look the newsletter over with me" />
         <MenuItem Header="Make the _PDF…" Tag="newsletter.exportPdf"
                   InputGesture="Ctrl+E" Click="OnActionClicked"
                   AutomationProperties.Name="Make the PDF to email" />

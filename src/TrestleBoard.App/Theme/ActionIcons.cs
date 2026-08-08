@@ -192,6 +192,11 @@ internal static class ActionIcons
         [ActionId.About] = "read once, never hunted for",
         [ActionId.FontLicences] = "read once, never hunted for",
         [ActionId.Licence] = "read once, never hunted for",
+
+        // M51. Every glyph that could mean "look it over" — an eye, a tick, a magnifier — already
+        // means something else here or would be read as "this is finished", which is the one thing
+        // the review must not promise before it has run.
+        [ActionId.ReviewNewsletter] = "no symbol means 'go through it with me' without over-promising",
         [ActionId.ShowExampleIssue] = "read once, never hunted for",
     };
 

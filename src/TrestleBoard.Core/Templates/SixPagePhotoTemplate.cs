@@ -27,10 +27,11 @@ internal static class SixPagePhotoTemplate
         "Classic 414 plus two photo-led pages, for an issue with a lot to show.",
         PageCount: 6);
 
-    public const string CoverEssayPrompt = "Write the Worshipful Master's message here…";
-    public const string PhotoPrompt = "Write about this photo here…";
-    public const string ClosingPrompt = "Write a closing note here…";
-    public const string PhotoAltTextPrompt = "Write a description of this photo here…";
+    // M51: see PlaceholderPrompts — one set, so the review checklist finds all of them.
+    public const string CoverEssayPrompt = PlaceholderPrompts.CoverEssay;
+    public const string PhotoPrompt = PlaceholderPrompts.AboutThePhoto;
+    public const string ClosingPrompt = PlaceholderPrompts.ClosingNote;
+    public const string PhotoAltTextPrompt = PlaceholderPrompts.PhotoDescription;
 
     public static TboardPackage Build()
     {
