@@ -2233,6 +2233,30 @@ which is M39's lesson applied.
 
 ---
 
+### M41 - Save on the toolbar, and the state beside it (delivered 2026-08-08, `docs/M41-spec.md`)
+
+Closes the last part of section 14.4's save-surface finding. M24 gave the app a Save command, a
+Ctrl+S, a menu item and a title bar that says "not saved yet" in words - and put none of it on the
+toolbar, which the review said is where this audience looks first. The most-used command in the
+program was reachable from a menu or a chord, and the answer to "is my work safe?" lived in a title
+bar, which is not where anybody looks to ask it.
+
+A Save button now sits beside Open, labelled with a prefix of the catalog's own words, and a polite
+live region beside it reads blank, "Saved", or "Not saved yet". Blank when nothing is open, because
+"Saved" over an empty window answers a question nobody asked.
+
+**No New button, deliberately.** The toolbar label must match the catalog (M27), the catalog calls
+it "Start from a template...", and a button that wide on an already-scrolling toolbar costs more
+than it gives: this committee makes one newsletter a month, and the start screen already offers that
+as a large card.
+
+Seventeen screenshots re-baked, and **more moved than this milestone touched** - M37's action-button
+borders and M40's destructive button had never reached the dialog shots, so settings, grid-editor,
+import-columns, the two wizard shots, restore-dialog, officers-sync and font-picker were all stale
+against code that had already shipped. That part is a backlog being paid off rather than a change.
+
+---
+
 ## 12. Verification (end-to-end)
 
 1. **Per-milestone:** `dotnet build && dotnet test` locally + 3-OS CI matrix green; cavecrew-reviewer findings addressed; snapshot diffs reviewed as CI artifacts.
@@ -2834,11 +2858,11 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 - Import mapping dialog: "Stop" is ambiguous (abandon everything?), and "Next" is grey rather than
   the navy primary every other dialog uses.
 - Settings: the UI-scale slider shows only the current value — no min/max/ticks.
-- **Partly addressed at M24**: there is now a Save command and the title bar says "not saved yet" in
+- ~~**Partly addressed at M24**: there is now a Save command and the title bar says "not saved yet" in
   words, so the state is visible somewhere. The toolbar itself still carries neither Save nor New,
-  and the toolbar is where this audience looks first — the original finding stands for that surface.
-  The main toolbar has Open but no New and (before §14.1 was closed) no Save; no save-state
-  indicator exists anywhere in the frame.
+  and the toolbar is where this audience looks first — the original finding stands for that surface.~~
+  — **closed at M41**: Save is on the toolbar with a plain-language save-state label beside it. New
+  is deliberately not, and M41's spec records why.
 
 ### 14.5 Suggested groupings for future milestones (record only)
 

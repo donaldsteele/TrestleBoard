@@ -338,6 +338,16 @@
       <StackPanel Orientation="Horizontal" Spacing="8">
         <Button x:Name="OpenButton" FontSize="16" MinHeight="44" Tag="newsletter.open" Click="OnActionClicked"
                 AutomationProperties.Name="Open a newsletter">Open</Button>
+        <!-- M41: the toolbar is where this audience looks first, and until now the one command they
+             need most often was not on it. The label is a prefix of the catalog's "Save this
+             newsletter", which is what keeps the toolbar and the menu saying the same word. -->
+        <Button x:Name="SaveButton" FontSize="16" MinHeight="44" Tag="newsletter.save" Click="OnActionClicked"
+                AutomationProperties.Name="Save this newsletter">Save</Button>
+        <!-- The save state, in words, beside the button that changes it. The title bar has said this
+             since M24, but a title bar is not where somebody looks to ask "is my work safe?". -->
+        <TextBlock x:Name="SaveStateLabel" FontSize="16" VerticalAlignment="Center" MinWidth="96"
+                   Text="" AutomationProperties.Name="Whether your work is saved"
+                   AutomationProperties.LiveSetting="Polite" />
         <Button x:Name="UndoButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="edit.undo" Click="OnActionClicked"
                 AutomationProperties.Name="Undo">Undo</Button>
         <Button x:Name="RedoButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="edit.redo" Click="OnActionClicked"

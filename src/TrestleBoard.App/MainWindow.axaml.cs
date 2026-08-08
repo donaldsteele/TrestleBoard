@@ -246,9 +246,12 @@ public partial class MainWindow : Window
     /// </summary>
     internal Button[] ToolbarButtons =>
     [
-        OpenButton, UndoButton, RedoButton, PrevPageButton, NextPageButton,
+        OpenButton, SaveButton, UndoButton, RedoButton, PrevPageButton, NextPageButton,
         ZoomOutButton, ZoomInButton, FitButton,
     ];
+
+    /// <summary>What the toolbar is saying about the save state, for the tests.</summary>
+    internal string SaveStateTextForTest => SaveStateLabel.Text ?? string.Empty;
 
     internal ActionPanel PanelForTest => _panel;
 
@@ -3331,10 +3334,19 @@ public partial class MainWindow : Window
         SetZoom(Math.Clamp(zoom, 0.1, 4.0), fit: true);
     }
 
-    private void UpdatePageChrome() =>
+    private void UpdatePageChrome()
+    {
         PageLabel.Text = _source is { PageCount: > 0 }
             ? $"Page {_pageIndex + 1} of {_source.PageCount}"
             : "No newsletter";
+
+        // M41: the save state in the toolbar, in the same words the title bar uses. Blank when
+        // there is no newsletter, because "Saved" over an empty window would be answering a
+        // question nobody asked.
+        SaveStateLabel.Text = _package is null
+            ? string.Empty
+            : _unsavedChanges ? "Not saved yet" : "Saved";
+    }
 
     private void UpdateStatus()
     {

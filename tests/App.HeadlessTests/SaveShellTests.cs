@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using TrestleBoard.Core.Container;
@@ -270,6 +271,46 @@ public sealed class SaveShellTests : IDisposable
 
         using var current = new MemoryStream(File.ReadAllBytes(path));
         Assert.Equal(TboardContainer.Load(current).Document.Pages.Count + 1, earlier.Document.Pages.Count);
+    }
+
+    /// <summary>
+    /// M41, review §14.4: the toolbar carries Save, and says whether the work is safe.
+    ///
+    /// <para>M24 gave the app a Save command and a title-bar marker, and closed §14.1 with it. What
+    /// it did not do is put either on the toolbar — which is where this audience looks first, and
+    /// the finding said so explicitly. Until now the one command they need most often was reachable
+    /// only from a menu or a chord.</para>
+    /// </summary>
+    [Fact]
+    public async Task TheToolbarCarriesSaveAndSaysWhetherTheWorkIsSafe()
+    {
+        string path = Path.Combine(_folder, "toolbar.tboard");
+
+        await HeadlessSession.DispatchAsync(async () =>
+        {
+            var window = new MainWindow();
+            window.Show();
+
+            // No newsletter: the toolbar says nothing rather than claiming anything is saved.
+            Assert.Equal(string.Empty, window.SaveStateTextForTest);
+
+            window.OpenIssueSample();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Button save = Assert.Single(window.ToolbarButtons, b => (b.Tag as string) == ActionId.Save);
+            Assert.Equal("Saved", window.SaveStateTextForTest);
+
+            MakeAnEdit(window);
+            window.RefreshActions();
+            Assert.Equal("Not saved yet", window.SaveStateTextForTest);
+            Assert.True(save.IsEnabled);
+
+            Assert.True(await window.SaveToPathForTest(path));
+            Assert.Equal("Saved", window.SaveStateTextForTest);
+
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
     }
 
     /// <summary>
