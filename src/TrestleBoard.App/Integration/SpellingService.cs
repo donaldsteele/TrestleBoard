@@ -66,8 +66,7 @@ internal sealed class SpellingService
         var marks = new List<RectPt>();
         foreach (string storyId in StoriesOn(document, pageIndex))
         {
-            if (!document.TryGetStory(storyId, out Story? story)
-                || !source.TryGetStoryGeometry(storyId, out StoryTextGeometry? geometry))
+            if (!document.TryGetStory(storyId, out Story? story))
             {
                 continue;
             }
@@ -82,44 +81,13 @@ internal sealed class SpellingService
                         continue;
                     }
 
-                    AddRects(marks, geometry, storyId, p, start, word.Length, pageIndex, document);
+                    marks.AddRange(TextGeometry.RectsFor(
+                        document, source, pageIndex, storyId, p, start, word.Length));
                 }
             }
         }
 
         return marks;
-    }
-
-    private static void AddRects(
-        List<RectPt> marks,
-        StoryTextGeometry geometry,
-        string storyId,
-        int paragraphIndex,
-        int offset,
-        int length,
-        int pageIndex,
-        Document document)
-    {
-        var range = new TextRange(
-            new TextPosition(storyId, paragraphIndex, offset),
-            new TextPosition(storyId, paragraphIndex, offset + length));
-
-        foreach (SelectionRect rect in geometry.GetSelectionRects(range))
-        {
-            // A story can flow through frames on more than one page, and the geometry answers for
-            // all of them. Only this page's marks belong on this page.
-            if (rect.PageId is { } pageId
-                && !string.Equals(pageId, document.Pages[pageIndex].Id, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            marks.Add(new RectPt(
-                rect.LeftPt,
-                rect.TopPt,
-                Math.Max(0f, rect.RightPt - rect.LeftPt),
-                Math.Max(0f, rect.BottomPt - rect.TopPt)));
-        }
     }
 
     private static IEnumerable<string> StoriesOn(Document document, int pageIndex) =>

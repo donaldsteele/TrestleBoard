@@ -84,6 +84,9 @@ public static class ActionCatalog
         new(ActionId.CheckSpelling, "Check my spelling…",
             "Shows you one word at a time that TrestleBoard does not know, with the sentence it is in.",
             ActionGroup.Newsletter),
+        new(ActionId.ReadAloud, "Read it back to me…",
+            "Goes through the newsletter one sentence at a time, out loud where this computer can.",
+            ActionGroup.Newsletter),
         new(ActionId.ExportPdf, "Make the PDF…", "Makes the file you email to the lodge.",
             ActionGroup.Newsletter, "Ctrl+E", IsPrimary: true),
         new(ActionId.ExportDraftPdf, "Make a draft copy…",
@@ -446,7 +449,8 @@ public static class ActionCatalog
                         "You have saved this newsletter once, so there is nothing earlier to go back "
                         + "to yet. TrestleBoard keeps a copy every time you save over it."),
 
-            ActionId.ReviewNewsletter or ActionId.CheckSpelling or ActionId.ExportPdf
+            ActionId.ReviewNewsletter or ActionId.CheckSpelling or ActionId.ReadAloud
+                or ActionId.ExportPdf
                 or ActionId.ExportDraftPdf =>
                 RequiresDocument(context),
 

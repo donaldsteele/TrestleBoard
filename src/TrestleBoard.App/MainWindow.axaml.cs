@@ -1296,7 +1296,35 @@ public partial class MainWindow : Window
             _package.Document,
             _source.GetOversetTailBlockIds(),
             emptyPictures,
-            SpellingStation());
+            [.. SpellingStation(), .. ReadAloudStation()]);
+    }
+
+    /// <summary>
+    /// M58 joins M51's checklist as its last station before the page-by-page look, which is where
+    /// PLAN.md put it: the eye has done what it can by then, and the ear is the other sense.
+    /// </summary>
+    private IEnumerable<ReviewFinding> ReadAloudStation()
+    {
+        if (_package is null)
+        {
+            yield break;
+        }
+
+        int sentences = Core.Text.Sentences.In(_package.Document).Count;
+        if (sentences == 0)
+        {
+            yield break;
+        }
+
+        yield return new ReviewFinding(
+            ReviewFindingKind.ReadItBack,
+            PageNumber: 1,
+            BlockId: null,
+            "Would you like to hear it read back?",
+            "Errors the eye slides over, the ear catches. TrestleBoard can go through all "
+            + $"{sentences} sentences one at a time — out loud if this computer has a voice, and "
+            + "one at a time on the page if it has not.",
+            ActionId.ReadAloud);
     }
 
     /// <summary>
@@ -1348,6 +1376,73 @@ public partial class MainWindow : Window
         }
 
         RefreshActions();
+    }
+
+    // ---- Read it back to me (PLAN.md §11 M58) --------------------------------------------------
+
+    private ReadAloudWindow? _readAloudWindow;
+    private ISpeaker? _speaker;
+
+    internal ISpeaker Speaker => _speaker ??= new SystemSpeaker();
+
+    /// <summary>Lets a test run the whole walk with a machine that has no voice.</summary>
+    internal void UseSpeakerForTest(ISpeaker speaker) => _speaker = speaker;
+
+    internal ReadAloudWindow? ReadAloudWindowForTest => _readAloudWindow;
+
+    /// <summary>
+    /// M58: reads the newsletter back one sentence at a time, or walks through it silently where
+    /// this machine has no voice.
+    /// </summary>
+    internal void ReadItBackToMe()
+    {
+        if (_source is null || _package is null)
+        {
+            return;
+        }
+
+        if (_readAloudWindow is not null)
+        {
+            _readAloudWindow.Activate();
+            return;
+        }
+
+        var session = ReadAloudSession.For(_package.Document);
+        _readAloudWindow = new ReadAloudWindow(session, Speaker, ShowTheSentence);
+        _readAloudWindow.Closed += (_, _) =>
+        {
+            _readAloudWindow = null;
+            PageCanvas.SpokenRects = [];
+        };
+        _readAloudWindow.Show(this);
+        _readAloudWindow.Activate();
+
+        Announce(Speaker.Available
+            ? $"Reading the newsletter back to you, one sentence at a time. {session.Count} to go."
+            : "This computer has no voice TrestleBoard can use, so it will show you one sentence at "
+              + $"a time instead. {session.Count} to go.");
+    }
+
+    /// <summary>
+    /// Turns the page to the sentence being read and lights it up. Page first, then the highlight —
+    /// the M21 ordering lesson, the same as M51's and M55's.
+    /// </summary>
+    private void ShowTheSentence(Core.Text.Sentence? sentence)
+    {
+        if (_source is null || _package is null || sentence is null)
+        {
+            PageCanvas.SpokenRects = [];
+            return;
+        }
+
+        if (PageOfStory(sentence.StoryId) is { } page && page != _pageIndex)
+        {
+            GoToPage(page);
+        }
+
+        PageCanvas.SpokenRects = TextGeometry.RectsFor(
+            _package.Document, _source, _pageIndex, sentence.StoryId, sentence.ParagraphIndex,
+            sentence.Offset, sentence.Length);
     }
 
     // ---- My templates (PLAN.md §11 M57) --------------------------------------------------------

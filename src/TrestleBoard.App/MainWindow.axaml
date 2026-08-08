@@ -60,6 +60,10 @@
         <MenuItem Header="Check my spelli_ng…" Tag="newsletter.checkSpelling"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Check my spelling" />
+        <!-- M58: the last of the three ways to look it over, beside the other two. -->
+        <MenuItem Header="_Read it back to me…" Tag="newsletter.readAloud"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Read the newsletter back to me" />
         <MenuItem Header="Make the _PDF…" Tag="newsletter.exportPdf"
                   InputGesture="Ctrl+E" Click="OnActionClicked"
                   AutomationProperties.Name="Make the PDF to email" />

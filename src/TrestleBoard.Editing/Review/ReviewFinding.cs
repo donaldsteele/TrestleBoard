@@ -24,6 +24,9 @@ public enum ReviewFindingKind
     /// <summary>M52: words the spell checker does not know, offered as one screen of the review.</summary>
     SpellingToCheck,
 
+    /// <summary>M58: the review's last offer before the page-by-page look — hear it read back.</summary>
+    ReadItBack,
+
     /// <summary>The last station: look at each page with your own eyes.</summary>
     LookAtThePage,
 }

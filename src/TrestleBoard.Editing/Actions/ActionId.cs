@@ -44,6 +44,13 @@ public static class ActionId
     /// </summary>
     public const string CheckSpelling = "newsletter.checkSpelling";
 
+    /// <summary>
+    /// M58: read the newsletter back one sentence at a time. Where no voice answers, the same walk
+    /// runs silently — errors the eye slides over, the ear catches, and one sentence at a time with
+    /// everything else out of the way catches a good many of the rest.
+    /// </summary>
+    public const string ReadAloud = "newsletter.readAloud";
+
     public const string ExportPdf = "newsletter.exportPdf";
 
     /// <summary>

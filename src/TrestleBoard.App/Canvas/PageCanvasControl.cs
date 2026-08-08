@@ -192,6 +192,21 @@ public sealed class PageCanvasControl : Control
         }
     } = true;
 
+    /// <summary>
+    /// M58's read-aloud highlight, in page points, for the page being shown. Chrome, like the
+    /// spelling marks beside it: the exporter draws through <c>RenderPage</c>, which knows nothing
+    /// about this, so the sentence being read can never print.
+    /// </summary>
+    public IReadOnlyList<Core.Model.RectPt> SpokenRects
+    {
+        get;
+        set
+        {
+            field = value ?? [];
+            InvalidateVisual();
+        }
+    } = [];
+
     /// <summary>The laid-out document; not an AvaloniaProperty because it is set wholesale on open.</summary>
     /// <summary>
     /// Without this the canvas is one opaque control and a screen reader sees nothing inside it
@@ -447,6 +462,30 @@ public sealed class PageCanvasControl : Control
         }
     }
 
+    /// <summary>
+    /// M58: a band behind the sentence being read, so the eye can follow the voice.
+    ///
+    /// <para>Behind the words rather than a box around them: an outline at this size cuts through
+    /// the descenders of the line above and reads as damage. The accent colour at low opacity is
+    /// the same treatment the selection uses, which is what a reader has already learned means
+    /// "this one".</para>
+    /// </summary>
+    private void DrawSpokenSentence(DrawingContext context)
+    {
+        if (SpokenRects.Count == 0 || BrushFor(Tokens.Accent) is not { } accent)
+        {
+            return;
+        }
+
+        using (context.PushOpacity(0.22))
+        {
+            foreach (Core.Model.RectPt rect in SpokenRects)
+            {
+                context.FillRectangle(accent, ToControlRect(rect));
+            }
+        }
+    }
+
     private void DrawAdornments(DrawingContext context)
     {
         if (_source is null)
@@ -479,6 +518,7 @@ public sealed class PageCanvasControl : Control
         DrawMultiSelection(context);
         DrawMarquee(context);
         DrawSpellingMarks(context);
+        DrawSpokenSentence(context);
 
         if (BrushFor(Tokens.AdornmentHint) is not { } hintBrush)
         {

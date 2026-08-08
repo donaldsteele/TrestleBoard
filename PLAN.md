@@ -2769,7 +2769,23 @@ while it stays personal (§0 rule 4), but export behaves like roster export: use
 the save dialog only, no default beside the repo, never a fixture; and the screenshot harness's
 temporary app-state root is verified to cover the template store (§0 rule 6).
 
-### M58 — Read it back to me (M/L)
+### M58 — Read it back to me (M/L) — **delivered 2026-08-08, `docs/M58-spec.md`**
+
+> Built silent-first, because PLAN.md's own sentence says the walk-through is the tested-everywhere
+> baseline. `Sentences` (Core, BCL-only) and `ReadAloudSession` (Editing, pure) decide everything the
+> user experiences and have never heard of a loudspeaker — so **no test in this milestone depends on
+> audio**, because the thing being tested genuinely does not. Speech is `ISpeaker` behind `say` /
+> `spd-say` / PowerShell, asked once at construction so a machine with no voice is told on the first
+> screen and the window is even titled differently.
+>
+> Segmentation excuses a short list of abbreviations ("Bro. Placeholder gave the charge" read as two
+> sentences is a stumble in every issue) and deliberately attempts no more. The highlight is a band
+> behind the words, Avalonia primitives, no baseline moved. `TextGeometry` came out of
+> `SpellingService` when the second caller arrived.
+>
+> **Fourth milestone running where writing the break first found something**: `Back()`'s special case
+> for the finished state was dead code — `Next()` already stops at `Count`, so plain subtraction
+> lands in the same place. Simplified, with the discovery recorded.
 
 **Goal.** The committee's best proofreading tool for aging eyes is hearing the text — errors the
 eye slides over, the ear catches. Today that means recruiting a second person to read aloud.

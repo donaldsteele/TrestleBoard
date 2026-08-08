@@ -201,6 +201,10 @@ internal static class ActionIcons
         // M52. Every spell-check glyph in circulation is the letters ABC with a tick, which is
         // two abstractions deep for a reader who is being asked to trust it.
         [ActionId.CheckSpelling] = "the usual ABC-and-a-tick means nothing to somebody meeting it cold",
+
+        // M58. A loudspeaker would be a lie on a machine with no voice, which is exactly the
+        // machine where this command matters most.
+        [ActionId.ReadAloud] = "a loudspeaker would promise sound this computer may not have",
         [ActionId.ShowSpelling] = "a diagnostic overlay; no picture explains it",
 
         // M53. The draft copy would wear export-pdf's glyph, which is the whole confusion it
