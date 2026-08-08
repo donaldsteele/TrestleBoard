@@ -28,6 +28,7 @@ public sealed class ActionSurfaceTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
 
             var greyed = new List<string>();
@@ -66,6 +67,7 @@ public sealed class ActionSurfaceTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
 
             var silent = new List<string>();
@@ -107,6 +109,7 @@ public sealed class ActionSurfaceTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenSample();
 
             var silent = new List<string>();
@@ -149,6 +152,7 @@ public sealed class ActionSurfaceTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenSample();
 
             // Nothing is selected, so there is no picture to fix.
@@ -172,6 +176,7 @@ public sealed class ActionSurfaceTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
 
             Assert.Equal("No newsletter is open", window.PanelForTest.HeadingForTest);
 
@@ -202,6 +207,7 @@ public sealed class ActionSurfaceTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
             Assert.True(window.StartFromLastMonth());
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
@@ -227,6 +233,7 @@ public sealed class ActionSurfaceTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
@@ -288,6 +295,7 @@ public sealed class ActionSurfaceTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
@@ -321,7 +329,6 @@ public sealed class ActionSurfaceTests
                 "these buttons carry neither the action nor the primary treatment, so they look "
                     + "the same whether or not they can be pressed: " + string.Join(", ", bare));
 
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }

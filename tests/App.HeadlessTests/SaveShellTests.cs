@@ -79,6 +79,7 @@ public sealed class SaveShellTests : IDisposable
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
 
             var reached = new List<string>();
@@ -111,6 +112,7 @@ public sealed class SaveShellTests : IDisposable
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
 
             Assert.False(window.HasUnsavedChangesForTest);
@@ -194,6 +196,7 @@ public sealed class SaveShellTests : IDisposable
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
             MakeAnEdit(window);
 
@@ -216,7 +219,6 @@ public sealed class SaveShellTests : IDisposable
             window.Close();
             Assert.True(window.IsVisible);
 
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }
@@ -238,6 +240,7 @@ public sealed class SaveShellTests : IDisposable
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
 
             MakeAnEdit(window);
@@ -260,7 +263,6 @@ public sealed class SaveShellTests : IDisposable
             Assert.Equal(1, kept.Generation);
             Assert.Equal(firstSave, kept.Bytes);
 
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
 
@@ -290,6 +292,7 @@ public sealed class SaveShellTests : IDisposable
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
 
             // No newsletter: the toolbar says nothing rather than claiming anything is saved.
             Assert.Equal(string.Empty, window.SaveStateTextForTest);
@@ -308,7 +311,6 @@ public sealed class SaveShellTests : IDisposable
             Assert.True(await window.SaveToPathForTest(path));
             Assert.Equal("Saved", window.SaveStateTextForTest);
 
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }
@@ -329,6 +331,7 @@ public sealed class SaveShellTests : IDisposable
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
 
             MakeAnEdit(window);
@@ -352,7 +355,6 @@ public sealed class SaveShellTests : IDisposable
 
             long fileBefore = new FileInfo(path).Length;
             window.RestoreChoiceForTest = FileRecoveryStore.FindBackups(path)[0];
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             await window.RestoreEarlierVersionAsync();
 
             // The page is back on screen...
@@ -385,6 +387,7 @@ public sealed class SaveShellTests : IDisposable
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
 
             // A frame is chosen and the caret is NOT in a story — the M18 situation.
@@ -406,7 +409,6 @@ public sealed class SaveShellTests : IDisposable
             Assert.Equal([ActionId.Paste], reached);
 
             window.ActionsForTest.InterceptorForTest = null;
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }
@@ -423,6 +425,7 @@ public sealed class SaveShellTests : IDisposable
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
             Assert.False(window.HasUnsavedChangesForTest);
 
@@ -434,7 +437,6 @@ public sealed class SaveShellTests : IDisposable
             Assert.Contains("not saved yet", window.Title!, StringComparison.Ordinal);
             Assert.True(ActionCatalog.Evaluate(ActionId.Save, window.CurrentActionContext).IsAvailable);
 
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }

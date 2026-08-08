@@ -97,6 +97,7 @@ public sealed class PageShellTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
 
             // The caret goes into a frame on page 1, and then page 1 goes.
@@ -114,7 +115,6 @@ public sealed class PageShellTests
             // The context still builds, and it no longer claims a caret in a deleted frame.
             Assert.False(window.CurrentActionContext.IsEditingText);
 
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }

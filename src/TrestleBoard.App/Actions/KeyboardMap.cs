@@ -63,6 +63,12 @@ internal static class KeyboardMap
         new(Key.V, Ctrl, ActionId.Paste),
         new(Key.A, Ctrl, ActionId.SelectAll, KeyScope.WhileTyping),
 
+        // M50. Tab already walks the page's blocks one at a time; holding Ctrl keeps what is
+        // already chosen instead of replacing it, which is the same relationship Shift+click has
+        // to a plain click. Scoped away from typing, where Tab leaves the writing (M44).
+        new(Key.Tab, Ctrl, ActionId.AddNextToSelection, KeyScope.WhileNotTyping),
+        new(Key.Tab, CtrlShift, ActionId.AddPreviousToSelection, KeyScope.WhileNotTyping),
+
 
         // M21. Both are KeyScope.Always: Ctrl+F is most useful while the caret is already in a
         // frame, and the two gestures every other publishing program uses are the two gestures a

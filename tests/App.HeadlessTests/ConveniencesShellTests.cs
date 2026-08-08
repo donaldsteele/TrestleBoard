@@ -29,6 +29,7 @@ public sealed class ConveniencesShellTests
     {
         var window = new MainWindow();
         window.Show();
+        window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
         window.OpenIssueSample();
         window.Measure(new Size(1280, 860));
         window.Arrange(new Rect(0, 0, 1280, 860));
@@ -374,6 +375,7 @@ public sealed class ConveniencesShellTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
@@ -395,7 +397,6 @@ public sealed class ConveniencesShellTests
             Assert.True(margins.Right < page.Width);
             Assert.True(margins.Bottom < page.Height);
 
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }

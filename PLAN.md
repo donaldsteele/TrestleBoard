@@ -2455,6 +2455,41 @@ something invisible - and M29's fix to the sync commands works by going to the p
 
 ---
 
+### M50 - The last two keyboard findings, and a defect in the tests themselves (delivered 2026-08-08, `docs/M50-spec.md`)
+
+Closes the two section 14.3 items M49 left open by choice.
+
+**Add-to-selection.** The review named the missing piece as "a cursor that moves independently of
+the selection" - a second highlight driven with the arrows and committed with Space, the way a
+Windows list box works. That mechanism is real and it is the wrong one here: it adds a MODE this
+audience must be taught, to reach an outcome they can say in one sentence - *and that one too*. So
+Ctrl+Tab keeps everything already chosen and adds the next thing, walking the same stacking order
+Tab walks; the relationship of Ctrl+Tab to Tab is exactly Shift+click's relationship to a click. It
+walks outward from the LAST thing added, or repeated presses flip between the first frame's two
+neighbours instead of travelling, and it skips what is already chosen, so a press either adds
+something or says there is nothing left to add.
+
+**Pointer-anchored zoom.** The obstacle the review named - without a pointer there is no anchor - is
+true and not the end of the question: when something is CHOSEN, the application already knows what
+the user is looking at. `StepZoom` now anchors on the chosen thing's centre and falls back to the
+middle of the view, routing through M21's `ZoomAtPointer` rather than repeating its arithmetic.
+
+**And the milestone found a defect in its own tests.** Verifying against deliberately broken code
+produced nonsense - every test reporting the dead-session `fonts:SystemFonts` error rather than its
+own assertion. The cause: `SaveFirstAnswerForTest = Discard` was set on the line before `Close()`,
+AFTER the assertions, in 21 tests written across this campaign. A failing assertion therefore never
+set it, `Close()` raised a dialog a headless run cannot answer, and the hung session made every
+other test lie about its result. All 21 moved to immediately after `Show()`. Same class as M39's
+finding: the suite reporting something other than what it was asked.
+
+Recorded honestly: this milestone's failure-first evidence is weaker than M40's. Filtered runs kill
+the shared session in this environment and cannot serve as evidence, and the full assembly hung
+against the broken build rather than reporting. What exists is four passing tests, proof that
+Ctrl+Tab reaches the command, and a broken build that demonstrably changes behaviour - not a clean
+assertion failure on a named line.
+
+---
+
 ## 12. Verification (end-to-end)
 
 1. **Per-milestone:** `dotnet build && dotnet test` locally + 3-OS CI matrix green; cavecrew-reviewer findings addressed; snapshot diffs reviewed as CI artifacts.
@@ -3134,12 +3169,13 @@ hang, and the whole of §14.2's Minor list bar two entries.
    overset check, `DocumentSession`'s missing rollback.~~ — **closed at M33.** Two reproduced and
    were fixed; the `Unpremul` one did not reproduce and is recorded as covered by tests that
    already exist, rather than being quietly dropped.
-6. ~~**Keyboard equivalents for marquee, add-to-selection and pan.**~~ — **marquee and pan closed at
-   M49.** The review was right that "select everything on this page" is not quite a marquee, and
+6. ~~**Keyboard equivalents for marquee, add-to-selection and pan.**~~ — **all four closed: marquee
+   and pan at M49, add-to-selection and pointer-anchored zoom at M50.** The review was right that "select everything on this page" is not quite a marquee, and
    that turned out to be the answer rather than the objection: what a marquee is FOR here is lining
-   several things up, so the keyboard gets that outcome. **Add-to-selection stays open** — it needs
-   a cursor separate from the selection, which is a real feature — as does pointer-anchored zoom,
-   because without a pointer there is no anchor.
+   several things up, so the keyboard gets that outcome. **M50 then closed the last two**, by
+   declining the mechanism the review named in each case: a selection cursor is a mode this audience
+   would have to be taught, and a zoom with no pointer still has an anchor — the thing the user has
+   chosen.
 7. ~~**The `.bak` ring beside the user's file** and its "Restore an earlier version" menu (§4).~~ —
    **closed at M39**, both halves together. The rotation had been written at M9 and called by
    nothing but its own test; M24's Save command is what turned that from dormant into dangerous.
@@ -3153,8 +3189,9 @@ hang, and the whole of §14.2's Minor list bar two entries.
 the review. Everything in §14.1, §14.2, §14.4 and §14.5 is closed. Of §14.3, one item is open by
 choice and two are recorded as limitations rather than defects:
 
-- **Add-to-selection and pointer-anchored zoom from the keyboard** (M49 §5) — both need a new idea
-  first, not more code.
+- ~~**Add-to-selection and pointer-anchored zoom from the keyboard** (M49 §5) — both need a new idea
+  first, not more code.~~ — **closed at M50**, and the new idea in both cases was to decline the
+  mechanism the review had named.
 - **HarfBuzz is hardwired to left-to-right Latin** (`HarfBuzzShaper.cs:76-78`). Recorded as a design
   limitation from the day the review found it. This app types English into a lodge newsletter; the
   fix is a different product.

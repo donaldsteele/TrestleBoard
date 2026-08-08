@@ -70,6 +70,14 @@
         <!-- M49: the keyboard's answer to the marquee, which can only ever be drawn with a mouse.
              No chord: Ctrl+A already means "all the words" and two menu rows advertising one
              gesture is the confusion this review is about. Alt+E then E reaches it. -->
+        <!-- M50: the keyboard's answer to Shift+click. Ctrl+Tab keeps what is chosen and adds
+             the next thing, so three presses give you four things to line up. -->
+        <MenuItem Header="Also choose the ne_xt one" Tag="edit.alsoChooseNext"
+                  InputGesture="Ctrl+Tab" Click="OnActionClicked"
+                  AutomationProperties.Name="Also choose the next one" />
+        <MenuItem Header="Also choose the one _before" Tag="edit.alsoChoosePrevious"
+                  InputGesture="Ctrl+Shift+Tab" Click="OnActionClicked"
+                  AutomationProperties.Name="Also choose the one before" />
         <MenuItem Header="Choose _everything on this page" Tag="edit.selectAllFrames"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Choose everything on this page" />

@@ -34,6 +34,7 @@ public sealed class PlainLanguageTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
 
             // Click into some writing, which is what makes the menu live.
@@ -60,7 +61,6 @@ public sealed class PlainLanguageTests
             Assert.Contains("Body text", headers);
             Assert.Contains("Headings", headers);
 
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }
@@ -84,6 +84,7 @@ public sealed class PlainLanguageTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
@@ -116,7 +117,6 @@ public sealed class PlainLanguageTests
                 mismatched.Count == 0,
                 "a toolbar button uses different words from its command: " + string.Join("; ", mismatched));
 
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }
@@ -137,6 +137,7 @@ public sealed class PlainLanguageTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
@@ -163,7 +164,6 @@ public sealed class PlainLanguageTests
             Assert.True(seen > 5, $"only {seen} text blocks found — the walk found nothing");
             Assert.True(tooSmall.Count == 0, "below the 16pt floor: " + string.Join("; ", tooSmall));
 
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }
@@ -190,6 +190,7 @@ public sealed class PlainLanguageTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
@@ -223,7 +224,6 @@ public sealed class PlainLanguageTests
                 missing.Count == 0,
                 "these toolbar buttons say nothing on hover: " + string.Join(", ", missing));
 
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }

@@ -1830,6 +1830,28 @@ public partial class MainWindow : Window
         return _session.Document.Pages[_pageIndex].Blocks.Select(b => b.Id);
     }
 
+    /// <summary>
+    /// M50: keeps what is chosen and adds the neighbour — the keyboard's Shift+click.
+    /// </summary>
+    internal void AlsoChoose(bool forward)
+    {
+        if (_frames is null)
+        {
+            return;
+        }
+
+        _editor?.End();
+        if (_frames.AddNeighbourToSelection(_pageIndex, forward))
+        {
+            int count = _frames.SelectionCount;
+            Announce(count == 1
+                ? "One thing on this page is chosen."
+                : $"{count} things are chosen. Use Arrange to line them up.");
+        }
+
+        RefreshActions();
+    }
+
     internal void DeleteSelectedFrame() => _frames?.DeleteSelected();
 
     internal void ToggleWrap() => _frames?.ToggleWrap();
@@ -2994,6 +3016,9 @@ public partial class MainWindow : Window
 
     internal AppSettings SettingsForTest => _settings;
 
+    /// <summary>Where the page view is scrolled to, so M50's zoom-anchor test can watch it move.</summary>
+    internal Vector ScrollerOffsetForTest => CanvasScroller.Offset;
+
     /// <summary>Headless tests drive the shell directly; they must not get a modal start screen.</summary>
     internal static bool SuppressStartupForTest { get; set; } = true;
 
@@ -3357,7 +3382,42 @@ public partial class MainWindow : Window
         RefreshActions();
     }
 
+    /// <summary>
+    /// M50, review §14.3: zoom with no pointer in it — the toolbar buttons, Ctrl+= and Ctrl+−.
+    ///
+    /// <para>The review asked for pointer-anchored zoom from the keyboard and noted the obstacle:
+    /// without a pointer there is no anchor. That is true, and it is not the end of the question —
+    /// when something is CHOSEN, the application already knows what the user is looking at. So a
+    /// keyboard zoom anchors on the chosen thing's centre and falls back to zooming about the
+    /// middle of the view when nothing is chosen, which is what it always did.</para>
+    ///
+    /// <para>It routes through <see cref="ZoomAtPointer"/> rather than repeating its arithmetic:
+    /// the anchor is a point on the page either way, and M21 already worked out how to keep one
+    /// still across a zoom step.</para>
+    /// </summary>
     internal void StepZoom(int direction)
+    {
+        if (_source is null)
+        {
+            return;
+        }
+
+        if (_frames?.SelectedRect is { } chosen)
+        {
+            double zoom = PageCanvas.Zoom;
+            var anchor = new Point(
+                ((chosen.X + (chosen.Width / 2f)) * zoom) + PageCanvasControl.PagePaddingPx,
+                ((chosen.Y + (chosen.Height / 2f)) * zoom) + PageCanvasControl.PagePaddingPx);
+            ZoomAtPointer(anchor, direction);
+            return;
+        }
+
+        StepZoomAboutTheCentre(direction);
+    }
+
+    /// <summary>The zoom step itself, with no anchoring — also what <see cref="ZoomAtPointer"/> calls
+    /// once it has read the page point it intends to hold still.</summary>
+    private void StepZoomAboutTheCentre(int direction)
     {
         if (_source is null)
         {
@@ -3391,14 +3451,14 @@ public partial class MainWindow : Window
         double before = PageCanvas.Zoom;
         if (PageCanvas.TranslatePoint(pointInCanvas, CanvasScroller) is not { } pointerInScroller)
         {
-            StepZoom(direction);
+            StepZoomAboutTheCentre(direction);
             return;
         }
 
         double pageX = (pointInCanvas.X - PageCanvasControl.PagePaddingPx) / before;
         double pageY = (pointInCanvas.Y - PageCanvasControl.PagePaddingPx) / before;
 
-        StepZoom(direction);
+        StepZoomAboutTheCentre(direction);
         double after = PageCanvas.Zoom;
         if (Math.Abs(after - before) < 0.0001)
         {

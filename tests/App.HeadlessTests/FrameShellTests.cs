@@ -27,6 +27,7 @@ public sealed class FrameShellTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenSample();
             window.CanvasForTest.Focus();
 
@@ -98,6 +99,7 @@ public sealed class FrameShellTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenSample();
             window.CanvasForTest.Focus();
 
@@ -133,6 +135,7 @@ public sealed class FrameShellTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenSample();
             window.CanvasForTest.Focus();
 
@@ -165,6 +168,7 @@ public sealed class FrameShellTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenSample();
 
             // The M4 promise: one click in the body of a text frame starts typing.
@@ -199,6 +203,7 @@ public sealed class FrameShellTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
             window.CanvasForTest.Focus();
 
@@ -219,7 +224,6 @@ public sealed class FrameShellTests
             Assert.NotNull(window.FramesForTest!.SelectedBlockId);
             Assert.NotEqual(wasWriting, window.FramesForTest.SelectedBlockId);
 
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }
@@ -235,6 +239,7 @@ public sealed class FrameShellTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
 
             string frame = window.SessionForTest!.Document.Pages[0].Blocks[0].Id;
@@ -249,7 +254,6 @@ public sealed class FrameShellTests
             Assert.Contains("Alt", window.StatusLabelTextForTest!, StringComparison.Ordinal);
 
             window.FramesForTest.EndDrag(commit: false);
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }
@@ -268,6 +272,7 @@ public sealed class FrameShellTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
             window.EditorForTest!.End();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
@@ -283,7 +288,6 @@ public sealed class FrameShellTests
             // Which is what makes the align commands reachable — the whole point of the gesture.
             Assert.True(ActionCatalog.Evaluate(ActionId.AlignLeft, window.CurrentActionContext).IsAvailable);
 
-            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }
@@ -299,6 +303,7 @@ public sealed class FrameShellTests
         {
             var window = new MainWindow();
             window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
             window.EditorForTest!.End();
             window.FramesForTest!.ClearSelection();
@@ -326,7 +331,154 @@ public sealed class FrameShellTests
 
             Assert.Empty(panned);
 
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M50, review §14.3: the keyboard's answer to Shift+click, which had none.
+    ///
+    /// <para>The review's own framing was that this needs "a cursor that moves independently of the
+    /// selection". That mechanism exists — a Windows list box has it — and it is the wrong one for
+    /// this audience, because it adds a mode to reach an outcome they can say in one sentence:
+    /// <em>and that one too</em>. So the command keeps what is chosen and adds the neighbour.</para>
+    /// </summary>
+    [Fact]
+    public async Task ShiftClickHasAKeyboardEquivalentThatKeepsWhatIsAlreadyChosen()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
             window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.OpenIssueSample();
+            window.EditorForTest!.End();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            string first = window.SessionForTest!.Document.Pages[0].Blocks[0].Id;
+            window.FramesForTest!.Select(first);
+            Assert.Equal(1, window.CurrentActionContext.SelectionCount);
+
+            // Each press ADDS rather than replaces — the whole point.
+            window.AlsoChoose(forward: true);
+            Assert.Equal(2, window.CurrentActionContext.SelectionCount);
+            window.AlsoChoose(forward: true);
+            Assert.Equal(3, window.CurrentActionContext.SelectionCount);
+
+            // ...and the first thing chosen is still chosen, which is what separates this from Tab.
+            Assert.Contains(first, window.FramesForTest.SelectedBlockIds);
+
+            // Which is the point of the gesture: several things, ready to line up.
+            Assert.True(ActionCatalog.Evaluate(ActionId.AlignLeft, window.CurrentActionContext).IsAvailable);
+
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M50: repeated presses travel outward instead of flipping between the first frame's two
+    /// neighbours, and a page with nothing left to add says so rather than doing nothing.
+    /// </summary>
+    [Fact]
+    public async Task AlsoChooseTravelsAndThenSaysThereIsNothingLeft()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.OpenIssueSample();
+            window.EditorForTest!.End();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            int onPage = window.SessionForTest!.Document.Pages[0].Blocks.Count;
+            window.FramesForTest!.Select(window.SessionForTest.Document.Pages[0].Blocks[0].Id);
+
+            for (int i = 1; i < onPage; i++)
+            {
+                window.AlsoChoose(forward: true);
+            }
+
+            Assert.Equal(onPage, window.CurrentActionContext.SelectionCount);
+
+            // One press too many is refused in words rather than silently.
+            window.AlsoChoose(forward: true);
+            Assert.Equal(onPage, window.CurrentActionContext.SelectionCount);
+            Assert.Contains("already chosen", window.StatusLabelTextForTest!, StringComparison.Ordinal);
+
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M50: Ctrl+Tab actually reaches the command. Worth its own test because Tab is a key the
+    /// framework has opinions about — if Avalonia's own focus navigation swallowed it, the menu
+    /// would be advertising a gesture that does nothing.
+    /// </summary>
+    [Fact]
+    public async Task ControlTabReachesTheAlsoChooseCommands()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.OpenIssueSample();
+            window.CanvasForTest.Focus();
+
+            var reached = new List<string>();
+            window.ActionsForTest.InterceptorForTest = id =>
+            {
+                reached.Add(id);
+                return true;
+            };
+
+            window.KeyPressQwerty(PhysicalKey.Tab, RawInputModifiers.Control);
+            window.KeyPressQwerty(PhysicalKey.Tab, RawInputModifiers.Control | RawInputModifiers.Shift);
+
+            Assert.Equal([ActionId.AddNextToSelection, ActionId.AddPreviousToSelection], reached);
+
+            window.ActionsForTest.InterceptorForTest = null;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M50, review §14.3: zooming from the keyboard anchors on what is chosen.
+    ///
+    /// <para>The review asked for pointer-anchored zoom from the keyboard and named the obstacle —
+    /// without a pointer there is no anchor. When something is chosen the application already knows
+    /// what the user is looking at, so that is the anchor; with nothing chosen it zooms about the
+    /// middle of the view, which is what it always did.</para>
+    /// </summary>
+    [Fact]
+    public async Task ZoomingFromTheKeyboardKeepsTheChosenThingInView()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.OpenIssueSample();
+            window.EditorForTest!.End();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            // Something low on the page, so anchoring on it has to move the scroller.
+            Core.Model.Page page = window.SessionForTest!.Document.Pages[0];
+            string lowest = page.Blocks.OrderByDescending(b => b.FrameRect.Y).First().Id;
+            window.FramesForTest!.Select(lowest);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            double before = window.ScrollerOffsetForTest.Y;
+            window.StepZoom(+1);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            // Zooming in about a frame near the bottom has to scroll towards it; zooming about the
+            // middle of the view would not have moved the offset in that direction.
+            Assert.True(
+                window.ScrollerOffsetForTest.Y > before,
+                $"expected the view to follow the chosen frame; offset went {before} -> {window.ScrollerOffsetForTest.Y}");
+
             window.Close();
         }, TestContext.Current.CancellationToken);
     }

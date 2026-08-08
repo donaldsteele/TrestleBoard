@@ -108,6 +108,8 @@ internal static class ActionIcons
         [ActionId.Paste] = "universally recognised, and barely used on a layout canvas",
         [ActionId.SelectAll] = "no shape distinguishes it from Copy at 20px",
         [ActionId.SelectAllFrames] = "the same shape as edit.selectAll, meaning something else",
+        [ActionId.AddNextToSelection] = "an arrow, which is what every other navigation glyph is",
+        [ActionId.AddPreviousToSelection] = "an arrow, which is what every other navigation glyph is",
 
         // M21. A magnifying glass is the one clipboard-era glyph this audience would recognise, and
         // it is already spoken for by zoom — where it means something else entirely.

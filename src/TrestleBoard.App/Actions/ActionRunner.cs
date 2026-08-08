@@ -52,6 +52,8 @@ internal sealed class ActionRunner
             [ActionId.Paste] = _ => window.PasteAsync(),
             [ActionId.SelectAll] = Sync(window.SelectAllText),
             [ActionId.SelectAllFrames] = Sync(window.SelectEverythingOnThisPage),
+            [ActionId.AddNextToSelection] = Sync(() => window.AlsoChoose(forward: true)),
+            [ActionId.AddPreviousToSelection] = Sync(() => window.AlsoChoose(forward: false)),
             [ActionId.Find] = Sync(() => window.ShowFind(replacing: false)),
             [ActionId.Replace] = Sync(() => window.ShowFind(replacing: true)),
 

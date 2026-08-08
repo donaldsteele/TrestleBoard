@@ -303,6 +303,70 @@ public sealed class FrameEditorController
         return true;
     }
 
+    /// <summary>
+    /// M50, review §14.3: the keyboard's answer to Shift+click.
+    ///
+    /// <para>Shift+click adds one thing at a time to what is already chosen, and had no keyboard
+    /// equivalent at all. The review said the missing piece was "a cursor that moves independently
+    /// of the selection" — a second highlight the user drives with the arrow keys and commits with
+    /// Space, the way a Windows list box works. That is a real mechanism, and it is the wrong one
+    /// here: it adds a mode this audience would have to be taught, to reach an outcome they can
+    /// state in one sentence.</para>
+    ///
+    /// <para>What they actually want is "and that one too". So this KEEPS everything already
+    /// chosen and adds the next block in stacking order — the same order <see cref="CycleSelection"/>
+    /// walks, so Tab and this agree about what "next" means. Press it three times and four adjacent
+    /// things are chosen, ready for the align commands. No cursor, no mode.</para>
+    /// </summary>
+    public bool AddNeighbourToSelection(int pageIndex, bool forward)
+    {
+        List<Block> blocks = PageBlocksInZOrder(pageIndex);
+        if (blocks.Count == 0)
+        {
+            return false;
+        }
+
+        if (_selectedBlockId is null)
+        {
+            // Nothing chosen yet, so "also choose" is just "choose" — the same generosity
+            // AddToSelection already shows a first Shift+click.
+            Select(blocks[forward ? 0 : ^1].Id);
+            return true;
+        }
+
+        // Walk outward from the LAST thing added rather than from the primary, so repeated presses
+        // travel instead of flipping between two neighbours of the first frame.
+        string from = _alsoSelected.Count > 0 ? _alsoSelected[^1] : _selectedBlockId;
+        int at = blocks.FindIndex(b => b.Id == from);
+        if (at < 0)
+        {
+            return false;
+        }
+
+        // Skip what is already chosen, so a press always adds something or truthfully reports that
+        // there is nothing left to add.
+        for (int step = 1; step <= blocks.Count; step++)
+        {
+            int index = ((at + (forward ? step : -step)) % blocks.Count + blocks.Count) % blocks.Count;
+            string candidate = blocks[index].Id;
+            if (IsSelected(candidate))
+            {
+                continue;
+            }
+
+            return AddToSelection(candidate);
+        }
+
+        StatusMessage = "Everything on this page is already chosen.";
+        Raise();
+        return false;
+    }
+
+    /// <summary>True when this block is the primary choice or one of the others.</summary>
+    public bool IsSelected(string blockId) =>
+        string.Equals(blockId, _selectedBlockId, StringComparison.Ordinal)
+        || _alsoSelected.Contains(blockId);
+
     // ---- Drag / resize (docs/M5-spec.md §4) --------------------------------------------------
 
     /// <summary>Which grip (if any) the point grabs on the current selection.</summary>

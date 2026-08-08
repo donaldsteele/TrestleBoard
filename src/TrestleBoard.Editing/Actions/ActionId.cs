@@ -49,6 +49,15 @@ public static class ActionId
     /// </summary>
     public const string SelectAllFrames = "edit.selectAllFrames";
 
+    /// <summary>
+    /// M50: keep what is chosen and add the next thing on the page. The keyboard's answer to
+    /// Shift+click, which is the last of §14.3's keyboard-coverage findings.
+    /// </summary>
+    public const string AddNextToSelection = "edit.alsoChooseNext";
+
+    /// <summary>M50: the same, walking the other way.</summary>
+    public const string AddPreviousToSelection = "edit.alsoChoosePrevious";
+
     /// <summary>M21: look for words anywhere in the newsletter's writing.</summary>
     public const string Find = "edit.find";
 

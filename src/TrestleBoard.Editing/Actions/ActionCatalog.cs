@@ -99,6 +99,12 @@ public static class ActionCatalog
         new(ActionId.SelectAllFrames, "Choose everything on this page",
             "Takes hold of every box and picture on the page at once, ready to line them up.",
             ActionGroup.Edit),
+        new(ActionId.AddNextToSelection, "Also choose the next one",
+            "Keeps what you have chosen and takes hold of the next thing on the page as well.",
+            ActionGroup.Edit, "Ctrl+Tab"),
+        new(ActionId.AddPreviousToSelection, "Also choose the one before",
+            "Keeps what you have chosen and takes hold of the one before it as well.",
+            ActionGroup.Edit, "Ctrl+Shift+Tab"),
         new(ActionId.Find, "Find…", "Looks for words anywhere in this newsletter.",
             ActionGroup.Edit, "Ctrl+F"),
         new(ActionId.Replace, "Find and replace…",
@@ -472,6 +478,18 @@ public static class ActionCatalog
                     : ActionAvailability.NotApplicable(
                         "This writing already uses the font its kind of writing normally uses."),
             ActionId.ShowFontChanges or ActionId.ShowMargins => RequiresDocument(context),
+
+            // M50. Same rule as SelectAllFrames: there has to be something on the page. It is
+            // deliberately NOT gated on there already being a selection — with nothing chosen,
+            // "also choose the next one" simply chooses one, which is the same generosity
+            // AddToSelection has always shown a first Shift+click.
+            ActionId.AddNextToSelection or ActionId.AddPreviousToSelection => !context.HasDocument
+                ? ActionAvailability.Blocked(NoNewsletter, ActionId.NewFromTemplate)
+                : context.PageHasFrames
+                    ? ActionAvailability.Available
+                    : ActionAvailability.Blocked(
+                        "There is nothing on this page yet to take hold of.",
+                        ActionId.AddTextFrame),
 
             // M49. Refused when the page is empty, and the refusal says which page it looked at:
             // "nothing happened" over a page the user cannot see the contents of is the failure
