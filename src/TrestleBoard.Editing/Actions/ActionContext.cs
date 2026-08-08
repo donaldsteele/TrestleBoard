@@ -49,6 +49,9 @@ public sealed record ActionContext
     /// <summary>Somewhere in the newsletter, text does not fit its frame.</summary>
     public bool HasOversetText { get; init; }
 
+    /// <summary>M49: the page being looked at has at least one frame on it to take hold of.</summary>
+    public bool PageHasFrames { get; init; }
+
     /// <summary>
     /// M24: the newsletter has been edited since it was last written to its file. Deliberately
     /// separate from <see cref="CanUndo"/> — a document can have a full undo stack and still be

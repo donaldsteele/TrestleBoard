@@ -677,4 +677,31 @@ public sealed class ActionCatalogTests
             offences.Count == 0,
             "these say something only a typesetter would recognise: " + string.Join("; ", offences));
     }
+
+    /// <summary>
+    /// M49, review §14.3: this app has two undo stacks — the newsletter's and the address book's —
+    /// and the second was disclosed only inside the People menu.
+    ///
+    /// <para>So somebody who corrected a telephone number and reached for Ctrl+Z was told "there is
+    /// nothing to take back", which was true of the newsletter and false of what they had just
+    /// done. The refusal now names the other stack and offers it as the remedy.</para>
+    /// </summary>
+    [Fact]
+    public void UndoWithNothingToTakeBackNamesTheAddressBookIfThatIsWhereTheChangeWas()
+    {
+        ActionContext nothingAnywhere = ActionContextFactory.Create(
+            null, null, null, null, null, null, null, 0, new ShellFacts());
+        ActionAvailability plain = ActionCatalog.Evaluate(ActionId.Undo, nothingAnywhere);
+        Assert.False(plain.IsAvailable);
+        Assert.Equal("There is nothing to take back yet.", plain.Reason);
+        Assert.Null(plain.RemedyId);
+
+        ActionContext bookChanged = ActionContextFactory.Create(
+            null, null, null, null, null, null, null, 0,
+            new ShellFacts(RosterCanUndo: true));
+        ActionAvailability pointed = ActionCatalog.Evaluate(ActionId.Undo, bookChanged);
+        Assert.False(pointed.IsAvailable);
+        Assert.Contains("address book", pointed.Reason, StringComparison.Ordinal);
+        Assert.Equal(ActionId.UndoPeopleChange, pointed.RemedyId);
+    }
 }

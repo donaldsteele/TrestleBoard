@@ -415,7 +415,8 @@ public partial class MainWindow : Window
                 // M39. Tracked, not re-scanned, for the same reason RosterHasEarlierVersions is:
                 // RefreshActions runs on every keystroke, and listing a directory on each one to
                 // answer a menu item's enabled state is a directory listing per keystroke.
-                DocumentHasEarlierVersions: _documentHasEarlierVersions));
+                DocumentHasEarlierVersions: _documentHasEarlierVersions,
+                PageHasFrames: FramesOnThisPage().Any()));
     }
 
     /// <summary>
@@ -1787,6 +1788,46 @@ public partial class MainWindow : Window
         _frames.AddTextFrame(_pageIndex);
         PageCanvas.Focus();
         PageCanvas.BeginTextEditingOnSelection();
+    }
+
+    /// <summary>
+    /// M49, review §14.3: the keyboard's answer to marquee selection.
+    ///
+    /// <para>A marquee can only be drawn with a mouse, and what one is nearly always FOR in this app
+    /// is taking hold of several things at once to line them up — which the align and distribute
+    /// commands then act on. So the keyboard gets that outcome rather than a simulated rubber band:
+    /// everything on the page, in one press.</para>
+    /// </summary>
+    internal void SelectEverythingOnThisPage()
+    {
+        if (_frames is null || _source is null)
+        {
+            return;
+        }
+
+        _editor?.End();
+        string[] ids = [.. FramesOnThisPage()];
+        if (ids.Length == 0)
+        {
+            return;
+        }
+
+        _frames.SelectAll(ids);
+        Announce(ids.Length == 1
+            ? "One thing on this page is chosen."
+            : $"All {ids.Length} things on this page are chosen. Use Arrange to line them up.");
+        RefreshActions();
+    }
+
+    /// <summary>Every block id on the page being looked at, in the order the page holds them.</summary>
+    private IEnumerable<string> FramesOnThisPage()
+    {
+        if (_session is null || _pageIndex < 0 || _pageIndex >= _session.Document.Pages.Count)
+        {
+            return [];
+        }
+
+        return _session.Document.Pages[_pageIndex].Blocks.Select(b => b.Id);
     }
 
     internal void DeleteSelectedFrame() => _frames?.DeleteSelected();

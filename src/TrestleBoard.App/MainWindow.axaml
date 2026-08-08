@@ -67,6 +67,12 @@
         <Separator />
         <MenuItem Header="Select _all" Tag="edit.selectAll" InputGesture="Ctrl+A"
                   Click="OnActionClicked" AutomationProperties.Name="Select all" />
+        <!-- M49: the keyboard's answer to the marquee, which can only ever be drawn with a mouse.
+             No chord: Ctrl+A already means "all the words" and two menu rows advertising one
+             gesture is the confusion this review is about. Alt+E then E reaches it. -->
+        <MenuItem Header="Choose _everything on this page" Tag="edit.selectAllFrames"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Choose everything on this page" />
         <Separator />
         <!-- M21: the two gestures every other publishing program uses, in the menu every user
              looks in for them. -->

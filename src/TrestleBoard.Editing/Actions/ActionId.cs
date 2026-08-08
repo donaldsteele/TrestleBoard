@@ -42,6 +42,13 @@ public static class ActionId
     public const string Paste = "edit.paste";
     public const string SelectAll = "edit.selectAll";
 
+    /// <summary>
+    /// M49: choose every frame on this page. The keyboard's answer to the marquee, which could only
+    /// ever be drawn with a mouse — and in this app what a marquee is nearly always FOR is lining
+    /// several things up at once, which is exactly what this hands to the align commands.
+    /// </summary>
+    public const string SelectAllFrames = "edit.selectAllFrames";
+
     /// <summary>M21: look for words anywhere in the newsletter's writing.</summary>
     public const string Find = "edit.find";
 

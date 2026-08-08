@@ -90,6 +90,15 @@ public static class ActionCatalog
         new(ActionId.Paste, "Paste", "Puts the copied words where the cursor is.", ActionGroup.Edit, "Ctrl+V"),
         new(ActionId.SelectAll, "Select all", "Highlights everything in this piece of writing.",
             ActionGroup.Edit, "Ctrl+A"),
+        // M49: NO chord, deliberately. Ctrl+A was the obvious choice — the same key, the other
+        // side of the mode, and KeyboardMap could scope the two rows apart cleanly. But the MENU
+        // would then show two items both advertising Ctrl+A, and a user who cannot tell which one
+        // they are about to get is the exact confusion this review is about. Section 6 asks that
+        // every command be reachable from the keyboard, not that every command have a chord; Alt+E
+        // then E reaches this one, like the twenty other commands that carry no gesture.
+        new(ActionId.SelectAllFrames, "Choose everything on this page",
+            "Takes hold of every box and picture on the page at once, ready to line them up.",
+            ActionGroup.Edit),
         new(ActionId.Find, "Find…", "Looks for words anywhere in this newsletter.",
             ActionGroup.Edit, "Ctrl+F"),
         new(ActionId.Replace, "Find and replace…",
@@ -401,9 +410,18 @@ public static class ActionCatalog
             ActionId.ExportPdf => RequiresDocument(context),
 
             // ---- Edit ---------------------------------------------------------------------------
+            // M49, review §14.3: this app has TWO undo stacks — the newsletter's and the address
+            // book's — and the second was disclosed only inside the People menu. So somebody who
+            // corrected a telephone number and reached for Ctrl+Z was told "there is nothing to
+            // take back", which was true of the newsletter and false of what they had just done.
             ActionId.Undo => context.CanUndo
                 ? ActionAvailability.Available
-                : ActionAvailability.Blocked("There is nothing to take back yet."),
+                : ActionAvailability.Blocked(
+                    context.RosterCanUndo
+                        ? "There is nothing to take back in this newsletter. Your last change to the "
+                          + "address book can be taken back from the People menu."
+                        : "There is nothing to take back yet.",
+                    context.RosterCanUndo ? ActionId.UndoPeopleChange : null),
             ActionId.Redo => context.CanRedo
                 ? ActionAvailability.Available
                 : ActionAvailability.Blocked(
@@ -454,6 +472,17 @@ public static class ActionCatalog
                     : ActionAvailability.NotApplicable(
                         "This writing already uses the font its kind of writing normally uses."),
             ActionId.ShowFontChanges or ActionId.ShowMargins => RequiresDocument(context),
+
+            // M49. Refused when the page is empty, and the refusal says which page it looked at:
+            // "nothing happened" over a page the user cannot see the contents of is the failure
+            // this rule exists to prevent.
+            ActionId.SelectAllFrames => !context.HasDocument
+                ? ActionAvailability.Blocked(NoNewsletter, ActionId.NewFromTemplate)
+                : context.PageHasFrames
+                    ? ActionAvailability.Available
+                    : ActionAvailability.Blocked(
+                        "There is nothing on this page yet to take hold of.",
+                        ActionId.AddTextFrame),
 
             // ---- Putting things on the page -----------------------------------------------------
             ActionId.AddTextFrame or ActionId.InsertPhoto or ActionId.InsertOfficers

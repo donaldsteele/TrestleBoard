@@ -107,6 +107,7 @@ internal static class ActionIcons
         [ActionId.Copy] = "universally recognised, and barely used on a layout canvas",
         [ActionId.Paste] = "universally recognised, and barely used on a layout canvas",
         [ActionId.SelectAll] = "no shape distinguishes it from Copy at 20px",
+        [ActionId.SelectAllFrames] = "the same shape as edit.selectAll, meaning something else",
 
         // M21. A magnifying glass is the one clipboard-era glyph this audience would recognise, and
         // it is already spoken for by zoom — where it means something else entirely.

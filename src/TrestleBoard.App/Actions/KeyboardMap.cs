@@ -63,6 +63,7 @@ internal static class KeyboardMap
         new(Key.V, Ctrl, ActionId.Paste),
         new(Key.A, Ctrl, ActionId.SelectAll, KeyScope.WhileTyping),
 
+
         // M21. Both are KeyScope.Always: Ctrl+F is most useful while the caret is already in a
         // frame, and the two gestures every other publishing program uses are the two gestures a
         // user will try.

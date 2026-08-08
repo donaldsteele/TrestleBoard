@@ -2,6 +2,7 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using TrestleBoard.Core.Model;
 using TrestleBoard.Editing;
+using TrestleBoard.Editing.Actions;
 using TrestleBoard.Layout.Editing;
 using Xunit;
 
@@ -248,6 +249,83 @@ public sealed class FrameShellTests
             Assert.Contains("Alt", window.StatusLabelTextForTest!, StringComparison.Ordinal);
 
             window.FramesForTest.EndDrag(commit: false);
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M49, review §14.3: the keyboard's answer to marquee selection.
+    ///
+    /// <para>A marquee can only be drawn with a mouse, and what one is nearly always FOR in this app
+    /// is taking hold of several things at once to line them up. So the keyboard gets that outcome
+    /// rather than a simulated rubber band.</para>
+    /// </summary>
+    [Fact]
+    public async Task EverythingOnThePageCanBeChosenWithoutAMouse()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenIssueSample();
+            window.EditorForTest!.End();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            int onPage = window.SessionForTest!.Document.Pages[0].Blocks.Count;
+            Assert.True(onPage > 1, "the fixture page needs more than one thing on it");
+
+            window.SelectEverythingOnThisPage();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(onPage, window.CurrentActionContext.SelectionCount);
+
+            // Which is what makes the align commands reachable — the whole point of the gesture.
+            Assert.True(ActionCatalog.Evaluate(ActionId.AlignLeft, window.CurrentActionContext).IsAvailable);
+
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M49: with nothing chosen, the arrow keys move the view. Panning had no keyboard equivalent
+    /// at all — the page could only be moved by dragging, which needs a mouse.
+    /// </summary>
+    [Fact]
+    public async Task ArrowKeysMoveTheViewWhenNothingIsChosen()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenIssueSample();
+            window.EditorForTest!.End();
+            window.FramesForTest!.ClearSelection();
+            window.CanvasForTest.Focus();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            var panned = new List<Avalonia.Vector>();
+            window.CanvasForTest.PanRequested += (_, delta) => panned.Add(delta);
+
+            window.KeyPressQwerty(PhysicalKey.ArrowRight, RawInputModifiers.None);
+            window.KeyPressQwerty(PhysicalKey.ArrowDown, RawInputModifiers.None);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(2, panned.Count);
+            Assert.True(panned[0].X < 0d, "right should move the page left under the window");
+            Assert.True(panned[1].Y < 0d, "down should move the page up under the window");
+
+            // With something chosen the arrows go back to nudging it, which is the older meaning
+            // and the more important one.
+            panned.Clear();
+            window.FramesForTest.Select(window.SessionForTest!.Document.Pages[0].Blocks[0].Id);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            window.KeyPressQwerty(PhysicalKey.ArrowRight, RawInputModifiers.None);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Empty(panned);
+
             window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);

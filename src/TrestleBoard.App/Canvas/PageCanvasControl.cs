@@ -1229,6 +1229,18 @@ public sealed class PageCanvasControl : Control
                 return ctrl
                     ? _frames.NudgeResize(dx, dy, shift)
                     : _frames.Nudge(dx, dy, shift);
+
+            // M49, review §14.3: panning had no keyboard equivalent at all — the view could only be
+            // moved by dragging with the middle button or a space-bar drag, both of which need a
+            // mouse. With NOTHING chosen the arrow keys are free (the case above owns them while
+            // something is), so they move the view, which is the one thing arrows could mean when
+            // there is nothing on the page to nudge.
+            case Key.Left or Key.Right or Key.Up or Key.Down:
+                double step = shift ? 200d : 60d;
+                PanRequested?.Invoke(this, new Vector(
+                    e.Key == Key.Left ? step : e.Key == Key.Right ? -step : 0d,
+                    e.Key == Key.Up ? step : e.Key == Key.Down ? -step : 0d));
+                return true;
             default:
                 return false;
         }

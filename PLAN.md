@@ -2424,6 +2424,37 @@ either would make the pair LOOK consistent while describing two different things
 
 ---
 
+### M49 - The keyboard gets the marquee, the pan, and the truth about undo (delivered 2026-08-08, `docs/M49-spec.md`)
+
+Closes the remaining keyboard-coverage gaps in section 14.3 and the two-undo-stacks disclosure.
+
+A marquee cannot be drawn with a keyboard, and the review is right that "select everything on this
+page" is not quite one. That is also the answer: what a marquee is nearly always FOR here is taking
+hold of several things to line them up, which is what M21's align commands act on. So the keyboard
+gets the outcome rather than a simulated rubber band.
+
+**No chord, deliberately.** Ctrl+A was the obvious choice - the same key, the other side of the
+mode, and `KeyboardMap`'s scope column separates the rows cleanly. It was built that way and two
+existing tests rejected it, correctly: the Edit menu would then show two items both advertising
+Ctrl+A, and a user who cannot tell which one they are about to get is exactly the confusion this
+review is about. Section 6 asks that every command be reachable from the keyboard, not that every
+command have a chord.
+
+Panning had no keyboard equivalent at all. With nothing chosen the arrow keys are free - the nudge
+case owns them only while something is selected - so they now move the view, and nudging wins back
+the moment anything is chosen.
+
+And the app has two undo stacks, the second disclosed only inside the People menu: somebody who
+corrected a telephone number and reached for Ctrl+Z was told "there is nothing to take back", true
+of the newsletter and false about what they had just done. The refusal now names the address book
+and offers it as the remedy.
+
+Recorded rather than changed: selection is still cleared when the page changes. `GoToPage` has
+carried the reason since M8 - a selection on a page the user cannot see makes the panel act on
+something invisible - and M29's fix to the sync commands works by going to the page first.
+
+---
+
 ## 12. Verification (end-to-end)
 
 1. **Per-milestone:** `dotnet build && dotnet test` locally + 3-OS CI matrix green; cavecrew-reviewer findings addressed; snapshot diffs reviewed as CI artifacts.
@@ -2955,9 +2986,11 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   stack to where it stood when the window opened.
 - **Keyboard coverage gaps** (an explicit §6 mandate) — **part closed at M28**: the dead Ctrl+V,
   Backspace's unregistered path, and gestures for add-a-page and settings. **Alt is now advertised** (M44),
-  while a drag is happening, which is the only moment it can be acted on. **Still open**: no
-  keyboard equivalent for marquee selection, add-to-selection (Shift+click only), pan, or
-  pointer-anchored zoom; keyboard photo insertion
+  while a drag is happening, which is the only moment it can be acted on. ~~**Still open**: no
+  keyboard equivalent for marquee selection, ... pan~~ — **M49 closed both**: "Choose everything on
+  this page" is the marquee's outcome without the rubber band, and the arrow keys move the view when
+  nothing is chosen. **Still open, with reasons in M49's spec**: add-to-selection (needs a cursor
+  separate from the selection) and pointer-anchored zoom (without a pointer there is no anchor); keyboard photo insertion
   always lands at the default placement. The remaining ~20 shortcut-less commands are deliberate —
   align, distribute and the picture-geometry commands are typed into once and left alone.
 - **Two disability models in one window.** Menus and toolbar grey out; the action panel never greys
@@ -2987,10 +3020,11 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   returning after a RESHAPE was always right); ~~no tooltips exist anywhere in the App project~~ (**fixed at
   M45** - the toolbar shows the catalog's own sentence, plus the shortcut); ~~no
   rulers, guides, margin display, or grid — snap guides appear only mid-drag~~ (**margin display
-  added at M47**; rulers, guides and a grid are declined on the record, with reasons); page change clears
-  the selection; ~~the context menu uses
+  added at M47**; rulers, guides and a grid are declined on the record, with reasons); ~~page change clears
+  the selection~~ (**recorded at M49 as deliberate** — `GoToPage` has carried the reason since M8); ~~the context menu uses
   static titles where the panel uses context-aware ones ("Put a picture here…" over a filled
-  frame)~~ (**fixed at M36**); two undo stacks (document vs address book) are disclosed only inside the People menu.
+  frame)~~ (**fixed at M36**); ~~two undo stacks (document vs address book) are disclosed only inside the People menu.~~
+  (**fixed at M49** — Undo's refusal names the address book and offers it as the remedy.)
 - ~~**Jargon inventory**~~ — **fixed at M46**, and enforced by a standing test rather than a one-off
   pass. (user-facing strings that assume desktop-publishing or programmer
   vocabulary): "text frame", "Wrap text around this", "Fit to contents", "Bring forward / Send
