@@ -44,6 +44,14 @@
         <MenuItem Header="_Go back to an earlier version…" Tag="newsletter.restore"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Go back to an earlier version of this newsletter" />
+        <!-- M57: with the other two ways of keeping work, and above the separator that begins the
+             end-of-month run of commands. -->
+        <MenuItem Header="Save this as one of my te_mplates…" Tag="newsletter.saveAsTemplate"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Save this newsletter as one of my templates" />
+        <MenuItem Header="My templ_ates…" Tag="newsletter.myTemplates"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Rename, remove or hand on my templates" />
         <Separator />
         <!-- M51: above "Make the PDF" because that is the order of the month, and never in its way. -->
         <MenuItem Header="Loo_k it over with me…" Tag="newsletter.review"

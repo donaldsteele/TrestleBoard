@@ -63,6 +63,15 @@ public static class ActionId
     /// copy line. No accounts, no SMTP — the workflow used to end at a file on a disk.
     /// </summary>
     public const string SendIt = "newsletter.send";
+
+    /// <summary>
+    /// M57: keep this newsletter's layout as a starting point for a future issue. The manifest has
+    /// carried an <c>isTemplate</c> flag since M2 that nothing ever set.
+    /// </summary>
+    public const string SaveAsTemplate = "newsletter.saveAsTemplate";
+
+    /// <summary>M57: rename, remove, or hand one of your templates to a successor.</summary>
+    public const string ManageTemplates = "newsletter.myTemplates";
     public const string Exit = "newsletter.exit";
 
     // ---- Edit ---------------------------------------------------------------------------------

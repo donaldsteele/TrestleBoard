@@ -705,11 +705,14 @@ public partial class MainWindow : Window
 
         StartUpdateCheck();
 
-        var start = new StartDialog(canStartFromLastMonth: false);
+        var start = new StartDialog(canStartFromLastMonth: false, Templates.All());
         await start.ShowDialog(this);
 
         switch (start.Choice)
         {
+            case StartChoice.MyTemplate when start.SelectedUserTemplateId is { } mine:
+                OpenUserTemplate(mine);
+                break;
             case StartChoice.Template:
                 OpenTemplate(start.SelectedTemplateId);
                 break;
@@ -855,11 +858,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        var start = new StartDialog(canStartFromLastMonth: _package is not null);
+        var start = new StartDialog(canStartFromLastMonth: _package is not null, Templates.All());
         await start.ShowDialog(this);
 
         switch (start.Choice)
         {
+            case StartChoice.MyTemplate when start.SelectedUserTemplateId is { } mine:
+                OpenUserTemplate(mine);
+                break;
             case StartChoice.Template:
                 OpenTemplate(start.SelectedTemplateId);
                 break;
@@ -1342,6 +1348,130 @@ public partial class MainWindow : Window
         }
 
         RefreshActions();
+    }
+
+    // ---- My templates (PLAN.md §11 M57) --------------------------------------------------------
+
+    private UserTemplateStore? _templates;
+
+    internal UserTemplateStore Templates => _templates ??= new UserTemplateStore();
+
+    internal void UseTemplateStoreForTest(UserTemplateStore store) => _templates = store;
+
+    /// <summary>Set by tests in place of the naming dialog.</summary>
+    internal string? TemplateNameAnswerForTest { get; set; }
+
+    /// <summary>
+    /// M57: writes this newsletter as a template — layout, styles, widgets and pictures kept, the
+    /// writing reset to the same prompts carry-forward uses, the issue date cleared.
+    /// </summary>
+    internal async Task SaveAsTemplateAsync()
+    {
+        if (_package is null)
+        {
+            return;
+        }
+
+        // The thumbnail is refreshed first, so the tile shows the layout as it is now rather than
+        // as it was when the newsletter was last saved.
+        RefreshThumbnail(_package);
+
+        string suggested = string.IsNullOrWhiteSpace(_package.Document.Metadata.Title)
+            ? "My layout"
+            : _package.Document.Metadata.Title.Trim();
+        string? name = TemplateNameAnswerForTest
+            ?? (SuppressStartupForTest
+                ? null
+                : await AskForTextAsync(
+                    "Save this as one of my templates",
+                    "What would you like to call it? You will pick it by this name when you start a "
+                        + "newsletter.",
+                    suggested));
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        Core.Container.TboardPackage template = Core.Workflow.NewsletterTemplate.From(_package);
+        UserTemplate? saved = Templates.Save(template, name, DateTimeOffset.Now);
+
+        Announce(saved is null
+            ? $"TrestleBoard could not write “{name.Trim()}” to your templates."
+            : $"“{saved.Name}” is one of your templates now. You will find it on the screen that "
+              + "asks what you would like to do, and under File, “My templates”.");
+        RefreshActions();
+    }
+
+    /// <summary>M57: rename, remove or hand on a template.</summary>
+    internal async Task ShowMyTemplatesAsync()
+    {
+        var window = new MyTemplatesWindow(Templates);
+        await window.ShowDialog(this);
+
+        if (window.ExportRequestedFor is { } id)
+        {
+            await HandOnTemplateAsync(id);
+        }
+
+        RefreshActions();
+    }
+
+    /// <summary>
+    /// Writes a template out to a file the user chose, so it can be handed to a successor.
+    ///
+    /// <para>§0 rule 7: a template carries the officers table and the cover, so it carries real
+    /// names. It goes only where the user browsed to — there is no default location beside the
+    /// repository or the newsletter, exactly as roster export does it.</para>
+    /// </summary>
+    private async Task HandOnTemplateAsync(string id)
+    {
+        if (Templates.Open(id) is not { } package)
+        {
+            await ShowErrorAsync(
+                "That template could not be opened",
+                "TrestleBoard could not read that template. It may have been moved or removed.");
+            return;
+        }
+
+        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Hand this template on",
+            DefaultExtension = "tboard",
+            SuggestedFileName = $"{id}.tboard",
+            FileTypeChoices = [new FilePickerFileType("TrestleBoard newsletter") { Patterns = ["*.tboard"] }],
+        });
+
+        if (file?.TryGetLocalPath() is not { } path)
+        {
+            return;
+        }
+
+        try
+        {
+            Core.Container.TboardContainer.SaveToFile(package, path);
+            Announce($"That template is saved as {Path.GetFileName(path)}. Send that file to whoever "
+                + "needs it, and they can open it or keep it as one of their own templates.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            await ShowErrorAsync(
+                "Could not write that file",
+                $"The template could not be saved there. ({ex.Message})");
+        }
+    }
+
+    /// <summary>Opens one of the user's own templates as a new, unsaved newsletter.</summary>
+    internal void OpenUserTemplate(string id)
+    {
+        if (Templates.Open(id) is not { } package)
+        {
+            Announce("That template could not be opened. It may have been moved or removed.");
+            return;
+        }
+
+        DocumentPath = null;
+        ShowPackage(package, startsDirty: true);
+        Announce("Started from one of your templates. It has no file yet, so Save it when you are ready.");
     }
 
     // ---- Now send it (PLAN.md §11 M56) ---------------------------------------------------------

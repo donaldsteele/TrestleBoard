@@ -2734,7 +2734,22 @@ copy-the-addresses-to-clipboard when no mail program answers.
 batches with a plain explanation. **Privacy (§0 rule 7):** real email addresses in bulk touch only
 the mailto URI and the clipboard — never a log, never a file.
 
-### M57 — Keep this design for next time (M)
+### M57 — Keep this design for next time (M) — **delivered 2026-08-08, `docs/M57-spec.md`**
+
+> `TboardManifest.IsTemplate` has been in the format since M2 and nothing had ever set it — the same
+> class of finding as M55's write-only "Active" column. It is set now.
+>
+> **The reset is genuinely shared, not copied**: `DeepCopy`, `ResetArticleProse` and
+> `ClearMeetingDates` are `internal` on `CarryForward` and the template path calls all three, because
+> the day the two drift a template starts carrying last month's words into *every* issue built from
+> it. The issue date is "cleared" to the model's own defaults; nullable ints would be a format change
+> reaching every widget and baseline for a state only a template is ever in.
+>
+> Templates live one-`.tboard`-per-file in AppData, every path computed off `AppPaths` so §0 rule 6's
+> screenshot redirect covers them. The Start screen lists them; a separate "My templates…" window
+> renames, removes and hands them on — putting Remove on a Start-screen tile would mean reaching for
+> "start from this" and finding "delete this" under your finger. Handing one on goes only where the
+> user browsed to (§0 rule 7: a template carries the officers table).
 
 **Goal.** "Start from last month" serves the steady state, but special issues — installation of
 officers, past masters' night, a memorial issue — currently mean rebuilding a layout or overwriting

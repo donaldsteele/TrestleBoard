@@ -213,6 +213,12 @@ internal static class ActionIcons
         // must not - it hands the message to the program the user already has.
         [ActionId.SendIt] = "an envelope would promise the app sends it, which it does not",
 
+        // M57. Both would wear the save disk, which already means the newsletter itself - and
+        // "save the newsletter" and "save its layout for next year" are the two things that must
+        // not be confused with each other.
+        [ActionId.SaveAsTemplate] = "would wear the save disk, which already means the newsletter",
+        [ActionId.ManageTemplates] = "a list of names; the names are the point",
+
         // M54. There is no picture of "a memorial notice" that is not either grim or glib, and the
         // list this opens names each paragraph in the words a person would use for it.
         [ActionId.InsertPhrase] = "no glyph for a memorial is either dignified or clear",

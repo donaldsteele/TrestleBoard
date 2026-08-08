@@ -53,7 +53,7 @@ public static class CarryForward
     /// means a future model change cannot make this copy silently incomplete the way a hand-written
     /// field-by-field clone could.
     /// </summary>
-    private static TboardPackage DeepCopy(TboardPackage source)
+    internal static TboardPackage DeepCopy(TboardPackage source)
     {
         using var stream = new MemoryStream();
         TboardContainer.Save(source, stream);
@@ -159,7 +159,7 @@ public static class CarryForward
     /// Blanks every cover banner's printed date. An empty field asks to be filled in; a wrong date
     /// looks finished and goes out.
     /// </summary>
-    private static void ClearMeetingDates(Document document)
+    internal static void ClearMeetingDates(Document document)
     {
         foreach (Page page in document.Pages)
         {
@@ -172,7 +172,7 @@ public static class CarryForward
         }
     }
 
-    private static void ResetArticleProse(Document document, string prompt)
+    internal static void ResetArticleProse(Document document, string prompt)
     {
         foreach (Story story in document.Stories)
         {

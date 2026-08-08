@@ -91,6 +91,11 @@ public static class ActionCatalog
             ActionGroup.Newsletter),
         new(ActionId.PrintPdf, "Print it",
             "Sends the PDF you just made to your printer.", ActionGroup.Newsletter),
+        new(ActionId.SaveAsTemplate, "Save this as one of my templates…",
+            "Keeps this newsletter's layout to start from another time, without its writing or its date.",
+            ActionGroup.Newsletter),
+        new(ActionId.ManageTemplates, "My templates…",
+            "Renames, removes, or hands on the templates you have saved.", ActionGroup.Newsletter),
         new(ActionId.SendIt, "Now send it…",
             "Opens your email with the brethren who get it by email already filled in.",
             ActionGroup.Newsletter),
@@ -387,6 +392,7 @@ public static class ActionCatalog
                 or ActionId.Settings or ActionId.NextRegion or ActionId.PreviousRegion
                 or ActionId.ToggleActionPanel or ActionId.CheckForUpdates or ActionId.About
                 or ActionId.FontLicences or ActionId.Licence or ActionId.ShowExampleIssue
+                or ActionId.ManageTemplates
                 or ActionId.ShowPeople or ActionId.ImportPeople =>
                 ActionAvailability.Available,
 
@@ -449,7 +455,7 @@ public static class ActionCatalog
             // M56 needs a newsletter to talk about but NOT a PDF: somebody may want to warn the
             // lodge that this month's issue is coming, and refusing until they have exported would
             // be the app deciding the order of their evening.
-            ActionId.SendIt => RequiresDocument(context),
+            ActionId.SendIt or ActionId.SaveAsTemplate => RequiresDocument(context),
 
             ActionId.PrintPdf => context.ExportedPdfThisSession
                 ? ActionAvailability.Available

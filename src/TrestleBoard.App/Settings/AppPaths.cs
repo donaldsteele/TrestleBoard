@@ -56,6 +56,16 @@ public static class AppPaths
     /// </summary>
     public static string PhraseShelfFile => Path.Combine(Root, "phrases.json");
 
+    /// <summary>
+    /// Templates the committee saved for themselves (M57). A directory, like the recovery store,
+    /// because each one is a whole <c>.tboard</c>.
+    ///
+    /// <para>§0 rule 7: a user template carries the officers table and the cover, so it holds real
+    /// names. It is a personal file in AppData, and exporting one goes through the save dialog to a
+    /// path the user chose — never a default beside the repository.</para>
+    /// </summary>
+    public static string TemplatesDirectory => Path.Combine(Root, "templates");
+
     /// <summary>Puts the root back to the default. For tests that set it.</summary>
     public static void ResetRootToDefault() => _root = null;
 }

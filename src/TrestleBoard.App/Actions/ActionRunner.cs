@@ -47,6 +47,8 @@ internal sealed class ActionRunner
             [ActionId.ExportDraftPdf] = _ => window.ExportDraftPdfAsync(),
             [ActionId.PrintPdf] = _ => window.PrintTheLastPdfAsync(),
             [ActionId.SendIt] = _ => window.SendItAsync(),
+            [ActionId.SaveAsTemplate] = _ => window.SaveAsTemplateAsync(),
+            [ActionId.ManageTemplates] = _ => window.ShowMyTemplatesAsync(),
             [ActionId.Exit] = Sync(window.Close),
 
             // ---- Edit -----------------------------------------------------------------------------

@@ -15,6 +15,9 @@ public enum StartChoice
     LastMonth,
     OpenFile,
     Template,
+
+    /// <summary>M57: one of the committee's own saved layouts.</summary>
+    MyTemplate,
 }
 
 /// <summary>
@@ -25,6 +28,11 @@ public enum StartChoice
 public sealed class StartDialog : Window
 {
     public StartDialog(bool canStartFromLastMonth)
+        : this(canStartFromLastMonth, [])
+    {
+    }
+
+    internal StartDialog(bool canStartFromLastMonth, IReadOnlyList<Integration.UserTemplate> mine)
     {
         Title = "TrestleBoard";
         MinWidth = 760;
@@ -35,6 +43,30 @@ public sealed class StartDialog : Window
         AutomationProperties.SetName(this, "Start a newsletter");
 
         var tiles = new StackPanel { Spacing = 16 };
+
+        // M57. The committee's own layouts go ABOVE the three built-ins, because a lodge that has
+        // saved one is a lodge that means to use it — and below the three big verbs, because
+        // "start from last month" is still what eleven months out of twelve look like.
+        var mineTiles = new StackPanel { Spacing = 12, IsVisible = mine.Count > 0 };
+        var mineHeading = new TextBlock
+        {
+            Text = "My templates",
+            FontSize = 18,
+            IsVisible = mine.Count > 0,
+        };
+
+        foreach (Integration.UserTemplate template in mine)
+        {
+            Integration.UserTemplate chosen = template;
+            Button tile = Tile(
+                template.Name,
+                "One of your own saved layouts.",
+                StartChoice.MyTemplate,
+                primary: false,
+                enabled: true);
+            tile.Click += (_, _) => SelectedUserTemplateId = chosen.Id;
+            mineTiles.Children.Add(tile);
+        }
 
         tiles.Children.Add(Tile(
             "Start from last month",
@@ -93,6 +125,8 @@ public sealed class StartDialog : Window
                         TextWrapping = TextWrapping.Wrap,
                     },
                     tiles,
+                    mineHeading,
+                    mineTiles,
                     new TextBlock { Text = "Template", FontSize = 18 },
                     templates,
                 },
@@ -119,6 +153,9 @@ public sealed class StartDialog : Window
     private readonly ComboBox _templates;
 
     public StartChoice Choice { get; private set; } = StartChoice.Nothing;
+
+    /// <summary>Which of the user's own templates was pressed, when <see cref="Choice"/> says so.</summary>
+    internal string? SelectedUserTemplateId { get; private set; }
 
     /// <summary>The template the user had selected, whether or not they chose that tile.</summary>
     public string SelectedTemplateId =>
