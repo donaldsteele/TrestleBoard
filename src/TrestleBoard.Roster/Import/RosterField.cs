@@ -10,6 +10,15 @@ public enum RosterField
     Office,
     DegreeKind,
     DegreeDate,
+
+    /// <summary>M55: still a member of the lodge. Exported since M12 and, until M55, never read back.</summary>
+    StillAMember,
+
+    /// <summary>M55: the date a brother was called to the Celestial Lodge.</summary>
+    PassedOn,
+
+    /// <summary>M55: which mailing lists this person is on, separated by semicolons.</summary>
+    Groups,
 }
 
 /// <summary>
@@ -52,6 +61,19 @@ public sealed record RosterFieldInfo(
             ["raised or initiated", "degree", "status", "kind"]),
         new(RosterField.DegreeDate, "The date he was raised or initiated — which column has it?", "Date", false,
             ["raised", "initiated", "degree date", "date"]),
+        // M55. Three columns our own export writes, so a spreadsheet edited in Excel and brought
+        // back keeps them. "Active" was written from M12 and read by nothing, which meant somebody
+        // could un-tick a brother in Excel, re-import, and watch the change vanish without a word.
+        //
+        // Note what is NOT a hint here: "status". It has belonged to "Raised or initiated" since
+        // M12 (see the list above), and claiming it now would quietly re-point every existing
+        // lodge's status column at a different field on their next import.
+        new(RosterField.StillAMember, "Still a member — which column says so?", "Still a member", false,
+            ["still a member", "active", "current member", "on the rolls"]),
+        new(RosterField.PassedOn, "Passed to the Celestial Lodge — which column has the date?", "Passed on", false,
+            ["passed on", "passed", "deceased", "died", "date of death", "celestial lodge"]),
+        new(RosterField.Groups, "Groups — which column lists them?", "Groups", false,
+            ["groups", "group", "mailing list", "lists", "distribution"]),
     ];
 
     public static RosterFieldInfo For(RosterField field) => All.First(f => f.Field == field);

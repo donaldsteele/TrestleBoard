@@ -28,7 +28,7 @@ public static class RosterExport
     internal static readonly string[] Headers =
     [
         "TrestleBoard ID", "Name", "Birthday", "Phone", "Email", "Office", "Raised or initiated",
-        "Date", "Active",
+        "Date", "Still a member", "Passed on", "Groups",
     ];
 
     /// <summary>"Lodge-address-book-2026-07-27.xlsx" — dated, because a lodge keeps the old ones.</summary>
@@ -62,6 +62,12 @@ public static class RosterExport
             Write(sheet, row, 7, DegreeKindText(member.DegreeKind));
             Write(sheet, row, 8, member.DegreeDate ?? string.Empty);
             Write(sheet, row, 9, member.IsActive ? "Yes" : "No");
+
+            // M55. Semicolons rather than commas: a CSV round trip through Excel would quote a
+            // comma-separated cell inconsistently, and a group name with a comma in it is likelier
+            // than one with a semicolon.
+            Write(sheet, row, 10, member.PassedOn ?? string.Empty);
+            Write(sheet, row, 11, string.Join("; ", member.Groups));
             row++;
         }
 

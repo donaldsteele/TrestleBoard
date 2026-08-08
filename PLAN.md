@@ -2664,7 +2664,25 @@ by the owner before shipping — this is lodge voice, not app voice (§13 carrie
 **Privacy (§0 rule 7):** user-saved snippets live in AppData and may contain real names —
 gitignored, never a fixture.
 
-### M55 — Who gets it, and who we've lost (M/L)
+### M55 — Who gets it, and who we've lost (M/L) — **delivered 2026-08-08, `docs/M55-spec.md`**
+
+> **Two statuses, not three — the owner's call.** "Moved away" was only ever a way of saying "stop
+> sending him things", and the groups this milestone adds say it better; a status for it would have
+> been a second way to say one thing. Status is one nullable date, `Member.PassedOn`, rather than an
+> enum beside `IsActive`: two properties that can disagree would eventually put a deceased brother
+> back in the birthday list. Callers ask `IsInTheNewsletter`.
+>
+> **§14.5 item 3 was already done.** M36 delivered CSV encoding detection in `4aaf9b8` with two
+> tests; PLAN.md was stale and is corrected here rather than the work being redone.
+>
+> **Gate 9 caught a defect in under a minute.** `Groups` made record equality compare a list by
+> reference, so re-importing the same spreadsheet reported every person as edited. `Member.Equals`
+> is now hand-written, with a reflection test that fails if a future property is left out of it.
+> The export's **Active** column, written since M12 and read by nothing, is closed at the same time:
+> all three new columns go both ways.
+>
+> The removal now says *why* in the diff dialog, and recording a brother as passed offers a memorial
+> once — his name filled in, the date left blank, never inserted uninvited.
 
 **Goal.** The flat roster is the known gap with the sharpest edge: a deceased brother appearing in
 the birthday list is the single worst error this product can ship, and today preventing it means

@@ -197,6 +197,88 @@ public sealed class BirthdayRosterProjectionTests
         Assert.Equal(["A. Placeholder"], plan.Result.Entries.Select(e => e.Name));
     }
 
+    // ---- a brother who has passed (M55) -------------------------------------------------------
+
+    /// <summary>
+    /// PLAN.md §11 M55's acceptance, and the sentence the whole milestone is built around: <i>a
+    /// deceased member is absent from the birthday projection in the same run that keeps his
+    /// record</i>. His name printed under "Birthdays this month" the month after his funeral is the
+    /// single worst error this product can ship.
+    /// </summary>
+    [Fact]
+    public void ABrotherWhoHasPassedLeavesTheListInTheSameRunThatKeepsHisRecord()
+    {
+        List<Member> book = [.. Book()];
+        BirthdayListData generated = BirthdayRosterProjection.Plan(new BirthdayListData(), book, March).Result;
+
+        List<Member> changed = [.. book];
+        changed[1] = (changed[1] with { PassedOn = "2026-03-02" }).Normalised();
+
+        BirthdayProjection plan = BirthdayRosterProjection.Plan(generated, changed, March);
+
+        // Gone from the page…
+        Assert.Single(plan.Removals);
+        Assert.DoesNotContain(changed[1].DisplayName, plan.Result.Entries.Select(e => e.Name));
+
+        // …and still in the address book, which is the half that matters to the family.
+        Assert.Contains(changed, m => m.Id == book[1].Id);
+        Assert.True(changed[1].HasPassed);
+    }
+
+    /// <summary>
+    /// "Taken away" beside a brother's name, with no reason, is the moment a committee member
+    /// wonders whether the program has lost him.
+    /// </summary>
+    [Fact]
+    public void TheListSaysWhyHeIsBeingTakenAway()
+    {
+        List<Member> book = [.. Book()];
+        BirthdayListData generated = BirthdayRosterProjection.Plan(new BirthdayListData(), book, March).Result;
+
+        List<Member> changed = [.. book];
+        changed[1] = (changed[1] with { PassedOn = "2026-03-02" }).Normalised();
+
+        BirthdayProjection plan = BirthdayRosterProjection.Plan(generated, changed, March);
+
+        string reason = Assert.Contains(book[1].Id, plan.RemovalReasons);
+        Assert.Contains("Celestial Lodge", reason, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SomebodyOffTheRollsIsGivenTheOtherReason()
+    {
+        List<Member> book = [.. Book()];
+        BirthdayListData generated = BirthdayRosterProjection.Plan(new BirthdayListData(), book, March).Result;
+
+        List<Member> changed = [.. book];
+        changed[1] = changed[1] with { IsActive = false };
+
+        BirthdayProjection plan = BirthdayRosterProjection.Plan(generated, changed, March);
+
+        string reason = Assert.Contains(book[1].Id, plan.RemovalReasons);
+        Assert.Contains("no longer marked as a member", reason, StringComparison.Ordinal);
+        Assert.DoesNotContain("Celestial", reason, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A row that goes because the brother's birthday moved out of this month needs no explaining,
+    /// and inventing a reason for it would teach the user to stop reading them.
+    /// </summary>
+    [Fact]
+    public void AnOrdinaryRemovalIsGivenNoReason()
+    {
+        List<Member> book = [.. Book()];
+        BirthdayListData generated = BirthdayRosterProjection.Plan(new BirthdayListData(), book, March).Result;
+
+        List<Member> changed = [.. book];
+        changed[1] = changed[1] with { BirthMonth = March + 1 };
+
+        BirthdayProjection plan = BirthdayRosterProjection.Plan(generated, changed, March);
+
+        Assert.Single(plan.Removals);
+        Assert.Empty(plan.RemovalReasons);
+    }
+
     // ---- fingerprint and staleness -----------------------------------------------------------
 
     [Fact]

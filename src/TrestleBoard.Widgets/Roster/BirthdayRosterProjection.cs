@@ -24,6 +24,14 @@ public sealed record BirthdayProjection(
     string Fingerprint)
 {
     /// <summary>
+    /// Why a removed row is going, by member id, where the app knows (M55). Only removals caused
+    /// by a change of status carry one; a row removed because the brother's birthday moved out of
+    /// this month needs no explaining.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> RemovalReasons { get; init; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>
     /// False when pressing "Update the list" would print exactly the same page. The provenance
     /// fields may still differ — a fingerprint refresh alone is not worth an undo step.
     /// </summary>
@@ -81,8 +89,19 @@ public static class BirthdayRosterProjection
             candidateById[member.Id] = member;
         }
 
+        // Everybody the list may be about to lose for a reason worth saying out loud (M55).
+        var passedById = new Dictionary<string, Member>(StringComparer.Ordinal);
+        foreach (Member member in members)
+        {
+            if (!string.IsNullOrEmpty(member.Id) && !member.IsInTheNewsletter)
+            {
+                passedById[member.Id] = member;
+            }
+        }
+
         var additions = new List<BirthdayEntry>();
         var removals = new List<BirthdayEntry>();
+        var reasons = new Dictionary<string, string>(StringComparer.Ordinal);
         var updates = new List<BirthdayEntry>();
         var keptManual = new List<BirthdayEntry>();
         var entries = new List<BirthdayEntry>();
@@ -107,6 +126,16 @@ public static class BirthdayRosterProjection
             if (!candidateById.TryGetValue(entry.MemberId!, out Member? member))
             {
                 removals.Add(entry);
+                if (passedById.TryGetValue(entry.MemberId!, out Member? gone))
+                {
+                    // M55: why a row is going matters here more than anywhere else in the app.
+                    // "Taken away" beside a brother's name, with no reason, is exactly the moment
+                    // a committee member wonders whether the program has lost him.
+                    reasons[entry.MemberId!] = gone.HasPassed
+                        ? "He has been recorded as passed to the Celestial Lodge."
+                        : "He is no longer marked as a member of the lodge.";
+                }
+
                 continue;
             }
 
@@ -145,7 +174,10 @@ public static class BirthdayRosterProjection
             ExtraProperties = current.ExtraProperties,
         };
 
-        return new BirthdayProjection(additions, removals, updates, keptManual, result, fingerprint);
+        return new BirthdayProjection(additions, removals, updates, keptManual, result, fingerprint)
+        {
+            RemovalReasons = reasons,
+        };
     }
 
     /// <summary>
@@ -219,7 +251,10 @@ public static class BirthdayRosterProjection
     {
         var suppressed = new HashSet<string>(removedMemberIds ?? [], StringComparer.Ordinal);
         return members
-            .Where(m => m is { IsActive: true } && m.HasBirthday && m.BirthMonth == month)
+            // M55: IsInTheNewsletter, not IsActive. A brother recorded as passed leaves this list
+            // in the same run that keeps his record — the single worst error this product can ship
+            // is his name printed under "Birthdays this month" the month after his funeral.
+            .Where(m => m.IsInTheNewsletter && m.HasBirthday && m.BirthMonth == month)
             .Where(m => !string.IsNullOrEmpty(m.Id) && !suppressed.Contains(m.Id))
             .OrderBy(m => m.BirthDay ?? 0)
             .ThenBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)

@@ -34,6 +34,11 @@ public sealed class PeopleWindow : Window
     private readonly ComboBox _degreeKind;
     private readonly TextBox _degreeDate;
     private readonly CheckBox _active;
+    private readonly CheckBox _passed;
+    private readonly TextBox _passedOn;
+    private readonly Control _passedOnLabel;
+    private readonly StackPanel _groupsPanel;
+    private readonly List<CheckBox> _groupBoxes = [];
     private readonly TextBlock _status;
     private readonly Button _delete;
 
@@ -117,6 +122,32 @@ public sealed class PeopleWindow : Window
 
         _active = new CheckBox { Content = "Still a member", FontSize = 20, MinHeight = 44, IsChecked = true };
         AutomationProperties.SetName(_active, "Still a member");
+
+        // M55. A tick box and a date, not a status list: the owner chose two states, and the date
+        // is the thing the committee actually knows. Un-ticking "Still a member" and recording a
+        // brother as passed are different acts and read as different acts.
+        _passed = new CheckBox
+        {
+            Content = "Passed to the Celestial Lodge",
+            FontSize = 20,
+            MinHeight = 44,
+        };
+        AutomationProperties.SetName(_passed, "Passed to the Celestial Lodge");
+        _passed.IsCheckedChanged += (_, _) => UpdatePassedRow();
+
+        _passedOn = new TextBox
+        {
+            FontSize = 20,
+            MinHeight = 44,
+            Width = 260,
+            Watermark = "2026-09-14",
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        AutomationProperties.SetName(_passedOn, "The date he passed");
+
+        _passedOnLabel = Label("The date, if you know it");
+        _groupsPanel = new StackPanel { Spacing = 6 };
+        AutomationProperties.SetName(_groupsPanel, "Groups");
 
         _status = new TextBlock { FontSize = 18, TextWrapping = TextWrapping.Wrap };
         AutomationProperties.SetName(_status, "What just happened");
@@ -327,6 +358,11 @@ public sealed class PeopleWindow : Window
         AutomationProperties.SetName(_degreeDate, (string)_degreeDate.Tag!);
         panel.Children.Add(_degreeDate);
         panel.Children.Add(_active);
+        panel.Children.Add(_passed);
+        panel.Children.Add(_passedOnLabel);
+        panel.Children.Add(_passedOn);
+        panel.Children.Add(Label("Groups"));
+        panel.Children.Add(_groupsPanel);
         panel.Children.Add(_status);
 
         // A lodge on two laptops has two address books and no way to merge them; saying so here is
@@ -623,6 +659,158 @@ public sealed class PeopleWindow : Window
     }
 
     /// <summary>
+    /// The name of a brother the user asked to write a memorial for, or null (M55). The People
+    /// window cannot write one — it has no newsletter — so it records the request and the shell
+    /// picks it up.
+    /// </summary>
+    internal string? MemorialRequestedFor { get; private set; }
+
+    /// <summary>Set by tests in place of the card, which cannot be answered headlessly.</summary>
+    internal bool? MemorialAnswerForTest { get; set; }
+
+    /// <summary>
+    /// Offered once, on the transition, and never inserted (PLAN.md §11 M55).
+    ///
+    /// <para>The card says what has already happened before it asks anything, because the thing
+    /// the user most needs to know at that moment is that the brother's record has been kept. An
+    /// app that responded to "he has died" by silently deleting him, or by writing something into
+    /// the newsletter uninvited, would be unforgivable in a way no other bug here could be.</para>
+    /// </summary>
+    private async Task OfferAMemorialAsync(string name)
+    {
+        if (MemorialAnswerForTest is { } answered)
+        {
+            MemorialRequestedFor = answered ? name : null;
+            return;
+        }
+
+        bool write = false;
+        var dialog = new Window
+        {
+            Title = "His record has been kept",
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+        };
+
+        var yes = new Button
+        {
+            Content = "Write a memorial",
+            FontSize = 18,
+            MinHeight = 44,
+            MinWidth = 200,
+            IsDefault = true,
+        };
+        yes.Action();
+        var no = new Button
+        {
+            Content = "Not now",
+            FontSize = 18,
+            MinHeight = 44,
+            MinWidth = 200,
+            IsCancel = true,
+        };
+        no.Action();
+        AutomationProperties.SetName(yes, "Write a memorial");
+        AutomationProperties.SetName(no, "Not now");
+        yes.Click += (_, _) => { write = true; dialog.Close(); };
+        no.Click += (_, _) => dialog.Close();
+
+        dialog.Content = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(24),
+            Spacing = 16,
+            Children =
+            {
+                new TextBlock
+                {
+                    Text = $"{name} is recorded as passed to the Celestial Lodge.",
+                    FontSize = 20,
+                    FontWeight = Avalonia.Media.FontWeight.Bold,
+                    MaxWidth = 460,
+                    TextWrapping = TextWrapping.Wrap,
+                },
+                new TextBlock
+                {
+                    Text = "His record is kept in your address book. He has been taken out of the "
+                        + "birthday list, and TrestleBoard will ask before it changes anything you "
+                        + "have already put on a page.",
+                    FontSize = 18,
+                    MaxWidth = 460,
+                    TextWrapping = TextWrapping.Wrap,
+                },
+                new TextBlock
+                {
+                    Text = "Would you like to write a memorial notice for him?",
+                    FontSize = 18,
+                    MaxWidth = 460,
+                    TextWrapping = TextWrapping.Wrap,
+                },
+                new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Vertical,
+                    Spacing = 12,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    Children = { yes, no },
+                },
+            },
+        };
+
+        AutomationProperties.SetName(dialog, "His record has been kept");
+        await dialog.ShowDialog(this);
+        MemorialRequestedFor = write ? name : null;
+    }
+
+    /// <summary>
+    /// The date typed, or today's if the box was left empty. A brother recorded as passed with no
+    /// date at all would be indistinguishable from one who is not, because the date IS the status
+    /// (see <c>Member.PassedOn</c>) — so the app supplies the one fact it can be sure of rather
+    /// than refusing the tick box.
+    /// </summary>
+    private string PassedOnOrToday()
+    {
+        string typed = (_passedOn.Text ?? string.Empty).Trim();
+        return typed.Length > 0
+            ? typed
+            : DateTime.Now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>The date box only matters once the tick box is ticked, and says so by going away.</summary>
+    private void UpdatePassedRow()
+    {
+        bool passed = _passed.IsChecked ?? false;
+        _passedOnLabel.IsVisible = passed;
+        _passedOn.IsVisible = passed;
+    }
+
+    private IReadOnlyList<string> CheckedGroups() =>
+        [.. _groupBoxes.Where(b => b.IsChecked == true).Select(b => (string)b.Content!)];
+
+    /// <summary>
+    /// A tick box per group: the ones the app knows about, plus every one this lodge has invented,
+    /// so a name is never re-typed. A group that is nearly spelled right is a brother who quietly
+    /// stops getting his newsletter.
+    /// </summary>
+    private void ShowGroups(IReadOnlyList<string> mine)
+    {
+        _groupsPanel.Children.Clear();
+        _groupBoxes.Clear();
+        foreach (string group in MemberGroups.InUse(_roster.Book.Members))
+        {
+            var box = new CheckBox
+            {
+                Content = group,
+                FontSize = 18,
+                MinHeight = 44,
+                IsChecked = mine.Any(g => string.Equals(g, group, StringComparison.OrdinalIgnoreCase)),
+            };
+            AutomationProperties.SetName(box, group);
+            _groupBoxes.Add(box);
+            _groupsPanel.Children.Add(box);
+        }
+    }
+
+    /// <summary>
     /// Everything on the form, as one string. Comparing a signature rather than field by field means
     /// that a field added to this window in future is covered by whoever adds it to <see cref="Show"/>
     /// - there is no second list to keep in step.
@@ -636,7 +824,10 @@ public sealed class PeopleWindow : Window
         (_office.Text ?? string.Empty).Trim(),
         (_degreeDate.Text ?? string.Empty).Trim(),
         DegreeKinds[Math.Max(0, _degreeKind.SelectedIndex)].Kind ?? string.Empty,
-        (_active.IsChecked ?? true) ? "1" : "0");
+        (_active.IsChecked ?? true) ? "1" : "0",
+        (_passed.IsChecked ?? false) ? "1" : "0",
+        (_passedOn.Text ?? string.Empty).Trim(),
+        string.Join(",", CheckedGroups()));
 
     private bool FormHasUnsavedEdits() =>
         !string.Equals(FormSignature(), _formAsLoaded, StringComparison.Ordinal);
@@ -652,6 +843,10 @@ public sealed class PeopleWindow : Window
         _degreeDate.Text = member.DegreeDate ?? string.Empty;
         _degreeKind.SelectedIndex = Math.Max(0, Array.FindIndex(DegreeKinds, k => k.Kind == member.DegreeKind));
         _active.IsChecked = member.IsActive;
+        _passed.IsChecked = member.HasPassed;
+        _passedOn.Text = member.PassedOn ?? string.Empty;
+        ShowGroups(member.Groups);
+        UpdatePassedRow();
         _delete.IsEnabled = true;
         _status.Text = string.Empty;
         _formAsLoaded = FormSignature();
@@ -667,6 +862,10 @@ public sealed class PeopleWindow : Window
 
         _degreeKind.SelectedIndex = 0;
         _active.IsChecked = true;
+        _passed.IsChecked = false;
+        _passedOn.Text = string.Empty;
+        ShowGroups([]);
+        UpdatePassedRow();
         _delete.IsEnabled = false;
         _formAsLoaded = FormSignature();
     }
@@ -744,10 +943,17 @@ public sealed class PeopleWindow : Window
             DegreeDate = Empty(_degreeDate),
             DegreeKind = DegreeKinds[Math.Max(0, _degreeKind.SelectedIndex)].Kind,
             IsActive = _active.IsChecked ?? true,
+            PassedOn = (_passed.IsChecked ?? false) ? PassedOnOrToday() : null,
+            Groups = CheckedGroups(),
         };
 
         bool adding = _adding || _selectedId is null;
+        bool newlyPassed = member.HasPassed && existing is { HasPassed: false };
         _roster.Save(member, adding ? $"Add {name}" : $"Change {name}");
+        if (newlyPassed)
+        {
+            _ = OfferAMemorialAsync(name);
+        }
         _adding = false;
         _selectedId = member.Id;
         _formAsLoaded = FormSignature();

@@ -257,6 +257,53 @@ public static class FieldValues
     }
 
     /// <summary>
+    /// A yes/no column as a person would fill one in (M55). Returns null when the cell says
+    /// something this cannot read, so an unrecognised word leaves the value alone rather than
+    /// guessing "no" — and "no" here means striking a brother off the rolls.
+    /// </summary>
+    public static bool? ReadYesNo(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        string value = text.Trim();
+        if (value.StartsWith('y') || value.StartsWith('Y')
+            || value.Equals("true", StringComparison.OrdinalIgnoreCase)
+            || value == "1"
+            || value.Equals("x", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (value.StartsWith('n') || value.StartsWith('N')
+            || value.Equals("false", StringComparison.OrdinalIgnoreCase)
+            || value == "0")
+        {
+            return false;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// A groups cell — semicolon separated, as <c>RosterExport</c> writes it (M55). Commas are
+    /// accepted too, because a user typing the column by hand will reach for one; a group name
+    /// containing a comma is the price, and it is smaller than the confusion of refusing them.
+    /// </summary>
+    public static IReadOnlyList<string> ReadGroups(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return [];
+        }
+
+        return [.. text
+            .Split([';', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+    }
+
+    /// <summary>
     /// Digits and nothing else (a decimal point allowed, since a spreadsheet writes serials that
     /// way). Once a value like this has been rejected as an Excel serial there is no reading of it
     /// left that is a date, and every parser below would invent one.

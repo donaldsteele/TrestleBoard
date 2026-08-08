@@ -53,7 +53,7 @@ internal sealed class BirthdaySyncDialog : Window
         });
 
         AddSection(body, "These will be added", plan.Additions);
-        AddSection(body, "These will be taken away", plan.Removals);
+        AddSection(body, "These will be taken away", plan.Removals, plan.RemovalReasons);
         AddSection(body, "These will be brought up to date", plan.Updates);
         AddSection(body, "These are yours, and will be left alone", plan.KeptManual);
 
@@ -137,7 +137,11 @@ internal sealed class BirthdaySyncDialog : Window
     /// One heading and its names, or nothing at all. An empty "These will be taken away (0)" is
     /// noise for someone reading every word on the screen.
     /// </summary>
-    private static void AddSection(Panel body, string heading, IReadOnlyList<BirthdayEntry> entries)
+    private static void AddSection(
+        Panel body,
+        string heading,
+        IReadOnlyList<BirthdayEntry> entries,
+        IReadOnlyDictionary<string, string>? reasons = null)
     {
         if (entries.Count == 0)
         {
@@ -162,6 +166,21 @@ internal sealed class BirthdaySyncDialog : Window
                 Margin = new Avalonia.Thickness(16, 0, 0, 0),
                 TextWrapping = TextWrapping.Wrap,
             });
+
+            // M55. "Taken away" beside a brother's name with no reason is the moment a committee
+            // member wonders whether the program has lost him. Where the app knows why, it says so.
+            if (entry.MemberId is { } id
+                && reasons is not null
+                && reasons.TryGetValue(id, out string? why))
+            {
+                body.Children.Add(new TextBlock
+                {
+                    Text = why,
+                    FontSize = 16,
+                    Margin = new Avalonia.Thickness(32, 0, 0, 4),
+                    TextWrapping = TextWrapping.Wrap,
+                });
+            }
         }
     }
 

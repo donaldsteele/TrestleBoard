@@ -1537,6 +1537,39 @@ public partial class MainWindow : Window
         return answer;
     }
 
+    /// <summary>
+    /// M55 → M54: the memorial the People window offered. It opens the phrase shelf on the memorial
+    /// with his name already answered, so the user meets a paragraph rather than a blank page.
+    /// </summary>
+    internal Task OfferTheMemorialForTest(string name) => OfferTheMemorialAsync(name);
+
+    private async Task OfferTheMemorialAsync(string name)
+    {
+        if (_editor is not { IsActive: true })
+        {
+            // Nowhere for the words to go. Saying where to start beats opening a wizard whose last
+            // button cannot do anything.
+            Announce(
+                $"When you are ready to write about {name}, click into some writing and choose "
+                + "\"Words for hard news\" from the Insert menu.");
+            return;
+        }
+
+        Core.Phrases.Phrase? memorial = Core.Phrases.PhraseLibrary.Find("memorial");
+        if (memorial is null)
+        {
+            return;
+        }
+
+        var answers = new Dictionary<string, string>(StringComparer.Ordinal) { ["{name}"] = name };
+        _editor.InsertBlock(memorial.Fill(answers), "Add a memorial notice");
+        Announce(
+            $"A memorial notice for {name} is in your newsletter. It is ordinary writing now — "
+            + "change any of it you like.");
+        RefreshSpellingMarks();
+        RefreshActions();
+    }
+
     // ---- Check my spelling (PLAN.md §11 M52) --------------------------------------------------
 
     private SpellingWindow? _spellingWindow;
@@ -3155,6 +3188,13 @@ public partial class MainWindow : Window
         var window = new PeopleWindow(Roster);
         await window.ShowDialog(this);
         RefreshActions();
+
+        // M55: the People window can record that a brother has passed, but it has no newsletter to
+        // write a memorial in. It records the request; this opens M54's shelf with his name ready.
+        if (window.MemorialRequestedFor is { } brother)
+        {
+            await OfferTheMemorialAsync(brother);
+        }
     }
 
     internal async Task ImportPeopleAsync()

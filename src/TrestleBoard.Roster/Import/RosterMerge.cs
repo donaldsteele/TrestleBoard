@@ -362,6 +362,25 @@ public static class RosterMerge
             }
         }
 
+        // ---- M55 -------------------------------------------------------------------------------
+        string stillAMember = Read(sheet, row, mapping, RosterField.StillAMember);
+        if (stillAMember.Length > 0 && FieldValues.ReadYesNo(stillAMember) is { } active)
+        {
+            result = result with { IsActive = active };
+        }
+
+        string passedOn = Read(sheet, row, mapping, RosterField.PassedOn);
+        if (passedOn.Length > 0)
+        {
+            result = result with { PassedOn = FieldValues.ReadDate(passedOn) };
+        }
+
+        string groups = Read(sheet, row, mapping, RosterField.Groups);
+        if (groups.Length > 0)
+        {
+            result = result with { Groups = FieldValues.ReadGroups(groups) };
+        }
+
         return result.Normalised();
     }
 
@@ -396,6 +415,24 @@ public static class RosterMerge
         if (before.DegreeDate != after.DegreeDate || before.DegreeKind != after.DegreeKind)
         {
             changes.Add("degree date");
+        }
+
+        // M55. Without these three the review screen would say "Changes nothing" beside a row that
+        // is about to record a brother as having died, which is the worst possible place for the
+        // app to be quiet.
+        if (before.IsActive != after.IsActive)
+        {
+            changes.Add(after.IsActive ? "him back to being a member" : "him to no longer a member");
+        }
+
+        if (before.PassedOn != after.PassedOn)
+        {
+            changes.Add(after.HasPassed ? "him to passed to the Celestial Lodge" : "the date he passed");
+        }
+
+        if (!before.Groups.SequenceEqual(after.Groups, StringComparer.Ordinal))
+        {
+            changes.Add("groups");
         }
 
         return changes.Count == 0 ? string.Empty : "Changes the " + string.Join(", ", changes) + ".";
