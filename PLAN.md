@@ -42,6 +42,24 @@ The example PDFs contain real people's names, phone numbers, and emails. These r
    paths** there and a path bearing the maintainer's account name is a real leak. The two
    hand-taken install screenshots (SmartScreen, Gatekeeper) are the sole exception and must show
    no personal data and no user-name-bearing path.
+7. **New personal-data surfaces scheduled with M51–M60 (2026-08-08).** Each is governed by the
+   rule-4/rule-5 patterns above, restated here so no milestone discovers them mid-flight:
+   - **M52** — the spell-check personal dictionary in AppData will contain real member names:
+     gitignored, fictional fixtures only.
+   - **M54** — user-saved phrase-shelf snippets in AppData may contain real names (memorial texts):
+     gitignored, never a fixture. Bundled snippets ship with fictional placeholders per rule 2.
+   - **M55** — member status (including deceased) and group membership join `roster.json`: the
+     deepest exposure of the batch; full rule-5 treatment, privacy gate re-runs.
+   - **M56** — bulk real email addresses: BCC by default is a hard requirement; addresses touch
+     only the mailto URI and the clipboard, never a log or a file.
+   - **M57** — user templates carry real names: personal files per rule 4 while in AppData; export
+     behaves like roster export (user-chosen path only); the screenshot harness's temporary
+     app-state root must cover the template store per rule 6.
+   - **M62** — label and envelope PDFs are pages of real names and addresses: user-chosen path via
+     the save dialog only, no default location, never a fixture.
+   - **M64** — the successor pack bundles the roster and every personal store in one file: the
+     single most concentrated personal-data artifact the app produces. User-chosen path only, the
+     pack extension gitignored, fictional fixtures only, privacy gate re-runs.
 
 ## What the examples tell us (domain analysis)
 
@@ -2488,6 +2506,387 @@ against the broken build rather than reporting. What exists is four passing test
 Ctrl+Tab reaches the command, and a broken build that demonstrably changes behaviour - not a clean
 assertion failure on a named line.
 
+> **Scheduled 2026-08-08 — the product-owner pass.** With M0–M50 delivered and §14 exhausted, the
+> owner asked for a forward look: review what the product is and propose the next ten features,
+> judged on usability and on fit with the committee's actual monthly cycle. The organizing
+> observation: the product is now excellent at the *middle* of the month — assemble, edit, export —
+> and stops short at both ends. At the front, the committee re-invents hard wording (memorials,
+> sickness and distress) and re-hunts last year's recurring announcements. At the back, the workflow
+> ends with a PDF sitting in a folder — the proofread, the Master's sign-off, the printing and the
+> emailing all happen outside the app, and that is exactly where the phone call to a grandchild
+> happens. **M51–M53 make the proofread-and-approve loop safe; M54–M56 close the two ends of the
+> cycle; M57–M60 deepen the middle.** Hard order: M55 before M56 (the send step consumes the groups
+> M55 creates); M51 before M52 and M58 (both join M51's checklist as stations). Each milestone gets
+> a `docs/Mnn-spec.md` when its implementation starts, exactly as M24–M50 did. **M61 was added the
+> same day at the owner's request** — bulleted and numbered lists in body text; it joins M60 at the
+> end as the batch's second pixel-moving milestone, and the two may run in either order once
+> M51–M59 are settled. Nothing below
+> re-opens declined ground: no rulers/guides/grid (M47), no wizard verb rename (M48), no RTL, and
+> nothing in §1's non-goals list. All ten respect the locked architecture: Core stays BCL-only,
+> Avalonia stays App-only, fonts stay bundled, layout stays deterministic, every mutation goes
+> through `IDocumentCommand`, every surface meets §6.
+
+### M51 — Look it over with me (M)
+
+**Goal.** A one-button review before "Make the PDF" that converts "proofread six pages" — the
+hardest task in the cycle for aging eyes — into "answer a short list of questions".
+
+**Deliverables.** A checklist wizard in the established one-finding-per-screen voice that walks the
+newsletter top to bottom: carry-forward placeholder prompts never replaced ("Write the Worshipful
+Master's message here…" still on page 2), text that ran out of room (the overset state M43 already
+tracks), empty picture placeholders, pictures with no caption or no description, dates in body text
+that look like last month's, and a final full-screen page-by-page look-through. Each finding offers
+"Take me there" and "That's fine, next". Later milestones add stations to this frame (M52's
+spelling, M58's read-aloud).
+
+**Acceptance.** "Make the PDF" is never blocked — the checklist is an offer, on M43's "I know"
+pattern. Read-only over the document; App/Editing chrome only, no engine file opened, no snapshot
+baseline moves. The stale-date check is a heuristic and must be phrased as a question, never an
+assertion. Every finding screen meets §6 (18–20pt, keyboard path, polite live-region announcement),
+and a fixture document seeded with one of each defect surfaces all of them.
+
+### M52 — Catch my spelling (M/L)
+
+**Goal.** Offline spell check — the classic newsletter embarrassment, and the gap §13 recorded as
+"recommended but unscheduled" awaiting the owner's word. This pass is that word.
+
+**Deliverables.** A bundled Hunspell dictionary driven by a pure-managed library (candidate:
+WeCantSpell.Hunspell — no native assets, keeps the 4-RID packaging clean), its licence committed
+beside it on the bundled-fonts precedent. Two surfaces: a gentle dotted underline drawn as chrome
+overlay only, and — the primary path for this audience — a "Check my spelling" wizard, one word per
+screen with the sentence around it and big buttons for "Change it to…", "It's fine", and "It's a
+name — never ask again". The personal dictionary is pre-seeded with Masonic vocabulary (Tyler,
+Worshipful, trestle board, appendant…) and with the address book's names, so the first run is not a
+wall of underlines.
+
+**Acceptance.** A snapshot test proves squiggles never reach the PDF and never move layout — the
+checker is provably absent from the layout/render/export pipeline. Core stays BCL-only (the checker
+lives in App or a small leaf project). **Privacy (§0 rule 7):** the personal dictionary lives in
+AppData and will contain real member names — gitignored patterns, fictional fixtures only.
+
+### M53 — A draft for the Master, then the real thing (M)
+
+**Goal.** Close the approval and print steps. The Master reviews before distribution, and today
+nothing distinguishes the review PDF from the final one except the sender's memory; and "the PDF is
+on the disk" still leaves the user to find it, open it and print it.
+
+**Deliverables.** "Make a draft copy" — the same renderer with a large light "DRAFT — not for
+sending" diagonal on every page, so the review copy can never be mistaken for, or accidentally
+distributed as, the final. "Print it" — after export, one labelled button that hands the finished
+PDF to the operating system's print path (shell print verb on Windows, `lp`/`lpr` elsewhere), with
+a plain fallback card — "The PDF is open; press Ctrl+P to print it" — when no print path answers.
+
+**Acceptance.** The watermark is pixel-deterministic across OSes (same renderer, same bundled
+fonts; snapshot-tested). No print subsystem is built — the PDF hand-off *is* the design, and the
+fallback card is honest when the hand-off fails. No bleed, imposition or print-shop features:
+out of scope, matching the declined-ground spirit of M47.
+
+### M54 — Words for hard news (S)
+
+**Goal.** The committee re-drafts emotionally difficult wording every month — a memorial, a
+sickness-and-distress entry — or digs through old issues to copy it. Blank-page paralysis is worst
+under grief; a dignified starting text with two blanks to fill is dramatically easier.
+
+**Deliverables.** A small shelf of ready-made, editable paragraphs for the hard moments: a memorial
+notice, a sickness-and-distress entry, a get-well line, a welcome to a newly raised brother, a
+thank-you to a degree team. Chosen from a list; the blanks ("Brother ______", the date) asked for
+one at a time in the wizard voice; inserted as ordinary editable text through `IDocumentCommand`.
+The user can save a paragraph of their own to the shelf.
+
+**Acceptance.** Shipped snippets use fictional placeholders (§0 rule 2) and their tone is reviewed
+by the owner before shipping — this is lodge voice, not app voice (§13 carries the item).
+**Privacy (§0 rule 7):** user-saved snippets live in AppData and may contain real names —
+gitignored, never a fixture.
+
+### M55 — Who gets it, and who we've lost (M/L)
+
+**Goal.** The flat roster is the known gap with the sharpest edge: a deceased brother appearing in
+the birthday list is the single worst error this product can ship, and today preventing it means
+deleting him — destroying his record. Groups are also the prerequisite for M56.
+
+**Deliverables.** The address book grows a **status** per person (active; moved away; passed to the
+Celestial Lodge, with date), simple **groups** ("Gets the newsletter by email", "Gets a printed
+copy", "Officers", …), and the CSV encoding detection §14.5 item 3 left undone, so imported names
+with accents come through right. Marking a brother deceased does the humane, correct things: he
+leaves the birthday projection immediately — behind the existing diff dialog, never silently — and
+the app *offers*, never inserts, a memorial notice via M54's shelf. History is kept; nobody is
+deleted to be removed from a list. Import wizard gains the status/group column questions; the XLSX
+round-trip carries both.
+
+**Acceptance.** Roster JSON migration preserves unknown properties (the existing overflow-bag
+pattern); importing the same file twice still changes nothing (gate 9 re-runs); a deceased member
+is absent from the birthday projection in the same run that keeps his record. **Privacy (§0 rule
+7): the deepest exposure of the ten** — status and group membership are sensitive personal data in
+`roster.json`; full rule-5 treatment, fictional fixtures in `tests/Roster.Tests` only, privacy gate
+re-runs.
+
+### M56 — Send it to the members (M)
+
+**Goal.** The workflow today ends at a file on disk. Composing the email — finding the file,
+remembering who gets it, typing sixty addresses — is the largest remaining out-of-app task and the
+most error-prone (address leaks via To:, missed members).
+
+**Deliverables.** After "Make the PDF", a "Now send it" card that does what an offline app with no
+accounts can honestly do: opens the user's **own** mail program via `mailto:` with the "Gets the
+newsletter by email" group pre-filled — **BCC by default; members' addresses are not each other's
+business** — and a subject built from the issue ("Indian Land Lodge 414 Trestle Board — September
+2026"); because `mailto:` cannot attach files, shows the PDF's location with "Open the folder" and
+the one plain sentence "Attach the file named *September 2026.pdf*"; and for the printed-copy group
+shows how many copies are needed and offers M53's Print. Every step degrades to
+copy-the-addresses-to-clipboard when no mail program answers.
+
+**Acceptance.** No SMTP, no accounts, no cloud, no network code of our own — OS hand-off only.
+`mailto:` length limits with sixty-plus BCC addresses are detected and fall back to clipboard
+batches with a plain explanation. **Privacy (§0 rule 7):** real email addresses in bulk touch only
+the mailto URI and the clipboard — never a log, never a file.
+
+### M57 — Keep this design for next time (M)
+
+**Goal.** "Start from last month" serves the steady state, but special issues — installation of
+officers, past masters' night, a memorial issue — currently mean rebuilding a layout or overwriting
+the working lineage; and when the committee has evolved the layout there is no way to bless it as
+the new starting point. Succession matters in a volunteer committee of elderly members.
+
+**Deliverables.** "Save this as one of my templates" writes the current newsletter as a template —
+the manifest's `isTemplate` flag already exists — keeping layout, styles, widgets and pictures,
+resetting articles to the same placeholder prompts carry-forward uses, clearing the issue date. The
+Start screen's template tile grows a "My templates" section above the three built-ins, with a
+thumbnail, a rename and a delete behind the standard plain-language confirm. Templates live in
+AppData and are exportable to a file, so a committee member can hand one to a successor.
+
+**Acceptance.** The reset pipeline is shared with carry-forward, not duplicated. **Privacy (§0
+rule 7):** a user template naturally contains real names (the officers table, the cover) — fine
+while it stays personal (§0 rule 4), but export behaves like roster export: user-chosen path via
+the save dialog only, no default beside the repo, never a fixture; and the screenshot harness's
+temporary app-state root is verified to cover the template store (§0 rule 6).
+
+### M58 — Read it back to me (M/L)
+
+**Goal.** The committee's best proofreading tool for aging eyes is hearing the text — errors the
+eye slides over, the ear catches. Today that means recruiting a second person to read aloud.
+
+**Deliverables.** A button that reads the newsletter aloud in page order using the operating
+system's own voice (Windows speech API; `say` on macOS; `speech-dispatcher` on Linux, best-effort
+per §6's existing AT-SPI stance), highlighting each sentence on the canvas as it is spoken, with
+big Pause / Back a sentence / Skip controls. Where no voice engine answers, it degrades to a silent
+"walk me through it" mode — the same sentence-by-sentence highlight advanced by the spacebar —
+which is independently valuable and is the tested-everywhere baseline. Joins M51's checklist as its
+final station. Complements, never replaces, the §6 screen-reader story.
+
+**Acceptance.** All voice code stays in App behind an interface; Core stays BCL-only; no test
+depends on audio — tests cover sentence segmentation and the silent walk-through. The highlight is
+chrome overlay, never in the PDF; no snapshot baseline moves.
+
+### M59 — What we said last year (M)
+
+**Goal.** The monthly cycle has an annual rhythm the product ignores: the picnic announcement, the
+awards night, the installation notice. Committee members today keep old PDFs open in another window
+and retype from them.
+
+**Deliverables.** From the editor, "Show me last year's September" opens the same-month issue from
+the previous year — found via the carry-forward lineage, or by asking once where old issues live —
+**read-only** beside the editor, with "Copy this article into this month" as one labelled button
+that brings a story's text across as an ordinary editable insertion (drag remains an accelerator,
+per §6).
+
+**Acceptance.** Two documents open means the action catalog, undo stack and autosave are provably
+scoped to the editable one — the M24/M39 lost-work lessons apply and are tested. Read-only display
+makes damaging the archive impossible. An old issue that predates the current `formatVersion`
+exercises §2's migration path for real; a file too old to migrate fails with the M25-standard
+honest message.
+
+### M60 — A list of your own (L)
+
+**Goal.** Content that is table-shaped but not one of the six widgets — Eastern Star news, a degree
+schedule, a dinner menu — is today hand-typed into free text frames, losing re-edit, carry-forward
+and alignment. Hand-formatting a table with tabs and spaces is exactly the fine-motor, spatial task
+§6 exists to avoid. The wizard already proved this audience can build the officers table one
+question at a time; this generalizes the proof.
+
+**Deliverables.** A seventh, generic table/list widget: name the list, choose one to three columns
+(capped at three deliberately — the one-question-at-a-time guarantee must not erode), enter rows
+one at a time in the generic wizard, re-edit in the big-row grid, place as a styled table using the
+existing table styles. Carry-forward preserves it like the other six.
+
+**Acceptance.** New widget type in the document model means a format migration and possibly moved
+snapshot baselines — the expensive kind of change, which is why this runs at the end with M61,
+after everything before it is settled. All mutations via `IDocumentCommand`; table layout
+deterministic with golden tests; fixtures fictional per §0. Gates 9/10-style idempotence:
+re-running the wizard with nothing changed changes nothing.
+
+### M61 — Make it a list (M/L)
+
+**Goal.** Bulleted and numbered lists in body text — the announcement with three points, the
+degree-night schedule, the dinner instructions. Today the user types "1." and "•" by hand, and the
+alignment breaks the moment a line wraps: the second line comes back to the left margin instead of
+sitting under the first word. Hand-maintaining numbering (insert a point in the middle, renumber
+the rest by hand) is exactly the kind of bookkeeping the app exists to take away.
+
+**Deliverables.** A paragraph-level list setting reached the way Bold is reached — on the current
+paragraph or selection, no wizard: "Make this a list of points" and "Make this a numbered list",
+each a toggle that plainly undoes itself ("Put it back to normal writing" when already a list).
+Markers and numbers are drawn by the same renderer as everything else — screen and PDF identical
+by construction. Hanging indent: wrapped lines align under the text, not under the marker.
+Numbering runs across adjacent numbered paragraphs, renumbers itself when a point is added or
+removed in the middle, and restarts after a normal paragraph. The marker inherits the paragraph
+style's font and size. **One level only, deliberately** — nesting is bookkeeping this audience
+does not need, and the cap is what keeps the two actions self-explanatory. New `ActionId`s through
+all five M11 surfaces: catalog entries, availability rules with plain-language reasons, menu
+homes, runner handlers.
+
+**Acceptance.** Toggling is one undo step through `IDocumentCommand`, and Ctrl+Z restores the
+paragraph byte-for-byte. Golden LineBox tests hold the hanging indent and the renumber-on-edit;
+cross-OS snapshot baselines re-bake on all three platforms — a budgeted pixel move, M18's rule.
+PDF-vs-screen parity re-runs. The bullet glyph is verified present in all bundled faces
+(font-catalog-sampler), with the documented fallback if a face lacks it. §6 naming throughout —
+never "ordered/unordered". §1's non-goals stand: no hyphenation, no justification rides along.
+Carry-forward and `.tboard` round-trip preserve the setting; a pre-M61 document opens and saves
+back byte-unchanged if untouched.
+
+> **Scheduled 2026-08-08, later the same day — the gap review.** After M51–M61 were written, the
+> owner asked what else stands between this and a full-featured app. The answer split three ways:
+> the shipping-hygiene items already recorded in §13, the deliberately-declined ground (stands),
+> and seven genuine gaps — six proposed, all six approved by the owner with two amendments
+> (pictures ride along with the writing import; the ornament library goes wide, not minimal), plus
+> a seventh the owner added (bringing in a PDF page) and an eighth that is not a feature at all:
+> **the licence decision §13 has carried since M15 is now made** — free for non-profit use, a
+> separate licence required for profit. Ordering: M62 (labels) depends on M55's groups; M68 (the
+> licence) can ship any time and should ship early; the rest are independent of M51–M61 and of
+> each other. Every constraint from the first batch's preamble applies unchanged.
+
+### M62 — Print the labels (M)
+
+**Goal.** M55 creates the "Gets a printed copy" group and M56 counts the copies; nobody prints the
+addresses. Hand-addressing sixty envelopes monthly is the committee's remaining manual chore, and
+it belongs to the same address book the app already keeps.
+
+**Deliverables.** "Print the mailing labels…" from the People window: choose the group, choose a
+label sheet from a short list of common layouts (Avery 5160-class and neighbours, named in plain
+language — "30 labels per sheet"), see one full-sheet preview, then export a print-ready PDF
+through the same renderer as everything else. An envelope layout is the same machinery with one
+address per page. Sheet geometry lives in data, not code, so a new layout is an entry, not a
+milestone.
+
+**Acceptance.** Depends on M55 (groups). Same renderer, deterministic, snapshot-tested against
+fictional fixtures. **Privacy (§0 rule 7):** the output is a page of real names and addresses —
+it writes only to a user-chosen path via the save dialog, exactly as roster export does; no
+default location, never a fixture, and the privacy gate re-runs.
+
+### M63 — How do I…? (M)
+
+**Goal.** "Show me an example newsletter" exists; a way to ask the app how to do something does
+not. This audience will not read a README on GitHub — the help has to live where the confusion
+does.
+
+**Deliverables.** A Help window — "How do I…?" — with a big search box and short plain-language
+answers, built from the asset the app already maintains: the action catalog knows every verb, its
+plain description, its availability rule and its reason, so the help index is generated from it
+and cannot drift from the app (a catalog entry with no help topic fails a test, the M11
+discipline). Each answer names the menu path and the shortcut, and where the action is currently
+available, offers "Take me there". A first-run guided tour — five screens, skippable, never shown
+again unless asked — walks the monthly cycle: start from last month, fill the widgets, look it
+over, make the PDF, send it.
+
+**Acceptance.** All chrome, App-only; §6 throughout (18pt+, keyboard path, screen-reader pass
+added to the script). Help content carries fictional examples only. No network — help is bundled,
+never fetched.
+
+### M64 — Pack it up for my successor (M)
+
+**Goal.** Committee turnover is the existential risk for a volunteer lodge. M57 exports templates;
+everything else the app has accumulated — the address book, the phrase shelf, the personal
+dictionary, the settings — dies with the old computer.
+
+**Deliverables.** "Pack everything up for my successor…" writes one file (a zip with a manifest,
+the `.tboard` container discipline) holding the roster, the roster backup ring, user templates,
+saved phrases, the personal spelling dictionary and settings; "Bring in a predecessor's pack…" on
+the new machine restores it, asking before overwriting anything that exists, item by item in plain
+language. The pack is versioned and forward-migratable like the document format.
+
+**Acceptance.** Round trip on a clean app-state root restores every store byte-for-byte; a partial
+restore (roster only, say) touches nothing else. **Privacy (§0 rule 7): the pack is the roster and
+more in one file** — user-chosen path only, no default beside the repo, `*.tbpack` (or chosen
+extension) gitignored, fictional fixtures only, privacy gate re-runs.
+
+### M65 — The emblem shelf (M)
+
+**Goal.** Real trestle boards carry the craft's emblems — the square and compasses, the working
+tools, the officers' jewels, seasonal ornaments, rules and dividers. Today the user must find,
+vet and import an image themselves; the app should hand them the cabinet.
+
+**Deliverables.** A bundled library of vector emblems and ornaments, deliberately wide rather than
+minimal — the owner's direction: the square and compasses (with and without the G), plumb, level,
+trowel, gavel, the officers' jewels, the pillars, the mosaic pavement border, decorative rules,
+corner ornaments and seasonal pieces — reached by "Add an emblem…" with a visual picker (named,
+searchable, keyboard-walkable), placed as an ordinary picture frame. Vector (SVG source rendered
+through the existing pipeline or pre-rasterized at bundle time — decided in the spec by what keeps
+layout deterministic).
+
+**Acceptance.** **Provenance per asset, the fonts precedent (§0 discipline, gate 22):** the owner,
+as a Mason, holds full authority to use the craft's symbols, and that statement is recorded here —
+but every shipped artwork *file* still carries written provenance beside it (public domain, CC0,
+or commissioned for this app) in a manifest with hashes, exactly as `fonts.json` does, because the
+symbol and a particular rendering of it are different rights. No asset ships without its entry.
+Emblems carry default descriptions for the screen reader ("Square and compasses"). Rendering is
+deterministic across OSes; snapshot-tested.
+
+### M66 — Bring in writing from a file (M)
+
+**Goal.** Committee members email articles as Word documents. Today: open Word, select, copy,
+switch, paste — a two-app round trip with formatting shrapnel. The app should accept the file.
+
+**Deliverables.** "Bring in writing from a file…" reads `.docx` and `.txt`, brings the **text**
+in mapped to paragraph styles (headings to headings, body to body — nothing fancier, deliberately:
+text only, no tables, no text-box archaeology), and — the owner's amendment — **brings the
+pictures too where it can**: images embedded in the document are extracted and offered one at a
+time ("This picture came with the writing — use it?"), entering through M18's single picture
+ingest path with the usual caption and description asks. DOCX is zip+XML; a pure-managed reader,
+no Word required, no COM.
+
+**Acceptance.** Import is one undo step; a damaged or password-protected file fails with the
+M25-standard honest message; extracted images keep original bytes byte-identical in the container
+(gate 7 re-runs). Fixtures are fictional documents built for the tests. Fidelity temptation is
+the recorded risk: the spec draws the text-only line and holds it.
+
+### M67 — Bring in a page from a PDF (M/L)
+
+**Goal.** The owner's addition: lodges receive finished flyers and notices as PDF — the Grand
+Lodge announcement, the district calendar page — and the committee wants the page *as it is* in
+the newsletter, the way the Word import takes writing.
+
+**Deliverables.** "Bring in a page from a PDF…" shows the pages of a chosen PDF as thumbnails,
+and the chosen page enters the newsletter as a **full-page picture** (or placed into a frame like
+any picture). The conversion happens **once, at import time**: the page is rendered to a
+high-resolution raster and stored as an ordinary image asset in the `.tboard` — the layout and
+export pipeline never sees a PDF, so determinism is untouched; the original PDF bytes are also
+kept in the container (gate 7 discipline) so the page can be re-rendered sharper later. The
+rasterizer is a bundled native PDFium per RID, used only inside the import step.
+
+**Acceptance.** The document model change is "an image like any other" — no new frame type. A PDF
+that cannot be read (encrypted, damaged) refuses with the honest message. Rendered-page fixtures
+are fictional. The packaging cost — one native library across four RIDs — is the reason this is
+M/L and carries an explicit fallback: on a platform where the rasterizer fails to load, the
+feature refuses plainly ("This computer cannot read PDFs into the newsletter") rather than
+half-working; the availability rule says so through the catalog.
+
+### M68 — The licence, at last (S)
+
+**Goal.** §13 has carried "the application has no licence file" since M15, blocked on the owner's
+decision. **The decision is made (2026-08-08): free for non-profit use; profit-making use requires
+a separate licence.**
+
+**Deliverables.** A LICENSE file implementing that intent — candidate: PolyForm Noncommercial
+1.0.0, an off-the-shelf licence written for exactly this split, with a short plain-language
+preamble naming the grant ("free for lodges, churches, charities and personal use") and a contact
+line for commercial licensing; the README's permissions paragraph rewritten to match; the licence
+text included in the installer beside the font licences (the M14 precedent); the About window
+naming it.
+
+**Acceptance.** The §13 item closes with a strike-through and a pointer here. The chosen text is
+the owner's final sign-off — this milestone presents the candidate and the owner says yes or picks
+another; nothing ships a licence the owner has not read. Bundled third-party licences (fonts,
+Hunspell dictionary, PDFium, emblem provenance) remain their own files and are unaffected.
+
 ---
 
 ## 12. Verification (end-to-end)
@@ -2566,6 +2965,26 @@ assertion failure on a named line.
     and finds a word in its second frame; `FrameAlignmentTests` holds the arithmetic, including that
     aligning twice changes nothing; `StoryFinderTests` holds reading order and the wrap. The
     snapshot suite re-ran **unchanged**.
+19. **Preflight gate (M51):** "Make the PDF" is reachable and completes with the checklist never
+    run, part-run, and dismissed at every station — the checklist never blocks export. A fixture
+    document seeded with one of each defect class (unreplaced prompt, overset frame, empty
+    placeholder, missing caption, missing description, stale date) surfaces every one, and "Take me
+    there" lands focus on the named thing. No snapshot baseline moves.
+20. **Status-and-groups gate (M55):** import → projection → export round-trips status and groups; a
+    member marked deceased is absent from the birthday projection in the same run that keeps his
+    record intact; importing the same file twice still changes nothing (gate 9 re-runs); a CSV in a
+    non-UTF-8 encoding imports names with accents intact. All against fictional data; privacy gate
+    re-runs.
+21. **Send gate (M56):** with no mail program answering, every step of the "Now send it" card
+    degrades to the clipboard with a plain explanation; the recipient list appears only in the
+    mailto URI and the clipboard — a scan of logs and written files after a full send flow finds no
+    address; BCC is the default and the test fails if recipients land in To:. All against
+    fictional data.
+22. **Asset-provenance gate (M52/M65/M67, mirroring gate 11):** every bundled non-font asset — the
+    Hunspell dictionary, each emblem/ornament file, the PDFium native library — has a manifest
+    entry with its SHA-256 and a licence or provenance file committed beside it; a bundled asset
+    with no manifest entry fails the build, exactly as an unmanifested TTF does. The licence texts
+    ship **inside the installer**, the M14 precedent.
 
 ## 13. Remaining open items (status as at 2026-07-27)
 
@@ -2645,7 +3064,10 @@ The one item a machine could take on is the last defect named after the list, an
       from this machine — a future session should not spend time re-probing for it.
 - [!] **The application has no licence file.** Choosing one is the owner's call, so M15 documented
       the absence rather than inventing a licence; until one exists the README grants no permission
-      to copy, modify or redistribute. `docs/M15-spec.md` §9.
+      to copy, modify or redistribute. `docs/M15-spec.md` §9. **The decision is made (2026-08-08):
+      free for non-profit use; profit-making use requires a separate licence.** §11 M68 is now the
+      scheduled home for the work (candidate text: PolyForm Noncommercial 1.0.0, presented for the
+      owner's final sign-off); this item strikes through when M68 ships.
 - [!] **The real-world test** (§12 item 4): recreate the July 2026 issue in the app and have a
       committee member compare it against `Examples/July 2026.pdf` side by side. Needs the user.
 - [!] **M16's by-eye pass** (§12 item 13): Light, Dark and High Contrast at 100% **and 200%**,
@@ -2686,6 +3108,10 @@ The one item a machine could take on is the last defect named after the list, an
       and made the previews transparent, which is what the defects asked for; whether the result
       looks right at 200% in High Contrast is a judgement. It folds into M16's by-eye item above
       rather than standing as a second sitting.
+- [!] **The bundled "Words for hard news" texts need the owner's voice review before M54 ships**
+      (added 2026-08-08, from the product-owner pass). A memorial paragraph is lodge voice, not app
+      voice; the shipped snippets are drafts until the owner has read them aloud and agreed. Blocked
+      on the owner; §11 M54 carries the acceptance criterion.
 
 Of the three known defects recorded here, **the two cosmetic ones are fixed (2026-07-27)** — they
 turned out to be App-only chrome fixes that re-bake no snapshot baseline, so closing them opened no
@@ -2718,7 +3144,9 @@ Each stays out of §11 for the stated reason; none is forgotten, none is schedul
   member needs it.
 - **Spell check** — a dictionary dependency and its licensing are owner decisions; the committee
   proofreads today. Its own small milestone if wanted (squiggle adornment + suggestion menu,
-  App/Editing only).
+  App/Editing only). **Scheduled as M52 (2026-08-08)** — the product-owner pass is the owner's word
+  this entry was waiting for; §11 M52 is now the authority and grew the scope from a squiggle menu
+  to the one-word-per-screen review wizard.
 - **Rulers, guides, snap-to-grid** — templates are the layout system for this audience; free-form
   layout aids cut against the premise. Snapping did **not** ride along with M21's align (frame
   snapping has existed since M5's `SnapEngine`; a grid is the separate idea, and still unscheduled).
