@@ -2842,6 +2842,16 @@ public partial class MainWindow : Window
                 continue;
             }
 
+            // M45, review §14.3: there was not one ToolTip.Tip anywhere in the App project. The
+            // toolbar is where it earns its keep — the buttons are short words beside a glyph, and
+            // the catalog already holds a sentence saying what each command DOES, written for this
+            // audience. Nothing new is authored here; the tooltip is the description that a screen
+            // reader has been getting since M11, finally shown to people who use a mouse.
+            if (ActionCatalog.TryGet(actionId, out EditorAction? action))
+            {
+                ToolTip.SetTip(button, TooltipFor(action));
+            }
+
             if (ActionIcons.ForAction(actionId) is not { } glyph)
             {
                 continue;
@@ -2849,6 +2859,22 @@ public partial class MainWindow : Window
 
             button.Content = new IconText(glyph, label, labelSize: 16);
         }
+    }
+
+    /// <summary>
+    /// M45: the sentence a toolbar button shows on hover — what the command does, and the keys that
+    /// do it without the mouse.
+    ///
+    /// <para>The shortcut is included deliberately. A tooltip is read by somebody who is already
+    /// using the mouse, and it is the one moment they are looking straight at a place that can
+    /// teach them the keyboard instead.</para>
+    /// </summary>
+    internal static string TooltipFor(EditorAction action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        return action.DisplayGesture is { Length: > 0 } keys
+            ? $"{action.ShortDescription} ({keys})"
+            : action.ShortDescription;
     }
 
     /// <summary>

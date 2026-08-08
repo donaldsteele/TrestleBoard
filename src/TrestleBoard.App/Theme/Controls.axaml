@@ -148,6 +148,21 @@
   </Style>
 
   <!--
+    M45. Tooltips are new in this milestone, and PLAN.md §6's 16pt floor applies to them like
+    everything else: a hint that explains a button, in text smaller than the button, would be the
+    one part of the window this audience cannot read. They also wrap, because the catalog's
+    descriptions are sentences rather than labels.
+  -->
+  <Style Selector="ToolTip">
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="MaxWidth" Value="420" />
+  </Style>
+
+  <Style Selector="ToolTip /template/ ContentPresenter">
+    <Setter Property="TextBlock.TextWrapping" Value="Wrap" />
+  </Style>
+
+  <!--
     THE WINDOW ICON. There was no Icon= anywhere in src/ and no AvaloniaResource item in any .csproj:
     trestleboard.png reached the Windows installer, the AppImage and the .icns, and never the running
     application, which showed the platform's generic placeholder on all thirteen windows.

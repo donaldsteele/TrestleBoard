@@ -2332,6 +2332,26 @@ honestly: the two new tests could not be made to fail cleanly against reverted s
 
 ---
 
+### M45 - Tooltips, at last (delivered 2026-08-08, `docs/M45-spec.md`)
+
+`grep -rn "ToolTip" src/TrestleBoard.App/` returned nothing at all - not a sparse set, none. The
+toolbar is where that cost the most: nine buttons that are a glyph and one or two words.
+
+**Nothing new was written.** The catalog has held a sentence per command since M11, in this
+audience's words, already read aloud to screen-reader users; the tooltip is that sentence, finally
+shown to people who use a mouse. The shortcut is appended deliberately - a tooltip is read by
+somebody already using the mouse, and it is the one moment they are looking at a place that can
+teach them the keyboard. Because the text comes from the catalog rather than being authored beside
+it, there is no second copy to drift.
+
+Section 6's 16pt floor reaches tooltips too, and they wrap, because descriptions are sentences.
+
+Not done and recorded: no tooltips on menu items (already full sentences, with the unavailable
+reason in HelpText), on the action panel (which prints the description under the title), or on the
+canvas (grouped with rulers and guides, and hover text over a page is the wrong shape anyway).
+
+---
+
 ## 12. Verification (end-to-end)
 
 1. **Per-milestone:** `dotnet build && dotnet test` locally + 3-OS CI matrix green; cavecrew-reviewer findings addressed; snapshot diffs reviewed as CI artifacts.
@@ -2891,7 +2911,8 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   rows, and the canvas no longer deletes behind the runner's back.
 - Assorted: ~~the M23 stretched-picture dismissal is session-only and keyed by frame aspect, so the
   note returns after any reshape or restart~~ (**fixed at M43** — it lives in the recipe now, and
-  returning after a RESHAPE was always right); no tooltips exist anywhere in the App project; no
+  returning after a RESHAPE was always right); ~~no tooltips exist anywhere in the App project~~ (**fixed at
+  M45** - the toolbar shows the catalog's own sentence, plus the shortcut); no
   rulers, guides, margin display, or grid — snap guides appear only mid-drag; page change clears
   the selection; ~~the context menu uses
   static titles where the panel uses context-aware ones ("Put a picture here…" over a filled

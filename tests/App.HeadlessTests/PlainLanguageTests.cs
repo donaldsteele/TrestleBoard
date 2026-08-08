@@ -174,4 +174,57 @@ public sealed class PlainLanguageTests
             .Replace("▸", string.Empty, StringComparison.Ordinal)
             .Replace("…", string.Empty, StringComparison.Ordinal)
             .Trim();
+
+    /// <summary>
+    /// M45, review §14.3: there was not one <c>ToolTip.Tip</c> anywhere in the App project.
+    ///
+    /// <para>The toolbar is where a tooltip earns its keep — short words beside a glyph, and a
+    /// catalog that already holds a sentence saying what the command does, written for this
+    /// audience. Nothing new was authored: the tooltip is the description a screen reader has been
+    /// getting since M11, finally shown to people who use a mouse.</para>
+    /// </summary>
+    [Fact]
+    public async Task EveryToolbarButtonExplainsItselfOnHover()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenIssueSample();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            var missing = new List<string>();
+            foreach (Button button in window.ToolbarButtons)
+            {
+                if (button.Tag is not string actionId
+                    || !ActionCatalog.TryGet(actionId, out EditorAction? action))
+                {
+                    continue;
+                }
+
+                if (ToolTip.GetTip(button) as string is not { Length: > 0 } tip)
+                {
+                    missing.Add(actionId);
+                    continue;
+                }
+
+                // The catalog's own sentence, not a second one written beside it that could drift.
+                Assert.Contains(action.ShortDescription, tip, StringComparison.Ordinal);
+
+                // And the keys, because a tooltip is read by somebody already using the mouse —
+                // the one moment they are looking at a place that can teach them the keyboard.
+                if (action.DisplayGesture is { Length: > 0 } keys)
+                {
+                    Assert.Contains(keys, tip, StringComparison.Ordinal);
+                }
+            }
+
+            Assert.True(
+                missing.Count == 0,
+                "these toolbar buttons say nothing on hover: " + string.Join(", ", missing));
+
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
 }
