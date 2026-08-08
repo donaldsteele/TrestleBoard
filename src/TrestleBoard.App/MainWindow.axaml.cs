@@ -1342,6 +1342,201 @@ public partial class MainWindow : Window
         RefreshActions();
     }
 
+    // ---- Words for hard news (PLAN.md §11 M54) ------------------------------------------------
+
+    private PhraseShelf? _phrases;
+
+    /// <summary>Built on first use, like the spell checker: most sittings never open it.</summary>
+    internal PhraseShelf Phrases => _phrases ??= new PhraseShelf();
+
+    /// <summary>Lets a test point the shelf at a temporary file instead of the real AppData one.</summary>
+    internal void UsePhraseShelfForTest(PhraseShelf shelf) => _phrases = shelf;
+
+    /// <summary>Set by tests in place of the window, which cannot be driven headlessly.</summary>
+    internal string? PhraseAnswerForTest { get; set; }
+
+    /// <summary>
+    /// M54: choose a paragraph, fill its blanks, put it in as ordinary editable writing.
+    /// </summary>
+    internal async Task InsertPhraseAsync()
+    {
+        if (_editor is not { IsActive: true })
+        {
+            return;
+        }
+
+        string? words = PhraseAnswerForTest;
+        if (words is null)
+        {
+            if (SuppressStartupForTest)
+            {
+                return;
+            }
+
+            var window = new PhraseWindow(Phrases.All());
+            await window.ShowDialog(this);
+            if (!window.Confirmed)
+            {
+                return;
+            }
+
+            words = window.Words;
+        }
+
+        if (string.IsNullOrWhiteSpace(words))
+        {
+            return;
+        }
+
+        // InsertBlock, not InsertText: a bare insert coalesces with the typing either side of it,
+        // so somebody who added a memorial, typed a sentence after it and pressed Ctrl+Z would lose
+        // both. This is one undo step, named after the thing they chose.
+        _editor.InsertBlock(words, "Add words for hard news");
+        Announce(
+            "The words are in your newsletter. They are ordinary writing now — change any of them "
+            + "you like.");
+        RefreshSpellingMarks();
+        RefreshActions();
+    }
+
+    /// <summary>
+    /// M54: keep the highlighted words on the shelf. The committee's own wording for a hard moment
+    /// is usually better than ours, and next year they will want it again.
+    /// </summary>
+    internal async Task SavePhraseAsync()
+    {
+        if (_editor is not { IsActive: true } editor || _session is null)
+        {
+            return;
+        }
+
+        string words = Core.Text.StoryNavigator.GetRangeText(
+            _session.Document.Stories.Find(s => s.Id == editor.Selection.Range.StoryId)
+                ?? throw new InvalidOperationException("The highlighted writing is not in a story."),
+            editor.Selection.Range);
+        if (string.IsNullOrWhiteSpace(words))
+        {
+            Announce("Highlight the words you would like to keep first.");
+            return;
+        }
+
+        string? title = PhraseTitleAnswerForTest;
+        if (title is null)
+        {
+            if (SuppressStartupForTest)
+            {
+                return;
+            }
+
+            title = await AskForTextAsync(
+                "Keep these words for next time",
+                "What would you like to call them? You will pick them from a list by this name.",
+                FirstWordsOf(words));
+        }
+
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return;
+        }
+
+        Phrases.Save(title, words);
+        Announce(Phrases.CouldNotBeSaved
+            ? $"“{title}” is on your shelf for now, but TrestleBoard could not write it down, so "
+              + "it will be gone when you close the program."
+            : $"“{title}” is on your shelf. You will find it under Insert, “Words for hard news”.");
+        RefreshActions();
+    }
+
+    /// <summary>Set by tests in place of the naming dialog.</summary>
+    internal string? PhraseTitleAnswerForTest { get; set; }
+
+    private static string FirstWordsOf(string text)
+    {
+        string flat = string.Join(' ', text.Split(
+            (char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        return flat.Length <= 40 ? flat : flat[..40].TrimEnd() + "…";
+    }
+
+    /// <summary>
+    /// A one-question dialog: a heading, a sentence, a box and two buttons. Returns null when the
+    /// user changed their mind.
+    /// </summary>
+    private async Task<string?> AskForTextAsync(string title, string question, string suggested)
+    {
+        string? answer = null;
+        var dialog = new Window
+        {
+            Title = title,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+        };
+
+        var box = new TextBox
+        {
+            Text = suggested,
+            FontSize = 20,
+            MinHeight = 44,
+            MinWidth = 460,
+            MaxWidth = 520,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+        };
+        Avalonia.Automation.AutomationProperties.SetName(box, question);
+
+        var keep = new Button
+        {
+            Content = "Keep them",
+            FontSize = 18,
+            MinHeight = 44,
+            MinWidth = 160,
+            IsDefault = true,
+        };
+        keep.Action();
+        var never = new Button
+        {
+            Content = "Cancel",
+            FontSize = 18,
+            MinHeight = 44,
+            MinWidth = 160,
+            IsCancel = true,
+        };
+        never.Action();
+        Avalonia.Automation.AutomationProperties.SetName(keep, "Keep them");
+        Avalonia.Automation.AutomationProperties.SetName(never, "Cancel");
+
+        keep.Click += (_, _) => { answer = box.Text; dialog.Close(); };
+        never.Click += (_, _) => dialog.Close();
+
+        dialog.Content = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(24),
+            Spacing = 16,
+            Children =
+            {
+                new Avalonia.Controls.TextBlock
+                {
+                    Text = question,
+                    FontSize = 20,
+                    FontWeight = Avalonia.Media.FontWeight.Bold,
+                    MaxWidth = 520,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                box,
+                new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Horizontal,
+                    Spacing = 12,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                    Children = { keep, never },
+                },
+            },
+        };
+
+        Avalonia.Automation.AutomationProperties.SetName(dialog, title);
+        await dialog.ShowDialog(this);
+        return answer;
+    }
+
     // ---- Check my spelling (PLAN.md §11 M52) --------------------------------------------------
 
     private SpellingWindow? _spellingWindow;

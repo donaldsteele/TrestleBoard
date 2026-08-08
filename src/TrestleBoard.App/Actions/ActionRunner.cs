@@ -75,6 +75,8 @@ internal sealed class ActionRunner
 
             // ---- Putting things on the page --------------------------------------------------------
             [ActionId.AddTextFrame] = Sync(window.AddTextFrame),
+            [ActionId.InsertPhrase] = _ => window.InsertPhraseAsync(),
+            [ActionId.SavePhrase] = _ => window.SavePhraseAsync(),
             [ActionId.InsertPhoto] = _ => window.InsertPhotoAsync(),
 
             // ---- The selected thing ----------------------------------------------------------------

@@ -103,6 +103,15 @@ public static class ActionId
 
     // ---- Putting things on the page -----------------------------------------------------------
     public const string AddTextFrame = "insert.textFrame";
+
+    /// <summary>
+    /// M54: a ready-made paragraph for a moment that is hard to write — a memorial, a
+    /// sickness-and-distress entry. Blank-page paralysis is worst under grief.
+    /// </summary>
+    public const string InsertPhrase = "insert.phrase";
+
+    /// <summary>M54: keep the words you have just written, to reach for again next time.</summary>
+    public const string SavePhrase = "insert.savePhrase";
     public const string InsertPhoto = "insert.photo";
     public const string InsertOfficers = "insert.officersTable";
     public const string InsertBirthdays = "insert.birthdayList";

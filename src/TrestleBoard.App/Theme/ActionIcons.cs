@@ -208,6 +208,11 @@ internal static class ActionIcons
         // of the two is which.
         [ActionId.ExportDraftPdf] = "would wear export-pdf's glyph, which is the confusion it removes",
         [ActionId.PrintPdf] = "offered on a card straight after the export, where the words are the point",
+
+        // M54. There is no picture of "a memorial notice" that is not either grim or glib, and the
+        // list this opens names each paragraph in the words a person would use for it.
+        [ActionId.InsertPhrase] = "no glyph for a memorial is either dignified or clear",
+        [ActionId.SavePhrase] = "would wear the save disk, which already means the newsletter",
         [ActionId.ShowExampleIssue] = "read once, never hunted for",
     };
 

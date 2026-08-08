@@ -19,6 +19,8 @@ roster*.xlsx
 # this file is a list of the lodge's surnames. It lives in %AppData%, but it is a plain text file
 # somebody may well copy somewhere to look at, and the successor pack (M64) writes one too.
 personal-dictionary*.txt
+# Saved phrases (M54) carry real names — a memorial the committee keeps is a real brother.
+phrases.json
 *.tbpack
 
 # ── Build output ─────────────────────────────────────────────────

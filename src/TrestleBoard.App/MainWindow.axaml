@@ -182,6 +182,13 @@
                   Click="OnActionClicked" AutomationProperties.Name="Add a box for writing" />
         <MenuItem Header="A _picture…" Tag="insert.photo" InputGesture="Ctrl+Shift+P"
                   Click="OnActionClicked" AutomationProperties.Name="Insert a picture" />
+        <!-- M54: with the other two things you put into the writing itself, above the widgets. -->
+        <MenuItem Header="W_ords for hard news…" Tag="insert.phrase"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Words for hard news, such as a memorial" />
+        <MenuItem Header="_Keep these words for next time…" Tag="insert.savePhrase"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Keep the highlighted words for next time" />
         <Separator />
         <MenuItem Header="_Lodge officers" Tag="insert.officersTable"
                   Click="OnActionClicked"

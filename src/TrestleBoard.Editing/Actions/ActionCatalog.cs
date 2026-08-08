@@ -143,6 +143,12 @@ public static class ActionCatalog
             ActionGroup.Text),
 
         // ---- Putting things on the page ---------------------------------------------------------
+        new(ActionId.InsertPhrase, "Words for hard news…",
+            "Offers ready-made wording for a memorial, a get-well message and other hard moments.",
+            ActionGroup.Insert),
+        new(ActionId.SavePhrase, "Keep these words for next time…",
+            "Saves the writing you have highlighted, so you can use it again in a later issue.",
+            ActionGroup.Insert),
         new(ActionId.AddTextFrame, "Add a box for writing", "Puts an empty box on the page for you to write in.",
             ActionGroup.Insert, "Ctrl+Shift+T", IsPrimary: true),
         new(ActionId.InsertPhoto, "Insert a picture…", "Puts a photograph on the page.",
@@ -490,6 +496,18 @@ public static class ActionCatalog
             ActionId.Bold or ActionId.Italic or ActionId.ParagraphStyle => context.IsEditingText
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(NeedsText),
+
+            // M54. Both need somewhere for the words to go, or somewhere to take them from, and
+            // that is the caret — the same condition Bold has, said in this command's own terms.
+            ActionId.InsertPhrase => context.IsEditingText
+                ? ActionAvailability.Available
+                : ActionAvailability.NotApplicable(
+                    "Click into some writing first, and the words will go in where the cursor is."),
+            ActionId.SavePhrase => context.HasTextSelection
+                ? ActionAvailability.Available
+                : ActionAvailability.NotApplicable(
+                    "Highlight the words you would like to keep first, then this saves them to "
+                    + "reach for again next time."),
 
             // ---- Fonts and sizes (M14) ------------------------------------------------------------
             // Style-first: these three act on the kind of writing the caret is in, so they need a

@@ -50,6 +50,12 @@ public static class AppPaths
     /// </summary>
     public static string PersonalDictionaryFile => Path.Combine(Root, "personal-dictionary.txt");
 
+    /// <summary>
+    /// Paragraphs the user saved to the phrase shelf (M54). Real personal data: a memorial the
+    /// committee keeps will carry a real name, so §0 rule 7 applies here too.
+    /// </summary>
+    public static string PhraseShelfFile => Path.Combine(Root, "phrases.json");
+
     /// <summary>Puts the root back to the default. For tests that set it.</summary>
     public static void ResetRootToDefault() => _root = null;
 }

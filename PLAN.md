@@ -2631,7 +2631,23 @@ fonts; snapshot-tested). No print subsystem is built — the PDF hand-off *is* t
 fallback card is honest when the hand-off fails. No bleed, imposition or print-shop features:
 out of scope, matching the declined-ground spirit of M47.
 
-### M54 — Words for hard news (S)
+### M54 — Words for hard news (S) — **delivered 2026-08-08, `docs/M54-spec.md`** ⚠ tone awaiting owner
+
+> Five paragraphs — memorial, sickness and distress, get-well, newly raised, thank-you to a degree
+> team — chosen from a list, blanks asked one at a time, read back, then inserted as ordinary
+> editable writing. **The wording is a draft: PLAN.md's acceptance requires the owner to review the
+> tone before it ships, and `docs/M54-spec.md` §3 sets out the three choices that are the owner's to
+> confirm** (the "Celestial Lodge above" usage, naming the Almoner, and the memorial's claim of many
+> years' service). The machinery is finished either way.
+>
+> A blank may be left empty on purpose — a memorial is often written before the date is settled — and
+> what prints is a line of underscores rather than `{date}`, which would read as the program having
+> gone wrong.
+>
+> **The map found a defect before a line of the window was written:** a bare `InsertTextCommand`
+> coalesces with the typing either side of it, so inserting a memorial, typing a sentence and
+> pressing Ctrl+Z would have taken back both. `TextEditorController.InsertBlock` wraps the insert in
+> a composite, which does not merge, and names the undo after the thing the user chose.
 
 **Goal.** The committee re-drafts emotionally difficult wording every month — a memorial, a
 sickness-and-distress entry — or digs through old issues to copy it. Blank-page paralysis is worst

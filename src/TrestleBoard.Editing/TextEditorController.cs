@@ -568,6 +568,60 @@ public sealed class TextEditorController
         }
     }
 
+    /// <summary>
+    /// Puts a whole block of ready-made words in at the caret, as ONE undo step of its own
+    /// (PLAN.md §11 M54).
+    ///
+    /// <para>Not <see cref="InsertText"/>, and the difference matters. A bare
+    /// <c>InsertTextCommand</c> coalesces with the typing either side of it — which is right for
+    /// typing, where a burst of keystrokes is one thing the user did, and wrong for this: somebody
+    /// who inserts a memorial notice, types a sentence after it and presses Ctrl+Z means "take back
+    /// the sentence", not "take back the memorial as well".</para>
+    ///
+    /// <para>The composite is also what lets the undo be named after the thing the user chose,
+    /// which is what they will be looking for when they change their mind.</para>
+    /// </summary>
+    public void InsertBlock(string text, string undoLabel)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(undoLabel);
+        if (!IsActive)
+        {
+            return;
+        }
+
+        string sanitized = Sanitize(text);
+        if (sanitized.Length == 0)
+        {
+            return;
+        }
+
+        TextRange range = _selection.Range;
+        TextPosition at = range.Start;
+        string[] chunks = sanitized.Split('\n');
+        var children = new List<IDocumentCommand>();
+        if (!range.IsEmpty)
+        {
+            children.AddRange(TextEditBuilder.BuildDeleteRange(CurrentStory(), range));
+        }
+
+        if (chunks.Length == 1)
+        {
+            children.Add(new InsertTextCommand(at.StoryId, at.ParagraphIndex, at.Offset, chunks[0]));
+        }
+        else
+        {
+            children.AddRange(TextEditBuilder.BuildMultiParagraphInsert(CurrentStory(), at, chunks));
+        }
+
+        _session.Execute(new CompositeCommand(
+            undoLabel,
+            new ChangeScope(ChangeKind.StoryStructure, StoryId: at.StoryId),
+            children));
+        SetCaret(CaretPosition.Leading(new TextPosition(
+            at.StoryId, at.ParagraphIndex + chunks.Length - 1, chunks[^1].Length)));
+        RequestReveal();
+    }
+
     private void PasteText(string sanitized)
     {
         TextRange range = _selection.Range;
