@@ -42,13 +42,26 @@ public static class FrameOverlayRenderer
     public const uint HandleFillArgb = 0xFFFFFFFF;
     public const uint SnapGuideArgb = 0xFFE5308C;
     public const uint OversetArgb = 0xFFC62828;
+
+    /// <summary>
+    /// M43: what the overset badge says, in the words the status bar and the action panel already
+    /// use for it. Three words rather than a sentence, because it is drawn beside a frame edge and
+    /// has to fit; the sentence that says what to DO about it stays in the status bar.
+    /// </summary>
+    public const string OversetLabel = "does not fit";
     public const uint LinkTargetArgb = 0x662A6FCF;
 
+    /// <param name="labelTypeface">
+    /// M43: the face the "does not fit" label is drawn in. Optional, and null means the badge alone
+    /// — the PDF export and the snapshot suite draw no overlay at all, and a renderer that DEMANDED
+    /// a font to draw editor chrome would be asking every caller for something only one of them has.
+    /// </param>
     public static void Draw(
         SKCanvas canvas,
         FrameOverlay overlay,
         float overlayScale,
-        FrameOverlayColours? colours = null)
+        FrameOverlayColours? colours = null,
+        SKTypeface? labelTypeface = null)
     {
         ArgumentNullException.ThrowIfNull(canvas);
         ArgumentNullException.ThrowIfNull(overlay);
@@ -86,7 +99,7 @@ public static class FrameOverlayRenderer
 
         foreach (RectPt overset in overlay.OversetRects)
         {
-            DrawOversetBadge(canvas, overset, overlayScale, palette);
+            DrawOversetBadge(canvas, overset, overlayScale, palette, labelTypeface);
         }
 
         if (overlay.SelectedRect is not { } rect)
@@ -135,9 +148,26 @@ public static class FrameOverlayRenderer
         }
     }
 
-    /// <summary>Red square with a white "+" hung off the bottom-right corner (InDesign convention).
-    /// Colour is never the only signal — the shell also shows a plain-language status line.</summary>
-    private static void DrawOversetBadge(SKCanvas canvas, RectPt frame, float overlayScale, FrameOverlayColours palette)
+    /// <summary>
+    /// Red square with a white "+" hung off the bottom-right corner (InDesign convention), and — M43
+    /// — the words "does not fit" beside it.
+    ///
+    /// <para>Colour was never the only signal: the shell has shown a plain-language status line
+    /// since M17. But the review (§14.4) is right that a 12-pixel glyph at the edge of a frame, on a
+    /// page that already has ink all over it, is not something this audience will notice, and the
+    /// status bar only says it while nothing else is talking. The badge is unchanged and the WORDS
+    /// are the fix — six more pixels of red square would not have been. They sit on a plate so they
+    /// stay readable over whatever the page is showing.</para>
+    ///
+    /// <para>Both are sized in SCREEN points via <paramref name="overlayScale"/>, so zooming out to
+    /// see the whole page does not shrink the one thing that says the page is wrong.</para>
+    /// </summary>
+    private static void DrawOversetBadge(
+        SKCanvas canvas,
+        RectPt frame,
+        float overlayScale,
+        FrameOverlayColours palette,
+        SKTypeface? labelTypeface)
     {
         float side = 12f * overlayScale;
         var badge = new SKRect(frame.Right - side, frame.Bottom, frame.Right, frame.Bottom + side);
@@ -156,6 +186,41 @@ public static class FrameOverlayRenderer
         float inset = side * 0.25f;
         canvas.DrawLine(badge.Left + inset, badge.MidY, badge.Right - inset, badge.MidY, glyph);
         canvas.DrawLine(badge.MidX, badge.Top + inset, badge.MidX, badge.Bottom - inset, glyph);
+
+        if (labelTypeface is null)
+        {
+            return;
+        }
+
+        using var font = new SKFont(labelTypeface, 13f * overlayScale);
+        float width = font.MeasureText(OversetLabel);
+        float padding = 4f * overlayScale;
+        // The plate is taller than the badge, because the words are the part that has to be read.
+        float half = ((font.Metrics.Descent - font.Metrics.Ascent) / 2f) + padding;
+        var plate = new SKRect(
+            badge.Left - width - (padding * 3f),
+            badge.MidY - half,
+            badge.Left - padding,
+            badge.MidY + half);
+
+        using var plateFill = new SKPaint { Color = new SKColor(palette.HandleFill), Style = SKPaintStyle.Fill };
+        using var plateEdge = new SKPaint
+        {
+            Color = new SKColor(palette.Overset),
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = 1f * overlayScale,
+        };
+        canvas.DrawRect(plate, plateFill);
+        canvas.DrawRect(plate, plateEdge);
+
+        using var text = new SKPaint { Color = new SKColor(palette.Overset), IsAntialias = true };
+        SKFontMetrics metrics = font.Metrics;
+        canvas.DrawText(
+            OversetLabel,
+            plate.Left + padding,
+            plate.MidY - ((metrics.Ascent + metrics.Descent) / 2f),
+            font,
+            text);
     }
 
     /// <summary>Small arrow marking "this frame continues in another frame".</summary>

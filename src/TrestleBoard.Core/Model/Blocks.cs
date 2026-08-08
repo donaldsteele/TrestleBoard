@@ -97,11 +97,27 @@ public sealed class ImageRecipe
     /// </summary>
     public bool AutoLevelsPerChannel { get; set; }
 
+    /// <summary>
+    /// M43: the frame shape the user has already been shown M23's "this may look stretched" note
+    /// for, or null if they have never dismissed it.
+    ///
+    /// <para>It lives in the DOCUMENT because the note is about this picture in this frame, and the
+    /// user's "I know" was about that too. It was a dictionary in the controller, so it lasted until
+    /// the app closed and the note came back on the next open, at which point the app was arguing
+    /// with somebody who had already answered (review §14.3).</para>
+    ///
+    /// <para>Still keyed by aspect, which keeps M23's rule intact: reshape the frame and the note
+    /// returns, because that is a NEW mismatch rather than the one that was dismissed. Additive and
+    /// nullable, so documents written before M43 deserialize unchanged.</para>
+    /// </summary>
+    public float? StretchNoticeDismissedAtAspect { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtraProperties { get; set; }
 
     public ImageRecipe Clone() => new()
     {
+        StretchNoticeDismissedAtAspect = StretchNoticeDismissedAtAspect,
         CropNormalized = CropNormalized,
         RotationSteps = RotationSteps,
         Brightness = Brightness,

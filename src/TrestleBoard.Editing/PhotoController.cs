@@ -40,7 +40,6 @@ public sealed class PhotoController
     /// session-only, like the rest of the notice. A later resize changes the frame's aspect again,
     /// which is what brings the notice back without needing to touch the document model.
     /// </summary>
-    private readonly Dictionary<string, float> _dismissedStaleCropFrameAspect = new(StringComparer.Ordinal);
 
     public PhotoController(DocumentSession session, DocumentRenderSource layout, IPhotoAssetStore assets)
     {
@@ -412,7 +411,9 @@ public sealed class PhotoController
             return false;
         }
 
-        return !_dismissedStaleCropFrameAspect.TryGetValue(blockId!, out float dismissedAt)
+        // M43: read from the recipe, which the document carries and the file keeps, rather than
+        // from a dictionary that died with the session.
+        return frame.Recipe.StretchNoticeDismissedAtAspect is not { } dismissedAt
             || Math.Abs(dismissedAt - frameAspect) > 0.0001f;
     }
 
@@ -424,9 +425,13 @@ public sealed class PhotoController
             : null;
 
     /// <summary>
-    /// Hides the notice until the frame changes shape again. Read-only and non-blocking by design —
-    /// this never touches the crop or the recipe, only which frame-shape the notice has already
-    /// been shown for.
+    /// Hides the notice until the frame changes shape again. It still never touches the crop — M23's
+    /// whole point is that nothing is re-cropped behind the user's back — but M43 makes it an
+    /// ordinary recorded change rather than a note in a dictionary.
+    ///
+    /// <para>So it goes on the undo stack and into the file, which is what "I have already seen
+    /// this" has to survive to be worth saying. The cost is honest and small: dismissing the note
+    /// marks the newsletter as edited, because it now genuinely is.</para>
     /// </summary>
     public bool DismissStaleCropNotice(string blockId)
     {
@@ -435,7 +440,9 @@ public sealed class PhotoController
             return false;
         }
 
-        _dismissedStaleCropFrameAspect[blockId] = frame.FrameRect.Width / frame.FrameRect.Height;
+        ImageRecipe recipe = frame.Recipe.Clone();
+        recipe.StretchNoticeDismissedAtAspect = frame.FrameRect.Width / frame.FrameRect.Height;
+        Execute(blockId, recipe, "Hide the stretched-picture note");
         Raise();
         return true;
     }

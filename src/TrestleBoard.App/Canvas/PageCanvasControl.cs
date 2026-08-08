@@ -318,7 +318,8 @@ public sealed class PageCanvasControl : Control
 
         context.Custom(new PageDrawOperation(
             new Rect(Bounds.Size), _source, PageIndex, Zoom, PagePaddingPx, selection, caret,
-            frameOverlay, pageFrames, fontOverrides, BackdropColour(), OverlayColours()));
+            frameOverlay, pageFrames, fontOverrides, BackdropColour(), OverlayColours(),
+            OverlayLabelFace));
 
         DrawAdornments(context);
     }
@@ -486,6 +487,16 @@ public sealed class PageCanvasControl : Control
     /// against the outline), and picking them one at a time out of the palette would let that
     /// relationship drift.</para>
     /// </summary>
+    /// <summary>
+    /// M43: the face the overset label is drawn in. Set by the shell, which owns the bundled font
+    /// store — the canvas has no font of its own, and giving it one would be a second store loading
+    /// the same files.
+    ///
+    /// <para>Null draws the badge without words, which is what the tests that construct a bare
+    /// canvas get, and is why it is a property rather than a constructor argument.</para>
+    /// </summary>
+    internal SKTypeface? OverlayLabelFace { get; set; }
+
     private FrameOverlayColours OverlayColours() =>
         ActualThemeVariant == AppTheme.HighContrast
             ? FrameOverlayColours.HighContrast
@@ -1297,7 +1308,8 @@ public sealed class PageCanvasControl : Control
         IReadOnlyList<FrameLayout> pageFrames,
         IReadOnlyList<SourceSpan> fontOverrides,
         SKColor backdrop,
-        FrameOverlayColours overlayColours) : ICustomDrawOperation
+        FrameOverlayColours overlayColours,
+        SKTypeface? overlayLabelFace) : ICustomDrawOperation
     {
         public Rect Bounds => bounds;
 
@@ -1357,7 +1369,11 @@ public sealed class PageCanvasControl : Control
 
                 // Frame chrome on top of everything, sized in screen points.
                 FrameOverlayRenderer.Draw(
-                    canvas, frameOverlay, (float)(1d / Math.Max(zoom, 0.01)), overlayColours);
+                    canvas,
+                    frameOverlay,
+                    (float)(1d / Math.Max(zoom, 0.01)),
+                    overlayColours,
+                    overlayLabelFace);
             }
             catch (Exception e) when (e is ObjectDisposedException
                 or ArgumentOutOfRangeException

@@ -515,6 +515,32 @@ public sealed class PhotoControllerTests : IDisposable
         Assert.True(_photos.CropIsStale(id));
     }
 
+    /// <summary>
+    /// M43, review §14.3: "I have already seen this" outlives the session.
+    ///
+    /// <para>The dismissal was a dictionary in this controller, so it died when the app closed and
+    /// the note came back on the next open — the app arguing with somebody who had already
+    /// answered. It now lives in the recipe, which the document carries and the file keeps.</para>
+    /// </summary>
+    [Fact]
+    public void DismissingTheNoticeIsRememberedInTheDocumentRatherThanTheSession()
+    {
+        string id = InsertSquareFramedPhoto();
+        _photos.FixPhoto(id);
+        _session.Execute(new ResizeBlockCommand(id, new RectPt(100f, 100f, 400f, 100f)));
+        Assert.True(_photos.DismissStaleCropNotice(id));
+
+        // The document itself now holds the answer — which is what a save writes and an open reads.
+        var frame = (ImageFrame)_session.Document.FindBlock(id).Block;
+        Assert.NotNull(frame.Recipe.StretchNoticeDismissedAtAspect);
+        Assert.Equal(4f, frame.Recipe.StretchNoticeDismissedAtAspect!.Value, 3);
+
+        // And it is an ordinary recorded change, so it can be taken back like any other.
+        Assert.True(_session.CanUndo);
+        _session.Undo();
+        Assert.True(_photos.CropIsStale(id));
+    }
+
     /// <summary>No crop has ever been committed, so there is nothing for a resize to make stale.</summary>
     [Fact]
     public void CropIsNeverStaleBeforeAnyCropIsSet()

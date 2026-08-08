@@ -2282,6 +2282,33 @@ one is chosen, so the reason is READ rather than inferred from a grey box.
 
 ---
 
+### M43 - The overset marker says what it means, and "I know" survives closing the app (delivered 2026-08-08, `docs/M43-spec.md`)
+
+Two findings that are both about the app telling somebody something they cannot act on.
+
+The overset marker has been a 12-pixel red square with a white "+" since M5 - the InDesign
+convention, which is the right convention for people who have used InDesign. This committee has not.
+It was never the only signal (M17 added a plain-language status line), but the status bar speaks
+only while nothing else is talking. The badge now carries the words "does not fit" beside it, on a
+plate so they stay readable over whatever the page is showing, sized in screen points so zooming out
+does not shrink the one thing saying the page is wrong.
+
+**The badge itself is unchanged, deliberately.** Growing it was the first thing tried and it moved
+`frame-selection-handles` - a baseline needing a re-bake on three operating systems for six pixels
+of red square. The words are the fix; the square never was.
+
+M23's stretched-picture dismissal lived in a dictionary on `PhotoController`, so it died when the
+app closed and the note came back on the next open, with the app arguing with somebody who had
+already answered. It now lives in `ImageRecipe.StretchNoticeDismissedAtAspect`: still keyed by
+aspect, so reshaping the frame still brings the note back (that is a NEW mismatch); nullable and
+additive, so older documents need no migration; and an ordinary recorded change, so it undoes.
+
+Recorded honestly: both new tests reference API that did not exist before, so reverting the source
+makes them fail to COMPILE rather than fail an assertion - weaker evidence than M39's and M40's. The
+claims that could be checked the strong way are asserted explicitly.
+
+---
+
 ## 12. Verification (end-to-end)
 
 1. **Per-milestone:** `dotnet build && dotnet test` locally + 3-OS CI matrix green; cavecrew-reviewer findings addressed; snapshot diffs reviewed as CI artifacts.
@@ -2837,8 +2864,9 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   **fixed at M27**, with a test comparing every toolbar label against the catalog.
 - ~~Backspace deletes a frame but is absent from `KeyboardMap`~~ — **fixed at M28**: both keys are
   rows, and the canvas no longer deletes behind the runner's back.
-- Assorted: the M23 stretched-picture dismissal is session-only and keyed by frame aspect, so the
-  note returns after any reshape or restart; no tooltips exist anywhere in the App project; no
+- Assorted: ~~the M23 stretched-picture dismissal is session-only and keyed by frame aspect, so the
+  note returns after any reshape or restart~~ (**fixed at M43** — it lives in the recipe now, and
+  returning after a RESHAPE was always right); no tooltips exist anywhere in the App project; no
   rulers, guides, margin display, or grid — snap guides appear only mid-drag; page change clears
   the selection; ~~the context menu uses
   static titles where the panel uses context-aware ones ("Put a picture here…" over a filled
@@ -2873,8 +2901,9 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 - ~~"Turn a quarter" does not say which way~~ — **fixed at M27** ("Turn it right ↻"). There is
   still no counter-clockwise turn; three presses reach it, which is the same trade every phone
   gallery makes.
-- The overset marker is a small glyph at the frame edge, explained only in the status bar — easy to
-  miss at typical zoom for the audience this app serves.
+- ~~The overset marker is a small glyph at the frame edge, explained only in the status bar — easy to
+  miss at typical zoom for the audience this app serves.~~ — **fixed at M43**: the badge carries the
+  words "does not fit" beside it. The badge is deliberately the same size, so no baseline moved.
 - ~~People window: "Save this person" is per-person manual save — switching people with unsaved edits
   risks silent loss; the raised/initiated date field has no format hint though the birthday field
   has one; "Remove this person…" is styled identically to neutral buttons.~~ — **all three fixed at

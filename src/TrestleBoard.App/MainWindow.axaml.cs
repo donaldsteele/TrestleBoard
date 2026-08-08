@@ -3167,6 +3167,12 @@ public partial class MainWindow : Window
             }
         };
         PageCanvas.Source = source;
+
+        // M43: the overset badge says "does not fit" in words beside it, and the words need a face.
+        // The shell owns the bundled store, so it hands one over rather than the canvas loading a
+        // second copy of the same files.
+        PageCanvas.OverlayLabelFace ??= _fonts.Resolve(
+            new FontKey(BundledFonts.BodyFamily, Layout.Fonts.FontWeight.Regular, FontStyleSlant.Normal)).Typeface;
         PageCanvas.Editor = editor;
         PageCanvas.FrameEditor = frames;
         PageCanvas.PageIndex = 0;
