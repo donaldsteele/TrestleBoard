@@ -968,7 +968,9 @@ public partial class MainWindow : Window
             ?? (SuppressStartupForTest ? false : await AskAboutPrintingAsync(draft));
         if (!print)
         {
-            Announce(draft ? "The draft copy is made." : "The PDF is made.");
+            Announce(draft
+                ? "The draft copy is made."
+                : "The PDF is made. When you are ready, choose “Now send it” from the File menu.");
             return;
         }
 
@@ -1341,6 +1343,89 @@ public partial class MainWindow : Window
 
         RefreshActions();
     }
+
+    // ---- Now send it (PLAN.md §11 M56) ---------------------------------------------------------
+
+    /// <summary>Set by tests in place of the card.</summary>
+    internal bool? SendAnswerForTest { get; set; }
+
+    internal MailOutcome? LastMailOutcomeForTest { get; private set; }
+
+    /// <summary>
+    /// M56: hands the finished newsletter to the user's own mail program, with the email group in
+    /// BCC and the subject already written.
+    /// </summary>
+    internal async Task SendItAsync()
+    {
+        if (_package is null)
+        {
+            return;
+        }
+
+        Core.Model.DocumentMetadata meta = _package.Document.Metadata;
+        IReadOnlyList<string> addresses =
+            MailHandoff.AddressesIn(Roster.Book.Members, MemberGroups.ByEmail);
+        int printed = MemberGroups.Members(Roster.Book.Members, MemberGroups.Printed).Count;
+
+        if (addresses.Count == 0 && printed == 0)
+        {
+            await ShowErrorAsync(
+                "Nobody is on a list yet",
+                "TrestleBoard does not know who gets the newsletter. Open People, choose a brother, "
+                + $"and tick “{MemberGroups.ByEmail}” or “{MemberGroups.Printed}”. You only have to "
+                + "do it once.");
+            return;
+        }
+
+        string subject = MailHandoff.Subject(meta.LodgeName, meta.Title, meta.IssueYear, meta.IssueMonth);
+        string fileName = LastExportedPdf is { } path ? Path.GetFileName(path) : "the PDF";
+        string? uri = MailHandoff.BuildUri(addresses, subject, MailHandoff.Body(fileName));
+
+        if (uri is not null && PrintService.Open(uri))
+        {
+            LastMailOutcomeForTest = MailOutcome.Opened;
+            Announce(
+                $"Your mail program is open, with {Count(addresses.Count, "address", "addresses")} "
+                + $"in the blind copy line. Attach {fileName} before you send it."
+                + (printed > 0 ? $" {Count(printed, "brother", "brethren")} still need a printed copy." : ""));
+            return;
+        }
+
+        // Either the link was too long for a mail program to be trusted with, or nothing answered.
+        // Both end the same way: the addresses go on the clipboard, and the card says what to do.
+        LastMailOutcomeForTest = uri is null ? MailOutcome.TooManyForOneLink : MailOutcome.NothingAnswered;
+        await CopyTheAddressesAsync(addresses, subject, fileName, printed, LastMailOutcomeForTest.Value);
+    }
+
+    private async Task CopyTheAddressesAsync(
+        IReadOnlyList<string> addresses,
+        string subject,
+        string fileName,
+        int printed,
+        MailOutcome why)
+    {
+        await new Canvas.AvaloniaTextClipboard(this).SetTextAsync(MailHandoff.ClipboardBatches(addresses));
+
+        string reason = why == MailOutcome.TooManyForOneLink
+            ? $"There are {addresses.Count} addresses, which is more than a mail program will take "
+              + "in one go."
+            : "TrestleBoard could not find a mail program on this computer.";
+
+        await ShowErrorAsync(
+            "The addresses are copied, ready to paste",
+            $"{reason}\n\n"
+            + "They are on the clipboard now. Open your email the way you normally do, start a new "
+            + "message, and paste them into the BLIND COPY line — Bcc — so that nobody sees "
+            + "everybody else's address.\n\n"
+            + $"Subject: {subject}\n"
+            + $"Attach: {fileName}"
+            + (printed > 0
+                ? $"\n\nAnd {Count(printed, "brother", "brethren")} still need a printed copy."
+                : string.Empty));
+    }
+
+    private static string Count(int n, string one, string many) =>
+        n == 1 ? $"1 {one}" : $"{n} {many}";
 
     // ---- Words for hard news (PLAN.md §11 M54) ------------------------------------------------
 

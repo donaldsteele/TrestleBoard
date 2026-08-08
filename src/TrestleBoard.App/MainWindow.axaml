@@ -62,6 +62,10 @@
         <MenuItem Header="Pr_int it" Tag="newsletter.print"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Print the PDF you just made" />
+        <!-- M56: the end of the month's work, and the last thing that used to happen outside the app. -->
+        <MenuItem Header="Now s_end it…" Tag="newsletter.send"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Send the newsletter to the brethren" />
         <Separator />
         <MenuItem Header="E_xit" Tag="newsletter.exit" Click="OnActionClicked"
                   AutomationProperties.Name="Exit TrestleBoard" />

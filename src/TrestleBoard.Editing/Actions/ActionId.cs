@@ -57,6 +57,12 @@ public static class ActionId
     /// subsystem of our own — the hand-off IS the design.
     /// </summary>
     public const string PrintPdf = "newsletter.print";
+
+    /// <summary>
+    /// M56: hands the newsletter to the user's own mail program with the email group in the blind
+    /// copy line. No accounts, no SMTP — the workflow used to end at a file on a disk.
+    /// </summary>
+    public const string SendIt = "newsletter.send";
     public const string Exit = "newsletter.exit";
 
     // ---- Edit ---------------------------------------------------------------------------------

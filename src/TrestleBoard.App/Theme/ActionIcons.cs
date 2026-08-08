@@ -209,6 +209,10 @@ internal static class ActionIcons
         [ActionId.ExportDraftPdf] = "would wear export-pdf's glyph, which is the confusion it removes",
         [ActionId.PrintPdf] = "offered on a card straight after the export, where the words are the point",
 
+        // M56. An envelope would promise that TrestleBoard sends the mail, which it does not and
+        // must not - it hands the message to the program the user already has.
+        [ActionId.SendIt] = "an envelope would promise the app sends it, which it does not",
+
         // M54. There is no picture of "a memorial notice" that is not either grim or glib, and the
         // list this opens names each paragraph in the words a person would use for it.
         [ActionId.InsertPhrase] = "no glyph for a memorial is either dignified or clear",

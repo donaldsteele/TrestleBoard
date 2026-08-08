@@ -2704,7 +2704,17 @@ is absent from the birthday projection in the same run that keeps his record. **
 `roster.json`; full rule-5 treatment, fictional fixtures in `tests/Roster.Tests` only, privacy gate
 re-runs.
 
-### M56 — Send it to the members (M)
+### M56 — Send it to the members (M) — **delivered 2026-08-08, `docs/M56-spec.md`**
+
+> **BCC is the design, not a default**: there is no path in `MailHandoff` that writes an address
+> anywhere but the blind copy line, and a test walks the finished URI to prove none appears before
+> it. No SMTP, no accounts, no network — the same hand-off reasoning as M53, one layer up.
+>
+> Three honest endings: the link opens; the link would be too long, so the addresses go to the
+> clipboard in checkable batches (a mail client that truncates a BCC list silently sends to some of
+> the lodge and tells nobody, so the cap errs low); or nothing answers, same path, different
+> sentence. Both fallbacks spell out *blind copy*, because the protection is lost if the user pastes
+> into To:. `mailto:` cannot attach, so the body names the file.
 
 **Goal.** The workflow today ends at a file on disk. Composing the email — finding the file,
 remembering who gets it, typing sixty addresses — is the largest remaining out-of-app task and the

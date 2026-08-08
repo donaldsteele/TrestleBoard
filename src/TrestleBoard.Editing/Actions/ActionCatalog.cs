@@ -91,6 +91,9 @@ public static class ActionCatalog
             ActionGroup.Newsletter),
         new(ActionId.PrintPdf, "Print it",
             "Sends the PDF you just made to your printer.", ActionGroup.Newsletter),
+        new(ActionId.SendIt, "Now send it…",
+            "Opens your email with the brethren who get it by email already filled in.",
+            ActionGroup.Newsletter),
         new(ActionId.Exit, "Exit", "Closes TrestleBoard.", ActionGroup.Newsletter),
 
         // ---- Edit -------------------------------------------------------------------------------
@@ -443,6 +446,11 @@ public static class ActionCatalog
 
             // M53: there has to BE a PDF before it can go to a printer, and the reason names the
             // command that makes one rather than leaving the user to work it out.
+            // M56 needs a newsletter to talk about but NOT a PDF: somebody may want to warn the
+            // lodge that this month's issue is coming, and refusing until they have exported would
+            // be the app deciding the order of their evening.
+            ActionId.SendIt => RequiresDocument(context),
+
             ActionId.PrintPdf => context.ExportedPdfThisSession
                 ? ActionAvailability.Available
                 : ActionAvailability.Blocked(
