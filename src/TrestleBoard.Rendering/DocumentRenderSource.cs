@@ -226,6 +226,24 @@ public sealed class DocumentRenderSource : IDisposable
     }
 
     /// <summary>
+    /// M47: the rectangle inside the page that the printing keeps to — the page master's four
+    /// margins, which have been in the model since M2 and were drawn by nothing.
+    /// </summary>
+    public RectPt GetMarginRect(int pageIndex)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(pageIndex, _document.Pages.Count);
+
+        Page page = _document.Pages[pageIndex];
+        PageMaster master = _document.GetMaster(page.MasterRef);
+        return new RectPt(
+            master.MarginLeftPt,
+            master.MarginTopPt,
+            Math.Max(0f, master.Size.Width - master.MarginLeftPt - master.MarginRightPt),
+            Math.Max(0f, master.Size.Height - master.MarginTopPt - master.MarginBottomPt));
+    }
+
+    /// <summary>
     /// True when the block is a text frame (the canvas needs it for mode arbitration).
     ///
     /// <para>M39: these three ask a QUESTION, so a block that is no longer in the document answers

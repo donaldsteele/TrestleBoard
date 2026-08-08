@@ -246,6 +246,10 @@
         <Separator />
         <MenuItem Header="Show what I can _do" Tag="view.toggleActionPanel"
                   Click="OnActionClicked" AutomationProperties.Name="Show or hide the panel of things you can do" />
+        <!-- M47: the page has had margins in its model since M2 and has never drawn them. -->
+        <MenuItem Header="Show the ed_ge to keep inside" Tag="view.showMargins"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Show the edge to keep inside" />
         <MenuItem Header="Show _where fonts were changed" Tag="view.showFontChanges"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Show where fonts were changed" />

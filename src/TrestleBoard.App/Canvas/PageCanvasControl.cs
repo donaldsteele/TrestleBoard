@@ -113,6 +113,28 @@ public sealed class PageCanvasControl : Control
     }
 
     /// <summary>
+    /// M47's View → "Show the edge to keep inside". Off by default, for the same reason as the
+    /// font marks: a line nobody asked for is noise on a page they are trying to read.
+    ///
+    /// <para>An EDITOR adornment, so it never prints — the exporter draws through
+    /// <c>RenderPage</c>, which knows nothing about this.</para>
+    /// </summary>
+    public bool ShowMargins
+    {
+        get;
+        set
+        {
+            if (field == value)
+            {
+                return;
+            }
+
+            field = value;
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>
     /// M14's View → "Show where fonts were changed". Off by default: a mark the user did not ask
     /// for is noise, and this one is only useful while hunting down a stray font.
     /// </summary>
@@ -357,6 +379,19 @@ public sealed class PageCanvasControl : Control
         if (_source is null)
         {
             return;
+        }
+
+        // M47, review §14.3: the page master has had four margins since M2 and nothing drew them,
+        // so "is this frame too close to the edge?" was a question the app held the answer to and
+        // would not show. Drawn with AVALONIA's primitives like every other adornment here, which
+        // is what keeps it out of the PDF and out of every snapshot baseline.
+        if (ShowMargins && BrushFor(Tokens.AdornmentHint) is { } marginBrush)
+        {
+            var dashed = new Pen(marginBrush, 1d)
+            {
+                DashStyle = new DashStyle([4d, 4d], 0d),
+            };
+            context.DrawRectangle(null, dashed, ToControlRect(_source.GetMarginRect(PageIndex)));
         }
 
         if (_hoverBlockId is { } hovered

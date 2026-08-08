@@ -127,6 +127,7 @@ internal sealed class ActionRunner
             [ActionId.PreviousRegion] = Sync(() => window.CycleRegion(forward: false)),
             [ActionId.ToggleActionPanel] = Sync(window.ToggleActionPanel),
             [ActionId.ShowFontChanges] = Sync(window.ToggleShowFontChanges),
+            [ActionId.ShowMargins] = Sync(window.ToggleShowMargins),
 
             // ---- The address book (M12) --------------------------------------------------------------
             [ActionId.ShowPeople] = _ => window.ShowPeopleAsync(),

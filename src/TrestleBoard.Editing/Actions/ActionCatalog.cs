@@ -249,6 +249,9 @@ public static class ActionCatalog
             "Moves the other way round the window.", ActionGroup.View, "Shift+F6"),
         new(ActionId.ToggleActionPanel, "Show what I can do",
             "Shows or hides the panel of things you can do to what you have chosen.", ActionGroup.View),
+        new(ActionId.ShowMargins, "Show the edge to keep inside",
+            "Draws a faint line where the printing stops, so you can see what is too close to it.",
+            ActionGroup.View),
         new(ActionId.ShowFontChanges, "Show where fonts were changed",
             "Underlines, on screen only, any writing whose font was changed by hand.",
             ActionGroup.View),
@@ -450,7 +453,7 @@ public static class ActionCatalog
                     ? ActionAvailability.Available
                     : ActionAvailability.NotApplicable(
                         "This writing already uses the font its kind of writing normally uses."),
-            ActionId.ShowFontChanges => RequiresDocument(context),
+            ActionId.ShowFontChanges or ActionId.ShowMargins => RequiresDocument(context),
 
             // ---- Putting things on the page -----------------------------------------------------
             ActionId.AddTextFrame or ActionId.InsertPhoto or ActionId.InsertOfficers

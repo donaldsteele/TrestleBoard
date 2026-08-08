@@ -2378,6 +2378,26 @@ kinds - so renaming a string nobody can see would be tidying rather than fixing.
 
 ---
 
+### M47 - The edge to keep inside (delivered 2026-08-08, `docs/M47-spec.md`)
+
+`PageMaster` has carried four margins since M2 and nothing ever drew them, so "is this frame too
+close to the edge?" - a question a newsletter committee asks every month, right before the printer
+answers it for them - was one the app held the answer to and would not show. View now offers a faint
+dashed rectangle, off by default, drawn with Avalonia's primitives like every other adornment on
+this canvas, which is what keeps it out of the PDF and out of every snapshot baseline.
+
+**Rulers, draggable guides and a grid are declined, not deferred.** A ruler exists so you can
+position something by measurement, and nothing in this app asks anybody to - frames are dragged, and
+snapping already lines them up with each other and with the margins. Guides are a professional's
+tool for a layout repeated across dozens of pages; this is six pages a month from a template that
+already has its structure. A grid competes with the snapping that is already there and better. If
+that is the wrong call, the margin rectangle is the natural place to grow from.
+
+The access key collided with "Zoom in" on I - the third time `NoTwoItemsInOneMenuShareAnAccessKey`
+has caught one of these.
+
+---
+
 ## 12. Verification (end-to-end)
 
 1. **Per-milestone:** `dotnet build && dotnet test` locally + 3-OS CI matrix green; cavecrew-reviewer findings addressed; snapshot diffs reviewed as CI artifacts.
@@ -2938,8 +2958,9 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 - Assorted: ~~the M23 stretched-picture dismissal is session-only and keyed by frame aspect, so the
   note returns after any reshape or restart~~ (**fixed at M43** — it lives in the recipe now, and
   returning after a RESHAPE was always right); ~~no tooltips exist anywhere in the App project~~ (**fixed at
-  M45** - the toolbar shows the catalog's own sentence, plus the shortcut); no
-  rulers, guides, margin display, or grid — snap guides appear only mid-drag; page change clears
+  M45** - the toolbar shows the catalog's own sentence, plus the shortcut); ~~no
+  rulers, guides, margin display, or grid — snap guides appear only mid-drag~~ (**margin display
+  added at M47**; rulers, guides and a grid are declined on the record, with reasons); page change clears
   the selection; ~~the context menu uses
   static titles where the panel uses context-aware ones ("Put a picture here…" over a filled
   frame)~~ (**fixed at M36**); two undo stacks (document vs address book) are disclosed only inside the People menu.

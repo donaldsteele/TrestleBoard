@@ -358,4 +358,45 @@ public sealed class ConveniencesShellTests
 
     private static Core.Model.RectPt RectOf(MainWindow window, string blockId) =>
         window.SessionForTest!.Document.FindBlock(blockId).Block.FrameRect;
+
+    /// <summary>
+    /// M47, review §14.3: the page has carried four margins since M2 and the canvas drew none of
+    /// them, so "is this frame too close to the edge?" was a question the app held the answer to
+    /// and would not show.
+    ///
+    /// <para>Off by default — a line nobody asked for is noise on a page they are trying to read —
+    /// and it is a VIEW setting that never prints.</para>
+    /// </summary>
+    [Fact]
+    public async Task TheEdgeToKeepInsideCanBeShownAndIsOffToStartWith()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenIssueSample();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.False(window.CanvasForTest.ShowMargins);
+            Assert.True(ActionCatalog.Evaluate(ActionId.ShowMargins, window.CurrentActionContext).IsAvailable);
+
+            window.ToggleShowMargins();
+            Assert.True(window.CanvasForTest.ShowMargins);
+            Assert.Contains("never prints", window.StatusLabelTextForTest!, StringComparison.Ordinal);
+
+            window.ToggleShowMargins();
+            Assert.False(window.CanvasForTest.ShowMargins);
+
+            // The rectangle it draws is the master's margins, not a guess.
+            Core.Model.RectPt margins = window.SourceForTest!.GetMarginRect(0);
+            Core.Model.SizePt page = window.SourceForTest.GetPageSize(0);
+            Assert.True(margins.X > 0f);
+            Assert.True(margins.Y > 0f);
+            Assert.True(margins.Right < page.Width);
+            Assert.True(margins.Bottom < page.Height);
+
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
 }

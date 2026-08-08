@@ -1694,6 +1694,24 @@ public partial class MainWindow : Window
 
     internal void ToggleShowFontChanges() => SetShowFontChanges(!PageCanvas.ShowFontChanges);
 
+    /// <summary>
+    /// M47, review §14.3: the page master has carried four margins since M2 and the canvas has
+    /// never drawn them, so "is this frame too close to the edge?" was a question the app held the
+    /// answer to and would not show.
+    ///
+    /// <para>Off by default, like the font-change marks: a line nobody asked for is noise on a page
+    /// they are trying to read. It is a VIEW setting and never prints — the exporter draws through
+    /// <c>RenderPage</c>, which knows nothing about it.</para>
+    /// </summary>
+    internal void ToggleShowMargins()
+    {
+        PageCanvas.ShowMargins = !PageCanvas.ShowMargins;
+        Announce(PageCanvas.ShowMargins
+            ? "The edge to keep inside is now drawn as a faint line. It never prints."
+            : "The faint line is hidden again.");
+        RefreshActions();
+    }
+
     private void SetShowFontChanges(bool show)
     {
         PageCanvas.ShowFontChanges = show;

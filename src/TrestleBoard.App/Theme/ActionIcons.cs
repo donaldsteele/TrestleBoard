@@ -175,6 +175,7 @@ internal static class ActionIcons
         [ActionId.PreviousRegion] = "keyboard navigation, reached by F6 and not by looking",
         [ActionId.ToggleActionPanel] = "the panel it opens is the thing being described",
         [ActionId.ShowFontChanges] = "a diagnostic overlay; no picture explains it",
+        [ActionId.ShowMargins] = "a rectangle inside a rectangle, at 20px, is a grey square",
 
         // --- The address book. people.show has the book; the four that follow act ON the book and
         //     would each need the same book plus a modifier, which is four ambiguous icons.

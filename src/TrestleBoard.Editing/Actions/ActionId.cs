@@ -161,6 +161,12 @@ public static class ActionId
     /// <summary>M14: underline the text whose font was changed by hand. Off by default.</summary>
     public const string ShowFontChanges = "view.showFontChanges";
 
+    /// <summary>
+    /// M47: draw the edge the printed page keeps clear, so somebody can see whether a frame they
+    /// dragged is inside it. Off by default — a line the user did not ask for is noise.
+    /// </summary>
+    public const string ShowMargins = "view.showMargins";
+
     // ---- The address book (M12) ---------------------------------------------------------------
     public const string ShowPeople = "people.show";
     public const string ImportPeople = "people.import";
