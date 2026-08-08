@@ -872,7 +872,15 @@ public partial class MainWindow : Window
         }
     }
 
-    internal async Task ExportPdfAsync()
+    internal Task ExportPdfAsync() => ExportPdfAsync(draft: false);
+
+    /// <summary>
+    /// M53: "Make a draft copy" — the same renderer, the same bytes, plus a diagonal saying what it
+    /// is. The review copy and the final copy differed only in the sender's memory before this.
+    /// </summary>
+    internal Task ExportDraftPdfAsync() => ExportPdfAsync(draft: true);
+
+    internal async Task ExportPdfAsync(bool draft)
     {
         if (_source is null || _package is null)
         {
@@ -882,17 +890,20 @@ public partial class MainWindow : Window
         // M51. The offer, and only an offer: whatever the answer, the export goes ahead. The one
         // way this can stop an export is the user choosing to look it over, which is them changing
         // their mind, not the app refusing. PLAN.md's acceptance is explicit that "Make the PDF" is
-        // never blocked.
-        if (await OfferTheReviewAsync())
+        // never blocked. A draft is not offered the review — the whole point of a draft is that it
+        // is going to somebody who will read it.
+        if (!draft && await OfferTheReviewAsync())
         {
             return;
         }
 
+        Core.Model.DocumentMetadata meta = _package.Document.Metadata;
+        string stem = $"{meta.Title} {meta.IssueYear}-{meta.IssueMonth:00}";
         IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Export as PDF",
+            Title = draft ? "Save the draft copy" : "Export as PDF",
             DefaultExtension = "pdf",
-            SuggestedFileName = $"{_package.Document.Metadata.Title} {_package.Document.Metadata.IssueYear}-{_package.Document.Metadata.IssueMonth:00}.pdf",
+            SuggestedFileName = draft ? $"{stem} DRAFT.pdf" : $"{stem}.pdf",
             FileTypeChoices = [new FilePickerFileType("PDF document") { Patterns = ["*.pdf"] }],
         });
         if (file is null)
@@ -902,21 +913,174 @@ public partial class MainWindow : Window
 
         try
         {
-            await using Stream stream = await file.OpenWriteAsync();
-            Core.Model.DocumentMetadata meta = _package.Document.Metadata;
-            DocumentPdfExporter.Export(
-                stream,
-                _source,
-                new PdfMetadata(meta.Title, meta.LodgeName, $"Trestle board {meta.IssueYear}-{meta.IssueMonth:00}"));
+            await using (Stream stream = await file.OpenWriteAsync())
+            {
+                DocumentPdfExporter.Export(
+                    stream,
+                    _source,
+                    new PdfMetadata(meta.Title, meta.LodgeName, $"Trestle board {meta.IssueYear}-{meta.IssueMonth:00}"),
+                    draft ? WatermarkRenderer.DraftText : null);
+            }
+
             _exportedThisSession = true;
+
+            // The stream is closed before anything is offered: handing a half-written file to a
+            // printer would be a worse bug than not offering to print at all.
+            LastExportedPdf = file.TryGetLocalPath();
+            RefreshActions();
+            await OfferToPrintAsync(draft);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
             await ShowErrorAsync(
-                "Could not export the PDF",
+                draft ? "Could not make the draft copy" : "Could not export the PDF",
                 "The PDF could not be saved. Make sure the file is not open in another program and try again. "
                 + $"({ex.Message})");
         }
+    }
+
+    // ---- Print it (PLAN.md §11 M53) ------------------------------------------------------------
+
+    /// <summary>
+    /// The PDF this session last wrote, or null. It is what "Print it" prints, and M56 will hand
+    /// the same path to the mail program.
+    /// </summary>
+    internal string? LastExportedPdf { get; private set; }
+
+    /// <summary>Set by tests in place of the card, which cannot be answered headlessly.</summary>
+    internal bool? PrintAnswerForTest { get; set; }
+
+    /// <summary>
+    /// Offers to print, once, straight after a successful export. The workflow used to end with a
+    /// file somewhere on the disk and a user who had to go and find it.
+    /// </summary>
+    private async Task OfferToPrintAsync(bool draft)
+    {
+        if (LastExportedPdf is null)
+        {
+            Announce(draft
+                ? "The draft copy is made."
+                : "The PDF is made. It is ready to send to the lodge.");
+            return;
+        }
+
+        bool print = PrintAnswerForTest
+            ?? (SuppressStartupForTest ? false : await AskAboutPrintingAsync(draft));
+        if (!print)
+        {
+            Announce(draft ? "The draft copy is made." : "The PDF is made.");
+            return;
+        }
+
+        await PrintTheLastPdfAsync();
+    }
+
+    /// <summary>Help the user get the finished PDF onto paper, honestly (M53).</summary>
+    internal async Task PrintTheLastPdfAsync()
+    {
+        if (LastExportedPdf is not { } path)
+        {
+            // The picker handed back a file with no path on the local disk — a cloud location, say.
+            // Nothing can be printed from here, and pretending otherwise would be worse than this.
+            Announce(
+                "TrestleBoard cannot tell where that PDF was saved, so it cannot print it. Open it "
+                + "the way you normally open a PDF and print it from there.");
+            return;
+        }
+
+        PrintOutcome outcome = PrintService.Print(path);
+        LastPrintOutcomeForTest = outcome;
+
+        if (outcome == PrintOutcome.HandedOver)
+        {
+            Announce(
+                "The newsletter has been sent to your printer. If nothing comes out, your printer "
+                + "may be off or out of paper.");
+            return;
+        }
+
+        // Never "printed successfully" when nothing was printed. The card says what happened and
+        // what to do about it.
+        await ShowErrorAsync(
+            "TrestleBoard could not print it for you",
+            PrintService.FallbackMessage(path, outcome));
+    }
+
+    internal PrintOutcome? LastPrintOutcomeForTest { get; private set; }
+
+    private async Task<bool> AskAboutPrintingAsync(bool draft)
+    {
+        bool print = false;
+        var dialog = new Window
+        {
+            Title = draft ? "The draft copy is made" : "The PDF is made",
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+        };
+
+        var printIt = new Button
+        {
+            Content = "Print it",
+            FontSize = 18,
+            MinHeight = 44,
+            MinWidth = 200,
+            IsDefault = true,
+        };
+        printIt.Action();
+        var later = new Button
+        {
+            Content = "Not now",
+            FontSize = 18,
+            MinHeight = 44,
+            MinWidth = 200,
+            IsCancel = true,
+        };
+        later.Action();
+
+        printIt.Click += (_, _) => { print = true; dialog.Close(); };
+        later.Click += (_, _) => dialog.Close();
+        Avalonia.Automation.AutomationProperties.SetName(printIt, "Print it");
+        Avalonia.Automation.AutomationProperties.SetName(later, "Not now");
+
+        dialog.Content = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(24),
+            Spacing = 16,
+            Children =
+            {
+                new Avalonia.Controls.TextBlock
+                {
+                    Text = draft
+                        ? "The draft copy is saved, with DRAFT written across every page."
+                        : "The PDF is saved and ready to send to the lodge.",
+                    FontSize = 20,
+                    FontWeight = Avalonia.Media.FontWeight.Bold,
+                    MaxWidth = 480,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                new Avalonia.Controls.TextBlock
+                {
+                    Text = $"It is saved as {Path.GetFileName(LastExportedPdf)}. Would you like to "
+                        + "print it now?",
+                    FontSize = 18,
+                    MaxWidth = 480,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Vertical,
+                    Spacing = 12,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                    Children = { printIt, later },
+                },
+            },
+        };
+
+        Avalonia.Automation.AutomationProperties.SetName(
+            dialog, draft ? "The draft copy is made" : "The PDF is made");
+        await dialog.ShowDialog(this);
+        return print;
     }
 
     // ---- Look it over with me (PLAN.md §11 M51) -----------------------------------------------

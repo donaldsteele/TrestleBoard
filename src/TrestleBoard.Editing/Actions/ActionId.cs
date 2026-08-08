@@ -45,6 +45,18 @@ public static class ActionId
     public const string CheckSpelling = "newsletter.checkSpelling";
 
     public const string ExportPdf = "newsletter.exportPdf";
+
+    /// <summary>
+    /// M53: the same PDF with "DRAFT — not for sending" across every page. Before this, the copy
+    /// the Master reviewed and the copy sixty people received differed only in the sender's memory.
+    /// </summary>
+    public const string ExportDraftPdf = "newsletter.exportDraft";
+
+    /// <summary>
+    /// M53: hand the finished PDF to whatever this computer already prints PDFs with. No print
+    /// subsystem of our own — the hand-off IS the design.
+    /// </summary>
+    public const string PrintPdf = "newsletter.print";
     public const string Exit = "newsletter.exit";
 
     // ---- Edit ---------------------------------------------------------------------------------

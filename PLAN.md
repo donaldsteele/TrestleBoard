@@ -2598,7 +2598,23 @@ checker is provably absent from the layout/render/export pipeline. Core stays BC
 lives in App or a small leaf project). **Privacy (§0 rule 7):** the personal dictionary lives in
 AppData and will contain real member names — gitignored patterns, fictional fixtures only.
 
-### M53 — A draft for the Master, then the real thing (M)
+### M53 — A draft for the Master, then the real thing (M) — **delivered 2026-08-08, `docs/M53-spec.md`**
+
+> The draft diagonal is drawn by the same renderer through HarfBuzz and a bundled face, over the
+> page rather than under it, sized from the page's diagonal by exact arithmetic — so fewer words are
+> set larger, not quieter. `RenderWatermark` is a separate call rather than a flag on `RenderPage`,
+> so no ordinary render can grow one by accident. "Print it" hands the file to the shell's own print
+> verb or to `lp`/`lpr`, degrades to opening the PDF with "press Ctrl+P", then to naming the file and
+> folder, and a test asserts neither fallback sentence contains the word "printed".
+>
+> **The pixel baseline was deliberately not added**, on `OversetLabelTests`' recorded reasoning: a
+> baseline needs baking on three OSes before it can fail honestly, and what matters is that the words
+> are drawn, in the same place every time, on a draft and nothing else. Ink counting answers that
+> anywhere; HarfBuzz shaping from a bundled face is what actually makes it identical across OSes.
+>
+> Third milestone running where writing the break first found a weak test: `TheMarkCrossesTheWholePage`
+> originally compared page quadrants, which meet at the centre — so a watermark shrunk to a twentieth
+> still satisfied it. It now compares the outer fifth of each edge.
 
 **Goal.** Close the approval and print steps. The Master reviews before distribution, and today
 nothing distinguishes the review PDF from the final one except the sender's memory; and "the PDF is

@@ -203,6 +203,28 @@ public sealed class DocumentRenderSource : IDisposable
     /// <summary>True while any drag preview is installed.</summary>
     public bool HasGeometryPreview => _previewRects.Count > 0;
 
+    /// <summary>
+    /// Draws the draft diagonal over a page already rendered onto this canvas (M53).
+    ///
+    /// <para>It lives here rather than in the exporter because the bundled font store lives here,
+    /// and because a watermark IS rendering — it prints, so it belongs to the half of the app that
+    /// makes pages, drawn through the same shaper and the same faces as the words underneath it.
+    /// It is a separate call rather than a flag on <see cref="RenderPage"/> so that no ordinary
+    /// render can grow one by accident: a page gets a watermark only where somebody asked for one
+    /// in as many words.</para>
+    /// </summary>
+    public void RenderWatermark(SKCanvas canvas, int pageIndex, string text = WatermarkRenderer.DraftText)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentNullException.ThrowIfNull(canvas);
+        if (pageIndex < 0 || pageIndex >= _document.Pages.Count)
+        {
+            return;
+        }
+
+        WatermarkRenderer.Draw(canvas, GetPageSize(pageIndex), _fonts, text);
+    }
+
     /// <summary>The rect a block is currently drawn at: its preview while dragging, else its own.</summary>
     public RectPt GetEffectiveRect(string blockId)
     {

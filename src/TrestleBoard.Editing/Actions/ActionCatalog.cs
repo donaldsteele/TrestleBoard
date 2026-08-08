@@ -86,6 +86,11 @@ public static class ActionCatalog
             ActionGroup.Newsletter),
         new(ActionId.ExportPdf, "Make the PDF…", "Makes the file you email to the lodge.",
             ActionGroup.Newsletter, "Ctrl+E", IsPrimary: true),
+        new(ActionId.ExportDraftPdf, "Make a draft copy…",
+            "Makes a PDF with DRAFT across every page, for the Master to read before you send it.",
+            ActionGroup.Newsletter),
+        new(ActionId.PrintPdf, "Print it",
+            "Sends the PDF you just made to your printer.", ActionGroup.Newsletter),
         new(ActionId.Exit, "Exit", "Closes TrestleBoard.", ActionGroup.Newsletter),
 
         // ---- Edit -------------------------------------------------------------------------------
@@ -426,8 +431,18 @@ public static class ActionCatalog
                         "You have saved this newsletter once, so there is nothing earlier to go back "
                         + "to yet. TrestleBoard keeps a copy every time you save over it."),
 
-            ActionId.ReviewNewsletter or ActionId.CheckSpelling or ActionId.ExportPdf =>
+            ActionId.ReviewNewsletter or ActionId.CheckSpelling or ActionId.ExportPdf
+                or ActionId.ExportDraftPdf =>
                 RequiresDocument(context),
+
+            // M53: there has to BE a PDF before it can go to a printer, and the reason names the
+            // command that makes one rather than leaving the user to work it out.
+            ActionId.PrintPdf => context.ExportedPdfThisSession
+                ? ActionAvailability.Available
+                : ActionAvailability.Blocked(
+                    "You have not made the PDF yet, so there is nothing to print. Make it first, "
+                    + "and TrestleBoard will offer to print it for you.",
+                    ActionId.ExportPdf),
 
             // ---- Edit ---------------------------------------------------------------------------
             // M49, review §14.3: this app has TWO undo stacks — the newsletter's and the address

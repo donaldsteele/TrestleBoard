@@ -44,6 +44,8 @@ internal sealed class ActionRunner
             [ActionId.ReviewNewsletter] = Sync(window.ShowReview),
             [ActionId.CheckSpelling] = Sync(window.ShowSpellingCheck),
             [ActionId.ExportPdf] = _ => window.ExportPdfAsync(),
+            [ActionId.ExportDraftPdf] = _ => window.ExportDraftPdfAsync(),
+            [ActionId.PrintPdf] = _ => window.PrintTheLastPdfAsync(),
             [ActionId.Exit] = Sync(window.Close),
 
             // ---- Edit -----------------------------------------------------------------------------

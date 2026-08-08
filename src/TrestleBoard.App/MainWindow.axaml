@@ -55,6 +55,13 @@
         <MenuItem Header="Make the _PDF…" Tag="newsletter.exportPdf"
                   InputGesture="Ctrl+E" Click="OnActionClicked"
                   AutomationProperties.Name="Make the PDF to email" />
+        <!-- M53: below the real thing, because the real thing is what most months need. -->
+        <MenuItem Header="Make a _draft copy…" Tag="newsletter.exportDraft"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Make a draft copy for the Master to read" />
+        <MenuItem Header="Pr_int it" Tag="newsletter.print"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Print the PDF you just made" />
         <Separator />
         <MenuItem Header="E_xit" Tag="newsletter.exit" Click="OnActionClicked"
                   AutomationProperties.Name="Exit TrestleBoard" />

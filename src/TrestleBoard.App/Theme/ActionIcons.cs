@@ -202,6 +202,12 @@ internal static class ActionIcons
         // two abstractions deep for a reader who is being asked to trust it.
         [ActionId.CheckSpelling] = "the usual ABC-and-a-tick means nothing to somebody meeting it cold",
         [ActionId.ShowSpelling] = "a diagnostic overlay; no picture explains it",
+
+        // M53. The draft copy would wear export-pdf's glyph, which is the whole confusion it
+        // exists to remove; a printer glyph beside it would then be the only thing saying which
+        // of the two is which.
+        [ActionId.ExportDraftPdf] = "would wear export-pdf's glyph, which is the confusion it removes",
+        [ActionId.PrintPdf] = "offered on a card straight after the export, where the words are the point",
         [ActionId.ShowExampleIssue] = "read once, never hunted for",
     };
 
