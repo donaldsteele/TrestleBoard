@@ -321,15 +321,25 @@ internal sealed class OfficersSyncDialog : Window
             TextWrapping = TextWrapping.Wrap,
         });
 
+        // M42, review §14.3/§14.4. This was the app's one place where something was unavailable
+        // and said nothing about why - the M11 rule ("nothing becomes unavailable without saying
+        // why") stopped at the action panel's edge and never reached dialogs. The label itself
+        // carries the reason while it cannot be ticked, so the reason is READ rather than inferred
+        // from a grey box, and HelpText carries it for a screen reader the same way the menu bar
+        // has since M11.
+        string acceptWhenChosen = $"Put the one I chose into the {proposal.Position} row";
+        const string acceptWhyNot = "Choose one of the names above first";
+
         var accept = new CheckBox
         {
-            Content = $"Put the one I chose into the {proposal.Position} row",
+            Content = acceptWhyNot,
             FontSize = 18,
             MinHeight = 44,
             IsChecked = false,
             IsEnabled = false,
         };
-        AutomationProperties.SetName(accept, (string)accept.Content);
+        AutomationProperties.SetName(accept, acceptWhyNot);
+        AutomationProperties.SetHelpText(accept, acceptWhyNot);
         accept.IsCheckedChanged += (_, _) => Accept(proposal.Position, accept.IsChecked == true);
 
         string group = "office-" + proposal.Position;
@@ -357,7 +367,11 @@ internal sealed class OfficersSyncDialog : Window
                 _chosen[proposal.Position] = candidate;
 
                 // Only now can the row be accepted, and it is ticked for the user: they have just
-                // answered the question the row was asking.
+                // answered the question the row was asking. M42: and the label stops explaining
+                // why it could not be, because it now can be.
+                accept.Content = acceptWhenChosen;
+                AutomationProperties.SetName(accept, acceptWhenChosen);
+                AutomationProperties.SetHelpText(accept, string.Empty);
                 accept.IsEnabled = true;
                 accept.IsChecked = true;
             };

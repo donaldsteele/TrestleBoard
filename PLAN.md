@@ -2257,6 +2257,31 @@ against code that had already shipped. That part is a backlog being paid off rat
 
 ---
 
+### M42 - Four dialogs that would not say what they meant (delivered 2026-08-08, `docs/M42-spec.md`)
+
+Three section 14.4 dialog findings and the section 14.3 "two disability models" one, plus a styling
+bug they exposed.
+
+"Stop" in the import wizard did not say stop WHAT - the step, the import, or the program - though
+its automation name had said it in full since M12; it now reads "Stop the import". "Next", the
+button the user is meant to press, was styled identically to it and is now the default.
+
+**Setting IsDefault did not work at first, and the reason matters.** `Button.action` was declared
+AFTER `Button[IsDefault=True]` in `Controls.axaml`, and later styles win - so from M37 onward every
+button that was both default and marked with `Tokens.Action()` silently came out looking ordinary.
+The officers-sync dialog's "Update the table" had been in that state for milestones, visible in the
+committed screenshot, and nobody looked. The default block now sits last.
+
+The settings size slider showed only where it currently sat; it now has ticks and two labelled ends,
+worded about the buttons and menus rather than about percentages.
+
+And the officers-sync dialog held the one control in the app that was unavailable and would not say
+why: M11's rule was enforced for the action panel and the menu bar and stopped at the dialog's edge.
+The tick box for an office two brothers claim now reads "Choose one of the names above first" until
+one is chosen, so the reason is READ rather than inferred from a grey box.
+
+---
+
 ## 12. Verification (end-to-end)
 
 1. **Per-milestone:** `dotnet build && dotnet test` locally + 3-OS CI matrix green; cavecrew-reviewer findings addressed; snapshot diffs reviewed as CI artifacts.
@@ -2791,9 +2816,11 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   always lands at the default placement. The remaining ~20 shortcut-less commands are deliberate —
   align, distribute and the picture-geometry commands are typed into once and left alone.
 - **Two disability models in one window.** Menus and toolbar grey out; the action panel never greys
-  and explains instead. Same command, two behaviours, and dialogs (officers sync's disabled
-  checkbox) follow neither — the M11 "nothing unavailable without saying why" rule stops at the
-  panel's edge.
+  and explains instead. Same command, two behaviours. ~~Dialogs (officers sync's disabled checkbox)
+  follow neither — the M11 "nothing unavailable without saying why" rule stops at the panel's
+  edge.~~ — **the dialog half closed at M42**: the tick box says why it cannot be ticked, in its own
+  label and in its HelpText. The two models themselves remain deliberate and are recorded as such by
+  M11.
 - ~~**Raw style ids reach the user.** Format ▸ Paragraph style shows `body`, `table-row`,
   `lodge-table`; `StyleLabels.Describe` was written to prevent exactly this and is not called
   there.~~ — **fixed at M27** in both the menu and the panel flyout. (`table-row` and `lodge-table`
@@ -2855,9 +2882,11 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 - Wizard: fourteen one-question steps with the "Show all at once" escape easy to miss; the final
   step puts Cancel directly beside "Save it" — one misclick discards fourteen answers (whether
   Cancel confirms there is the grid-vs-wizard inconsistency of §14.2).
-- Import mapping dialog: "Stop" is ambiguous (abandon everything?), and "Next" is grey rather than
-  the navy primary every other dialog uses.
-- Settings: the UI-scale slider shows only the current value — no min/max/ticks.
+- ~~Import mapping dialog: "Stop" is ambiguous (abandon everything?), and "Next" is grey rather than
+  the navy primary every other dialog uses.~~ — **fixed at M42**, and the grey "Next" turned out to
+  be a style-order bug affecting every default button that also carried `Tokens.Action()`.
+- ~~Settings: the UI-scale slider shows only the current value — no min/max/ticks.~~ — **fixed at
+  M42**: ticks, plus "Normal (100%)" and "Twice as big (200%)" at the ends.
 - ~~**Partly addressed at M24**: there is now a Save command and the title bar says "not saved yet" in
   words, so the state is visible somewhere. The toolbar itself still carries neither Save nor New,
   and the toolbar is where this audience looks first — the original finding stands for that surface.~~

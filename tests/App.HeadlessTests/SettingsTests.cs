@@ -1,6 +1,9 @@
+using Avalonia.Controls.Primitives;
+using Avalonia.LogicalTree;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Media;
+using TrestleBoard.App.Dialogs;
 using TrestleBoard.App.Settings;
 using Xunit;
 
@@ -146,6 +149,35 @@ public sealed class SettingsTests
             Assert.Equal(ThemeChoice.Dark, result.Theme);
             Assert.Equal(125, result.UiScalePercent);
             Assert.False(dialog.Confirmed);
+
+            dialog.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M42, review §14.4: the size slider showed only where it currently sat, so neither end of it
+    /// meant anything — "100%" over a track with no labelled ends does not tell somebody what
+    /// happens if they drag it right.
+    /// </summary>
+    [Fact]
+    public async Task TheSizeSliderSaysWhatItsEndsMean()
+    {
+        await Session.Dispatch(() =>
+        {
+            var dialog = new SettingsDialog(new AppSettings());
+            dialog.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            IReadOnlyList<string> texts = dialog.GetLogicalDescendants().OfType<TextBlock>()
+                .Select(t => t.Text ?? string.Empty)
+                .ToList();
+
+            Assert.Contains($"Normal ({AppSettings.MinScalePercent}%)", texts);
+            Assert.Contains($"Twice as big ({AppSettings.MaxScalePercent}%)", texts);
+
+            // And the travel has a shape, not just two ends.
+            Slider slider = Assert.Single(dialog.GetLogicalDescendants().OfType<Slider>());
+            Assert.NotEqual(TickPlacement.None, slider.TickPlacement);
 
             dialog.Close();
         }, TestContext.Current.CancellationToken);

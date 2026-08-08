@@ -62,9 +62,17 @@ public sealed class RosterImportWindow : Window
         };
 
         _next = Big("Next", "Go on to the next step");
+
+        // M42, review §14.4: this is the button the user is meant to press, and it looked exactly
+        // like the one that abandons the import. IsDefault is what the theme keys the primary
+        // treatment off (M16), and it makes Enter mean "carry on" — which is what somebody who has
+        // just answered a question expects it to mean.
+        _next.IsDefault = true;
         _next.Click += async (_, _) => await NextAsync();
 
-        var cancel = Big("Stop", "Stop importing and change nothing");
+        // M42: "Stop" alone did not say stop WHAT — the step, the import, or the program. The
+        // automation name had said it in full since M12; the visible label now agrees with it.
+        var cancel = Big("Stop the import", "Stop importing and change nothing");
         cancel.IsCancel = true;
         cancel.Click += (_, _) => Close();
 

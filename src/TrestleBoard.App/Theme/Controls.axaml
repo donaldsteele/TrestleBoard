@@ -116,16 +116,6 @@
   </Styles.Resources>
 
   <!--
-    DEFAULT-BUTTON EMPHASIS, STANDARDISED. Thirteen dialogs set IsDefault and every one of them then
-    looked exactly like the button beside it, which is most of what "every button is the same grey
-    slab" meant. A property-qualified selector reaches all thirteen at once and cannot miss the
-    fourteenth; doing it by hand at each call site could, and did.
-  -->
-  <Style Selector="Button[IsDefault=True]">
-    <Setter Property="Theme" Value="{DynamicResource TrestleBoard.PrimaryButton}" />
-  </Style>
-
-  <!--
     Opted into by class, not by a bare element selector, for the reason at the top of this file: a
     ScrollBar's repeat buttons and a ComboBox's drop-down toggle ARE Buttons, and would take this
     border with them. `Tokens.Action()` is the one way to ask for it, and ActionSurfaceTests walks
@@ -139,6 +129,22 @@
   <!-- M40. Two classes, most-specific wins: a destructive button is an action button first. -->
   <Style Selector="Button.action.destructive">
     <Setter Property="Theme" Value="{DynamicResource TrestleBoard.DestructiveButton}" />
+  </Style>
+
+  <!--
+    DEFAULT-BUTTON EMPHASIS, STANDARDISED. Thirteen dialogs set IsDefault and every one of them then
+    looked exactly like the button beside it, which is most of what "every button is the same grey
+    slab" meant. A property-qualified selector reaches all thirteen at once and cannot miss the
+    fourteenth; doing it by hand at each call site could, and did.
+
+    M42. This block sits AFTER the two above, and the order is the whole point. Styles later in the
+    collection win, so while it stood before them every button that was BOTH default and marked with
+    Tokens.Action() came out looking like an ordinary one — the officers-sync dialog's "Update the
+    table" and the import wizard's "Next" among them. The way onward in a dialog is the way onward
+    whether or not somebody also asked for the action affordance.
+  -->
+  <Style Selector="Button[IsDefault=True]">
+    <Setter Property="Theme" Value="{DynamicResource TrestleBoard.PrimaryButton}" />
   </Style>
 
   <!--

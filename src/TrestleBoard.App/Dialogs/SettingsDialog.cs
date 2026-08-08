@@ -60,6 +60,11 @@ public sealed class SettingsDialog : Window
             Width = 380,
             MinHeight = 44,
             HorizontalAlignment = HorizontalAlignment.Left,
+
+            // M42, review §14.4: the slider showed only where it currently was, so neither end
+            // meant anything. Ticks give the travel a shape, and the two labels below say what the
+            // ends ARE - in words about the buttons and menus, not about percentages.
+            TickPlacement = TickPlacement.Outside,
         };
         AutomationProperties.SetName(_scale, "How big the buttons and menus are");
 
@@ -123,6 +128,17 @@ public sealed class SettingsDialog : Window
                     Spacing = 16,
                     Children = { _scale, _scaleLabel },
                 },
+                new Grid
+                {
+                    Width = 380,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    ColumnDefinitions = new ColumnDefinitions("*,*"),
+                    Children =
+                    {
+                        EndLabel($"Normal ({AppSettings.MinScalePercent}%)", 0, HorizontalAlignment.Left),
+                        EndLabel($"Twice as big ({AppSettings.MaxScalePercent}%)", 1, HorizontalAlignment.Right),
+                    },
+                },
                 _preview,
                 new StackPanel
                 {
@@ -142,6 +158,22 @@ public sealed class SettingsDialog : Window
         Theme = Themes[Math.Max(0, _theme.SelectedIndex)].Choice,
         UiScalePercent = (int)_scale.Value,
     }.Normalised();
+
+    /// <summary>
+    /// One end of the size slider - what "all the way left" and "all the way right" actually mean,
+    /// which the slider itself never said.
+    /// </summary>
+    private static TextBlock EndLabel(string text, int column, HorizontalAlignment side)
+    {
+        var label = new TextBlock
+        {
+            Text = text,
+            FontSize = 16,
+            HorizontalAlignment = side,
+        };
+        Grid.SetColumn(label, column);
+        return label;
+    }
 
     private void UpdatePreview()
     {

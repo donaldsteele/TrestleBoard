@@ -1,3 +1,8 @@
+using Avalonia.Automation;
+using TrestleBoard.Widgets.Builtins.OfficersTable;
+using TrestleBoard.Widgets.Roster;
+using TrestleBoard.Layout.Widgets;
+using TrestleBoard.App.Theme;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.LogicalTree;
@@ -217,6 +222,86 @@ public sealed class PeopleShellTests
             Assert.NotEqual(save.Theme, remove.Theme);
 
             window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+
+    /// <summary>
+    /// M42, review §14.4: the import wizard's two footer buttons said the wrong things about
+    /// themselves. "Stop" did not say stop WHAT — the step, the import, or the program — and "Next",
+    /// the button the user is meant to press, looked exactly like the one that abandons the work.
+    /// </summary>
+    [Fact]
+    public async Task TheImportWizardSaysWhatStopStopsAndMarksTheWayOnward()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new RosterImportWindow(RosterBook.Empty);
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            IReadOnlyList<Button> buttons = window.GetLogicalDescendants().OfType<Button>()
+                .Where(b => b.TemplatedParent is null)
+                .ToList();
+
+            Button stop = Assert.Single(buttons, b => b.IsCancel);
+            Assert.Equal("Stop the import", stop.Content as string);
+
+            // The way onward is the default, which is both how the primary treatment is chosen
+            // (M16) and what makes Enter mean "carry on".
+            Button onward = Assert.Single(buttons, b => b.IsDefault);
+            Assert.Equal("Find the file…", onward.Content as string);
+
+            // And it actually WEARS the primary treatment. M37's action style was declared after
+            // M16's default style, so any button that was both — this one, and the officers-sync
+            // dialog's "Update the table" — quietly came out looking ordinary (M42).
+            Assert.Equal(
+                window.TryFindResource(Tokens.PrimaryButtonTheme, out object? primary) ? primary : null,
+                onward.Theme);
+            Assert.NotEqual(onward.Theme, stop.Theme);
+
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+/// <summary>
+    /// M42, review §14.3: the officers-sync dialog held the one control in the app that was
+    /// unavailable and said nothing about why. The M11 rule — nothing becomes unavailable without
+    /// saying why, in plain English — stopped at the action panel's edge and never reached dialogs.
+    /// </summary>
+    [Fact]
+    public async Task TheOfficersSyncCheckboxSaysWhyItCannotBeTickedYet()
+    {
+        await Session.Dispatch(() =>
+        {
+            // Two brothers claiming one office is what the app refuses to decide (M19), and is
+            // therefore the row whose tick box starts unavailable.
+            List<Member> book =
+            [
+                new() { Id = "p1", DisplayName = "Aaron Placeholder", Office = "Tyler" },
+                new() { Id = "p2", DisplayName = "Bertram Placeholder", Office = "Tyler" },
+            ];
+
+            OfficersProjection plan = OfficersRosterProjection.Plan(
+                new OfficersTableDefinition().CreateEmpty(
+                    new WidgetSeed("Placeholder Lodge No. 000", 7, 2026, "first Tuesday")),
+                book);
+            Assert.Contains(plan.Proposals, p => p.IsAmbiguous);
+
+            var dialog = new OfficersSyncDialog(plan, inserting: false);
+            dialog.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            CheckBox blocked = Assert.Single(
+                dialog.GetLogicalDescendants().OfType<CheckBox>(),
+                c => !c.IsEnabled);
+
+            Assert.Equal("Choose one of the names above first", blocked.Content as string);
+            Assert.Equal(
+                "Choose one of the names above first",
+                AutomationProperties.GetHelpText(blocked));
+
+            dialog.Close();
         }, TestContext.Current.CancellationToken);
     }
 
