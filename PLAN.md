@@ -3109,7 +3109,7 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 
 ### 14.6 Where the review stands (as at 2026-08-08)
 
-Sixteen milestones, M24–M39, were taken from §14. This section is the running total, so
+Twenty-six milestones, M24–M49, were taken from §14. This section is the running total, so
 a future session does not have to re-read the whole of §14 to find out what is left.
 
 **Closed.** §14.1 entirely — the lost-work cluster, which was the only part of the review that made
@@ -3134,18 +3134,37 @@ hang, and the whole of §14.2's Minor list bar two entries.
    overset check, `DocumentSession`'s missing rollback.~~ — **closed at M33.** Two reproduced and
    were fixed; the `Unpremul` one did not reproduce and is recorded as covered by tests that
    already exist, rather than being quietly dropped.
-6. **Keyboard equivalents for marquee, add-to-selection and pan.** Each is a NEW command needing
-   real design — "select everything on this page" is not quite a marquee.
+6. ~~**Keyboard equivalents for marquee, add-to-selection and pan.**~~ — **marquee and pan closed at
+   M49.** The review was right that "select everything on this page" is not quite a marquee, and
+   that turned out to be the answer rather than the objection: what a marquee is FOR here is lining
+   several things up, so the keyboard gets that outcome. **Add-to-selection stays open** — it needs
+   a cursor separate from the selection, which is a real feature — as does pointer-anchored zoom,
+   because without a pointer there is no anchor.
 7. ~~**The `.bak` ring beside the user's file** and its "Restore an earlier version" menu (§4).~~ —
    **closed at M39**, both halves together. The rotation had been written at M9 and called by
    nothing but its own test; M24's Save command is what turned that from dormant into dangerous.
-8. The rest of the jargon inventory, tooltips, rulers and guides, and the wizard notes in §14.4.
-   **The People-window half of this closed at M40** — the silent edit loss, the missing date example
-   and the undistinguished Remove button.
+8. ~~The rest of the jargon inventory, tooltips, rulers and guides, and the wizard notes in §14.4.~~
+   — **all closed**: the People window at M40, the toolbar's missing Save at M41, four dialogs at
+   M42, the overset marker and M23's dismissal at M43, the hidden click mode at M44, tooltips at
+   M45, the jargon inventory at M46 (with a standing test, not a one-off pass), the margin display
+   at M47 — rulers, guides and a grid **declined on the record** — and the wizard at M48.
 
-**One finding was investigated and deliberately not changed**: `RecipeCache` eviction, which is not
-reachable because the only call site draws each image immediately (`docs/M25-spec.md` §5). It stays
-on the list because what makes it safe is a property of the caller.
+**Where this leaves §14, as at 2026-08-08.** Twenty-six milestones, M24 through M49, were taken from
+the review. Everything in §14.1, §14.2, §14.4 and §14.5 is closed. Of §14.3, one item is open by
+choice and two are recorded as limitations rather than defects:
+
+- **Add-to-selection and pointer-anchored zoom from the keyboard** (M49 §5) — both need a new idea
+  first, not more code.
+- **HarfBuzz is hardwired to left-to-right Latin** (`HarfBuzzShaper.cs:76-78`). Recorded as a design
+  limitation from the day the review found it. This app types English into a lodge newsletter; the
+  fix is a different product.
+- **`RecipeCache` eviction** was investigated and deliberately not changed: it is unreachable
+  because the only call site draws each image immediately (`docs/M25-spec.md` §5). It stays on the
+  list because what makes it safe is a property of the caller rather than of the cache.
+
+**Two things were declined outright, with reasons**: rulers, draggable guides and a grid (M47 §2),
+and renaming the wizard's two commit verbs (M48 §6). Both are recorded so the next person can
+disagree with the reasoning rather than rediscover the finding.
 
 **A second methodological note, from M39, and the sharper of the two.** The rule "run the test
 against the unfixed code" is necessary and was not sufficient. M39's test DID fail first time — but
