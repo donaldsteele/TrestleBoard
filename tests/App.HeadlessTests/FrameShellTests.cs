@@ -1,6 +1,8 @@
 using Avalonia.Headless;
 using Avalonia.Input;
 using TrestleBoard.Core.Model;
+using TrestleBoard.Editing;
+using TrestleBoard.Layout.Editing;
 using Xunit;
 
 namespace TrestleBoard.App.HeadlessTests;
@@ -111,7 +113,13 @@ public sealed class FrameShellTests
 
             window.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
             Assert.False(window.FramesForTest.IsLinkModeActive);
-            Assert.Equal("", window.StatusLabelTextForTest);
+
+            // M44: leaving link mode used to leave the status bar empty. It now falls back to the
+            // mode hint, which is the lowest-priority thing the bar can say — the frame is still
+            // chosen, so the bar says so and names the key that starts writing in it.
+            Assert.Equal(
+                "This frame is chosen. Press Enter to write in it, or Tab to move to the next one.",
+                window.StatusLabelTextForTest);
 
             window.Close();
         }, TestContext.Current.CancellationToken);
@@ -169,6 +177,78 @@ public sealed class FrameShellTests
             Assert.False(window.EditorForTest.IsActive);
             Assert.NotNull(window.FramesForTest.SelectedBlockId);
 
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M44, review §14.3: the canvas has two modes, and now says which one you are in and how to
+    /// leave it.
+    ///
+    /// <para>The same click on a text frame places a caret or chooses the frame depending on
+    /// whether it was already chosen — a mode with no indicator anywhere — and Enter, F2 and Esc
+    /// move between the two while appearing in no menu, no panel and no catalog entry. Tab was
+    /// worse than undocumented: it was swallowed, so the only keyboard way out of writing was Esc
+    /// and then Tab.</para>
+    /// </summary>
+    [Fact]
+    public async Task TheCanvasSaysWhichModeYouAreInAndTabLeavesTheWriting()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenIssueSample();
+            window.CanvasForTest.Focus();
+
+            // Writing: the bar names the two keys that leave.
+            Assert.True(window.EditorForTest!.TryBeginAt(0, 100f, 200f));
+            window.RefreshActions();
+            Assert.True(window.CurrentActionContext.IsEditingText);
+            Assert.Equal(
+                "You are writing in this frame. Esc chooses the frame instead; Tab moves on to the next one.",
+                window.StatusLabelTextForTest);
+
+            // And Tab does it in ONE press: out of the writing, on to another frame.
+            string wasWriting = window.EditorForTest.BlockId!;
+            window.KeyPressQwerty(PhysicalKey.Tab, RawInputModifiers.None);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.False(window.CurrentActionContext.IsEditingText);
+            Assert.NotNull(window.FramesForTest!.SelectedBlockId);
+            Assert.NotEqual(wasWriting, window.FramesForTest.SelectedBlockId);
+
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M44: Alt has suppressed snapping since M5 and was advertised nowhere. It is said while a
+    /// drag is happening, which is the only moment it can be acted on.
+    /// </summary>
+    [Fact]
+    public async Task DraggingAFrameSaysThatAltIgnoresTheGuides()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.OpenIssueSample();
+
+            string frame = window.SessionForTest!.Document.Pages[0].Blocks[0].Id;
+            window.EditorForTest!.End();
+            window.FramesForTest!.Select(frame);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.True(window.FramesForTest.BeginDrag(FrameHandle.Body, 100f, 200f));
+            window.RefreshActions();
+
+            Assert.Equal(FrameEditorController.DragHintMessage, window.StatusLabelTextForTest);
+            Assert.Contains("Alt", window.StatusLabelTextForTest!, StringComparison.Ordinal);
+
+            window.FramesForTest.EndDrag(commit: false);
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.Close();
         }, TestContext.Current.CancellationToken);
     }

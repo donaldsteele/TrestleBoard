@@ -2309,6 +2309,29 @@ claims that could be checked the strong way are asserted explicitly.
 
 ---
 
+### M44 - The canvas says which mode you are in (delivered 2026-08-08, `docs/M44-spec.md`)
+
+Closes the hidden click-mode finding in section 14.3 and two of the keyboard gaps beside it.
+
+Click a text frame and you type in it; click it again and you select it as an object; click within
+4 points of its edge and you select it the first time. That is exactly what a layout program should
+do, and there was no indicator anywhere that two states existed, nor that Enter, F2 and Esc move
+between them. The status bar now names the state and the key that leaves it, at the LOWEST priority
+it has, so anything the app actually needs to report still wins.
+
+Tab was worse than undocumented - it was swallowed, so the only keyboard way out of writing was Esc
+and then Tab. It now does both in one press. Nothing is lost: a tab CHARACTER cannot be typed into a
+story anyway, so the key had no other job.
+
+Alt has suppressed snapping since M5 and was advertised nowhere; it is said while a drag is actually
+happening, which is the only moment it can be acted on.
+
+The load-bearing evidence is a test that already existed: `LinkModeArmsFromTheKeyboard...` asserted
+the status bar was EMPTY after leaving link mode, and adding the hint made it fail. Recorded
+honestly: the two new tests could not be made to fail cleanly against reverted source in isolation.
+
+---
+
 ## 12. Verification (end-to-end)
 
 1. **Per-milestone:** `dotnet build && dotnet test` locally + 3-OS CI matrix green; cavecrew-reviewer findings addressed; snapshot diffs reviewed as CI artifacts.
@@ -2827,19 +2850,21 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
 
 - ~~**The save model is the product's biggest usability hole** — see §14.1.~~ — **closed at M24.**
   Everything else in this section was written assuming it would be fixed first, and it was.
-- **Hidden click mode on the canvas.** The same click on a text frame places a caret or selects the
+- ~~**Hidden click mode on the canvas.** The same click on a text frame places a caret or selects the
   frame depending on whether it was already selected (`PageCanvasControl.cs:654-722`, 4 pt edge
   band) — a mode with no indicator anywhere. Enter/F2/Esc enter and leave typing but appear in no
   menu, no panel entry, and no catalog action; Tab is swallowed inside a text session, so the only
-  keyboard way out is Esc-then-Tab.
+  keyboard way out is Esc-then-Tab.~~ — **fixed at M44**: the status bar names the mode and the key
+  that leaves it, at its lowest priority, and Tab leaves the writing in one press.
 - ~~**The photo adjust window edits the live document with no exit but forward.** Sliders apply
   immediately and the window has only "Done" — no Cancel, no `IsCancel`, Esc does nothing. The only
   retreat is "Start over" or Ctrl+Z afterwards.~~ — **fixed at M27**: Cancel unwinds the real undo
   stack to where it stood when the window opened.
 - **Keyboard coverage gaps** (an explicit §6 mandate) — **part closed at M28**: the dead Ctrl+V,
-  Backspace's unregistered path, and gestures for add-a-page and settings. **Still open**: no
-  keyboard equivalent for marquee selection, add-to-selection (Shift+click only), pan, snap
-  suppression (Alt — itself advertised nowhere), or pointer-anchored zoom; keyboard photo insertion
+  Backspace's unregistered path, and gestures for add-a-page and settings. **Alt is now advertised** (M44),
+  while a drag is happening, which is the only moment it can be acted on. **Still open**: no
+  keyboard equivalent for marquee selection, add-to-selection (Shift+click only), pan, or
+  pointer-anchored zoom; keyboard photo insertion
   always lands at the default placement. The remaining ~20 shortcut-less commands are deliberate —
   align, distribute and the picture-geometry commands are typed into once and left alone.
 - **Two disability models in one window.** Menus and toolbar grey out; the action panel never greys

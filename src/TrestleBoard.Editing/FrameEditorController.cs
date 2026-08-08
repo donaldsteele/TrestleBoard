@@ -112,6 +112,10 @@ public sealed class FrameEditorController
 
     public void ClearSelection() => Select(null);
 
+    /// <summary>M44: said while a frame is being dragged or resized, and only then.</summary>
+    public const string DragHintMessage =
+        "Hold down Alt while you drag to ignore the lining-up guides.";
+
     // ---- Choosing more than one thing (PLAN.md §11 M21) ---------------------------------------
 
     /// <summary>Everything chosen right now, the primary first. Empty when nothing is chosen.</summary>
@@ -346,6 +350,12 @@ public sealed class FrameEditorController
         _dragStartXPt = xPt;
         _dragStartYPt = yPt;
         _snapGuides.Clear();
+
+        // M44, review §14.3: snapping has been suppressible with Alt since M5 and was advertised
+        // nowhere at all. It is said at the one moment it can be acted on — while a drag is
+        // actually happening — because a fact about a modifier key is useless before the gesture
+        // it modifies has begun.
+        StatusMessage = DragHintMessage;
         Raise();
         return true;
     }

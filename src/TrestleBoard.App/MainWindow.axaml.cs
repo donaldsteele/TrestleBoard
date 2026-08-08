@@ -3367,8 +3367,32 @@ public partial class MainWindow : Window
                 ? "There is more writing than fits — 'Make the rest fit' (Ctrl+Shift+M) will flow it."
                 : null);
 
-        StatusLabel.Text = message ?? _announcement ?? "";
+        StatusLabel.Text = message ?? _announcement ?? ModeHint() ?? "";
         _announcement = null;
+    }
+
+    /// <summary>
+    /// M44, review §14.3: which of the canvas's two modes the user is in, and the key that leaves
+    /// it.
+    ///
+    /// <para>The same click on a text frame places a caret or chooses the frame depending on
+    /// whether it was already chosen, and Enter, F2 and Esc move between those two states — a mode
+    /// with no indicator anywhere, and three keys that appear in no menu, no panel and no catalog
+    /// entry. This is the lowest-priority thing the status bar can say, so anything the app
+    /// actually needs to report still wins; when there is nothing else to say, it says where you
+    /// are.</para>
+    /// </summary>
+    private string? ModeHint()
+    {
+        if (_context.IsEditingText)
+        {
+            return "You are writing in this frame. Esc chooses the frame instead; "
+                + "Tab moves on to the next one.";
+        }
+
+        return _context.Selection is SelectionKind.TextFrame
+            ? "This frame is chosen. Press Enter to write in it, or Tab to move to the next one."
+            : null;
     }
 
     /// <summary>

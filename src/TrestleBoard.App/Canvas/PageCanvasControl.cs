@@ -1102,7 +1102,16 @@ public sealed class PageCanvasControl : Control
             Key.Enter => DoEdit(_editor.InsertParagraphBreak),
             Key.Escape => DoEdit(ExitTextEditingToFrameSelection),
             Key.A when ctrl => DoEdit(_editor.SelectAll),
-            Key.Tab => true, // swallowed inside a session; Tab cycles frames in frame mode
+            // M44, review §14.3. Tab used to be swallowed here, so the only keyboard way out of a
+            // text session was Esc and then Tab — two presses for what every other program does in
+            // one, and neither of them written down anywhere. Now it does both: leave the writing,
+            // and go to the next frame. Nothing is lost, because a Tab CHARACTER cannot be typed
+            // into a story anyway (the sanitiser drops it), so this key had no other job.
+            Key.Tab => DoEdit(() =>
+            {
+                ExitTextEditingToFrameSelection();
+                _frames?.CycleSelection(PageIndex, forward: !shift);
+            }),
             _ => false,
         };
         if (handled)
