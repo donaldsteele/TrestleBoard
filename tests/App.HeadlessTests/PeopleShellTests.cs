@@ -108,6 +108,118 @@ public sealed class PeopleShellTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>
+    /// M40, review §14.4: an edit in the form is not thrown away without a word.
+    ///
+    /// <para>The People window saves one person at a time, deliberately — but clicking a different
+    /// name in the list overwrote the form with no question asked, so a corrected phone number that
+    /// had been typed but not saved simply vanished. The person who lost it had no way to know it
+    /// had happened; the list had done exactly what they clicked on.</para>
+    ///
+    /// <para>This is the roster, so what is being lost is a real member's real telephone number
+    /// (PLAN.md §0 rule 5) — and it is the one place in the app where losing it is silent.</para>
+    /// </summary>
+    [Fact]
+    public async Task SwitchingPeopleWithAnUnsavedEditAsksFirst()
+    {
+        await Session.Dispatch(() =>
+        {
+            RosterService roster = NewRoster();
+            roster.Save(new Member { Id = "person-1", DisplayName = "Aaron Placeholder", Phone = "555-0100" }, "Add");
+            roster.Save(new Member { Id = "person-2", DisplayName = "Bertram Sample" }, "Add");
+
+            var window = new PeopleWindow(roster);
+            window.Show();
+
+            window.SelectForTest("person-1");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.False(window.FormHasUnsavedEditsForTest);
+
+            // The correction is typed and NOT saved.
+            window.TypePhoneForTest("555-0102");
+            Assert.True(window.FormHasUnsavedEditsForTest);
+
+            // "Go back" leaves the form and the list exactly as they were.
+            window.PendingEditAnswerForTest = PeopleWindow.PendingEdit.Stay;
+            window.SelectForTest("person-2");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal("person-1", window.SelectedIdForTest);
+            Assert.Equal("555-0102", window.PhoneTextForTest);
+            Assert.True(window.FormHasUnsavedEditsForTest);
+
+            // "Save it" writes the correction and then switches.
+            window.PendingEditAnswerForTest = PeopleWindow.PendingEdit.Save;
+            window.SelectForTest("person-2");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal("555-0102", roster.Book.Find("person-1")!.Phone);
+            Assert.Equal("person-2", window.SelectedIdForTest);
+            Assert.False(window.FormHasUnsavedEditsForTest);
+
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task DiscardingAnUnsavedEditLeavesTheAddressBookAlone()
+    {
+        await Session.Dispatch(() =>
+        {
+            RosterService roster = NewRoster();
+            roster.Save(new Member { Id = "person-1", DisplayName = "Aaron Placeholder", Phone = "555-0100" }, "Add");
+            roster.Save(new Member { Id = "person-2", DisplayName = "Bertram Sample" }, "Add");
+
+            var window = new PeopleWindow(roster);
+            window.Show();
+            window.SelectForTest("person-1");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            window.TypePhoneForTest("555-0199");
+            window.PendingEditAnswerForTest = PeopleWindow.PendingEdit.Discard;
+            window.SelectForTest("person-2");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal("person-2", window.SelectedIdForTest);
+            Assert.Equal("555-0100", roster.Book.Find("person-1")!.Phone);
+
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M40, review §14.4: the button that removes somebody does not look like the button that saves
+    /// them. Colour is not the only signal — the outline is heavier too, and the label ends in an
+    /// ellipsis that promises a question (PLAN.md §6).
+    /// </summary>
+    [Fact]
+    public async Task TheRemoveButtonDoesNotLookLikeTheSaveButton()
+    {
+        await Session.Dispatch(() =>
+        {
+            RosterService roster = NewRoster();
+            var window = new PeopleWindow(roster);
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            Button remove = window.GetLogicalDescendants().OfType<Button>()
+                .Single(b => (b.Content as string) == "Remove this person…");
+            Button save = window.GetLogicalDescendants().OfType<Button>()
+                .Single(b => (b.Content as string) == "Save this person");
+
+            // Still an app-made button, so ActionSurfaceTests' rule still covers it...
+            Assert.Contains("action", remove.Classes);
+            Assert.Contains("action", save.Classes);
+
+            // ...and distinguished on top of that.
+            Assert.Contains("destructive", remove.Classes);
+            Assert.DoesNotContain("destructive", save.Classes);
+            Assert.NotEqual(save.Theme, remove.Theme);
+
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
     [Fact]
     public async Task RemovingSomebodySaysHowToPutThemBack()
     {

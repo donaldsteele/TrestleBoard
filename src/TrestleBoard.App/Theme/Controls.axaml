@@ -87,6 +87,32 @@
       </Style>
     </ControlTheme>
 
+    <!--
+      M40. A button that REMOVES something, reviewed as "styled identically to neutral buttons".
+      Based on the action treatment rather than replacing it, so it keeps the disabled rules that
+      milestone settled and differs only where it should: a heavier outline, in the warning colour,
+      with the label in the same colour.
+    -->
+    <ControlTheme x:Key="TrestleBoard.DestructiveButton"
+                  TargetType="Button"
+                  BasedOn="{StaticResource TrestleBoard.ActionButton}">
+      <Setter Property="BorderBrush" Value="{DynamicResource TrestleBoard.Warning}" />
+      <Setter Property="BorderThickness" Value="{DynamicResource TrestleBoard.Focus.Thickness}" />
+      <Setter Property="Foreground" Value="{DynamicResource TrestleBoard.Warning}" />
+
+      <!-- Restated on the template part for the reason the action theme documents: Fluent's own
+           pointerover and pressed rules target the ContentPresenter, and would drop the outline the
+           moment the pointer arrived - on the one button where that outline is the warning. -->
+      <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource TrestleBoard.Warning}" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TrestleBoard.Warning}" />
+      </Style>
+
+      <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderBrush" Value="{DynamicResource TrestleBoard.Warning}" />
+      </Style>
+    </ControlTheme>
+
   </Styles.Resources>
 
   <!--
@@ -108,6 +134,11 @@
   -->
   <Style Selector="Button.action">
     <Setter Property="Theme" Value="{DynamicResource TrestleBoard.ActionButton}" />
+  </Style>
+
+  <!-- M40. Two classes, most-specific wins: a destructive button is an action button first. -->
+  <Style Selector="Button.action.destructive">
+    <Setter Property="Theme" Value="{DynamicResource TrestleBoard.DestructiveButton}" />
   </Style>
 
   <!--

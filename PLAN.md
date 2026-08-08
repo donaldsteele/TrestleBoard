@@ -2202,6 +2202,37 @@ is a compiler-legal overload choice and there is nothing else left to check it w
 
 ---
 
+### M40 - The address book stops losing edits quietly (delivered 2026-08-08, `docs/M40-spec.md`)
+
+Closes the People-window entry in section 14.4, all three parts of it.
+
+The window saves one person at a time, which is the right shape for "look somebody up and fix their
+phone number". What was wrong is what happened when the user walked away from a half-finished edit:
+`OnListSelectionChanged` overwrote every field with no question asked. Type a corrected telephone
+number, click the next name, and it was gone - and the person who lost it had no way to know,
+because the list had done exactly what they clicked on. This is the roster, so what was being thrown
+away was a real member's real details (section 0 rule 5), and it was the one place in the app where
+losing them was silent.
+
+Three doors out of a dirty form were all quiet - clicking another name, "Add a person", and closing
+the window. All three now ask, with the same three-button question the newsletter asks at M24, in
+the same words. Two details that are easy to get wrong: the list is put back BEFORE the question
+appears, or the window sits showing one person's name over another person's details; and "Save this
+person" that fails does not carry the user onwards, because going anywhere then would discard the
+edit they were just asked to fix.
+
+The finding's other two parts land with it. The raised/initiated field gains the example the
+birthday field has had since M12, though it is the harder of the two to guess. And "Remove this
+person..." no longer looks exactly like "Save this person" beside it: a new `Destructive()`
+treatment gives it a heavier outline in the warning colour. It keeps the `action` class, so
+`ActionSurfaceTests` still covers it, and colour is not the only signal - the outline is thicker as
+well as redder, and the label's ellipsis already promises a question (section 6).
+
+The regression test was verified failing against the unguarded code AND at the right assertion,
+which is M39's lesson applied.
+
+---
+
 ## 12. Verification (end-to-end)
 
 1. **Per-milestone:** `dotnet build && dotnet test` locally + 3-OS CI matrix green; cavecrew-reviewer findings addressed; snapshot diffs reviewed as CI artifacts.
@@ -2793,9 +2824,10 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   gallery makes.
 - The overset marker is a small glyph at the frame edge, explained only in the status bar — easy to
   miss at typical zoom for the audience this app serves.
-- People window: "Save this person" is per-person manual save — switching people with unsaved edits
+- ~~People window: "Save this person" is per-person manual save — switching people with unsaved edits
   risks silent loss; the raised/initiated date field has no format hint though the birthday field
-  has one; "Remove this person…" is styled identically to neutral buttons.
+  has one; "Remove this person…" is styled identically to neutral buttons.~~ — **all three fixed at
+  M40.** Per-person saving stays; the three quiet ways out of a dirty form now ask.
 - Wizard: fourteen one-question steps with the "Show all at once" escape easy to miss; the final
   step puts Cancel directly beside "Save it" — one misclick discards fourteen answers (whether
   Cancel confirms there is the grid-vs-wizard inconsistency of §14.2).
@@ -2868,8 +2900,9 @@ hang, and the whole of §14.2's Minor list bar two entries.
 7. ~~**The `.bak` ring beside the user's file** and its "Restore an earlier version" menu (§4).~~ —
    **closed at M39**, both halves together. The rotation had been written at M9 and called by
    nothing but its own test; M24's Save command is what turned that from dormant into dangerous.
-8. The rest of the jargon inventory, tooltips, rulers and guides, and the wizard/People-window
-   interaction notes in §14.4.
+8. The rest of the jargon inventory, tooltips, rulers and guides, and the wizard notes in §14.4.
+   **The People-window half of this closed at M40** — the silent edit loss, the missing date example
+   and the undistinguished Remove button.
 
 **One finding was investigated and deliberately not changed**: `RecipeCache` eviction, which is not
 reachable because the only call site draws each image immediately (`docs/M25-spec.md` §5). It stays

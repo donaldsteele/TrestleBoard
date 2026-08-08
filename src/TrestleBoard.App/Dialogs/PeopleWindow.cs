@@ -42,6 +42,15 @@ public sealed class PeopleWindow : Window
     private bool _adding;
     private bool _updating;
 
+    /// <summary>
+    /// M40: what the form held when it was last filled in from the address book, or last saved. The
+    /// form is dirty when it no longer matches (review §14.4).
+    /// </summary>
+    private string _formAsLoaded = string.Empty;
+
+    /// <summary>M40: the close has already asked about a pending edit and been answered.</summary>
+    private bool _closeAgreed;
+
     private static readonly (string? Kind, string Label)[] DegreeKinds =
     [
         (null, "Not said"),
@@ -90,7 +99,10 @@ public sealed class PeopleWindow : Window
         _phone = Field("Telephone number");
         _email = Field("Email address");
         _office = Field("Lodge office");
-        _degreeDate = Field("The date he was raised or initiated");
+        // M40: the birthday field has carried an example since M12 and this one never did, though
+        // it is the harder of the two to guess - a date with a year in it, in a window where the
+        // other date deliberately has none.
+        _degreeDate = Field("The date he was raised or initiated, like 3/14/1998");
 
         _degreeKind = new ComboBox
         {
@@ -116,7 +128,10 @@ public sealed class PeopleWindow : Window
         var save = Action("Save this person", "Save the details on this form");
         save.Click += (_, _) => Save();
 
+        // M40: the one button in this window that takes something away, and it used to look
+        // exactly like "Save this person" beside it (review §14.4).
         _delete = Action("Remove this person…", "Remove this person from your address book");
+        _delete.Destructive();
         _delete.Click += async (_, _) => await ConfirmDeleteAsync();
 
         var close = Action("Close", "Close the address book");
@@ -145,6 +160,10 @@ public sealed class PeopleWindow : Window
         // §14.2). Named rather than a lambda so there is something to detach.
         _roster.Changed += OnRosterChanged;
         Closed += (_, _) => _roster.Changed -= OnRosterChanged;
+
+        // M40: closing the window is the third way to walk away from an unsaved edit, and it was
+        // the quietest of them.
+        Closing += OnWindowClosing;
         Opened += (_, _) => _search.Focus();
 
         RefreshList();
@@ -153,8 +172,88 @@ public sealed class PeopleWindow : Window
 
     private void OnRosterChanged(object? sender, EventArgs e) => RefreshList();
 
+    private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (_closeAgreed || !FormHasUnsavedEdits())
+        {
+            return;
+        }
+
+        if (AnswerWithoutAsking is { } answer)
+        {
+            if (answer == PendingEdit.Stay || (answer == PendingEdit.Save && !Save()))
+            {
+                e.Cancel = true;
+            }
+
+            return;
+        }
+
+        e.Cancel = true;
+        _ = FinishClosingAsync();
+    }
+
+    private async Task FinishClosingAsync()
+    {
+        try
+        {
+            PendingEdit answer = await AskAboutPendingEditAsync();
+            if (answer == PendingEdit.Stay || (answer == PendingEdit.Save && !Save()))
+            {
+                return;
+            }
+
+            _closeAgreed = true;
+            Close();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            _status.Text = $"That could not be finished, so nothing has changed. ({ex.Message})";
+        }
+    }
+
+    /// <summary>What to do about an edit that has been typed but not saved (M40).</summary>
+    public enum PendingEdit
+    {
+        /// <summary>Write it, then go where the user was going.</summary>
+        Save,
+
+        /// <summary>Throw it away and go anyway.</summary>
+        Discard,
+
+        /// <summary>Stay on this person with the edit still on the form.</summary>
+        Stay,
+    }
+
+    /// <summary>
+    /// Set by tests in place of the three-button dialog, which cannot be answered headlessly. Null
+    /// means "ask the user"; a value means "this is what they would have said".
+    /// </summary>
+    internal PendingEdit? PendingEditAnswerForTest { get; set; }
+
+    /// <summary>
+    /// The answer to use without asking, or null to put the question on screen. A headless run
+    /// cannot answer a modal dialog, so under MainWindow's test flag an unanswered question means
+    /// "carry on" - the same flag that keeps the start screen and the update check out of a test.
+    /// </summary>
+    private PendingEdit? AnswerWithoutAsking =>
+        PendingEditAnswerForTest ?? (MainWindow.SuppressStartupForTest ? PendingEdit.Discard : null);
+
     /// <summary>The rows the list is showing, for the headless tests.</summary>
     internal IReadOnlyList<Member> ShownForTest => _shown;
+
+    internal bool FormHasUnsavedEditsForTest => FormHasUnsavedEdits();
+
+    internal string? SelectedIdForTest => _selectedId;
+
+    internal string PhoneTextForTest => _phone.Text ?? string.Empty;
+
+    /// <summary>Types a telephone number into the form without saving it, as a person would.</summary>
+    internal void TypePhoneForTest(string phone)
+    {
+        _phone.Text = phone;
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+    }
 
     internal string CountTextForTest => _count.Text ?? string.Empty;
 
@@ -172,11 +271,12 @@ public sealed class PeopleWindow : Window
         Save();
     }
 
-    internal void SelectForTest(string memberId)
-    {
-        _selectedId = memberId;
-        _list.SelectedIndex = _shown.ToList().FindIndex(m => m.Id == memberId);
-    }
+    /// <summary>
+    /// Clicks a name in the list, through the SAME path a person's click takes — M40 put a question
+    /// on that path, and a test hook that stepped around it would be testing the wrong door.
+    /// </summary>
+    internal void SelectForTest(string memberId) =>
+        _list.SelectedIndex = IndexOf(memberId);
 
     internal void DeleteSelectedForTest() => DeleteSelected();
 
@@ -320,6 +420,16 @@ public sealed class PeopleWindow : Window
         return string.Join(" — ", parts);
     }
 
+    /// <summary>
+    /// M40, review section 14.4. Clicking a different name used to overwrite the form with no
+    /// question asked, so a corrected telephone number that had been typed but not saved simply
+    /// vanished - and the person who lost it had no way to know, because the list had done exactly
+    /// what they clicked on. This is the address book, so what was being lost was a real member's
+    /// real details (PLAN.md section 0 rule 5).
+    ///
+    /// <para>Per-person saving stays. It is the right shape for "look somebody up and fix their
+    /// phone number", and the fix for a silent loss is a question, not a different model.</para>
+    /// </summary>
     private void OnListSelectionChanged()
     {
         if (_updating)
@@ -333,9 +443,203 @@ public sealed class PeopleWindow : Window
             return;
         }
 
-        _adding = false;
-        Show(_shown[index]);
+        Member target = _shown[index];
+        if (target.Id == _selectedId)
+        {
+            return;
+        }
+
+        if (!FormHasUnsavedEdits())
+        {
+            _adding = false;
+            Show(target);
+            return;
+        }
+
+        // The list is put back FIRST, so the window never sits showing one person's name over
+        // another person's details while the question is on screen.
+        RestoreSelection();
+
+        if (AnswerWithoutAsking is { } answer)
+        {
+            Resolve(answer, target.Id);
+            return;
+        }
+
+        _ = ResolveAfterAskingAsync(target.Id);
     }
+
+    /// <summary>Puts the list back on whoever the form is showing, without re-entering the handler.</summary>
+    private void RestoreSelection()
+    {
+        _updating = true;
+        _list.SelectedIndex = _selectedId is { } id ? IndexOf(id) : -1;
+        _updating = false;
+    }
+
+    private int IndexOf(string memberId)
+    {
+        for (int i = 0; i < _shown.Count; i++)
+        {
+            if (_shown[i].Id == memberId)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private async Task ResolveAfterAskingAsync(string? goingTo)
+    {
+        try
+        {
+            Resolve(await AskAboutPendingEditAsync(), goingTo);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // Staying put is the outcome that keeps the edit, so a failure here says so and does
+            // nothing else. An exception escaping would take the window down with the very details
+            // this question exists to protect.
+            _status.Text = $"That could not be finished, so nothing has changed. ({ex.Message})";
+        }
+    }
+
+    /// <summary>
+    /// Carries out the answer. <paramref name="goingTo"/> is a member id when the user was switching
+    /// people, and null when they were adding somebody or closing the window.
+    /// </summary>
+    private void Resolve(PendingEdit answer, string? goingTo)
+    {
+        switch (answer)
+        {
+            case PendingEdit.Stay:
+                RestoreSelection();
+                return;
+
+            case PendingEdit.Save when !Save():
+                // The form was refused - an unreadable birthday, an empty name. The reason is
+                // already in the status line, and going anywhere now would throw away the edit the
+                // user has just been asked to correct.
+                RestoreSelection();
+                return;
+
+            default:
+                break;
+        }
+
+        _adding = false;
+        if (goingTo is not null && _roster.Book.Find(goingTo) is { } member)
+        {
+            Show(member);
+        }
+
+        RestoreSelection();
+    }
+
+    /// <summary>
+    /// The same three-button question the newsletter asks when something is about to replace unsaved
+    /// work (M24), in the same words, because it is the same question about a different thing.
+    /// </summary>
+    private async Task<PendingEdit> AskAboutPendingEditAsync()
+    {
+        PendingEdit answer = PendingEdit.Stay;
+        string who = (_name.Text ?? string.Empty).Trim();
+        if (who.Length == 0)
+        {
+            who = "this person";
+        }
+
+        var save = new Button
+        {
+            Content = "Save this person",
+            FontSize = 20,
+            MinHeight = 44,
+            MinWidth = 200,
+            IsDefault = true,
+        };
+        AutomationProperties.SetName(save, "Save this person");
+
+        var discard = new Button { Content = "Do not save", FontSize = 20, MinHeight = 44, MinWidth = 170 };
+        discard.Action();
+        AutomationProperties.SetName(discard, "Do not save these changes");
+
+        var stay = new Button
+        {
+            Content = "Go back",
+            FontSize = 20,
+            MinHeight = 44,
+            MinWidth = 150,
+            IsCancel = true,
+        };
+        stay.Action();
+        AutomationProperties.SetName(stay, "Go back to the form");
+
+        var dialog = new Window
+        {
+            Title = "You have changes you have not saved",
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+            Content = new StackPanel
+            {
+                Margin = new Avalonia.Thickness(28),
+                Spacing = 16,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = $"You have changed {who} but not saved it yet.",
+                        FontSize = 20,
+                        FontWeight = FontWeight.Bold,
+                        MaxWidth = 480,
+                        TextWrapping = TextWrapping.Wrap,
+                    },
+                    new TextBlock
+                    {
+                        Text = "If you carry on without saving, those changes will be gone.",
+                        FontSize = 18,
+                        MaxWidth = 480,
+                        TextWrapping = TextWrapping.Wrap,
+                    },
+                    new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Spacing = 12,
+                        HorizontalAlignment = HorizontalAlignment.Right,
+                        Children = { stay, discard, save },
+                    },
+                },
+            },
+        };
+        AutomationProperties.SetName(dialog, "You have changes you have not saved");
+
+        save.Click += (_, _) => { answer = PendingEdit.Save; dialog.Close(); };
+        discard.Click += (_, _) => { answer = PendingEdit.Discard; dialog.Close(); };
+        stay.Click += (_, _) => { answer = PendingEdit.Stay; dialog.Close(); };
+
+        await dialog.ShowDialog(this);
+        return answer;
+    }
+
+    /// <summary>
+    /// Everything on the form, as one string. Comparing a signature rather than field by field means
+    /// that a field added to this window in future is covered by whoever adds it to <see cref="Show"/>
+    /// - there is no second list to keep in step.
+    /// </summary>
+    private string FormSignature() => string.Join(
+        "\u001f",
+        (_name.Text ?? string.Empty).Trim(),
+        (_birthday.Text ?? string.Empty).Trim(),
+        (_phone.Text ?? string.Empty).Trim(),
+        (_email.Text ?? string.Empty).Trim(),
+        (_office.Text ?? string.Empty).Trim(),
+        (_degreeDate.Text ?? string.Empty).Trim(),
+        DegreeKinds[Math.Max(0, _degreeKind.SelectedIndex)].Kind ?? string.Empty,
+        (_active.IsChecked ?? true) ? "1" : "0");
+
+    private bool FormHasUnsavedEdits() =>
+        !string.Equals(FormSignature(), _formAsLoaded, StringComparison.Ordinal);
 
     private void Show(Member member)
     {
@@ -350,6 +654,7 @@ public sealed class PeopleWindow : Window
         _active.IsChecked = member.IsActive;
         _delete.IsEnabled = true;
         _status.Text = string.Empty;
+        _formAsLoaded = FormSignature();
     }
 
     private void Clear()
@@ -363,10 +668,28 @@ public sealed class PeopleWindow : Window
         _degreeKind.SelectedIndex = 0;
         _active.IsChecked = true;
         _delete.IsEnabled = false;
+        _formAsLoaded = FormSignature();
     }
 
     private void BeginAdd()
     {
+        // M40: leaving the form for a blank one loses an edit exactly as switching people does.
+        if (FormHasUnsavedEdits())
+        {
+            if (AnswerWithoutAsking is { } answer)
+            {
+                if (answer == PendingEdit.Stay || (answer == PendingEdit.Save && !Save()))
+                {
+                    return;
+                }
+            }
+            else
+            {
+                _ = BeginAddAfterAskingAsync();
+                return;
+            }
+        }
+
         _adding = true;
         Clear();
         _updating = true;
@@ -376,14 +699,19 @@ public sealed class PeopleWindow : Window
         _name.Focus();
     }
 
-    private void Save()
+    /// <summary>
+    /// Writes the person on the form. Returns false when the form was refused - M40 needs that
+    /// answer, because "Save this person" as the reply to the unsaved-changes question must not
+    /// carry the user onwards when the save did not happen.
+    /// </summary>
+    private bool Save()
     {
         string name = (_name.Text ?? string.Empty).Trim();
         if (name.Length == 0)
         {
             _status.Text = "Type a name first. Everything else is optional.";
             _name.Focus();
-            return;
+            return false;
         }
 
         string birthdayText = (_birthday.Text ?? string.Empty).Trim();
@@ -396,7 +724,7 @@ public sealed class PeopleWindow : Window
                 // Refused in words, with an example — never a red box and nothing else (PLAN.md §6).
                 _status.Text = "That birthday could not be read. Write it as a month and a day, like 7/4.";
                 _birthday.Focus();
-                return;
+                return false;
             }
 
             month = m;
@@ -422,8 +750,29 @@ public sealed class PeopleWindow : Window
         _roster.Save(member, adding ? $"Add {name}" : $"Change {name}");
         _adding = false;
         _selectedId = member.Id;
+        _formAsLoaded = FormSignature();
         RefreshList();
         _status.Text = adding ? $"{name} was added." : $"{name} was saved.";
+        return true;
+    }
+
+    private async Task BeginAddAfterAskingAsync()
+    {
+        try
+        {
+            PendingEdit answer = await AskAboutPendingEditAsync();
+            if (answer == PendingEdit.Stay || (answer == PendingEdit.Save && !Save()))
+            {
+                RestoreSelection();
+                return;
+            }
+
+            BeginAdd();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            _status.Text = $"That could not be finished, so nothing has changed. ({ex.Message})";
+        }
     }
 
     private static string? Empty(TextBox box) =>

@@ -71,6 +71,9 @@ internal static class Tokens
     /// <summary>The ControlTheme that <see cref="Action{T}"/> applies.</summary>
     internal const string ActionButtonTheme = "TrestleBoard.ActionButton";
 
+    /// <summary>The ControlTheme that <see cref="Destructive{T}"/> applies (M40).</summary>
+    internal const string DestructiveButtonTheme = "TrestleBoard.DestructiveButton";
+
     /// <summary>
     /// Marks a button as one the APP made, and gives it the affordance that says so (M37).
     ///
@@ -89,6 +92,24 @@ internal static class Tokens
     {
         ArgumentNullException.ThrowIfNull(button);
         button.Classes.Add("action");
+        return button;
+    }
+
+    /// <summary>
+    /// M40: marks a button that takes something away. It keeps the "action" class, so it is still a
+    /// button the app made and <c>ActionSurfaceTests</c> still counts it, and adds a heavier outline
+    /// in the warning colour on top.
+    ///
+    /// <para><b>Colour is not the only signal</b>, per PLAN.md §6: the outline is thicker as well as
+    /// redder, and every caller's label already ends in an ellipsis promising a question. Somebody
+    /// who cannot tell the two colours apart still has a heavier box and a different sentence.</para>
+    /// </summary>
+    internal static T Destructive<T>(this T button)
+        where T : Avalonia.Controls.Button
+    {
+        ArgumentNullException.ThrowIfNull(button);
+        button.Classes.Add("action");
+        button.Classes.Add("destructive");
         return button;
     }
 
