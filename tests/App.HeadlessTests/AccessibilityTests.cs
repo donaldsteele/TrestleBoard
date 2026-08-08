@@ -1,5 +1,6 @@
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Avalonia.Headless;
@@ -386,5 +387,45 @@ public sealed class AccessibilityTests
         {
             yield return child;
         }
+    }
+
+    /// <summary>
+    /// M48, review §14.2: the start screen had no Escape path, and it is the first window a user
+    /// ever meets. Every other dialog in the app closes on Esc; this one had to be answered with
+    /// the mouse.
+    /// </summary>
+    [Fact]
+    public async Task TheStartScreenCanBeLeftWithEscape()
+    {
+        await Session.Dispatch(() =>
+        {
+            var dialog = new StartDialog(canStartFromLastMonth: true);
+            dialog.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            dialog.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            // "Nothing" is what the shell has always treated as "they did not choose", so leaving
+            // this way lands in a state the caller already handles.
+            Assert.Equal(StartChoice.Nothing, dialog.Choice);
+            Assert.False(dialog.IsVisible);
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M48, review §14.4: the wizard's first screen says the escape hatch exists.
+    ///
+    /// <para>Fourteen one-question screens with a way out that nobody notices is fourteen screens.
+    /// It is said once, on the first, because repeating it on every screen would be nagging.</para>
+    /// </summary>
+    [Fact]
+    public async Task TheWizardsFirstScreenMentionsShowingEveryQuestionAtOnce()
+    {
+        await Session.Dispatch(() =>
+        {
+            Assert.Contains("Show all at once", WizardWindow.ShowAllHint, StringComparison.Ordinal);
+            Assert.Contains("one page", WizardWindow.ShowAllHint, StringComparison.Ordinal);
+        }, TestContext.Current.CancellationToken);
     }
 }

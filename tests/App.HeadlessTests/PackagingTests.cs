@@ -274,4 +274,76 @@ public sealed class PackagingTests
             window.Close();
         }, TestContext.Current.CancellationToken);
     }
+
+    /// <summary>
+    /// M48, review §14.2: the startup check and the Help menu item could run at the same time, so
+    /// opening the app and immediately choosing "Check for an update" started two — and two
+    /// downloads of the same release is wasted bandwidth on a lodge's connection.
+    ///
+    /// <para>The second caller is told the truth rather than silently dropped: somebody who pressed
+    /// a menu item is owed an answer, and "already looking" is the answer.</para>
+    /// </summary>
+    [Fact]
+    public async Task TwoUpdateChecksCannotRunAtOnce()
+    {
+        await HeadlessSession.DispatchAsync(async () =>
+        {
+            var window = new MainWindow();
+            var channel = new SlowChannel { Available = "3.0.0" };
+            window.UseUpdateChannelForTest(channel);
+            window.Show();
+
+            Task first = window.CheckForUpdatesForTest(userAsked: false);
+            await window.CheckForUpdatesForTest(userAsked: true);
+
+            // The second one did not start a check of its own, and said so.
+            Assert.Equal(1, channel.Checks);
+            Assert.Contains("already looking", window.StatusLabelTextForTest!, StringComparison.Ordinal);
+
+            channel.Finish();
+            await first;
+            Assert.Equal(1, channel.Checks);
+
+            // And once it is over the gate is open again: asking now gets a real answer about the
+            // update rather than "already looking". (Whether the CHANNEL is consulted a second time
+            // is UpdateCoordinator's business — it already knows 3.0.0 is ready and does not need
+            // to ask again — so the guard is tested by what the user is told, not by a call count.)
+            await window.CheckForUpdatesForTest(userAsked: true);
+            Assert.DoesNotContain("already looking", window.StatusLabelTextForTest!, StringComparison.Ordinal);
+            Assert.Contains("3.0.0", window.StatusLabelTextForTest!, StringComparison.Ordinal);
+
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>A channel that stays in flight until the test lets it finish.</summary>
+    private sealed class SlowChannel : IUpdateChannel
+    {
+        private readonly TaskCompletionSource _gate = new();
+
+        public bool IsInstalled => true;
+
+        public string? Available { get; init; }
+
+        public int Checks { get; private set; }
+
+        internal void Finish() => _gate.TrySetResult();
+
+        public async Task<string?> CheckAsync(CancellationToken cancellationToken)
+        {
+            Checks++;
+            if (Checks == 1)
+            {
+                await _gate.Task;
+            }
+
+            return Available;
+        }
+
+        public Task DownloadAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public void ApplyOnExit()
+        {
+        }
+    }
 }

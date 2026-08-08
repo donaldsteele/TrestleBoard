@@ -2398,6 +2398,32 @@ has caught one of these.
 
 ---
 
+### M48 - Four small ways out (delivered 2026-08-08, `docs/M48-spec.md`)
+
+The wizard finding in section 14.4 and two section 14.2 minors that were still standing.
+
+On the review screen the wizard's footer pair becomes "Cancel" and "Save it", twelve pixels apart -
+one slip of the hand from discarding fourteen answers. The gap is now 28 pixels wider, and this is
+the only place in the app that needs it. **The review's open question resolves in the app's favour**:
+it could not tell from the code whether Cancel confirms, and it does, and has since M28.
+
+"Show all at once" sat at the bottom left of every step saying nothing about itself; the FIRST
+screen now mentions it, and only the first, because repeating it fourteen times would be nagging.
+
+`StartDialog` had no Escape path at all - and it is the first window a user ever meets. It now
+leaves with `StartChoice.Nothing`, which is what the shell has always treated as "they did not
+choose", so the new exit lands in a state the caller already handles.
+
+And two update checks could run at once: opening the app and immediately choosing Help then "Check
+for an update" started both. The second caller is told the truth rather than silently dropped -
+somebody who pressed a menu item is owed an answer, and "already looking" is the answer.
+
+Not done and recorded: "Show all at once" versus "Save it" as two commit verbs. They are not two
+verbs for one act - one changes how the questions are shown, the other finishes - and renaming
+either would make the pair LOOK consistent while describing two different things.
+
+---
+
 ## 12. Verification (end-to-end)
 
 1. **Per-milestone:** `dotnet build && dotnet test` locally + 3-OS CI matrix green; cavecrew-reviewer findings addressed; snapshot diffs reviewed as CI artifacts.
@@ -2907,8 +2933,9 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   wizard over the same session confirms.~~ (**fixed at M35**) · ~~`PositionPhotoWindow`/`RestoreDialog` never dispose their bitmaps.~~ (**fixed at M29**) · ~~The
   standard error dialog's OK has neither `IsDefault` nor `IsCancel` (Enter/Esc dead).~~
   (**fixed at M29**) ·
-  `StartDialog` has no Esc path. · Startup and manual update checks are unsynchronised — duplicate
-  downloads possible.
+  ~~`StartDialog` has no Esc path.~~ (**fixed at M48**) · ~~Startup and manual update checks are
+  unsynchronised — duplicate downloads possible.~~ (**fixed at M48** — the second caller is told
+  "already looking" rather than silently dropped.)
 - Tools verified clean: the screenshot harness redirects `AppPaths.Root` before Avalonia starts and
   sanitises PNG text chunks; PdfImport reads and writes only inside the gitignored `Examples/` tree.
 
@@ -3002,9 +3029,11 @@ Minor = edge case or annoyance. PLAUSIBLE = argued, not reproduced.
   risks silent loss; the raised/initiated date field has no format hint though the birthday field
   has one; "Remove this person…" is styled identically to neutral buttons.~~ — **all three fixed at
   M40.** Per-person saving stays; the three quiet ways out of a dirty form now ask.
-- Wizard: fourteen one-question steps with the "Show all at once" escape easy to miss; the final
+- ~~Wizard: fourteen one-question steps with the "Show all at once" escape easy to miss; the final
   step puts Cancel directly beside "Save it" — one misclick discards fourteen answers (whether
-  Cancel confirms there is the grid-vs-wizard inconsistency of §14.2).
+  Cancel confirms there is the grid-vs-wizard inconsistency of §14.2).~~ — **fixed at M48**: the
+  first screen names the escape, the two buttons are 28px further apart, and the open question
+  resolves in the app's favour — Cancel has confirmed since M28.
 - ~~Import mapping dialog: "Stop" is ambiguous (abandon everything?), and "Next" is grey rather than
   the navy primary every other dialog uses.~~ — **fixed at M42**, and the grey "Next" turned out to
   be a style-order bug affecting every default button that also carried `Tokens.Action()`.

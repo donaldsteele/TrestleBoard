@@ -117,6 +117,15 @@ public sealed class WizardWindow : Window
         DockPanel.SetDock(leftButtons, Dock.Left);
         footer.Children.Add(leftButtons);
 
+        // M48, review §14.4: on the review screen these two become "Cancel" and "Save it", and 12
+        // pixels apart they are one slip of the hand from discarding every answer. The gap is a
+        // wide one, and it is the only place in the app that needs it - everywhere else the pair is
+        // "go back" and "go on", where a misclick costs a step rather than a session.
+        //
+        // Cancel already asks before discarding anything (M28), which the review could not verify
+        // from the code it was reading. The distance is belt and braces on top of that.
+        _next.Margin = new Avalonia.Thickness(28, 0, 0, 0);
+
         footer.Children.Add(new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -218,6 +227,10 @@ public sealed class WizardWindow : Window
     /// Nothing has reached the newsletter yet, so the confirmation says so — the fear being
     /// answered is "have I just lost it?", not "what is a dialog?".
     /// </summary>
+    /// <summary>M48: what the first screen says about the escape hatch at the bottom left.</summary>
+    internal const string ShowAllHint =
+        "If you would rather see every question on one page, press “Show all at once”.";
+
     private async void CancelWithConfirmation()
     {
         // Esc reaches this twice: once through OnKeyDown and once through the Cancel button's
@@ -397,6 +410,17 @@ public sealed class WizardWindow : Window
             : new IconText("TrestleBoard.Icon.chevron-right", nextLabel, labelSize: 20, glyphSide: Dock.Right);
         AutomationProperties.SetName(_next, nextLabel);
         _showAll.IsVisible = _session.CurrentRowIndex >= 0;
+
+        // M48: fourteen one-question screens with an escape hatch nobody notices is fourteen
+        // screens. The first one says the hatch is there, in the help line the window already has,
+        // and only the first - repeating it on every screen would be nagging.
+        if (_session.IsFirstScreen && _showAll.IsVisible)
+        {
+            _help.Text = _help.Text.Length > 0
+                ? _help.Text + " " + ShowAllHint
+                : ShowAllHint;
+            _help.IsVisible = true;
+        }
 
         _body.Children.Clear();
         switch (step.Kind)

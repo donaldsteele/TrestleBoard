@@ -98,6 +98,22 @@ public sealed class StartDialog : Window
                 },
             },
         };
+
+        // M48, review §14.2: this window had no Escape path at all. Every other dialog in the app
+        // closes on Esc, and the one a user meets FIRST did not — so somebody who opened it by
+        // accident, or wanted to look at an empty window, had no way out but the mouse.
+        //
+        // StartChoice.Nothing is already what the shell treats as "they did not choose", so leaving
+        // by Esc lands in a state the caller has always handled.
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Avalonia.Input.Key.Escape)
+            {
+                Choice = StartChoice.Nothing;
+                e.Handled = true;
+                Close();
+            }
+        };
     }
 
     private readonly ComboBox _templates;

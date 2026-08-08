@@ -92,6 +92,9 @@ public partial class MainWindow : Window
     /// <summary>M39: the .bak ring beside <see cref="DocumentPath"/> holds at least one copy.</summary>
     private bool _documentHasEarlierVersions;
 
+    /// <summary>M48: an update check is in flight, so a second one waits rather than duplicating it.</summary>
+    private bool _updateCheckRunning;
+
     /// <summary>
     /// The file this newsletter lives in, or null if it has never been saved.
     ///
@@ -1293,13 +1296,39 @@ public partial class MainWindow : Window
         _ = CheckForUpdatesAsync(userAsked: false);
     }
 
+    /// <summary>
+    /// M48, review §14.2: the startup check and the Help menu item used to be able to run at the
+    /// same time. Opening the app and immediately choosing "Check for an update" started two, and
+    /// two downloads of the same release is at best wasted bandwidth on a lodge's connection.
+    ///
+    /// <para>The second caller is told the truth rather than being silently dropped: somebody who
+    /// pressed a menu item is owed an answer, and "already looking" IS the answer.</para>
+    /// </summary>
     internal async Task CheckForUpdatesAsync(bool userAsked)
     {
-        _updates ??= new UpdateCoordinator(new VelopackUpdateChannel());
-        UpdateOutcome outcome = await _updates.CheckAsync(userAsked);
-        if (outcome.Announce)
+        if (_updateCheckRunning)
         {
-            Announce(outcome.Message);
+            if (userAsked)
+            {
+                Announce("TrestleBoard is already looking for an update. It will say what it finds.");
+            }
+
+            return;
+        }
+
+        _updates ??= new UpdateCoordinator(new VelopackUpdateChannel());
+        _updateCheckRunning = true;
+        try
+        {
+            UpdateOutcome outcome = await _updates.CheckAsync(userAsked);
+            if (outcome.Announce)
+            {
+                Announce(outcome.Message);
+            }
+        }
+        finally
+        {
+            _updateCheckRunning = false;
         }
     }
 
