@@ -191,6 +191,7 @@ internal static class ActionIcons
         [ActionId.CheckForUpdates] = "read once, never hunted for",
         [ActionId.About] = "read once, never hunted for",
         [ActionId.FontLicences] = "read once, never hunted for",
+        [ActionId.Licence] = "read once, never hunted for",
         [ActionId.ShowExampleIssue] = "read once, never hunted for",
     };
 

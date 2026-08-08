@@ -1333,13 +1333,20 @@ public partial class MainWindow : Window
         }
     }
 
-    internal Task ShowAboutAsync() =>
-        ShowErrorAsync(
-            "About TrestleBoard",
-            $"TrestleBoard {AppVersion()}\n\n"
-                + "The newsletter editor for Indian Land Masonic Lodge 414.\n\n"
-                + "Installing and updating are explained in docs/INSTALL.md, which also came with "
-                + "your download.");
+    internal Task ShowAboutAsync() => ShowErrorAsync("About TrestleBoard", AboutText());
+
+    /// <summary>
+    /// What the About window says. Separated from the dialog so a test can read it: M68 requires
+    /// About to name the licence, and a claim nothing checks is a claim that rots.
+    /// </summary>
+    internal static string AboutText() =>
+        $"TrestleBoard {AppVersion()}\n\n"
+        + "The newsletter editor for Indian Land Masonic Lodge 414.\n\n"
+        + "Free for lodges, churches, charities and personal use, under the "
+        + $"{AppLicence.Name}. Making money with it needs a separate licence. The whole licence "
+        + "is under Help, \"Licence\".\n\n"
+        + "Installing and updating are explained in docs/INSTALL.md, which also came with "
+        + "your download.";
 
     internal static string AppVersion() =>
         typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
@@ -1758,6 +1765,14 @@ public partial class MainWindow : Window
     /// <summary>Help → "Fonts and licences": the OFL text the licence requires we ship (OFL §II(3)).</summary>
     internal Task ShowFontLicencesAsync() =>
         ShowScrollingTextAsync("Fonts and licences", BundledFonts.ReadLicenceText());
+
+    /// <summary>
+    /// Help → "Licence": TrestleBoard's own terms (M68). PolyForm Noncommercial's <i>Notices</i>
+    /// section requires the text to travel with the software, so it is read out of the assembly
+    /// rather than off the disk beside it.
+    /// </summary>
+    internal Task ShowLicenceAsync() =>
+        ShowScrollingTextAsync("Licence", AppLicence.ReadText());
 
     private string? FirstWordsOfDocument() =>
         _session?.Document.Stories

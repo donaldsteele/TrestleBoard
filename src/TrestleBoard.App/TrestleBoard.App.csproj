@@ -44,6 +44,11 @@
          AppImage and the .icns. Linked rather than copied, so there is still exactly one drawing of
          this icon in the repository (assets-src/icons/README.md says how to redraw it). -->
     <AvaloniaResource Include="..\..\assets-src\icons\trestleboard.png" Link="Theme\trestleboard.png" />
+    <!-- M68: the application's own licence, embedded on the M14 font-licence precedent so it
+         travels inside the assembly and reaches every installer without a copy step. PolyForm
+         Noncommercial §Notices requires that anyone who gets a copy of the software also gets
+         these terms; a file only present in the git repository would not satisfy that. -->
+    <EmbeddedResource Include="..\..\LICENSE" Link="LICENSE" LogicalName="TrestleBoard.App.LICENSE" />
   </ItemGroup>
 
   <ItemGroup>

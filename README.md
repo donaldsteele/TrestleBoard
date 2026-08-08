@@ -166,12 +166,19 @@ See `PLAN.md` for the full architecture and milestone plan.
 
 ## Licence
 
-All twenty bundled typefaces are used under the SIL Open Font License 1.1, with the
-designers, upstream sources and pinned versions listed in [docs/FONTS.md](docs/FONTS.md).
-The complete licence text ships inside the installer and is reachable from **Help → Fonts
-and licences** — the OFL requires that of anything redistributing the fonts, and shipping
-the fonts without it would not be enough.
+TrestleBoard is free for non-profit use, under the [PolyForm Noncommercial License
+1.0.0](LICENSE). A lodge, a church, a charity, a school, a public body or a person at home
+may use it, copy it, change it and pass it on, at no cost and without asking. Making money
+with it — selling it, selling a service built on it, or using it in the running of a
+for-profit business — needs a separate licence; ask for one by opening an issue.
 
-The application's own source has no licence file yet. Until one is added, no permission to
-copy, modify or redistribute the code is granted; the repository is published so the lodge
-and its committee can build and audit what they run.
+The full text is in [LICENSE](LICENSE), it is compiled into the application so that it
+travels with every installed copy, and it is reachable from **Help → Licence**.
+
+All twenty bundled typefaces are a separate matter, because they are somebody else's work:
+they are used under the SIL Open Font License 1.1, with the designers, upstream sources and
+pinned versions listed in [docs/FONTS.md](docs/FONTS.md). Their complete licence text ships
+inside the installer too and is reachable from **Help → Fonts and licences** — the OFL
+requires that of anything redistributing the fonts, and shipping the fonts without it would
+not be enough. Nothing here grants any right in the names, arms or symbols of Indian Land
+Masonic Lodge 414 or of any Grand Lodge.

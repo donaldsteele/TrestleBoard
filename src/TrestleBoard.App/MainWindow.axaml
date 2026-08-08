@@ -326,6 +326,11 @@
                   Click="OnActionClicked"
                   AutomationProperties.Name="Show me an example newsletter" />
         <Separator />
+        <!-- M68: the app's own licence sits above the fonts', because it is the one that says what
+             the reader may do with TrestleBoard. The fonts' terms are somebody else's. -->
+        <MenuItem Header="_Licence" Tag="help.licence"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Licence" />
         <MenuItem Header="_Fonts and licences" Tag="help.fontLicences"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Fonts and licences" />

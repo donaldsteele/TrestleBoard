@@ -198,6 +198,14 @@ public static class ActionId
     public const string FontLicences = "help.fontLicences";
 
     /// <summary>
+    /// M68: the application's own licence, which §13 recorded as missing from M15 until the owner
+    /// decided on 2026-08-08. Separate from <see cref="FontLicences"/> on purpose — the fonts are
+    /// somebody else's work under somebody else's terms, and running the two together would blur
+    /// which permission comes from where.
+    /// </summary>
+    public const string Licence = "help.licence";
+
+    /// <summary>
     /// M15: the five-page example issue. It has been the richest fixture in the repository since M8
     /// and was reachable from no menu item at all — a whole finished newsletter nobody could look
     /// at, which is exactly what someone opening this app for the first time wants to see.

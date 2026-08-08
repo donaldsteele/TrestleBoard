@@ -3062,12 +3062,19 @@ The one item a machine could take on is the last defect named after the list, an
       Checked 2026-07-27 on the maintainer's Windows box: no Excel COM registration
       (`REGDB_E_CLASSNOTREG`), so Excel is not installed here either. This item cannot be closed
       from this machine — a future session should not spend time re-probing for it.
-- [!] **The application has no licence file.** Choosing one is the owner's call, so M15 documented
+- ~~**The application has no licence file.** Choosing one is the owner's call, so M15 documented
       the absence rather than inventing a licence; until one exists the README grants no permission
-      to copy, modify or redistribute. `docs/M15-spec.md` §9. **The decision is made (2026-08-08):
-      free for non-profit use; profit-making use requires a separate licence.** §11 M68 is now the
-      scheduled home for the work (candidate text: PolyForm Noncommercial 1.0.0, presented for the
-      owner's final sign-off); this item strikes through when M68 ships.
+      to copy, modify or redistribute.~~ — **closed at M68, 2026-08-08.** The owner read PolyForm
+      Noncommercial 1.0.0 and signed it off; `LICENSE` at the repository root carries a
+      plain-language preamble ("free for lodges, churches, charities and personal use"; commercial
+      enquiries go to the issue tracker) above PolyForm's text unchanged. It is an
+      `<EmbeddedResource>` in `TrestleBoard.App` on M14's font-licence precedent, so it travels
+      inside the assembly to every installed copy rather than sitting in a repository the reader
+      never sees — which is what PolyForm §Notices actually requires. Help → "Licence" shows it,
+      About names it, and the README grants what the licence grants.
+      `tests/App.HeadlessTests/LicenceTests.cs` fails if the embedded copy drifts from the file, if
+      the `Required Notice:` line stops travelling, if the formal terms come before the plain ones,
+      or if the README goes back to granting nothing. `docs/M68-spec.md`.
 - [!] **The real-world test** (§12 item 4): recreate the July 2026 issue in the app and have a
       committee member compare it against `Examples/July 2026.pdf` side by side. Needs the user.
 - [!] **M16's by-eye pass** (§12 item 13): Light, Dark and High Contrast at 100% **and 200%**,
