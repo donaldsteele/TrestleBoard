@@ -3203,6 +3203,126 @@ the owner's final sign-off — this milestone presents the candidate and the own
 another; nothing ships a licence the owner has not read. Bundled third-party licences (fonts,
 Hunspell dictionary, PDFium, emblem provenance) remain their own files and are unaffected.
 
+### M69 — The two the owner found (S) — **delivered 2026-08-09**
+
+> Recorded after the fact, and the honesty matters: the code was written citing "M69" in seven files
+> before this heading existed. Two defects the owner reported from ordinary use on the day M63-M67
+> shipped, fixed in `bc5b9ae` and `dcb7ef5`.
+
+**Goal.** Two reports, one afternoon. Dragging an emblem's corner cropped it. Buttons and chrome
+borders overlapped or escaped their containers.
+
+**Deliverables (delivered).** `FrameGeometry.ResizeKeepingAspect`: a corner drag on a picture scales
+and keeps the frame's shape, anchoring the opposite corner and following whichever edge was pulled
+further. The side handles still reshape, because reshaping IS how a photograph is cropped by hand.
+Emblems and PDF pages arrive as `ImageFit.Contain` rather than `Cover` - a cropped square and
+compasses is a mutilated symbol, not a cropped photograph. `AllowAutoHide=false` on the action
+panel's and the toolbar's scrollbars, so the bar takes a layout column instead of floating over the
+buttons it obscures.
+
+**What the two had in common, and why M70 follows.** Neither was a broken mechanism. The resize crop
+was `ImageFit.Cover` doing exactly what it says; the chrome overlap was a scrollbar drawn exactly
+where Avalonia draws it. In both, the app did the right thing and the user could not see what it had
+done - and `ImageFit.Contain` had sat unreachable in the model since M2, so the bug had no
+workaround. The same shape appeared twice more the same day (the paragraph-style flyout that opened
+and shut; the spelling walk that refused into a status bar behind the window being read), which is
+what prompted the audit below.
+
+### M70 — The answer has to land where they are looking (M/L)
+
+**Goal.** Four defects in one day shared a root: **the app answered, and the answer arrived somewhere
+the user was not.** Not one was a broken mechanism. This audience is elderly, some using a screen
+reader, and for them an answer they cannot perceive is identical to no answer at all - the same
+claim section 6 already makes about a control that cannot be reached. Three audits of the whole app
+were run on 2026-08-09; this milestone is their findings. **Every item below is a cited finding, not
+a suspicion.**
+
+**Deliverables, in the order the findings should be taken.**
+
+**(a) The status bar cannot currently be relied on, and everything else rests on it.** Two
+independent audits found this from opposite directions. `UpdateStatus` (`MainWindow.axaml.cs:5784`)
+composes `_pages ?? _widgets ?? _photos ?? _frames` `StatusMessage` **before** `_announcement`, and
+`ActionRunner.RunAsync` calls `RefreshActions()` on every path - so a lingering controller message
+silently discards the sentence just announced, **including every catalog refusal and the catch-all
+error**. `PhotoController.StatusMessage` is never cleared, so one "Picture fixed" can shadow every
+announcement for the rest of the session. Separately, pressing the same blocked action twice assigns
+an identical string; Avalonia raises no property change and the live region stays silent on the
+repeat. M11's central promise - nothing becomes unavailable without saying why - is broken at the
+point of delivery. **Fix this first; the rest is worth little until the status bar keeps what it is
+given.**
+
+**(b) Five non-modal windows answer into a status bar the user cannot see.** `Announce` sets
+`StatusLabel.Text` and nothing else - there is no relay to a child window, so every answer given
+while a non-modal window has focus is invisible by construction. HIGH findings: `HelpWindow`'s "Take
+me there" returns silently when the command has gone unavailable (`HelpWindow.cs:262` - no message
+anywhere) and reports a runner refusal or a thrown handler only to the status bar; `ReviewWindow`'s
+remedy buttons, and its "Take me there" for a block deleted since the scan, where the page turns,
+nothing is selected and nothing is said; `LastYearWindow`'s "Copy this into this month" refusal when
+there is no cursor in any writing. `ReadAloudWindow` discards `ISpeaker.Say`'s `false`
+(`ReadAloudWindow.cs:139`) - the heading still reads "Reading" while nothing is heard. **`FindWindow`
+already does this correctly** (its own polite live region plus a status-bar mirror,
+`FindWindow.cs:73`), as does `SpellingWindow` since `8a73929`. The pattern exists in the repo twice;
+this is applying it, not inventing it.
+
+**(c) Ten commands can complete having done nothing, and say nothing.** Each fires in ordinary use:
+Move to the front on the frontmost frame; "Make it fit what is in it" straight after any widget edit
+(`ApplyWidgetData` already resized, so it is *always* a no-op); Paste with an empty clipboard, where
+the catalog's own text promises "it says so out loud when there is nothing to paste" and only the
+picture branch keeps that promise; Zoom at either end of the ladder, where the sentence already
+exists for the text ladder one screen away; Bold or Italic with a caret and no selection, which
+correctly arms the next-typed run and says nothing about it; "Go back to an earlier version" when
+the ring has been pruned since open; F6 with no focusable region; and **Undo/Redo, which announce
+nothing at all** although the catalog knows the step's name - the roster's own undo already says
+"Taken back: ...". Also Check for an update, where a cancelled request ignores `userAsked`
+(`UpdateCoordinator.cs:86`) although the button's own contract says it must always answer.
+
+**(d) Two commands say something happened when nothing did** - the inverse defect, and worse than
+silence because it is a false report. `ToggleActionPanel` announces the panel is showing even when
+`ApplyPanelVisibility` refused on a narrow window; `ClearFontOverrideHere` announces "Put back to the
+usual font" before knowing whether `RetargetSpans` changed anything.
+
+**(e) Focus is dropped by wholesale rebuilds.** Five containers are cleared and rebuilt; three put
+focus back. `WidgetGridWindow` (`:185`) has **no `.Focus()` call anywhere in the class** and rebuilds
+after an awaited person-picker; `ActionPanel` (`:134`) destroys the button a keyboard user was
+standing on after every command - the `PanelButtonFor` mechanism added for the flyout fix is exactly
+what is needed and is not used for focus. `WizardWindow` restores focus to the *first* input rather
+than the one being filled.
+
+**(f) Screen-reader gaps, in a project that has otherwise been careful.** The audit confirmed the
+status bar, `SaveStateLabel`, `PageLabel`, `ZoomLabel`, the whole step-wizard family and nineteen
+other live regions are correctly declared - these are the exceptions. **`WidgetGridWindow` is the
+worst case in the app**: validation errors on "Save it" with no live region, no window rename and no
+focus move, so a screen-reader user presses Save, the window stays open and *nothing is said*; it is
+the one dialog with neither a `.Focus()` call nor a live region. `WizardWindow`'s validation errors
+go unannounced because the rename produces no property change when the title is unchanged.
+`SettingsDialog`'s preview sentence - the only place the consequence of a theme choice is stated in
+words - is not a live region. `HelpWindow` appends the M11 refusal reason *after* the window rename,
+so a screen reader hears the answer and never learns the command is blocked.
+
+**(g) Non-modal windows survive a document switch.** Only the find window is closed when a document
+closes; Review, ReadAloud, LastYear, Spelling and Help stay open holding the previous document's
+snapshot, so their "Take me there" buttons can point into a newsletter that is no longer open.
+
+**(h) One residual edge in M69's own fix.** `ShowParagraphStyles` falls back to
+`PanelButtonFor(...) ?? source`, and `source` is the detached control the fix exists to avoid - so
+when the rebuilt panel no longer offers the command, the flyout opens and shuts again.
+
+**Clean results, recorded so nobody re-audits them.** The flyout/anchor surface is clean: two
+`ShowAt` sites, both anchored to stable controls, no `ContextFlyout`/`Popup` anywhere, and no handler
+captures a `Control` across an `await` - M69's flyout was the only instance. No `catch` reachable
+from a user-invoked action swallows an exception silently. Roughly thirty null-and-state guards
+**can never fire** because `ActionCatalog` already makes the state impossible; they are defensive,
+they are listed in the audit, and they must not be "fixed" into noise.
+
+**Acceptance.** Chrome only - nothing in `Core`/`Layout`/`Rendering`/`Export.Pdf` changes and **no
+snapshot baseline moves**; if one does, the milestone has done something it should not. A test that
+presses every catalog action twice in a row and asserts the second press still answers. A test that
+proves a controller `StatusMessage` cannot discard an announcement. For each of the five non-modal
+windows, a test that a refusal reaches the window the user is looking at. Section 6 throughout, and
+the accessibility script gains a section walking each window's answers by ear. **The
+`WidgetGridWindow` findings are the highest priority in the milestone**: it is the only dialog that
+is silent to a screen reader in both audits.
+
 ---
 
 ## 12. Verification (end-to-end)
@@ -3301,6 +3421,12 @@ Hunspell dictionary, PDFium, emblem provenance) remain their own files and are u
     entry with its SHA-256 and a licence or provenance file committed beside it; a bundled asset
     with no manifest entry fails the build, exactly as an unmanifested TTF does. The licence texts
     ship **inside the installer**, the M14 precedent.
+
+23. **Answer-delivery gate (M70):** every catalog action invoked twice in succession answers both
+    times; no controller `StatusMessage` can discard an `Announce`; with each non-modal window
+    focused, a refusal triggered from that window is visible **in that window**; a screen-reader pass
+    over `WidgetGridWindow` and `WizardWindow` hears every validation refusal; and closing a document
+    closes or re-points every non-modal window still holding its snapshot.
 
 ## 13. Remaining open items (status as at 2026-07-27)
 
