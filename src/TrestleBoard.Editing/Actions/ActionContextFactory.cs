@@ -34,6 +34,10 @@ namespace TrestleBoard.Editing.Actions;
 /// <param name="DocumentFileName">M24: the file name this newsletter lives in, or null if it has none.</param>
 /// <param name="DocumentHasEarlierVersions">M39: the .bak ring beside the user's file holds a copy.</param>
 /// <param name="PageHasFrames">M49: the page being looked at has something on it to take hold of.</param>
+/// <param name="CanReadPdfs">
+/// M67: this computer's PDF reader loaded. A fact about the machine rather than the newsletter, and
+/// the shell is the only layer that can find it out.
+/// </param>
 public readonly record struct ShellFacts(
     bool ExportedPdfThisSession = false,
     bool SelectedWidgetHasListEditor = false,
@@ -52,7 +56,8 @@ public readonly record struct ShellFacts(
     bool HasUnsavedChanges = false,
     string? DocumentFileName = null,
     bool DocumentHasEarlierVersions = false,
-    bool PageHasFrames = false);
+    bool PageHasFrames = false,
+    bool CanReadPdfs = false);
 
 /// <summary>
 /// Takes one snapshot of the editing state for the action catalog to reason about. Reading the
@@ -113,6 +118,7 @@ public static class ActionContextFactory
             DocumentFileName = shell.DocumentFileName,
             DocumentHasEarlierVersions = shell.DocumentHasEarlierVersions,
             PageHasFrames = shell.PageHasFrames,
+            CanReadPdfs = shell.CanReadPdfs,
 
             Selection = selection,
             SelectedBlockId = blockId,

@@ -69,6 +69,11 @@ internal static class ActionIcons
         // picture on the page, and where it came from — their camera or the app's own shelf — is
         // not a difference a glyph should be trying to draw.
         [ActionId.InsertEmblem] = "photo",
+
+        // M67. A page of a PDF becomes a picture the moment it arrives, so it wears the picture
+        // glyph too. A document icon would advertise a PDF that no longer exists by the time
+        // anything is on the page.
+        [ActionId.BringInPdfPage] = "photo",
         [ActionId.FixPhoto] = "wand",
         [ActionId.ToggleWrap] = "wrap",
         [ActionId.ShowPeople] = "people",

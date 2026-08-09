@@ -31,6 +31,8 @@ internal static class MilestoneGate
                 "packing everything up for a successor"),
             ["M65"] = ("TrestleBoard.App.Dialogs.EmblemPickerWindow, TrestleBoard.App",
                 "the emblem shelf"),
+            ["M67"] = ("TrestleBoard.App.Dialogs.PdfPageWindow, TrestleBoard.App",
+                "bringing in a page from a PDF"),
         };
 
     /// <summary>

@@ -78,6 +78,11 @@ public static class HelpSearchWords
             ["word", "docx", "document", "article", "import", "paste", "text file", "emailed me",
              "someone sent"],
 
+        // A page from a PDF (M67). They name the thing they were sent, not the file format.
+        [ActionId.BringInPdfPage] =
+            ["pdf", "flyer", "notice", "grand lodge", "district", "calendar page", "page from",
+             "someone sent", "scan"],
+
         // The emblem shelf (M65). Nobody searches for "emblem" either — they search for the thing.
         [ActionId.InsertEmblem] =
             ["emblem", "square and compasses", "logo", "symbol", "picture", "ornament", "star",

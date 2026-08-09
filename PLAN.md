@@ -3130,7 +3130,36 @@ M25-standard honest message; extracted images keep original bytes byte-identical
 (gate 7 re-runs). Fixtures are fictional documents built for the tests. Fidelity temptation is
 the recorded risk: the spec draws the text-only line and holds it.
 
-### M67 — Bring in a page from a PDF (M/L)
+### M67 — Bring in a page from a PDF (M/L) — **delivered 2026-08-09, `docs/M67-spec.md`**
+
+> **The packaging cost the milestone was sized for did not have to be paid.** PDFium arrives through
+> `Docnet.Core`, already a package in this repo since M21's import tool, so no native library was
+> vendored by hand and no RID-specific packaging was written — its natives travel the same way
+> SkiaSharp's already do. The explicit fallback was still built and is still tested, because
+> "covered today" is not "covered on the next platform".
+>
+> `PdfPageRasterizer.IsAvailable` loads the library once and hands it four bytes of nonsense: the
+> distinction is not "did that work" but **"did the library reject my bytes" (fine) versus "there is
+> no library" (not fine)**. The answer reaches the catalog through a new `ActionContext.CanReadPdfs`
+> that **defaults to false**, so a context built without thinking about it refuses the feature —
+> what it guards against is a crash, and that is the safe direction to fail. The refusal order is
+> deliberate: no newsletter open is answered first, and only then does the app mention a missing
+> reader, because telling somebody with no newsletter about a native library answers a question they
+> did not ask.
+>
+> Converted once at import into an ordinary picture — M65's reasoning again, because determinism is
+> a property of there being one rendering path and PDFium is not it. The original PDF is kept in the
+> container beside the raster (gate 7) with two optional notes on the frame, so a later version can
+> re-render the page sharper years after whoever emailed the file has left the committee; **that is
+> not a new frame type**, which is what the acceptance asked. The page arrives described as the page
+> it is, and the app says out loud that a screen reader cannot read a picture of writing and points
+> at "Describe this picture" — pretending otherwise by hiding extracted text in the alt text would
+> produce a description nobody checked.
+>
+> Nothing asserts what a rendered page looks like: PDFium's output may differ between platforms and
+> versions, and the whole design is that it never reaches the layout engine. That is the exact
+> opposite of M65, where a committed hash **is** the promise, and the difference is worth keeping
+> in view.
 
 **Goal.** The owner's addition: lodges receive finished flyers and notices as PDF — the Grand
 Lodge announcement, the district calendar page — and the committee wants the page *as it is* in

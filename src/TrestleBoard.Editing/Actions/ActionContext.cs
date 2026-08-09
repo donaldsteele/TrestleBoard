@@ -39,6 +39,18 @@ public sealed record ActionContext
 
     public bool HasDocument { get; init; }
 
+    /// <summary>
+    /// M67: whether this computer's PDF reader loaded. PDFium is a native library shipped per
+    /// platform, and a machine where it will not load is a real possibility the plan anticipated.
+    ///
+    /// <para>A fact about the computer rather than about the newsletter, and it lives here for the
+    /// same reason every other fact does: the catalog is the one thing that answers "can I, and if
+    /// not, why not", and it cannot reach a native library from this layer. The App fills it in.
+    /// <b>Default false</b>, so a context built without thinking about it refuses the feature —
+    /// the safe direction, since the failure it guards against is a crash.</para>
+    /// </summary>
+    public bool CanReadPdfs { get; init; }
+
     public int PageCount { get; init; }
 
     public int PageIndex { get; init; }

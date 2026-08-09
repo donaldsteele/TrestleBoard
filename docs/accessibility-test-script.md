@@ -930,6 +930,45 @@ that it is damaged, which would send you looking for a fault that is not there.
 
 ---
 
+## 20. Bringing in a page from a PDF (M67)
+
+**20.0** First, is it possible on this computer? Open the Insert menu and find "A page from a PDF".
+**What you should hear:** either an ordinary available item, or — if this machine's PDF reader did
+not load — a dimmed item whose help text says this computer cannot read PDFs *and what to do
+instead*. If it is dimmed, the rest of this section does not apply, and that is a pass, not a
+failure.
+
+**20.1** With a newsletter open, choose **Insert → A page from a PDF** and pick a PDF with several
+pages in it.
+**What you should hear:** a window named "A page from a PDF", the heading naming how many pages
+there are, and the file name.
+
+**20.2** Tab through the pages.
+**What you should hear:** for each tile, the page number **and its shape** — "Page 4, on its side".
+The shape is not decoration: it is the only thing distinguishing twenty pages you cannot see.
+
+**20.3** Press Space on one.
+**What you should hear:** the window close, and the app say which page is now on the newsletter,
+followed by the instruction to describe it. Confirm that instruction is spoken — a page of a PDF is
+a picture of writing, and a screen reader cannot read it.
+
+**20.4** Use **Format → Describe this picture**.
+**What you should hear:** a description already filled in naming the page and the file. Replace it
+with what is actually on the page and confirm it is kept.
+
+**20.5** Press `Ctrl+Z`.
+**What you should confirm:** the page is gone in one undo.
+
+**20.6** Try a PDF that is protected with a password.
+**What you should hear:** one sentence saying it could not be opened, that it may be damaged or
+password-protected, and what to do about it. Not a code, and not silence.
+
+**20.7** Save the newsletter, close it and open it again.
+**What you should confirm:** the page is still there and still looks the same. (It is an ordinary
+picture in the file now — the PDF is kept alongside it, but nothing needs it to draw.)
+
+---
+
 ## Results table
 
 Copy this table (or the row shape) into a spreadsheet or a copy of this file as you go. Use the
@@ -1075,6 +1114,14 @@ step numbers from above so the full "what you should hear" text doesn't need to 
 | 19.6 | | | | the ordinary picture description question |
 | 19.7 | | | | a sentence, never a code |
 | 19.8 | | | | "password", not "damaged" |
+| 20.0 | | | | dimmed with a reason is a PASS on a machine that cannot |
+| 20.1 | | | | |
+| 20.2 | | | | the shape, not just the number |
+| 20.3 | | | | the "describe it" instruction must be spoken |
+| 20.4 | | | | |
+| 20.5 | | | | one undo |
+| 20.6 | | | | a sentence, never a code |
+| 20.7 | | | | it is an ordinary picture in the file |
 
 Add rows for anything else you notice along the way, even if it isn't in a numbered step.
 

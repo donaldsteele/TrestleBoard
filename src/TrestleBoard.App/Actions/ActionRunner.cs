@@ -162,6 +162,7 @@ internal sealed class ActionRunner
             [ActionId.ShowExampleIssue] = Sync(window.OpenIssueSample),
             [ActionId.InsertEmblem] = _ => window.InsertEmblemAsync(),
             [ActionId.BringInWriting] = _ => window.BringInWritingAsync(),
+            [ActionId.BringInPdfPage] = _ => window.BringInPdfPageAsync(),
             [ActionId.PackUpForSuccessor] = _ => window.PackUpForSuccessorAsync(),
             [ActionId.BringInAPack] = _ => window.BringInAPackAsync(),
             [ActionId.HowDoI] = Sync(window.ShowHowDoI),

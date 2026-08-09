@@ -26,6 +26,14 @@ public static class ActionCatalog
         "There is no picture in this frame yet, so there is nothing to change. "
         + "Put one in first — double-clicking the frame on the page does the same thing.";
 
+    /// <summary>
+    /// M67. The one refusal in this app that is about the computer rather than about the
+    /// newsletter, so it says what to do instead rather than what to do differently.
+    /// </summary>
+    private const string CannotReadPdfs =
+        "This computer cannot read PDFs into the newsletter. Everything else works as usual — open "
+        + "the PDF in another program, save the page as a picture, and use \"A picture\" instead.";
+
     private const string NeedsText =
         "Click into some writing first, then this changes the words you highlight.";
 
@@ -330,6 +338,11 @@ public static class ActionCatalog
             "Reads a Word document or a text file and puts the writing on the page, in this "
             + "newsletter's own lettering.", ActionGroup.Insert),
 
+        // ---- A page from a PDF (M67) ----------------------------------------------------------------
+        new(ActionId.BringInPdfPage, "A page from a PDF…",
+            "Shows you the pages of a PDF and puts the one you choose on the page as a picture.",
+            ActionGroup.Insert),
+
         // ---- The emblem shelf (M65) ---------------------------------------------------------------
         new(ActionId.InsertEmblem, "Add an emblem…",
             "Puts one of the craft's emblems on the page — the square and compasses, the working "
@@ -618,6 +631,16 @@ public static class ActionCatalog
                 or ActionId.InsertDistrictCalendar or ActionId.InsertEventCard
                 or ActionId.InsertCoverBanner or ActionId.InsertSimpleList
                 or ActionId.InsertEmblem or ActionId.BringInWriting => RequiresDocument(context),
+
+            // M67: two reasons it might not be possible, and the order matters. "No newsletter" is
+            // the ordinary one and comes first; "this computer cannot read PDFs" is a fact about
+            // the machine that will never change by itself, so it is said only once the other is
+            // out of the way — telling somebody with no newsletter open about a missing native
+            // library would be answering a question they did not ask.
+            ActionId.BringInPdfPage =>
+                !context.HasDocument ? ActionAvailability.Blocked(NoNewsletter, ActionId.NewFromTemplate)
+                : context.CanReadPdfs ? ActionAvailability.Available
+                : ActionAvailability.Blocked(CannotReadPdfs, ActionId.InsertPhoto),
 
             // ---- The selected thing -------------------------------------------------------------
             ActionId.DeleteFrame => context.HasFrameSelection

@@ -142,6 +142,25 @@ public sealed class ImageFrame : Block
 
     /// <summary>Screen-reader description (PLAN.md §6 — accessibility is first-class).</summary>
     public string AltText { get; set; } = "";
+
+    /// <summary>
+    /// M67: the container entry holding the PDF this picture was rendered from, when it was.
+    ///
+    /// <para>The picture is an ordinary picture and the app treats it as one — this is a
+    /// <b>provenance note</b>, not a second source of truth. It exists so a later version can
+    /// re-render the page at a higher resolution without the committee having to find the file
+    /// again, which is why the original PDF bytes are kept in the container beside it (gate 7).
+    /// Nothing reads it yet, and nothing about the picture depends on it.</para>
+    ///
+    /// <para>Null on every picture that did not come from a PDF, and never written when null — a
+    /// newsletter saved by an older TrestleBoard opens and saves back byte-unchanged (M61's rule).
+    /// This is not a new frame type: the acceptance asks that the model change be "an image like
+    /// any other", and an optional note on the frame that already exists is exactly that.</para>
+    /// </summary>
+    public string? SourcePdfAssetRef { get; set; }
+
+    /// <summary>M67: which page of <see cref="SourcePdfAssetRef"/> this picture is, 1-based.</summary>
+    public int? SourcePdfPage { get; set; }
 }
 
 public sealed class WidgetBlock : Block

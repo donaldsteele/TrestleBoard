@@ -270,6 +270,9 @@
         <MenuItem Header="Writing from a fil_e…" Tag="insert.writingFromFile"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Bring in writing from a Word document or a text file" />
+        <MenuItem Header="A page f_rom a PDF…" Tag="insert.pdfPage"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Bring in a page from a PDF as a picture" />
         <MenuItem Header="An e_mblem…" Tag="insert.emblem"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Add one of the craft's emblems" />

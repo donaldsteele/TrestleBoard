@@ -131,7 +131,12 @@ public sealed class PhotoController
     /// M6 placement, which is what every keyboard path still uses: there is no pointer to ask.
     /// </param>
     public string? InsertPhoto(
-        int pageIndex, byte[] bytes, string altText, string? caption = null, (float X, float Y)? centre = null)
+        int pageIndex,
+        byte[] bytes,
+        string altText,
+        string? caption = null,
+        (float X, float Y)? centre = null,
+        (string AssetRef, int Page)? fromPdf = null)
     {
         ArgumentNullException.ThrowIfNull(bytes);
         if (pageIndex < 0 || pageIndex >= _session.Document.Pages.Count)
@@ -174,10 +179,15 @@ public sealed class PhotoController
             WrapMarginPt = 6f,
             AltText = altText ?? "",
             Caption = string.IsNullOrWhiteSpace(caption) ? null : caption,
+
+            // M67. Set on the block before the command runs, so the page arrives with its
+            // provenance in the same single undo step as the picture itself.
+            SourcePdfAssetRef = fromPdf?.AssetRef,
+            SourcePdfPage = fromPdf?.Page,
         };
 
         _session.Execute(new CompositeCommand(
-            "Insert photo",
+            fromPdf is null ? "Insert photo" : "Bring in a page from a PDF",
             new ChangeScope(ChangeKind.PageStructure, PageId: page.Id, BlockId: blockId),
             [new AddBlockCommand(page.Id, block)]));
 

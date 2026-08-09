@@ -296,6 +296,13 @@ public static class ActionId
     public const string ShowExampleIssue = "help.exampleIssue";
 
     /// <summary>
+    /// M67: a page of a PDF, brought in as a picture. Lodges receive finished flyers and notices as
+    /// PDF — the Grand Lodge announcement, the district calendar page — and the committee wants the
+    /// page as it is.
+    /// </summary>
+    public const string BringInPdfPage = "insert.pdfPage";
+
+    /// <summary>
     /// M66: reads a Word document or a text file and brings the writing in. Committee members email
     /// articles; the round trip through Word and the clipboard is where the formatting shrapnel
     /// comes from.

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Turning a page of somebody else's PDF into a picture (PLAN.md §11 M67). A leaf, like Imaging
+       and Emblems: Docnet.Core (PDFium) and SkiaSharp, never Core. The rasterizer is used ONLY here
+       and ONLY at import time — nothing downstream ever learns a PDF was involved. -->
+  <ItemGroup>
+    <PackageReference Include="Docnet.Core" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
+  </ItemGroup>
+</Project>

@@ -8,6 +8,7 @@ using TrestleBoard.App.Settings;
 using TrestleBoard.Editing;
 using TrestleBoard.Core.Container;
 using TrestleBoard.Editing.Actions;
+using TrestleBoard.PdfPages;
 using TrestleBoard.Roster;
 using TrestleBoard.Widgets.Builtins.OfficersTable;
 using TrestleBoard.Widgets.Roster;
@@ -175,6 +176,20 @@ internal static class ShotList
 
         // M64. Shot with the address book already here and the wordings not, because the whole
         // point of this window is the difference between the two rows.
+        // M67. A hand-written two-page PDF, fictional by construction — the harness must never
+        // shoot a real bulletin, and a PDF built out of nothing cannot contain one.
+        new("pdf-page-picker", ShotKind.Dialog, "M67",
+            "The pages of a PDF, as pictures of themselves.",
+            "The A page from a PDF window. Two large tiles show small pictures of the pages of a "
+            + "PDF, labelled Page 1 and Page 2, with a sentence above saying the chosen page comes "
+            + "in as a picture.",
+            stage =>
+            {
+                byte[] pdf = TinyPdf();
+                var window = new PdfPageWindow(pdf, PdfPageRasterizer.ReadPages(pdf), "district-bulletin.pdf");
+                return Task.FromResult(Stage.Shoot(stage.OpenDialog(window, height: 620)));
+            }),
+
         // M65. Shot with the box empty, because the thing worth showing is how much is on the
         // shelf — a searched-down shelf would look like a small one.
         new("emblem-shelf", ShotKind.Dialog, "M65",
@@ -435,4 +450,49 @@ internal static class ShotList
                 return Task.FromResult(PageSpread.ThreeUp(window.SourceForTest!));
             }),
     ];
+
+    /// <summary>
+    /// A two-page PDF written byte by byte, for M67's picker. Fictional by construction: there is
+    /// no source file, so there is nothing real in it to leak (§0 rule 2).
+    /// </summary>
+    private static byte[] TinyPdf()
+    {
+        string[] contents =
+        [
+            "BT /F1 28 Tf 60 700 Td (Indian Land Lodge 414) Tj ET",
+            "BT /F1 28 Tf 60 500 Td (District calendar - placeholder) Tj ET",
+        ];
+
+        string[] objects =
+        [
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 4 0 R >>",
+            $"<< /Length {contents[0].Length} >>\nstream\n{contents[0]}\nendstream",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Resources << /Font << /F1 7 0 R >> >> /Contents 6 0 R >>",
+            $"<< /Length {contents[1].Length} >>\nstream\n{contents[1]}\nendstream",
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        ];
+
+        var pdf = new System.Text.StringBuilder("%PDF-1.4\n");
+        var offsets = new List<int>();
+        for (int i = 0; i < objects.Length; i++)
+        {
+            offsets.Add(pdf.Length);
+            pdf.Append(i + 1).Append(" 0 obj\n").Append(objects[i]).Append("\nendobj\n");
+        }
+
+        int xref = pdf.Length;
+        pdf.Append("xref\n0 ").Append(objects.Length + 1).Append("\n0000000000 65535 f \n");
+        foreach (int offset in offsets)
+        {
+            pdf.Append(offset.ToString("D10", System.Globalization.CultureInfo.InvariantCulture))
+                .Append(" 00000 n \n");
+        }
+
+        pdf.Append("trailer\n<< /Size ").Append(objects.Length + 1)
+            .Append(" /Root 1 0 R >>\nstartxref\n").Append(xref).Append("\n%%EOF\n");
+
+        return System.Text.Encoding.ASCII.GetBytes(pdf.ToString());
+    }
 }

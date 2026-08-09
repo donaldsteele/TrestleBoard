@@ -13,6 +13,7 @@ using TrestleBoard.App.Canvas;
 using TrestleBoard.App.Dialogs;
 using TrestleBoard.Core.Import;
 using TrestleBoard.Emblems;
+using TrestleBoard.PdfPages;
 using TrestleBoard.App.Help;
 using TrestleBoard.App.Settings;
 using TrestleBoard.App.Startup;
@@ -385,6 +386,11 @@ public partial class MainWindow : Window
             _pageIndex,
             new ShellFacts(
                 ExportedPdfThisSession: _exportedThisSession,
+
+                // M67: asked once and remembered by the rasterizer, so this costs nothing per
+                // refresh — and it is the only way the catalog can know that a native library did
+                // not load without the Editing layer learning that native libraries exist.
+                CanReadPdfs: PdfPageRasterizer.IsAvailable,
                 SelectedWidgetHasListEditor: hasListEditor,
                 SelectedWidgetDisplayName: displayName,
                 CoverDateMissing: CoverHeadingNeedsADate(),
@@ -1752,6 +1758,154 @@ public partial class MainWindow : Window
         DocumentPath = null;
         ShowPackage(package, startsDirty: true);
         Announce("Started from one of your templates. It has no file yet, so Save it when you are ready.");
+    }
+
+    // ---- A page from a PDF (PLAN.md §11 M67) ---------------------------------------------------
+
+    /// <summary>Set by tests in place of the open dialog.</summary>
+    internal string? PdfPathForTest { get; set; }
+
+    /// <summary>Set by tests in place of the page picker. 1-based.</summary>
+    internal int? PdfPageAnswerForTest { get; set; }
+
+    /// <summary>
+    /// Shows the pages of a chosen PDF and puts the one picked on the page as a picture (M67).
+    ///
+    /// <para><b>The conversion happens once, here.</b> The page is rendered to a raster and stored
+    /// as an ordinary image asset, so the layout engine, the PDF export and the snapshot suite
+    /// never see a PDF and determinism is untouched — M65's reasoning for the emblems, applied to a
+    /// second source of pictures.</para>
+    ///
+    /// <para><b>The original PDF is kept in the container beside it</b> (gate 7's discipline). It
+    /// costs a few hundred kilobytes and it buys the thing the raster cannot: the page can be
+    /// re-rendered sharper by a later version without the committee having to find the file again,
+    /// years after whoever emailed it has left the committee.</para>
+    /// </summary>
+    internal async Task BringInPdfPageAsync()
+    {
+        if (_photos is null || _package is null)
+        {
+            return;
+        }
+
+        if (!PdfPageRasterizer.IsAvailable)
+        {
+            await ShowErrorAsync("PDFs cannot be read on this computer", PdfPageRasterizer.NotAvailableReason);
+            return;
+        }
+
+        string? path = PdfPathForTest;
+        if (path is null)
+        {
+            IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Bring in a page from a PDF",
+                AllowMultiple = false,
+                FileTypeFilter = [new FilePickerFileType("PDF files") { Patterns = ["*.pdf"] }],
+            });
+
+            path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
+        }
+
+        if (path is null)
+        {
+            return;
+        }
+
+        byte[] pdf;
+        IReadOnlyList<PdfPageInfo> pages;
+        try
+        {
+            pdf = await File.ReadAllBytesAsync(path);
+            pages = PdfPageRasterizer.ReadPages(pdf);
+        }
+        catch (PdfPageException e)
+        {
+            await ShowErrorAsync("That PDF could not be opened", e.Message);
+            return;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            await ShowErrorAsync(
+                "That file could not be opened",
+                $"TrestleBoard could not read that file. ({e.Message})");
+            return;
+        }
+
+        int? chosen = PdfPageAnswerForTest;
+        if (chosen is null)
+        {
+            var picker = new PdfPageWindow(pdf, pages, Path.GetFileName(path));
+            await picker.ShowDialog(this);
+            chosen = picker.ChosenPage;
+        }
+
+        // Nothing chosen, or a number that is not a page: the window was closed. Guarded rather
+        // than trusted, because "which page" arrives from a dialog and dialogs get cancelled.
+        if (chosen is not { } pageNumber || pageNumber < 1)
+        {
+            return;
+        }
+
+        byte[] png;
+        try
+        {
+            png = PdfPageRasterizer.RenderPage(pdf, pageNumber);
+        }
+        catch (PdfPageException e)
+        {
+            await ShowErrorAsync("That page could not be brought in", e.Message);
+            return;
+        }
+
+        // The name is settled before the command runs, because the frame records it — but the bytes
+        // go in only once the picture is actually on the page. Nothing ever paints the PDF, so
+        // there is no reason to register it early, and registering early is how a cancelled or
+        // failed insert leaves a megabyte of orphan in somebody's newsletter for ever.
+        string pdfAsset = NextPdfAssetRef(path);
+
+        _editor?.End();
+        string? blockId = _photos.InsertPhoto(
+            _pageIndex,
+            png,
+            $"Page {pageNumber} of {Path.GetFileName(path)}.",
+            caption: null,
+            centre: null,
+            fromPdf: (pdfAsset, pageNumber));
+
+        if (blockId is null)
+        {
+            await ShowErrorAsync(
+                "That page could not be brought in",
+                "TrestleBoard drew the page but could not put it on the newsletter. Your newsletter "
+                + "is unchanged.");
+            return;
+        }
+
+        _package.Assets[pdfAsset] = pdf;
+        _frames?.Select(blockId);
+        Announce($"Page {pageNumber} is on the newsletter as a picture. Use \"Describe this "
+            + "picture\" to say what is on it — a screen reader cannot read a picture of writing, "
+            + "and right now all it knows is which page this was.");
+        RefreshActions();
+    }
+
+    /// <summary>
+    /// A container entry name for a source PDF that nothing else is using. Counted rather than
+    /// stamped with the clock, so two pages of the same file brought in one after another get
+    /// different names without the document depending on what time it was.
+    /// </summary>
+    private string NextPdfAssetRef(string path)
+    {
+        string stem = Path.GetFileNameWithoutExtension(path);
+        for (int i = 1; ; i++)
+        {
+            string candidate = $"source-{stem}-{i}.pdf";
+            if (!_package!.Assets.ContainsKey(candidate))
+            {
+                return candidate;
+            }
+        }
     }
 
     // ---- Bringing writing in from a file (PLAN.md §11 M66) -------------------------------------
