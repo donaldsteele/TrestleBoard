@@ -23,6 +23,7 @@ internal sealed class ActionRunner
         (ActionId.InsertDistrictCalendar, "districtCalendar"),
         (ActionId.InsertEventCard, "eventCard"),
         (ActionId.InsertCoverBanner, "coverBanner"),
+        (ActionId.InsertSimpleList, "simpleList"),
     ];
 
     private readonly MainWindow _window;

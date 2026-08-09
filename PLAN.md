@@ -2836,7 +2836,24 @@ makes damaging the archive impossible. An old issue that predates the current `f
 exercises §2's migration path for real; a file too old to migrate fails with the M25-standard
 honest message.
 
-### M60 — A list of your own (L)
+### M60 — A list of your own (L) — **delivered 2026-08-08, `docs/M60-spec.md`**
+
+> **This was not the expensive milestone the plan predicted, and checking first is what saved the
+> cost.** The acceptance assumed "a format migration and possibly moved snapshot baselines". Neither
+> was needed: `WidgetBlock.Data` is opaque JSON so a new widget type is new *data*, not a new format
+> (the migration chain is empty and fires only on `formatVersion`), and `widgets-gallery-page1` is a
+> hand-written list of six rather than an enumeration, so a seventh does not touch it. Verified by
+> re-baking: no diff in any of the fifteen Windows baselines.
+>
+> Three columns, capped on the *question* — three heading boxes and no way to ask for a fourth, with
+> `FieldsStep` throwing above three fields so the framework enforces it rather than care. The column
+> count is derived from the headings, never stored, for M55's reason: two things that can disagree
+> eventually will, and here the disagreement prints the wrong table. Layout goes through the shared
+> `TableLayouter`; columns split evenly because this widget, unlike the officers table, knows nothing
+> about its own content and an even split is honest where a measurement would be a guess.
+>
+> Two tests that hard-coded "6 widgets" now read `BuiltInWidgets.All.Count` — they were defending a
+> number rather than a property, and M65 would have broken them again.
 
 **Goal.** Content that is table-shaped but not one of the six widgets — Eastern Star news, a degree
 schedule, a dinner menu — is today hand-typed into free text frames, losing re-edit, carry-forward

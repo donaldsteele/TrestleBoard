@@ -42,6 +42,7 @@ internal static class ActionIcons
         [ActionId.InsertDistrictCalendar] = "district-calendar",
         [ActionId.InsertEventCard] = "announcement",
         [ActionId.InsertCoverBanner] = "cover-banner",
+        [ActionId.InsertSimpleList] = "simple-list",
 
         // Ten primary or item-level actions. Nine are IsPrimary; item.editList is not, but it sits
         // directly beside item.edit in the panel and reads as its twin without one.
@@ -80,6 +81,7 @@ internal static class ActionIcons
         ["districtCalendar"] = "district-calendar",
         ["announcement"] = "announcement",
         ["coverBanner"] = "cover-banner",
+        ["simple-list"] = "simple-list",
     };
 
     /// <summary>

@@ -231,7 +231,9 @@ public sealed class WidgetShellTests
             window.OpenSample();
 
             // Six widgets, six menu items — a keyboard user never has to go through a picker.
-            Assert.Equal(6, window.WidgetProviderForTest.ListWidgets().Count);
+            Assert.Equal(
+                TrestleBoard.Widgets.BuiltInWidgets.All.Count,
+                window.WidgetProviderForTest.ListWidgets().Count);
             foreach (var info in window.WidgetProviderForTest.ListWidgets())
             {
                 string id = window.WidgetsForTest!.InsertWidget(0, info.TypeId);

@@ -176,6 +176,8 @@ public static class ActionCatalog
         new(ActionId.InsertEventCard, "Announcement box", "Adds a box for one announcement.", ActionGroup.Insert),
         new(ActionId.InsertCoverBanner, "Cover heading", "Adds the lodge name and meeting details for page one.",
             ActionGroup.Insert),
+        new(ActionId.InsertSimpleList, "A list of my own",
+            "Adds a list of up to three columns that you fill in yourself.", ActionGroup.Insert),
 
         // ---- The selected thing -----------------------------------------------------------------
         new(ActionId.DeleteFrame, "Delete this", "Takes it off the page. You can undo this.",
@@ -576,7 +578,7 @@ public static class ActionCatalog
             ActionId.AddTextFrame or ActionId.InsertPhoto or ActionId.InsertOfficers
                 or ActionId.InsertBirthdays or ActionId.InsertCommittees
                 or ActionId.InsertDistrictCalendar or ActionId.InsertEventCard
-                or ActionId.InsertCoverBanner => RequiresDocument(context),
+                or ActionId.InsertCoverBanner or ActionId.InsertSimpleList => RequiresDocument(context),
 
             // ---- The selected thing -------------------------------------------------------------
             ActionId.DeleteFrame => context.HasFrameSelection

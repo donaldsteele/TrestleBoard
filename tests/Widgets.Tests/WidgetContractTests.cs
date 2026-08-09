@@ -16,10 +16,11 @@ public sealed class WidgetContractTests
     private static readonly WidgetLayoutProvider Provider = WidgetLayoutProvider.CreateDefault();
 
     [Fact]
-    public void TheSixV1WidgetsAreRegisteredInMenuOrder()
+    public void EveryWidgetIsRegisteredInMenuOrder()
     {
         Assert.Equal(
-            ["officersTable", "birthdayList", "committeeList", "districtCalendar", "eventCard", "coverBanner"],
+            ["officersTable", "birthdayList", "committeeList", "districtCalendar", "eventCard",
+                "coverBanner", "simpleList"],
             Provider.Registry.All.Select(d => d.TypeId));
     }
 

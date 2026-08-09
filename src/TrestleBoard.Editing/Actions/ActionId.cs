@@ -148,6 +148,12 @@ public static class ActionId
     public const string InsertEventCard = "insert.eventCard";
     public const string InsertCoverBanner = "insert.coverBanner";
 
+    /// <summary>
+    /// M60: the seventh widget — a table of the user's own, for content that is table-shaped but is
+    /// not one of the six lists TrestleBoard fills in.
+    /// </summary>
+    public const string InsertSimpleList = "insert.simpleList";
+
     // ---- The selected thing -------------------------------------------------------------------
     public const string DeleteFrame = "item.delete";
     public const string EditWidget = "item.edit";
