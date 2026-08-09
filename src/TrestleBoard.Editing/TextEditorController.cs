@@ -544,18 +544,23 @@ public sealed class TextEditorController
         DeleteRange(range, "Cut text");
     }
 
-    public async Task PasteAsync()
+    /// <summary>
+    /// Puts the copied words in at the caret. False when there was nothing to put in — the catalog
+    /// promises this command "says so out loud when there is nothing to paste" (M70(c)), and the
+    /// clipboard is the shell's to read, so the shell is told and does the saying.
+    /// </summary>
+    public async Task<bool> PasteAsync()
     {
         if (!IsActive)
         {
-            return;
+            return false;
         }
 
         string? text = await _clipboard.GetTextAsync().ConfigureAwait(true);
         string sanitized = Sanitize(text ?? "");
         if (sanitized.Length == 0)
         {
-            return;
+            return false;
         }
 
         if (sanitized.Contains('\n', StringComparison.Ordinal))
@@ -566,6 +571,8 @@ public sealed class TextEditorController
         {
             InsertText(sanitized);
         }
+
+        return true;
     }
 
     /// <summary>
@@ -862,7 +869,7 @@ public sealed class TextEditorController
     public void UseFontJustHere(string fontFamily, float? sizePt)
     {
         ArgumentException.ThrowIfNullOrEmpty(fontFamily);
-        RetargetSpans(
+        _ = RetargetSpans(
             "Use a different font here",
             (sheet, effectiveRef) =>
             {
@@ -886,10 +893,13 @@ public sealed class TextEditorController
             });
     }
 
-    /// <summary>Puts overridden text back on its role's own font, leaving bold and italic alone.</summary>
-    public void ClearFontOverride()
+    /// <summary>
+    /// Puts overridden text back on its role's own font, leaving bold and italic alone.
+    /// False when nothing was using a font of its own, so nothing was put back.
+    /// </summary>
+    public bool ClearFontOverride()
     {
-        RetargetSpans(
+        return RetargetSpans(
             "Put the font back",
             (sheet, effectiveRef) =>
             {
@@ -917,13 +927,18 @@ public sealed class TextEditorController
     /// span. Factored out because "use a different font here" and "put it back" differ only in how
     /// they name the target.
     /// </summary>
-    private void RetargetSpans(
+    /// <returns>
+    /// False when nothing was changed at all. M70(d): the shell announced "Put back to the usual
+    /// font" before knowing whether anything had been, and three silent early returns could make
+    /// that a false report.
+    /// </returns>
+    private bool RetargetSpans(
         string description,
         Func<StyleSheet, string, (string Name, CharacterStyleDef? ToEnsure)> chooseTarget)
     {
         if (!IsActive)
         {
-            return;
+            return false;
         }
 
         StyleSheet sheet = _session.Document.StyleSheet;
@@ -933,10 +948,15 @@ public sealed class TextEditorController
                 ?? EffectiveRefAt(_selection.Caret.ParagraphIndex, _selection.Caret.Offset);
             if (reference is null)
             {
-                return;
+                return false;
             }
 
             (string name, CharacterStyleDef? toEnsure) = chooseTarget(sheet, reference);
+            if (toEnsure is null && string.Equals(name, reference, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
             if (toEnsure is not null)
             {
                 _session.Execute(new EnsureCharacterStyleCommand(toEnsure));
@@ -944,19 +964,20 @@ public sealed class TextEditorController
 
             _pendingCharacterStyleRef = name;
             RaiseChanged();
-            return;
+            return true;
         }
 
         List<(int Paragraph, int Offset, int Length, string EffectiveRef)> spans =
             EnumerateStyleSpans(_selection.Range);
         if (spans.Count == 0)
         {
-            return;
+            return false;
         }
 
         var children = new List<IDocumentCommand>();
         var ensured = new HashSet<string>(StringComparer.Ordinal);
         string storyId = _selection.StoryId;
+        bool anythingChanges = false;
         foreach ((int paragraph, int offset, int length, string effectiveRef) in spans)
         {
             (string target, CharacterStyleDef? toEnsure) = chooseTarget(sheet, effectiveRef);
@@ -965,8 +986,19 @@ public sealed class TextEditorController
                 children.Insert(0, new EnsureCharacterStyleCommand(toEnsure));
             }
 
+            // M70(d): a span whose chosen target is the style it already has is a command that
+            // rewrites a run as itself. Left in, it put a step on the undo stack, marked the
+            // newsletter unsaved and let the shell report a change nobody could see.
+            anythingChanges |= toEnsure is not null
+                || !string.Equals(target, effectiveRef, StringComparison.Ordinal);
+
             string? applied = target == ParagraphDefaultRef(paragraph) ? null : target;
             children.Add(new ApplyCharacterStyleCommand(storyId, paragraph, offset, length, applied));
+        }
+
+        if (!anythingChanges)
+        {
+            return false;
         }
 
         _session.Execute(new CompositeCommand(
@@ -974,6 +1006,7 @@ public sealed class TextEditorController
             new ChangeScope(ChangeKind.Text, StoryId: storyId),
             children));
         RaiseChanged();
+        return true;
     }
 
     public void ApplyParagraphStyle(string paragraphStyleRef)

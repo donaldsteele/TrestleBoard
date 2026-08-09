@@ -578,6 +578,11 @@ public partial class MainWindow : Window
                 return;
             }
         }
+
+        // M70(c): every region refused focus — the panel folded away on a narrow window, no
+        // newsletter open. F6 is a keyboard-only user's way around the window, so it has to answer
+        // even when it cannot go anywhere.
+        Announce("There is nowhere else to move to just now.");
     }
 
     private static bool TryFocusRegion(Control root)
@@ -599,21 +604,31 @@ public partial class MainWindow : Window
         return false;
     }
 
+    /// <summary>
+    /// M70(d): this said the panel was showing whether it was or not. On a narrow window
+    /// <see cref="ApplyPanelVisibility"/> keeps the panel folded away however the setting is set,
+    /// so the user was told a thing had happened that had not — a false report, which is worse than
+    /// saying nothing. It now says what is actually on screen.
+    /// </summary>
     internal void ToggleActionPanel()
     {
         _settings = _settings with { ShowActionPanel = !_settings.ShowActionPanel };
         _settings.Save();
-        ApplyPanelVisibility();
-        Announce(_settings.ShowActionPanel
+        bool showing = ApplyPanelVisibility();
+        Announce(showing
             ? "The panel of things you can do is showing."
-            : "The panel is hidden. Bring it back from View, Show what I can do.");
+            : _settings.ShowActionPanel
+                ? "This window is too narrow for the panel, so it stays folded away. "
+                    + "Make the window wider and it will come back."
+                : "The panel is hidden. Bring it back from View, Show what I can do.");
     }
 
     /// <summary>
     /// The chrome budget (PLAN.md §11 M11): the panel folds itself away on a narrow window rather
     /// than leaving the page a strip down the middle.
     /// </summary>
-    private void ApplyPanelVisibility()
+    /// <returns>Whether the panel is now on screen — which is not the same as the setting.</returns>
+    private bool ApplyPanelVisibility()
     {
         bool roomForIt = Bounds.Width <= 0 || Bounds.Width >= PanelFoldWidth;
         bool showPanel = _settings.ShowActionPanel && roomForIt;
@@ -622,6 +637,7 @@ public partial class MainWindow : Window
         ShowPanelButton.Content = _settings.ShowActionPanel && !roomForIt
             ? "▸"
             : "What can I do? ▸";
+        return showPanel;
     }
 
     // ---- Autosave and recovery ----------------------------------------------------------------
@@ -3187,6 +3203,10 @@ public partial class MainWindow : Window
         IReadOnlyList<DocumentBackup> backups = FileRecoveryStore.FindBackups(path);
         if (backups.Count == 0)
         {
+            // M70(c): the catalog reads the ring once, when the newsletter's path is assigned, so
+            // its answer can outlive the copies themselves — the ring is pruned, and the command is
+            // still offered. Whoever presses it is owed the reason it can do nothing.
+            Announce("The copies TrestleBoard kept are no longer there, so there is nothing to go back to.");
             return;
         }
 
@@ -3632,9 +3652,39 @@ public partial class MainWindow : Window
 
     // ---- Edit / Format ------------------------------------------------------------------------
 
-    internal void Undo() => _session?.Undo();
+    /// <summary>
+    /// M70(c): the newsletter's own undo announced nothing at all, although the step's name is
+    /// right there and the address book's undo has said it since M49 (see UndoPeopleChange). A
+    /// change taken back somewhere off screen — on another page, inside a frame the user is not
+    /// looking at — was indistinguishable from a key that did nothing.
+    /// </summary>
+    internal void Undo()
+    {
+        if (_session is not { CanUndo: true } session)
+        {
+            return;
+        }
 
-    internal void Redo() => _session?.Redo();
+        string? description = session.UndoDescription;
+        session.Undo();
+        Announce(description is null
+            ? "Taken back."
+            : $"Taken back: {description.ToLowerInvariant()}.");
+    }
+
+    internal void Redo()
+    {
+        if (_session is not { CanRedo: true } session)
+        {
+            return;
+        }
+
+        string? description = session.RedoDescription;
+        session.Redo();
+        Announce(description is null
+            ? "Done again."
+            : $"Done again: {description.ToLowerInvariant()}.");
+    }
 
     internal async Task CutAsync()
     {
@@ -3660,7 +3710,13 @@ public partial class MainWindow : Window
     {
         if (_editor is { IsActive: true })
         {
-            await _editor.PasteAsync();
+            // M70(c): the catalog's own description promises this command says so out loud when
+            // there is nothing to paste, and only the picture branch below was keeping that promise.
+            if (!await _editor.PasteAsync())
+            {
+                Announce("There is nothing to paste. Copy some words first.");
+            }
+
             return;
         }
 
@@ -3709,7 +3765,42 @@ public partial class MainWindow : Window
         return window;
     }
 
-    internal void ToggleBold() => _editor?.ToggleBold();
+    internal void ToggleBold() => ToggleFormat(bold: true);
+
+    /// <summary>
+    /// M70(c): with words highlighted the page answers for itself. With a caret and nothing
+    /// highlighted the controller correctly arms the next run it types — and nothing visible
+    /// happens, so the user presses Ctrl+B again and undoes what they asked for. The behaviour is
+    /// right; the silence was the bug.
+    /// </summary>
+    private void ToggleFormat(bool bold)
+    {
+        if (_editor is not { IsActive: true } editor)
+        {
+            return;
+        }
+
+        bool caretOnly = editor.SelectedText is null;
+        if (bold)
+        {
+            editor.ToggleBold();
+        }
+        else
+        {
+            editor.ToggleItalic();
+        }
+
+        if (!caretOnly)
+        {
+            return;
+        }
+
+        bool nowOn = bold ? editor.IsBoldActive : editor.IsItalicActive;
+        string what = bold ? "bold" : "italic";
+        Announce(nowOn
+            ? $"The next words you type will be {what}."
+            : $"The next words you type will not be {what}.");
+    }
 
     /// <summary>
     /// M61: makes the paragraphs the selection touches a list, or puts them back to normal writing.
@@ -3738,7 +3829,7 @@ public partial class MainWindow : Window
         RefreshActions();
     }
 
-    internal void ToggleItalic() => _editor?.ToggleItalic();
+    internal void ToggleItalic() => ToggleFormat(bold: false);
 
     /// <summary>
     /// The panel's "Paragraph style ▸" opens the same list the Format menu shows, beside the button
@@ -3925,10 +4016,29 @@ public partial class MainWindow : Window
         _settings.Theme is ThemeChoice.Dark or ThemeChoice.HighContrast,
         TextStylesMode.JustHere);
 
+    /// <summary>
+    /// M70(d): "Put back to the usual font." was said before anything was known to have been put
+    /// back. With a caret and no words highlighted nothing on the page changes at all — what
+    /// changes is the font the NEXT words will be in — so the sentence has to say which of the two
+    /// happened, and say nothing when neither did.
+    /// </summary>
     internal void ClearFontOverrideHere()
     {
-        _editor?.ClearFontOverride();
-        Announce("Put back to the usual font.");
+        if (_editor is not { } editor)
+        {
+            return;
+        }
+
+        bool caretOnly = editor.SelectedText is null;
+        if (!editor.ClearFontOverride())
+        {
+            Announce("This writing already uses the font its kind of writing normally uses.");
+            return;
+        }
+
+        Announce(caretOnly
+            ? "The next words you type will use the usual font."
+            : "Put back to the usual font.");
         RefreshActions();
     }
 
@@ -4116,12 +4226,21 @@ public partial class MainWindow : Window
 
     internal void ToggleWrap() => _frames?.ToggleWrap();
 
-    internal void Restack(Func<FrameEditorController, bool> action)
+    /// <summary>
+    /// M70(c): all four z-order commands returned a false nobody read. Pressing "Move it to the
+    /// front" on the frontmost frame is the commonest no-op in the app, and it used to look exactly
+    /// like a broken key.
+    /// </summary>
+    /// <param name="towardsFront">Which end of the pile the command was heading for, so the
+    /// "already there" sentence can name it.</param>
+    internal void Restack(Func<FrameEditorController, bool> action, bool towardsFront)
     {
         ArgumentNullException.ThrowIfNull(action);
-        if (_frames is not null)
+        if (_frames is not null && !action(_frames))
         {
-            action(_frames);
+            Announce(towardsFront
+                ? "This is already in front of everything else on the page."
+                : "This is already behind everything else on the page.");
         }
     }
 
@@ -5366,11 +5485,19 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// M70(c): straight after any widget edit this is ALWAYS a no-op, because
+    /// <see cref="WidgetController.ApplyWidgetData"/> has already resized the box to what is in it.
+    /// It used to discard the "nothing to do" and say nothing at all, which is the commonest way
+    /// this command is pressed.
+    /// </summary>
     internal void FitWidgetToContents()
     {
-        if (_frames?.SelectedBlockId is { } blockId)
+        if (_frames?.SelectedBlockId is { } blockId
+            && _widgets is not null
+            && !_widgets.FitToContents(blockId))
         {
-            _widgets?.FitToContents(blockId);
+            Announce("This box is already exactly as tall as what is in it.");
         }
     }
 
@@ -5716,6 +5843,18 @@ public partial class MainWindow : Window
         double next = direction > 0
             ? ZoomSteps.FirstOrDefault(z => z > current + 0.001, ZoomSteps[^1])
             : ZoomSteps.LastOrDefault(z => z < current - 0.001, ZoomSteps[0]);
+
+        // M70(c): at either end of the ladder this does nothing and used to say nothing. The text
+        // size ladder has said so since M14 (see StepTextSize); this is the same sentence for the
+        // page. Every zoom path — the buttons, the keys and Ctrl+wheel — arrives here.
+        if (Math.Abs(next - current) < 0.0001)
+        {
+            Announce(direction > 0
+                ? "The page is already as large as TrestleBoard shows it."
+                : "The page is already as small as TrestleBoard shows it.");
+            return;
+        }
+
         SetZoom(next, fit: false);
     }
 

@@ -111,10 +111,10 @@ internal sealed class ActionRunner
             [ActionId.AutoFlow] = Sync(window.AutoFlow),
 
             // ---- Arranging -------------------------------------------------------------------------
-            [ActionId.BringForward] = Sync(() => window.Restack(f => f.BringForward())),
-            [ActionId.SendBackward] = Sync(() => window.Restack(f => f.SendBackward())),
-            [ActionId.BringToFront] = Sync(() => window.Restack(f => f.BringToFront())),
-            [ActionId.SendToBack] = Sync(() => window.Restack(f => f.SendToBack())),
+            [ActionId.BringForward] = Sync(() => window.Restack(f => f.BringForward(), towardsFront: true)),
+            [ActionId.SendBackward] = Sync(() => window.Restack(f => f.SendBackward(), towardsFront: false)),
+            [ActionId.BringToFront] = Sync(() => window.Restack(f => f.BringToFront(), towardsFront: true)),
+            [ActionId.SendToBack] = Sync(() => window.Restack(f => f.SendToBack(), towardsFront: false)),
 
             // ---- Lining things up (M21) -------------------------------------------------------
             [ActionId.AlignLeft] = Sync(() => window.AlignSelection(FrameAlignmentKind.Left)),

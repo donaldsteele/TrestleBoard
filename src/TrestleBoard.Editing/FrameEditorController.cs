@@ -708,6 +708,9 @@ public sealed class FrameEditorController
             _ => index + delta,
         };
         target = Math.Clamp(target, 0, ordered.Count - 1);
+
+        // M70(c): target == index is the commonest no-op in the app — the thing is already at that
+        // end of the pile. The false is no longer discarded: the shell says so (MainWindow.Restack).
         if (index < 0 || target == index)
         {
             return false;

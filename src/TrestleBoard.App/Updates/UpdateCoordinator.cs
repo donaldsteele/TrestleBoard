@@ -85,7 +85,12 @@ public sealed class UpdateCoordinator(IUpdateChannel channel)
         }
         catch (OperationCanceledException)
         {
-            return new UpdateOutcome(UpdateState.Failed, FailureMessage, Announce: false);
+            // M70(c): this used to answer nobody, not even the user who pressed the button. A slow
+            // lodge connection times out as a TaskCanceledException, so the commonest failure of
+            // all arrived here and said nothing — against this method's own contract above, which
+            // is that "Check for an update" must always answer. A background check still stays
+            // quiet, exactly as it does for every other failure.
+            return new UpdateOutcome(UpdateState.Failed, FailureMessage, userAsked);
         }
         catch (Exception e) when (e is not OutOfMemoryException and not StackOverflowException)
         {
