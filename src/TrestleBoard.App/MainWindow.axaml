@@ -83,6 +83,16 @@
                   Click="OnActionClicked"
                   AutomationProperties.Name="Send the newsletter to the brethren" />
         <Separator />
+        <!-- M64: the handover pair, in their own group at the bottom of File. They are about the
+             whole computer rather than this newsletter, and they are reached about twice a decade —
+             once by the person leaving, once by the person arriving. -->
+        <MenuItem Header="Pack everything up for my s_uccessor…" Tag="everything.packUp"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Pack everything up for my successor" />
+        <MenuItem Header="_Bring in a predecessor's pack…" Tag="everything.bringInAPack"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Bring in a predecessor's pack" />
+        <Separator />
         <MenuItem Header="E_xit" Tag="newsletter.exit" Click="OnActionClicked"
                   AutomationProperties.Name="Exit TrestleBoard" />
       </MenuItem>

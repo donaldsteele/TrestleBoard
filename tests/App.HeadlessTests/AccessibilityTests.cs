@@ -356,6 +356,22 @@ public sealed class AccessibilityTests
         // M63's two. The help window is the one place in the app a confused person is most likely
         // to arrive with a screen reader running, so it above all must pass this walk.
         yield return (nameof(TourWindow), new TourWindow());
+
+        // M64. The window where a wrong click costs the lodge its address book, walked by ear.
+        yield return (
+            nameof(BringInPackWindow),
+            new BringInPackWindow(
+                [
+                    new TrestleBoard.App.Integration.PackPartChoice(
+                        TrestleBoard.Core.Container.SuccessorPackParts.Roster,
+                        "Your address book",
+                        "The lodge's members.",
+                        "84 people",
+                        "12 people",
+                        true),
+                ],
+                DateTimeOffset.UnixEpoch,
+                "TrestleBoard.tbpack"));
         yield return (
             nameof(HelpWindow),
             new HelpWindow(

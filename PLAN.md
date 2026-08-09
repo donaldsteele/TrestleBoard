@@ -3009,7 +3009,29 @@ over, make the PDF, send it.
 added to the script). Help content carries fictional examples only. No network — help is bundled,
 never fetched.
 
-### M64 — Pack it up for my successor (M)
+### M64 — Pack it up for my successor (M) — **delivered 2026-08-09, `docs/M64-spec.md`**
+
+> **One rule for restoring, and everything else falls out of it: the pack's files are written over
+> the same paths, and nothing the pack does not carry is ever deleted.** Templates merge, the
+> receiving committee's own layouts survive, and a clean machine ends up byte-for-byte identical
+> because there was nothing there to survive. A restore that also tidied up would quietly destroy
+> the new committee's work while calling itself a copy. One safety net on top: the roster that is
+> here now is copied into its own backup ring before a predecessor's replaces it.
+>
+> The pack is a removal van, not an editor — store bytes are copied, never re-serialized, so each
+> store's own version and migration path stay its own business. `.tbpack` repeats the `.tboard`
+> discipline in full, including a migration chain that is empty and exists anyway: a pack is the
+> file most likely to be opened years later by an app nobody has written yet. The folder names are
+> the interface, which also makes the pack legible to somebody who unzips it with no TrestleBoard at
+> all — the only real insurance a volunteer lodge has if this app stops being maintained.
+>
+> **A pack arrives by email, so a zip entry name is a string somebody else chose.** The four
+> single-file stores are matched by exact name and cannot be redirected; the two directory stores
+> refuse anything with a separator or a `..` rather than sanitising it. In the window, rows that
+> would replace something start **unticked**: taking is one click, replacing is one click and a
+> decision. New group `ActionGroup.Everything` — M63's help window prints the group beside every
+> answer, and "Pack everything up — This newsletter" would have been the wrong thing to say about
+> the app's most consequential file.
 
 **Goal.** Committee turnover is the existential risk for a volunteer lodge. M57 exports templates;
 everything else the app has accumulated — the address book, the phrase shelf, the personal

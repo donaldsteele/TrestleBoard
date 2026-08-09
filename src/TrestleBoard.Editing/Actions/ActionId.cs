@@ -296,6 +296,19 @@ public static class ActionId
     public const string ShowExampleIssue = "help.exampleIssue";
 
     /// <summary>
+    /// M64: writes the address book, the templates, the phrase shelf, the personal dictionary and
+    /// the settings into one file for whoever takes over. Committee turnover is the existential risk
+    /// for a volunteer lodge, and until this everything but a single template died with the laptop.
+    /// </summary>
+    public const string PackUpForSuccessor = "everything.packUp";
+
+    /// <summary>
+    /// M64: reads a pack back in on the new machine, item by item and asking before it replaces
+    /// anything that is already here.
+    /// </summary>
+    public const string BringInAPack = "everything.bringInAPack";
+
+    /// <summary>
     /// M63: the "How do I…?" window. Its index is generated from this very catalog, so adding a
     /// command adds its answer — the help cannot fall behind the app because there is nowhere for a
     /// stale sentence to live.

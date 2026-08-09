@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using TrestleBoard.App;
 using TrestleBoard.App.Dialogs;
 using TrestleBoard.App.Help;
+using TrestleBoard.App.Integration;
 using TrestleBoard.App.Settings;
 using TrestleBoard.Editing;
+using TrestleBoard.Core.Container;
 using TrestleBoard.Editing.Actions;
 using TrestleBoard.Roster;
 using TrestleBoard.Widgets.Builtins.OfficersTable;
@@ -169,6 +171,38 @@ internal static class ShotList
                 TourWindow window = stage.OpenDialog(tour, height: 420);
                 window.GoToForTest(1);
                 return Task.FromResult(Stage.Shoot(window));
+            }),
+
+        // M64. Shot with the address book already here and the wordings not, because the whole
+        // point of this window is the difference between the two rows.
+        new("bring-in-a-pack", ShotKind.Dialog, "M64",
+            "What is in a predecessor's pack, and what taking it would replace.",
+            "The Bring in a predecessor's pack window. Two things are listed with tick boxes: the "
+            + "address book, which is not ticked because one is already on this computer and taking "
+            + "it would replace it, and the saved wordings, which is ticked because nothing here "
+            + "would be lost. Underneath, a line says what will happen.",
+            stage =>
+            {
+                var window = new BringInPackWindow(
+                    [
+                        new PackPartChoice(
+                            SuccessorPackParts.Roster,
+                            SuccessorPackParts.TitleOf(SuccessorPackParts.Roster),
+                            SuccessorPackParts.DescriptionOf(SuccessorPackParts.Roster),
+                            "84 people",
+                            "12 people",
+                            true),
+                        new PackPartChoice(
+                            SuccessorPackParts.Phrases,
+                            SuccessorPackParts.TitleOf(SuccessorPackParts.Phrases),
+                            SuccessorPackParts.DescriptionOf(SuccessorPackParts.Phrases),
+                            "6 saved wordings",
+                            "",
+                            false),
+                    ],
+                    new DateTimeOffset(2026, 8, 9, 12, 0, 0, TimeSpan.Zero),
+                    "TrestleBoard.tbpack");
+                return Task.FromResult(Stage.Shoot(stage.OpenDialog(window, height: 560)));
             }),
 
         new("start-screen", ShotKind.Dialog, null,

@@ -803,6 +803,55 @@ having seen it. **Help → Show me round again** must still bring it back on req
 
 ---
 
+## 17. Handing the whole thing on (M64)
+
+The two commands in this section are each used about once a decade, by somebody who has either just
+stopped being on the committee or just started. Neither will have anybody sitting beside them.
+
+**17.1** From the main window, open **File → Pack everything up for my successor**.
+**What you should hear:** a window named "Pack everything up for my successor", then a list of what
+is about to go into the file — the address book, the templates, the saved wordings — each with how
+much of it there is. Confirm the **privacy sentence** is read out too: it must say the file will
+contain members' names, birthdays, telephone numbers and email addresses. A pack that describes
+itself without saying that is the failure this step exists to catch.
+
+**17.2** Tab through and press **Cancel** with Space.
+**What you should confirm:** no file was written and no save dialog appeared. Cancelling must
+happen *before* the browse, not after it.
+
+**17.3** Repeat 17.1 and press **Pack it up**, then choose a folder you can find again.
+**What you should hear:** a spoken confirmation naming the file, and telling you to keep it safe
+because the address book is in it. Confirm the save dialog opened at no default location — it must
+not offer to save beside the newsletter or anywhere you did not browse to.
+
+**17.4** Open **File → Bring in a predecessor's pack** and choose the file you just wrote.
+**What you should hear:** a window named "Bring in a predecessor's pack", the heading "What would
+you like to take?", and the name of the file with the date it was packed.
+
+**17.5** Tab through the rows.
+**What you should hear:** for each row, the name of the thing, how much of it the pack has, and —
+where you already have one — what would happen to yours. All three must arrive on the **tick box
+itself**: a screen reader lands on the box, and anything said only in the text beside it is
+something the person will never hear. Confirm that every row for something you already have is
+**not ticked**.
+
+**17.6** Tick the address book row.
+**What you should hear:** the summary line change, politely, to say that one of the things being
+brought in replaces something you already have. Confirm it arrives without you going looking for it.
+
+**17.7** Untick everything and read the summary.
+**What you should hear:** a sentence saying nothing on this computer will change. Not "0 selected".
+
+**17.8** Press Escape.
+**What you should confirm:** the window closed and the app said nothing was brought in — silence
+here would leave somebody unsure whether they had just overwritten the lodge's address book.
+
+**17.9** Bring the pack in again, take the address book, and open **People → The address book**.
+**What you should confirm:** the people from the pack are there. The window must show the restored
+book, not the one that was loaded when the app started.
+
+---
+
 ## Results table
 
 Copy this table (or the row shape) into a spreadsheet or a copy of this file as you go. Use the
@@ -923,6 +972,15 @@ step numbers from above so the full "what you should hear" text doesn't need to 
 | 16.9 | | | | Back absent, not dimmed, on screen 1 |
 | 16.10 | | | | the heading takes focus on every move |
 | 16.11 | | | | shown once; skipping counts as seeing it |
+| 17.1 | | | | the privacy sentence must be read out |
+| 17.2 | | | | cancelling happens before the browse |
+| 17.3 | | | | no default save location |
+| 17.4 | | | | |
+| 17.5 | | | | all three facts must be on the tick box itself |
+| 17.6 | | | | polite live region |
+| 17.7 | | | | a sentence, never "0 selected" |
+| 17.8 | | | | silence here is a failure |
+| 17.9 | | | | the app must pick up what was written under it |
 
 Add rows for anything else you notice along the way, even if it isn't in a numbered step.
 

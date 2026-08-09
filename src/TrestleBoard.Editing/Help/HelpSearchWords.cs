@@ -73,6 +73,12 @@ public static class HelpSearchWords
         [ActionId.Undo] = ["mistake", "wrong", "go back", "revert", "oops"],
         [ActionId.Redo] = ["mistake", "forward", "put it back"],
 
+        // Handing over (M64). Nobody searches for "pack" — they search for the event.
+        [ActionId.PackUpForSuccessor] =
+            ["successor", "handover", "hand over", "new computer", "leaving", "move everything", "backup"],
+        [ActionId.BringInAPack] =
+            ["successor", "handover", "predecessor", "new computer", "took over", "restore everything"],
+
         // Looking at the app itself.
         [ActionId.Settings] = ["colours", "colors", "dark", "theme", "bigger app", "contrast"],
         [ActionId.ZoomIn] = ["bigger", "closer", "magnify", "cannot see"],

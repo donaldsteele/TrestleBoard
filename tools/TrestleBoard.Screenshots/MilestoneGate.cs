@@ -27,6 +27,8 @@ internal static class MilestoneGate
                 "filling the officers table in from the address book"),
             ["M63"] = ("TrestleBoard.App.Dialogs.HelpWindow, TrestleBoard.App",
                 "the how-do-I window and the first-run tour"),
+            ["M64"] = ("TrestleBoard.App.Dialogs.BringInPackWindow, TrestleBoard.App",
+                "packing everything up for a successor"),
         };
 
     /// <summary>

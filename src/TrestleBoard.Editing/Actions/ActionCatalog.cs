@@ -325,6 +325,14 @@ public static class ActionCatalog
         new(ActionId.RestorePeople, "Restore an earlier version…",
             "Puts your address book back as it was on an earlier day.", ActionGroup.People),
 
+        // ---- Everything on this computer (M64) --------------------------------------------------
+        new(ActionId.PackUpForSuccessor, "Pack everything up for my successor…",
+            "Writes your address book, your templates, your saved wordings and your settings into "
+            + "one file to hand on.", ActionGroup.Everything),
+        new(ActionId.BringInAPack, "Bring in a predecessor's pack…",
+            "Puts back what the last committee packed up. You choose what to take, and nothing is "
+            + "replaced without being asked.", ActionGroup.Everything),
+
         // ---- Help -------------------------------------------------------------------------------
         new(ActionId.HowDoI, "How do I…?",
             "Opens a search box over everything TrestleBoard can do. Type it in your own words.",
@@ -417,6 +425,9 @@ public static class ActionCatalog
                 // M63: help must never be unavailable. An app that will not tell you how to do
                 // something because of what you have selected is the exact moment help is needed.
                 or ActionId.HowDoI or ActionId.ShowTheTour
+                // M64: neither needs a newsletter open, and both are most likely to be reached on a
+                // computer that has never had one — the successor's, on their first afternoon.
+                or ActionId.PackUpForSuccessor or ActionId.BringInAPack
                 or ActionId.ShowPeople or ActionId.ImportPeople =>
                 ActionAvailability.Available,
 
@@ -877,6 +888,7 @@ public static class ActionCatalog
         ActionGroup.Page => "Pages",
         ActionGroup.View => "Looking at it",
         ActionGroup.People => "Your address book",
+        ActionGroup.Everything => "Everything on this computer",
         _ => "Help",
     };
 

@@ -45,4 +45,5 @@ public sealed class StylesFile
 [JsonSerializable(typeof(DocumentBodyFile))]
 [JsonSerializable(typeof(StylesFile))]
 [JsonSerializable(typeof(TboardManifest))]
+[JsonSerializable(typeof(SuccessorPackManifest))]
 public sealed partial class TboardJsonContext : JsonSerializerContext;

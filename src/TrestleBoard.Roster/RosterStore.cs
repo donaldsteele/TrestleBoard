@@ -187,8 +187,12 @@ public sealed class RosterStore
     /// <summary>
     /// Copies the current file into the ring and trims it to <see cref="BackupsKept"/>. Best-effort:
     /// a ring that cannot be written must not stop the save it was meant to protect.
+    ///
+    /// <para>Public from M64, which needs it without a save: restoring a predecessor's address book
+    /// onto a computer that already has one is about to overwrite the only copy of a membership, and
+    /// the ring is already this app's answer for exactly that.</para>
     /// </summary>
-    private void Backup()
+    public void Backup()
     {
         if (!File.Exists(Path))
         {

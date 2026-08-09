@@ -1752,6 +1752,288 @@ public partial class MainWindow : Window
         Announce("Started from one of your templates. It has no file yet, so Save it when you are ready.");
     }
 
+    // ---- Pack it up for my successor (PLAN.md §11 M64) -----------------------------------------
+
+    /// <summary>Set by tests in place of the save dialog.</summary>
+    internal string? PackPathForTest { get; set; }
+
+    /// <summary>Set by tests in place of the "here is what is in it" confirmation.</summary>
+    internal bool? PackConfirmForTest { get; set; }
+
+    /// <summary>Set by tests in place of the open dialog.</summary>
+    internal string? BringInPackPathForTest { get; set; }
+
+    /// <summary>Set by tests in place of the item-by-item window.</summary>
+    internal IReadOnlyList<string>? PackPartsAnswerForTest { get; set; }
+
+    /// <summary>The last restore, for tests and for what the app says afterwards.</summary>
+    internal RestoreOutcome? LastRestoreForTest { get; private set; }
+
+    /// <summary>
+    /// Writes everything this committee has accumulated into one file for whoever comes next.
+    ///
+    /// <para>§0 rule 7: this is the most concentrated personal data the app produces — the address
+    /// book, its backups, the templates with the officers in them, and the phrase shelf, in one
+    /// attachment. It goes only where the user browsed to, there is no default location, and the
+    /// confirmation says in as many words what is about to be in the file, because somebody who
+    /// emails this to the wrong person has emailed the lodge's membership to the wrong person.</para>
+    /// </summary>
+    internal async Task PackUpForSuccessorAsync()
+    {
+        SuccessorPackage pack = SuccessorPackService.Gather(DateTimeOffset.Now, AppVersion());
+        if (pack.Manifest.Parts.Count == 0)
+        {
+            await ShowErrorAsync(
+                "There is nothing to pack up yet",
+                "TrestleBoard has not gathered an address book, any templates or any saved wordings "
+                + "on this computer yet, so there is nothing a successor would need. Come back when "
+                + "there is.");
+            return;
+        }
+
+        if (!(PackConfirmForTest ?? await ConfirmThePackAsync(pack)))
+        {
+            return;
+        }
+
+        string? path = PackPathForTest;
+        if (path is null)
+        {
+            IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Pack everything up for my successor",
+                DefaultExtension = SuccessorPackContainer.Extension.TrimStart('.'),
+                SuggestedFileName = "TrestleBoard" + SuccessorPackContainer.Extension,
+                FileTypeChoices =
+                [
+                    new FilePickerFileType("TrestleBoard pack")
+                    {
+                        Patterns = ["*" + SuccessorPackContainer.Extension],
+                    },
+                ],
+            });
+
+            path = file?.TryGetLocalPath();
+        }
+
+        if (path is null)
+        {
+            return;
+        }
+
+        try
+        {
+            SuccessorPackContainer.SaveToFile(pack, path);
+            Announce($"Everything is packed up in {Path.GetFileName(path)}. Give that one file to "
+                + "whoever takes over, and they can bring it in on their own computer. Keep it "
+                + "somewhere safe — it has the lodge's address book in it.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            await ShowErrorAsync(
+                "Could not write that file",
+                $"The pack could not be saved there. ({ex.Message})");
+        }
+    }
+
+    /// <summary>
+    /// Reads a pack and puts back whichever parts of it the user asks for.
+    ///
+    /// <para>Every refusal here is one sentence about what to do next. Somebody bringing in a pack
+    /// is on a new computer, on their first day of a job they did not ask for, holding a file they
+    /// cannot look inside.</para>
+    /// </summary>
+    internal async Task BringInAPackAsync()
+    {
+        string? path = BringInPackPathForTest;
+        if (path is null)
+        {
+            IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Bring in a predecessor's pack",
+                AllowMultiple = false,
+                FileTypeFilter =
+                [
+                    new FilePickerFileType("TrestleBoard pack")
+                    {
+                        Patterns = ["*" + SuccessorPackContainer.Extension],
+                    },
+                ],
+            });
+
+            path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
+        }
+
+        if (path is null)
+        {
+            return;
+        }
+
+        SuccessorPackage pack;
+        try
+        {
+            pack = SuccessorPackContainer.LoadFromFile(path);
+        }
+        catch (Core.Migrations.UnsupportedFormatException e)
+        {
+            await ShowErrorAsync("That pack could not be brought in", e.Message);
+            return;
+        }
+        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException
+            or System.Text.Json.JsonException or NotSupportedException)
+        {
+            await ShowErrorAsync(
+                "That pack could not be brought in",
+                "TrestleBoard could not read that file. It may be damaged, or it may not be a "
+                + "TrestleBoard pack.");
+            return;
+        }
+
+        IReadOnlyList<PackPartChoice> choices = SuccessorPackService.Choices(pack);
+        if (choices.Count == 0)
+        {
+            await ShowErrorAsync(
+                "There is nothing in that pack",
+                "That file is a TrestleBoard pack, but there is nothing inside it that this version "
+                + "of TrestleBoard knows what to do with.");
+            return;
+        }
+
+        IReadOnlyList<string> chosen = PackPartsAnswerForTest ?? await AskWhatToTakeAsync(pack, choices, path);
+        if (chosen.Count == 0)
+        {
+            Announce("Nothing was brought in, so nothing on this computer has changed.");
+            return;
+        }
+
+        RestoreOutcome outcome = SuccessorPackService.Restore(pack, chosen);
+        LastRestoreForTest = outcome;
+        ReloadStoresAfterRestore(outcome.Restored);
+
+        if (outcome.Failed.Count > 0)
+        {
+            await ShowErrorAsync(
+                "Some of that pack could not be brought in",
+                string.Join(
+                    Environment.NewLine + Environment.NewLine,
+                    outcome.Failed.Select(f =>
+                        $"{SuccessorPackParts.TitleOf(f.PartId)} could not be written. ({f.Reason})")));
+        }
+
+        if (outcome.Restored.Count > 0)
+        {
+            Announce(
+                "Brought in: "
+                + string.Join(", ", outcome.Restored.Select(id => SuccessorPackParts.TitleOf(id).ToLowerInvariant()))
+                + ". It is all here now, exactly as it was on the other computer.");
+        }
+
+        RefreshActions();
+    }
+
+    private async Task<IReadOnlyList<string>> AskWhatToTakeAsync(
+        SuccessorPackage pack, IReadOnlyList<PackPartChoice> choices, string path)
+    {
+        var window = new BringInPackWindow(choices, pack.Manifest.WrittenOn, Path.GetFileName(path));
+        await window.ShowDialog(this);
+        return window.Chosen;
+    }
+
+    /// <summary>
+    /// Says what is about to be written into the file, by name, before it is written. The privacy
+    /// sentence is not a footnote: this is the one artifact the app makes that would matter if it
+    /// went to the wrong address.
+    /// </summary>
+    private async Task<bool> ConfirmThePackAsync(SuccessorPackage pack)
+    {
+        bool go = false;
+        var dialog = new Window
+        {
+            Title = "Pack everything up for my successor",
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+        };
+
+        var list = new StackPanel { Spacing = 6 };
+        foreach (SuccessorPackPart part in pack.Manifest.Parts)
+        {
+            list.Children.Add(new Avalonia.Controls.TextBlock
+            {
+                Text = $"• {SuccessorPackParts.TitleOf(part.Id)} — {part.Summary}",
+                FontSize = 18,
+                MaxWidth = 520,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            });
+        }
+
+        var pack_ = new Button { Content = "Pack it up", FontSize = 18, MinHeight = 44, MinWidth = 200, IsDefault = true };
+        pack_.Action();
+        var never = new Button { Content = "Cancel", FontSize = 18, MinHeight = 44, MinWidth = 200, IsCancel = true };
+        never.Action();
+        pack_.Click += (_, _) => { go = true; dialog.Close(); };
+        never.Click += (_, _) => dialog.Close();
+        Avalonia.Automation.AutomationProperties.SetName(pack_, "Pack it up");
+        Avalonia.Automation.AutomationProperties.SetName(never, "Cancel");
+
+        dialog.Content = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(24),
+            Spacing = 16,
+            Children =
+            {
+                new Avalonia.Controls.TextBlock
+                {
+                    Text = "One file, with everything the next committee needs:",
+                    FontSize = 20,
+                    FontWeight = Avalonia.Media.FontWeight.Bold,
+                    MaxWidth = 520,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                list,
+                new Avalonia.Controls.TextBlock
+                {
+                    Text = "This file will have the lodge's address book in it — members' names, "
+                        + "birthdays, telephone numbers and email addresses. Give it only to the "
+                        + "person taking over, and keep it off anything shared.",
+                    FontSize = 18,
+                    MaxWidth = 520,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Horizontal,
+                    Spacing = 12,
+                    Children = { pack_, never },
+                },
+            },
+        };
+
+        Avalonia.Automation.AutomationProperties.SetName(dialog, "Pack everything up for my successor");
+        await dialog.ShowDialog(this);
+        return go;
+    }
+
+    /// <summary>
+    /// Picks up what was just written underneath the running app. The stores were replaced on disk
+    /// behind their own objects' backs, so anything holding one in memory is now describing a file
+    /// that no longer exists — and the first thing a successor does after restoring is open the
+    /// address book to check it worked.
+    /// </summary>
+    private void ReloadStoresAfterRestore(IReadOnlyList<string> restored)
+    {
+        if (restored.Contains(SuccessorPackParts.Roster))
+        {
+            Roster.Reload();
+        }
+
+        if (restored.Contains(SuccessorPackParts.Settings))
+        {
+            _settings = AppSettings.Load();
+            ApplySettings(_settings);
+        }
+    }
+
     // ---- Now send it (PLAN.md §11 M56) ---------------------------------------------------------
 
     /// <summary>Set by tests in place of the card.</summary>

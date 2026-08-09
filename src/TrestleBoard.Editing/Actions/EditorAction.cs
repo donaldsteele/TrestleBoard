@@ -43,6 +43,19 @@ public enum ActionGroup
     /// </summary>
     People,
 
+    /// <summary>
+    /// The whole installation at once (M64): packing everything up for a successor and bringing a
+    /// predecessor's pack in.
+    ///
+    /// <para>Its own group rather than <see cref="Newsletter"/> or <see cref="People"/>, because it
+    /// is neither: a pack is not a newsletter and it is much more than the address book. The help
+    /// window prints the group beside every answer, and "Pack everything up — This newsletter"
+    /// would have been the app telling somebody the wrong thing about its most consequential file.
+    /// Like <see cref="People"/> it never reaches the action panel — nothing here is about what is
+    /// selected on the page.</para>
+    /// </summary>
+    Everything,
+
     /// <summary>Updates and the about box.</summary>
     Help,
 }

@@ -244,6 +244,10 @@ internal static class ActionIcons
         // M63. A question mark is the obvious glyph and it is the wrong one: it is also what this
         // app puts beside anything it is unsure of, and the one place help must not look is
         // uncertain. The words "How do I…?" are already the clearest possible label for it.
+        // M64. A box glyph would be the obvious one and it would say "archive" — a thing you put
+        // away. This is a thing you hand to somebody, and the sentence is what carries that.
+        [ActionId.PackUpForSuccessor] = "reached twice in a decade, and never by hunting for a picture",
+        [ActionId.BringInAPack] = "reached twice in a decade, and never by hunting for a picture",
         [ActionId.HowDoI] = "the words are shorter and plainer than any glyph for them",
         [ActionId.ShowTheTour] = "reached from the Help menu once a decade, never hunted for",
     };
