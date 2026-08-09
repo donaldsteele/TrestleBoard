@@ -235,7 +235,7 @@ public sealed class HelpTests
             using HelpFixture help = HelpFixture.Open(run: id =>
             {
                 ran.Add(id);
-                return Task.CompletedTask;
+                return Task.FromResult<string?>(null);
             });
 
             help.Window.TypeForTest("bold");
@@ -410,7 +410,8 @@ public sealed class HelpTests
 
         internal static HelpFixture Open(
             Func<string, ActionAvailability>? ask = null,
-            Func<string, Task>? run = null)
+            Func<string, Task<string?>>? run = null,
+            Action<string>? say = null)
         {
             var window = new HelpWindow(
                 new Dictionary<string, string>(StringComparer.Ordinal)
@@ -419,7 +420,8 @@ public sealed class HelpTests
                     [ActionId.FixPhoto] = "Format " + MenuPaths.Arrow.Trim() + " Picture",
                 },
                 ask ?? (_ => ActionAvailability.Available),
-                run ?? (_ => Task.CompletedTask));
+                run ?? (_ => Task.FromResult<string?>(null)),
+                say ?? (_ => { }));
             window.Show();
             return new HelpFixture(window);
         }

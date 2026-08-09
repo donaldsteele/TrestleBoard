@@ -32,11 +32,19 @@ namespace TrestleBoard.App.Dialogs;
 public sealed class ReviewWindow : Window
 {
     private readonly IReadOnlyList<ReviewFinding> _findings;
-    private readonly Action<ReviewFinding> _takeMeThere;
-    private readonly Func<string, Task> _run;
+
+    /// <summary>
+    /// Returns false when the thing the finding is about is not in the newsletter any more. The page
+    /// still turns; there is simply nothing left to point at, and M70 is that the window has to be
+    /// able to say so.
+    /// </summary>
+    private readonly Func<ReviewFinding, bool> _takeMeThere;
+    private readonly Func<string, Task<string?>> _run;
+    private readonly Action<string> _say;
     private readonly TextBlock _heading;
     private readonly TextBlock _progress;
     private readonly TextBlock _body;
+    private readonly TextBlock _status;
     private readonly StackPanel _buttons;
     private readonly Button _back;
     private readonly Button _next;
@@ -47,12 +55,14 @@ public sealed class ReviewWindow : Window
 
     public ReviewWindow(
         IReadOnlyList<ReviewFinding> findings,
-        Action<ReviewFinding> takeMeThere,
-        Func<string, Task> run)
+        Func<ReviewFinding, bool> takeMeThere,
+        Func<string, Task<string?>> run,
+        Action<string> say)
     {
         _findings = findings ?? throw new ArgumentNullException(nameof(findings));
         _takeMeThere = takeMeThere ?? throw new ArgumentNullException(nameof(takeMeThere));
         _run = run ?? throw new ArgumentNullException(nameof(run));
+        _say = say ?? throw new ArgumentNullException(nameof(say));
 
         Title = "Look it over";
         Width = 640;
@@ -86,6 +96,21 @@ public sealed class ReviewWindow : Window
             HorizontalAlignment = HorizontalAlignment.Left,
         };
 
+        // M70: the remedy buttons and "Take me there" answered into the main window's status bar,
+        // which is behind this window — and a finding whose block had been deleted since the scan
+        // turned the page, selected nothing and said nothing at all. Both are said here now, and in
+        // the status bar as well.
+        _status = new TextBlock
+        {
+            Text = "",
+            FontSize = 17,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 560,
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        AutomationProperties.SetName(_status, "What just happened");
+        AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
+
         _buttons = new StackPanel
         {
             Orientation = Orientation.Vertical,
@@ -112,6 +137,7 @@ public sealed class ReviewWindow : Window
                 _heading,
                 _progress,
                 _body,
+                _status,
                 _buttons,
                 new StackPanel
                 {
@@ -138,6 +164,8 @@ public sealed class ReviewWindow : Window
     internal string BodyForTest => _body.Text ?? "";
 
     internal string ProgressForTest => _progress.Text ?? "";
+
+    internal string StatusForTest => _status.Text ?? "";
 
     /// <summary>Every button on the screen right now, so a test can press one by its words.</summary>
     internal IReadOnlyList<Button> ButtonsForTest
@@ -185,6 +213,9 @@ public sealed class ReviewWindow : Window
     {
         _buttons.Children.Clear();
 
+        // A new screen is a new question; the last one's answer beside it would read as this one's.
+        _status.Text = "";
+
         if (_screen == 0)
         {
             RenderSummary();
@@ -229,13 +260,13 @@ public sealed class ReviewWindow : Window
         if (finding.BlockId is not null)
         {
             Button there = Wide("Take me there", "Take me there");
-            there.Click += (_, _) => _takeMeThere(finding);
+            there.Click += (_, _) => GoAndSayWhereWeAre(finding);
             _buttons.Children.Add(there);
         }
         else if (finding.Kind == ReviewFindingKind.LookAtThePage)
         {
             Button there = Wide($"Show me page {finding.PageNumber}", $"Show me page {finding.PageNumber}");
-            there.Click += (_, _) => _takeMeThere(finding);
+            there.Click += (_, _) => GoAndSayWhereWeAre(finding);
             _buttons.Children.Add(there);
         }
 
@@ -244,12 +275,66 @@ public sealed class ReviewWindow : Window
             Button fix = Wide(action.Title, action.Title);
             fix.Click += async (_, _) =>
             {
-                _takeMeThere(finding);
-                await _run(remedy);
+                // The page is turned first because most of these remedies act on what is selected;
+                // if the thing has been deleted since the scan there is nothing to act on, and
+                // running the command anyway would be a command aimed at the wrong part of the
+                // newsletter.
+                if (!GoAndSayWhereWeAre(finding))
+                {
+                    return;
+                }
+
+                if (await _run(remedy) is { } trouble)
+                {
+                    Echo(trouble);
+                }
+                else
+                {
+                    Tell($"Done: {action.Title}.");
+                }
             };
             _buttons.Children.Add(fix);
         }
     }
+
+    /// <summary>
+    /// Turns to the finding and says where the user has ended up — including, and this is the M70
+    /// finding, when the thing it was going to point at has been taken out of the newsletter since
+    /// the review was run. Before this the page turned, nothing was selected and nothing was said.
+    /// </summary>
+    private bool GoAndSayWhereWeAre(ReviewFinding finding)
+    {
+        if (_takeMeThere(finding))
+        {
+            Tell(finding.BlockId is null
+                ? $"You are on page {finding.PageNumber}."
+                : $"That is it, picked out on page {finding.PageNumber}.");
+            return true;
+        }
+
+        Tell($"That part has been taken out of the newsletter since I looked it over, so there is "
+            + $"nothing left for me to point at. You are on page {finding.PageNumber}. Press "
+            + "“That's fine, next” to carry on.");
+        return false;
+    }
+
+    /// <summary>
+    /// Says it here AND in the main window's status bar. Here because this is the window the user is
+    /// looking at; there because the status bar is where every other answer in the app appears and a
+    /// screen-reader user may be following that one.
+    /// </summary>
+    private void Tell(string message)
+    {
+        _status.Text = message;
+        _say(message);
+    }
+
+    /// <summary>
+    /// For a sentence the action runner has already put in the status bar. Saying it again would
+    /// make a screen reader read the same refusal twice; showing it here is the part that was
+    /// missing.
+    /// </summary>
+    private void Echo(string message) => _status.Text = message;
 
     private int CountThatAreNotJustLooking()
     {

@@ -197,21 +197,31 @@ internal sealed class ActionRunner
     /// </summary>
     /// <param name="actionId">One of the <see cref="ActionId"/> constants.</param>
     /// <param name="source">The control the user pressed, for actions that open a flyout beside it.</param>
-    internal async Task RunAsync(string actionId, Control? source = null)
+    /// <returns>
+    /// Null when the command ran and nothing went wrong; otherwise the very sentence the status bar
+    /// was given — the catalog's refusal, or the apology after a handler threw.
+    ///
+    /// <para>M70(b): four non-modal windows sit over the status bar, so an answer delivered only
+    /// there is invisible to somebody looking at one of them. Handing the sentence back is what lets
+    /// those windows repeat it where the user is actually looking. Every other caller starts a
+    /// command with <c>_ = RunAsync(...)</c> and is unaffected.</para>
+    /// </returns>
+    internal async Task<string?> RunAsync(string actionId, Control? source = null)
     {
         LastActionForTest = actionId;
         if (InterceptorForTest is { } intercept && intercept(actionId))
         {
-            return;
+            return null;
         }
 
         ActionAvailability availability = ActionCatalog.Evaluate(actionId, _window.CurrentActionContext);
         if (!availability.IsAvailable)
         {
             _window.Announce(availability.Reason);
-            return;
+            return availability.Reason;
         }
 
+        string? trouble = null;
         if (_handlers.TryGetValue(actionId, out Func<Control?, Task>? handler))
         {
             try
@@ -230,13 +240,15 @@ internal sealed class ActionRunner
                 // the alternative is not a better error, it is the process going down and taking
                 // the newsletter with it. What the user gets instead is a sentence and a window
                 // that still holds their work.
-                _window.Announce(
+                trouble =
                     $"Something went wrong while doing that, so TrestleBoard stopped part way. "
-                    + $"Your newsletter is still here. ({ex.Message})");
+                    + $"Your newsletter is still here. ({ex.Message})";
+                _window.Announce(trouble);
             }
         }
 
         _window.RefreshActions();
+        return trouble;
     }
 
     private static Func<Control?, Task> Sync(Action action) => _ =>

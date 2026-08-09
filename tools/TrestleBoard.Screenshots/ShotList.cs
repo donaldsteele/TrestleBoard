@@ -155,7 +155,8 @@ internal static class ShotList
                             [ActionId.InsertPhoto] = "Insert " + MenuPaths.Arrow.Trim() + " Insert a picture",
                         },
                         _ => ActionAvailability.Available,
-                        _ => Task.CompletedTask),
+                        _ => Task.FromResult<string?>(null),
+                        _ => { }),
                     height: 720);
                 window.TypeForTest("picture");
                 return Task.FromResult(Stage.Shoot(window));

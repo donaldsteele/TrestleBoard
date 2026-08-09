@@ -384,7 +384,8 @@ public sealed class AccessibilityTests
                     [ActionId.Bold] = "Format ▸ Bold",
                 },
                 _ => ActionAvailability.Available,
-                _ => Task.CompletedTask));
+                _ => Task.FromResult<string?>(null),
+                _ => { }));
     }
 
     private static RosterService FictionalRoster()

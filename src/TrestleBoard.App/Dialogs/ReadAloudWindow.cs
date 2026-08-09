@@ -31,16 +31,30 @@ internal sealed class ReadAloudWindow : Window
     private readonly ReadAloudSession _session;
     private readonly ISpeaker _speaker;
     private readonly Action<Sentence?> _show;
+    private readonly Action<string> _say;
     private readonly TextBlock _heading;
     private readonly TextBlock _progress;
     private readonly TextBlock _sentence;
+    private readonly TextBlock _status;
     private readonly Button _next;
 
-    internal ReadAloudWindow(ReadAloudSession session, ISpeaker speaker, Action<Sentence?> show)
+    /// <summary>
+    /// False once a sentence has been handed to the voice and the voice did not take it. M70: this
+    /// answer used to be thrown away, so the window went on saying "Reading" while the room stayed
+    /// silent — the app reporting something it had not done.
+    /// </summary>
+    private bool _voiceAnswered = true;
+
+    internal ReadAloudWindow(
+        ReadAloudSession session,
+        ISpeaker speaker,
+        Action<Sentence?> show,
+        Action<string> say)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _speaker = speaker ?? throw new ArgumentNullException(nameof(speaker));
         _show = show ?? throw new ArgumentNullException(nameof(show));
+        _say = say ?? throw new ArgumentNullException(nameof(say));
 
         Title = speaker.Available ? "Read it back to me" : "Walk me through it";
         Width = 640;
@@ -52,6 +66,11 @@ internal sealed class ReadAloudWindow : Window
         _heading = Text(24, bold: true);
         _progress = Text(16);
         _sentence = Text(22);
+
+        _status = Text(17);
+        _status.Text = "";
+        AutomationProperties.SetName(_status, "What just happened");
+        AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
 
         _next = Wide(speaker.Available ? "Read the next one" : "Next sentence");
         _next.Click += (_, _) => Advance();
@@ -70,6 +89,7 @@ internal sealed class ReadAloudWindow : Window
                 _heading,
                 _progress,
                 _sentence,
+                _status,
                 new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
@@ -103,6 +123,8 @@ internal sealed class ReadAloudWindow : Window
     internal string SentenceForTest => _sentence.Text ?? "";
 
     internal string ProgressForTest => _progress.Text ?? "";
+
+    internal string StatusForTest => _status.Text ?? "";
 
     internal IReadOnlyList<Button> ButtonsForTest
     {
@@ -140,7 +162,10 @@ internal sealed class ReadAloudWindow : Window
     {
         if (sentence is not null)
         {
-            _speaker.Say(sentence.Text);
+            // M70: what the voice answers is the whole point. A machine that reports it can speak
+            // and then cannot — no voice installed on Windows, speech-dispatcher not running — was
+            // the one case where this window said "Reading" to somebody hearing nothing.
+            _voiceAnswered = _speaker.Say(sentence.Text);
         }
 
         Render();
@@ -175,8 +200,21 @@ internal sealed class ReadAloudWindow : Window
         }
         else
         {
-            _heading.Text = _speaker.Available ? "Reading" : "This one";
+            // Only claim to be reading if the voice took the sentence. Otherwise this is the same
+            // walk-through the machines with no voice get, and it is named honestly.
+            _heading.Text = _speaker.Available && _voiceAnswered ? "Reading" : "This one";
             _sentence.Text = current.Text;
+        }
+
+        if (_speaker.Available && !_voiceAnswered)
+        {
+            Tell("This computer could not say that sentence out loud, so it is here to read "
+                + "instead. Nothing is wrong with your newsletter. Press “Read the next one” to "
+                + "carry on, or close this and ask somebody to check the computer's voice.");
+        }
+        else
+        {
+            _status.Text = "";
         }
 
         _progress.Text = _session.ProgressText;
@@ -189,6 +227,17 @@ internal sealed class ReadAloudWindow : Window
         _heading.Focusable = true;
         _heading.Focus();
         _heading.Focusable = false;
+    }
+
+    /// <summary>
+    /// Says it here AND in the main window's status bar. Here because this is the window the user is
+    /// looking at; there because the status bar is where every other answer in the app appears and a
+    /// screen-reader user may be following that one.
+    /// </summary>
+    private void Tell(string message)
+    {
+        _status.Text = message;
+        _say(message);
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)

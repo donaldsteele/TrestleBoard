@@ -1143,7 +1143,7 @@ public partial class MainWindow : Window
     internal ReviewWindow? ReviewWindowForTest => _reviewWindow;
 
     /// <summary>"Take me there", so a test can press it without building the whole window.</summary>
-    internal Action<ReviewFinding> TakeMeToTheFindingForTest => TakeMeToTheFinding;
+    internal Func<ReviewFinding, bool> TakeMeToTheFindingForTest => TakeMeToTheFinding;
 
     /// <summary>
     /// Puts the offer back after a test has turned it off. The setting is shared app state — the
@@ -1286,7 +1286,8 @@ public partial class MainWindow : Window
         }
 
         IReadOnlyList<ReviewFinding> findings = BuildReviewFindings();
-        _reviewWindow = new ReviewWindow(findings, TakeMeToTheFinding, id => _actions.RunAsync(id));
+        _reviewWindow = new ReviewWindow(
+            findings, TakeMeToTheFinding, id => _actions.RunAsync(id), Announce);
         _reviewWindow.Closed += (_, _) => _reviewWindow = null;
         _reviewWindow.Show(this);
         _reviewWindow.Activate();
@@ -1321,7 +1322,8 @@ public partial class MainWindow : Window
         _helpWindow = new HelpWindow(
             MenuPaths.From(this),
             id => ActionCatalog.Evaluate(id, CurrentActionContext),
-            id => _actions.RunAsync(id));
+            id => _actions.RunAsync(id),
+            Announce);
         _helpWindow.Closed += (_, _) => _helpWindow = null;
         _helpWindow.Show(this);
         _helpWindow.Activate();
@@ -1473,17 +1475,36 @@ public partial class MainWindow : Window
     /// "Take me there". Page first, THEN select — <see cref="GoToPage"/> clears the selection, so
     /// the other order destroys the very selection this exists to make (the M21 lesson, review
     /// §14.2).
+    ///
+    /// <para>M70: returns false when the block the finding is about is not in the newsletter any
+    /// more. The review is a snapshot and the page behind it stays editable, so a finding can
+    /// outlive the thing it is about; before this the page turned, nothing was selected and nothing
+    /// was said. <c>FrameEditorController.Select</c> takes any id it is handed, so the document has
+    /// to be asked rather than the selection read back afterwards.</para>
     /// </summary>
-    private void TakeMeToTheFinding(ReviewFinding finding)
+    private bool TakeMeToTheFinding(ReviewFinding finding)
     {
         GoToPage(Math.Clamp(finding.PageNumber - 1, 0, Math.Max(0, (_source?.PageCount ?? 1) - 1)));
+
+        bool found = true;
         if (finding.BlockId is { } blockId)
         {
+            found = _session?.Document.TryFindBlock(blockId, out _, out _) == true;
             _editor?.End();
-            _frames?.Select(blockId);
+            if (found)
+            {
+                _frames?.Select(blockId);
+            }
+            else
+            {
+                // Leaving the last selection standing would point at the wrong thing, which is
+                // worse than pointing at nothing.
+                _frames?.ClearSelection();
+            }
         }
 
         RefreshActions();
+        return found;
     }
 
     // ---- Show me last year's (PLAN.md §11 M59) -------------------------------------------------
@@ -1538,7 +1559,8 @@ public partial class MainWindow : Window
             meta.IssueMonth,
             meta.IssueYear,
             () => issue.Package!.Thumbnails.TryGetValue("page-1.png", out byte[]? png) ? png : null,
-            CopyLastYearsArticle);
+            CopyLastYearsArticle,
+            Announce);
         _lastYearWindow.Closed += (_, _) => _lastYearWindow = null;
         _lastYearWindow.Show(this);
         _lastYearWindow.Activate();
@@ -1549,22 +1571,25 @@ public partial class MainWindow : Window
     /// Brings one of last year's articles across as ordinary editable writing — through the same
     /// one-undo-step composite M54's phrases use.
     /// </summary>
-    private void CopyLastYearsArticle(PastArticle article)
+    /// <returns>
+    /// What came of it, in a sentence. M70: both of these used to go straight to the status bar,
+    /// which is behind last year's window and at the far bottom of the screen — the refusal in
+    /// particular, which is the one somebody needs to read. The window shows it and passes it on to
+    /// the status bar, so it lands in both places.
+    /// </returns>
+    private string CopyLastYearsArticle(PastArticle article)
     {
         if (_editor is not { IsActive: true })
         {
-            Announce(
-                "Click into some writing in this month's newsletter first, and the article will go "
-                + "in where the cursor is.");
-            return;
+            return "Click into some writing in this month's newsletter first, and the article will "
+                + "go in where the cursor is.";
         }
 
         _editor.InsertBlock(article.Text, "Copy last year's article");
-        Announce(
-            "That article is in this month's newsletter. It is ordinary writing now — change any "
-            + "of it you like.");
         RefreshSpellingMarks();
         RefreshActions();
+        return "That article is in this month's newsletter. It is ordinary writing now — change "
+            + "any of it you like.";
     }
 
     private async Task<string?> AskForTheOldIssuesFolderAsync()
@@ -1609,7 +1634,7 @@ public partial class MainWindow : Window
         }
 
         var session = ReadAloudSession.For(_package.Document);
-        _readAloudWindow = new ReadAloudWindow(session, Speaker, ShowTheSentence);
+        _readAloudWindow = new ReadAloudWindow(session, Speaker, ShowTheSentence, Announce);
         _readAloudWindow.Closed += (_, _) =>
         {
             _readAloudWindow = null;

@@ -174,7 +174,8 @@ public sealed class ReviewShellTests
                 var review = new ReviewWindow(
                     [onALaterPage],
                     window.TakeMeToTheFindingForTest,
-                    _ => Task.CompletedTask);
+                    _ => Task.FromResult<string?>(null),
+                    _ => { });
 
                 // The buttons are rebuilt for each screen, so ask for them on the screen that has
                 // the one being pressed.
@@ -208,7 +209,8 @@ public sealed class ReviewShellTests
                 new(ReviewFindingKind.LookAtThePage, 1, null, "Page 1 — have a look",
                     "Anything out of place?"),
             };
-            var review = new ReviewWindow(findings, _ => { }, _ => Task.CompletedTask);
+            var review = new ReviewWindow(
+                findings, _ => true, _ => Task.FromResult<string?>(null), _ => { });
             bool closed = false;
             review.Closed += (_, _) => closed = true;
 
@@ -235,8 +237,9 @@ public sealed class ReviewShellTests
         {
             var review = new ReviewWindow(
                 [new ReviewFinding(ReviewFindingKind.LookAtThePage, 1, null, "Page 1 — have a look", "Well?")],
-                _ => { },
-                _ => Task.CompletedTask);
+                _ => true,
+                _ => Task.FromResult<string?>(null),
+                _ => { });
 
             Assert.Contains("nothing jumped out", review.BodyForTest, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("nothing here changes your newsletter", review.BodyForTest, StringComparison.OrdinalIgnoreCase);
@@ -256,8 +259,9 @@ public sealed class ReviewShellTests
                         "Page 2 has more writing than fits", "Shall I flow the rest?",
                         Editing.Actions.ActionId.AutoFlow),
                 ],
-                _ => { },
-                _ => Task.CompletedTask);
+                _ => true,
+                _ => Task.FromResult<string?>(null),
+                _ => { });
 
             review.GoToForTest(1);
 

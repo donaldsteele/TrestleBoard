@@ -28,17 +28,27 @@ namespace TrestleBoard.App.Dialogs;
 internal sealed class LastYearWindow : Window
 {
     private readonly List<Bitmap> _pictures = [];
+    private readonly TextBlock _status;
+    private readonly Action<string> _say;
 
+    /// <param name="copyAcross">
+    /// Brings the article across and hands back the sentence that says what came of it — it may
+    /// have refused, because there is nowhere for the writing to go until the cursor is in some.
+    /// M70: that refusal used to go only to the main window's status bar, behind this window.
+    /// </param>
+    /// <param name="say">The main window's status bar, so the answer lands in both places.</param>
     internal LastYearWindow(
         PastIssue issue,
         int month,
         int year,
         Func<byte[]?> firstPagePicture,
-        Action<PastArticle> copyAcross)
+        Func<PastArticle, string> copyAcross,
+        Action<string> say)
     {
         ArgumentNullException.ThrowIfNull(issue);
         ArgumentNullException.ThrowIfNull(firstPagePicture);
         ArgumentNullException.ThrowIfNull(copyAcross);
+        _say = say ?? throw new ArgumentNullException(nameof(say));
 
         Title = $"{MonthName(month)} {year - 1}";
         Width = 620;
@@ -46,6 +56,16 @@ internal sealed class LastYearWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ShowInTaskbar = false;
         AutomationProperties.SetName(this, $"Last year's {MonthName(month)}, to look at");
+
+        _status = new TextBlock
+        {
+            Text = "",
+            FontSize = 17,
+            MaxWidth = 520,
+            TextWrapping = TextWrapping.Wrap,
+        };
+        AutomationProperties.SetName(_status, "What just happened");
+        AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
 
         var body = new StackPanel { Spacing = 16, Margin = new Avalonia.Thickness(24) };
         body.Children.Add(new TextBlock
@@ -119,7 +139,7 @@ internal sealed class LastYearWindow : Window
             };
             AutomationProperties.SetName(copy, $"Copy “{article.Heading}” into this month");
             copy.Action();
-            copy.Click += (_, _) => copyAcross(chosen);
+            copy.Click += (_, _) => Tell(copyAcross(chosen));
             articles.Children.Add(copy);
         }
 
@@ -130,6 +150,7 @@ internal sealed class LastYearWindow : Window
             FontWeight = FontWeight.SemiBold,
         });
         body.Children.Add(new ScrollViewer { Content = articles, Height = 260 });
+        body.Children.Add(_status);
 
         var close = new Button
         {
@@ -163,6 +184,19 @@ internal sealed class LastYearWindow : Window
                 picture.Dispose();
             }
         };
+    }
+
+    internal string StatusForTest => _status.Text ?? "";
+
+    /// <summary>
+    /// Says it here AND in the main window's status bar. Here because this is the window the user is
+    /// looking at; there because the status bar is where every other answer in the app appears and a
+    /// screen-reader user may be following that one.
+    /// </summary>
+    private void Tell(string message)
+    {
+        _status.Text = message;
+        _say(message);
     }
 
     internal IReadOnlyList<Button> ButtonsForTest

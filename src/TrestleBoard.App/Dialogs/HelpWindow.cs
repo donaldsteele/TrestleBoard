@@ -30,7 +30,8 @@ public sealed class HelpWindow : Window
 {
     private readonly IReadOnlyDictionary<string, string> _menuPaths;
     private readonly Func<string, ActionAvailability> _ask;
-    private readonly Func<string, Task> _run;
+    private readonly Func<string, Task<string?>> _run;
+    private readonly Action<string> _say;
 
     private readonly TextBox _search;
     private readonly TextBlock _count;
@@ -38,6 +39,7 @@ public sealed class HelpWindow : Window
     private readonly TextBlock _answerTitle;
     private readonly TextBlock _answer;
     private readonly TextBlock _whereItIs;
+    private readonly TextBlock _status;
     private readonly Button _takeMeThere;
 
     private IReadOnlyList<HelpTopic> _showing = [];
@@ -45,11 +47,13 @@ public sealed class HelpWindow : Window
     public HelpWindow(
         IReadOnlyDictionary<string, string> menuPaths,
         Func<string, ActionAvailability> ask,
-        Func<string, Task> run)
+        Func<string, Task<string?>> run,
+        Action<string> say)
     {
         _menuPaths = menuPaths ?? throw new ArgumentNullException(nameof(menuPaths));
         _ask = ask ?? throw new ArgumentNullException(nameof(ask));
         _run = run ?? throw new ArgumentNullException(nameof(run));
+        _say = say ?? throw new ArgumentNullException(nameof(say));
 
         Title = "How do I…?";
         Width = 720;
@@ -107,6 +111,14 @@ public sealed class HelpWindow : Window
         _answer = new TextBlock { FontSize = 20, TextWrapping = TextWrapping.Wrap };
         _whereItIs = new TextBlock { FontSize = 18, TextWrapping = TextWrapping.Wrap };
 
+        // M70: "Take me there" used to answer into the main window's status bar, which is behind
+        // this window and at the far bottom of the screen — and when the command had gone
+        // unavailable since the answer was rendered, it did not answer at all. The answer is said
+        // here now, where the user is looking, and in the status bar as well.
+        _status = new TextBlock { FontSize = 17, TextWrapping = TextWrapping.Wrap, Text = "" };
+        AutomationProperties.SetName(_status, "What just happened");
+        AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
+
         _takeMeThere = Wide("Take me there", "Take me there");
         _takeMeThere.Click += async (_, _) => await TakeThemThere();
 
@@ -135,6 +147,7 @@ public sealed class HelpWindow : Window
                         _answerTitle,
                         _answer,
                         _whereItIs,
+                        _status,
                         new StackPanel
                         {
                             Orientation = Orientation.Horizontal,
@@ -162,6 +175,8 @@ public sealed class HelpWindow : Window
     internal string AnswerTextForTest => _answer.Text ?? "";
 
     internal string WhereItIsTextForTest => _whereItIs.Text ?? "";
+
+    internal string StatusTextForTest => _status.Text ?? "";
 
     internal Button TakeMeThereForTest => _takeMeThere;
 
@@ -213,6 +228,10 @@ public sealed class HelpWindow : Window
 
         _answerTitle.Text = topic.Title.TrimEnd('…', ' ');
         _answer.Text = topic.Answer;
+
+        // A different answer is a different question, and last question's "Done" beside it would
+        // read as an answer to this one.
+        _status.Text = "";
         _whereItIs.Text = WhereToFindIt(topic);
 
         // The window renames itself so a screen reader announces which answer is open; there is no
@@ -259,16 +278,54 @@ public sealed class HelpWindow : Window
 
     private async Task TakeThemThere()
     {
-        if (Chosen() is not { } topic || !_ask(topic.ActionId).IsAvailable)
+        if (Chosen() is not { } topic)
         {
+            return;
+        }
+
+        ActionAvailability can = _ask(topic.ActionId);
+        if (!can.IsAvailable)
+        {
+            // M70: this used to return without a word. The answer was rendered when the command
+            // could still run and something has changed since — a frame deselected behind this
+            // window, most often — and the catalog's own sentence is the one the menu bar would
+            // give. The reason shown beside the answer at render time is a different moment and is
+            // no help to somebody who has just pressed the button.
+            Tell(can.Reason);
             return;
         }
 
         // The help window stays open behind it. Somebody who asked how to do a thing is very often
         // about to ask how to do the next thing, and making them find this window again each time
-        // is the small cruelty that stops people using help at all.
-        await _run(topic.ActionId);
+        // is the small cruelty that stops people using help at all. Which is exactly why it has to
+        // say something: an open window that looks unchanged reads as a button that did nothing.
+        if (await _run(topic.ActionId) is { } trouble)
+        {
+            Echo(trouble);
+        }
+        else
+        {
+            Tell($"Done: {_answerTitle.Text}. This window is still here for the next thing.");
+        }
     }
+
+    /// <summary>
+    /// Says it here AND in the main window's status bar. Here because this is the window the user is
+    /// looking at; there because the status bar is where every other answer in the app appears and a
+    /// screen-reader user may be following that one.
+    /// </summary>
+    private void Tell(string message)
+    {
+        _status.Text = message;
+        _say(message);
+    }
+
+    /// <summary>
+    /// For a sentence the action runner has already put in the status bar. Saying it again would
+    /// make a screen reader read the same refusal twice; showing it here is the part that was
+    /// missing.
+    /// </summary>
+    private void Echo(string message) => _status.Text = message;
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
