@@ -66,6 +66,14 @@ internal sealed class ActionPanel : Border
             Content = _content,
         };
 
+        // M69: the scrollbar takes its own room instead of floating over the buttons. Avalonia
+        // auto-hides a scrollbar by default and draws it OVER the content, so every panel button —
+        // stretched to the full width, as they all are — ran underneath it, and the bar sat as a
+        // grey line down the right-hand edge of the offers. Worse for this audience than it looks:
+        // an auto-hiding bar only appears once the pointer is already moving over it, so there was
+        // nothing on screen to say the list continued below the fold.
+        ScrollViewer.SetAllowAutoHide(scroller, false);
+
         var dock = new DockPanel();
         DockPanel.SetDock(_heading, Dock.Top);
         dock.Children.Add(_heading);

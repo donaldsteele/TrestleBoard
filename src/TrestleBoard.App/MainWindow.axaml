@@ -447,7 +447,12 @@
             BorderThickness="{DynamicResource TrestleBoard.Rule.Bottom}">
       <!-- Scrolls horizontally: at 200% the toolbar is wider than most windows, and a control the
            user cannot reach is the same as a control that is not there (PLAN.md §6). -->
-      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+      <!-- M69: AllowAutoHide=False so the bar is on screen whenever the toolbar is wider than the
+           window. It auto-hid before, which meant the last button was simply cut off at the window
+           edge with nothing to say it could be reached — the same failure this comment warns about,
+           arriving through the scrollbar rather than through the overflow. -->
+      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                    AllowAutoHide="False">
       <StackPanel Orientation="Horizontal" Spacing="8">
         <Button x:Name="OpenButton" FontSize="16" MinHeight="44" Tag="newsletter.open" Click="OnActionClicked"
                 AutomationProperties.Name="Open a newsletter">Open</Button>
