@@ -2782,6 +2782,33 @@ public partial class MainWindow : Window
 
     internal void ToggleBold() => _editor?.ToggleBold();
 
+    /// <summary>
+    /// M61: makes the paragraphs the selection touches a list, or puts them back to normal writing.
+    /// The title the catalog shows says which it will do, because a toggle that does not say which
+    /// way it is about to go is a guess.
+    /// </summary>
+    internal void ToggleList(string listKind)
+    {
+        if (_editor is not { IsActive: true } editor)
+        {
+            return;
+        }
+
+        bool wasThatKind = string.Equals(editor.CurrentListKind, listKind, StringComparison.Ordinal);
+        if (!editor.ToggleList(listKind))
+        {
+            return;
+        }
+
+        Announce(wasThatKind
+            ? "Put back to normal writing."
+            : listKind == Core.Model.ListKinds.Number
+                ? "Numbered. Add another point and TrestleBoard will renumber them for you."
+                : "Made into a list of points.");
+        RefreshSpellingMarks();
+        RefreshActions();
+    }
+
     internal void ToggleItalic() => _editor?.ToggleItalic();
 
     /// <summary>

@@ -122,6 +122,14 @@ public static class ActionId
     public const string Italic = "text.italic";
     public const string ParagraphStyle = "text.paragraphStyle";
 
+    /// <summary>
+    /// M61: make the paragraph a point in a list, or put it back. Never "unordered" — §6.
+    /// </summary>
+    public const string BulletList = "text.bulletList";
+
+    /// <summary>M61: the same, numbered. Never "ordered".</summary>
+    public const string NumberList = "text.numberList";
+
     // ---- Fonts and sizes (M14) ------------------------------------------------------------------
     public const string FontsAndStyles = "text.fontsAndStyles";
     public const string BiggerText = "text.bigger";

@@ -140,6 +140,12 @@ public static class ActionCatalog
             IsPrimary: true),
         new(ActionId.Italic, "Italic", "Slants the highlighted words.", ActionGroup.Text, "Ctrl+I",
             IsPrimary: true),
+        new(ActionId.BulletList, "Make this a list of points",
+            "Puts a dot in front of this paragraph, and keeps the wrapped lines lined up under the "
+            + "writing.", ActionGroup.Text),
+        new(ActionId.NumberList, "Make this a numbered list",
+            "Numbers this paragraph and the ones with it, and renumbers them if you add another.",
+            ActionGroup.Text),
         new(ActionId.ParagraphStyle, "Paragraph style ▸",
             "Chooses what kind of paragraph this is, such as a heading.", ActionGroup.Text),
         new(ActionId.FontsAndStyles, "Change the font for this style ▸",
@@ -517,7 +523,8 @@ public static class ActionCatalog
             ActionId.Find or ActionId.Replace => RequiresDocument(context),
 
             // ---- Text ---------------------------------------------------------------------------
-            ActionId.Bold or ActionId.Italic or ActionId.ParagraphStyle => context.IsEditingText
+            ActionId.Bold or ActionId.Italic or ActionId.ParagraphStyle
+                or ActionId.BulletList or ActionId.NumberList => context.IsEditingText
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(NeedsText),
 

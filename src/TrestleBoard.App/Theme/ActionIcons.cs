@@ -121,6 +121,12 @@ internal static class ActionIcons
         // --- Text. Bold, italic and the font picker have glyphs; the rest are about a named style,
         //     and the name IS the discriminator.
         [ActionId.ParagraphStyle] = "opens a further choice; the ▸ is the signal, not a picture",
+
+        // M61. The usual bullet-list glyph is three dots and three lines, which at 20px is
+        // indistinguishable from the numbered one beside it and from M60's table icon. The two
+        // sentences tell them apart; three near-identical pictures would not.
+        [ActionId.BulletList] = "the usual three-dots glyph is unreadable beside the numbered one",
+        [ActionId.NumberList] = "the usual 1-2-3 glyph is unreadable beside the dotted one",
         [ActionId.BiggerText] = "the ladder is the point, and + / − already appear in the title",
         [ActionId.SmallerText] = "the ladder is the point, and + / − already appear in the title",
         [ActionId.FontJustHere] = "would be indistinguishable from text.fontsAndStyles",

@@ -2872,7 +2872,21 @@ after everything before it is settled. All mutations via `IDocumentCommand`; tab
 deterministic with golden tests; fixtures fictional per §0. Gates 9/10-style idempotence:
 re-running the wizard with nothing changed changes nothing.
 
-### M61 — Make it a list (M/L)
+### M61 — Make it a list (M/L) — **delivered 2026-08-08, `docs/M61-spec.md`**
+
+> **The number is counted at layout time, never stored**, so inserting a point in the middle
+> renumbers the rest with no edit to the document, and a normal paragraph between two numbered ones
+> starts the count again. **The marker is not text**: it is a glyph run the engine emits, carrying a
+> zero-width source span so the caret cannot land in it — had it been real text, renumbering would
+> mean rewriting the user's words.
+>
+> The engine measures the marker once and hangs *every* line of the paragraph by its width, which is
+> the thing typing "1." by hand cannot do.
+>
+> **The budgeted pixel move was not spent.** No fixture uses a list, so no baseline moved — verified
+> by re-baking. And because `ListKind` is nullable and null is never written, a pre-M61 newsletter
+> opens and saves back byte-unchanged; a non-null default would have added `"listKind": "none"` to
+> every paragraph the committee has ever saved.
 
 **Goal.** Bulleted and numbered lists in body text — the announcement with three points, the
 degree-night schedule, the dinner instructions. Today the user types "1." and "•" by hand, and the

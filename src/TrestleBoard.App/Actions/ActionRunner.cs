@@ -70,6 +70,8 @@ internal sealed class ActionRunner
             // ---- Text -----------------------------------------------------------------------------
             [ActionId.Bold] = Sync(window.ToggleBold),
             [ActionId.Italic] = Sync(window.ToggleItalic),
+            [ActionId.BulletList] = Sync(() => window.ToggleList(Core.Model.ListKinds.Bullet)),
+            [ActionId.NumberList] = Sync(() => window.ToggleList(Core.Model.ListKinds.Number)),
             [ActionId.ParagraphStyle] = source => { window.ShowParagraphStyles(source); return Task.CompletedTask; },
 
             // ---- Fonts and sizes (M14) --------------------------------------------------------------

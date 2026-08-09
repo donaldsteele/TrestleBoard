@@ -155,6 +155,57 @@ public sealed class ApplyParagraphStyleCommand(string storyId, int paragraphInde
 }
 
 /// <summary>
+/// Makes a paragraph a point in a list, or ordinary writing again (PLAN.md §11 M61).
+///
+/// <para>Only the paragraph's own kind is recorded. The NUMBER of a numbered point is never stored
+/// — it is counted at layout time from the run above it — so this command is the whole of what
+/// "make this a numbered list" changes, and one Ctrl+Z puts the paragraph back byte for byte.</para>
+/// </summary>
+public sealed class SetListKindCommand(string storyId, int paragraphIndex, string? listKind)
+    : IDocumentCommand
+{
+    private string? _old;
+    private bool _applied;
+
+    public string StoryId { get; } = storyId;
+
+    public int ParagraphIndex { get; } = paragraphIndex;
+
+    public string? ListKind { get; } = listKind;
+
+    public string Description => ListKind switch
+    {
+        ListKinds.Bullet => "Make this a list of points",
+        ListKinds.Number => "Make this a numbered list",
+        _ => "Put this back to normal writing",
+    };
+
+    public ChangeScope Scope => new(ChangeKind.Text, StoryId: StoryId);
+
+    public void Apply(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        StoryParagraph para = document.GetStory(StoryId).Paragraphs[ParagraphIndex];
+        _old = para.ListKind;
+        _applied = true;
+        para.ListKind = ListKind;
+    }
+
+    public void Revert(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        if (!_applied)
+        {
+            throw new InvalidOperationException("Revert before Apply.");
+        }
+
+        document.GetStory(StoryId).Paragraphs[ParagraphIndex].ListKind = _old;
+    }
+
+    public bool TryMerge(IDocumentCommand newer) => false;
+}
+
+/// <summary>
 /// One undo step spanning several primitives (replace-selection, multi-paragraph delete,
 /// paste, style over a multi-paragraph selection). Children apply in order and revert in
 /// reverse; each child re-captures its own pre-state, so redo is correct.

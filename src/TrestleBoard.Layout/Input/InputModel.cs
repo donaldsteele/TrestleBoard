@@ -26,13 +26,22 @@ public readonly record struct CharacterStyle(
     float SizePt,
     uint ColorArgb);
 
+/// <param name="MarkerText">
+/// M61: the bullet or number printed before a list paragraph, or empty for ordinary writing.
+///
+/// <para>The engine measures it in <see cref="DefaultRun"/> and hangs the whole paragraph by that
+/// width, so wrapped lines align under the words rather than under the marker. It is NOT part of
+/// the story's text: it is never selectable, never deletable, and never counted in a character
+/// offset — which is what lets a numbered list renumber itself without editing the document.</para>
+/// </param>
 public readonly record struct ParagraphStyle(
     float LineSpacing,
     float SpaceBeforePt,
     float SpaceAfterPt,
     float FirstLineIndentPt,
     TextAlign Align,
-    CharacterStyle DefaultRun);
+    CharacterStyle DefaultRun,
+    string MarkerText = "");
 
 public sealed record LayoutRun(string Text, CharacterStyle Style);
 

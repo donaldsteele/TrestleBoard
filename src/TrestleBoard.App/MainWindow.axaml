@@ -142,6 +142,15 @@
         <MenuItem Header="_Italic" Tag="text.italic" InputGesture="Ctrl+I"
                   Click="OnActionClicked" AutomationProperties.Name="Italic" />
         <Separator />
+        <!-- M61: reached the way Bold is reached — on the paragraph, no wizard. §6 forbids
+             "ordered" and "unordered"; these say what they do. -->
+        <MenuItem Header="Make this a list of poi_nts" Tag="text.bulletList"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Make this a list of points" />
+        <MenuItem Header="Make this a numbe_red list" Tag="text.numberList"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Make this a numbered list" />
+        <Separator />
         <MenuItem x:Name="ParagraphStyleMenu" Header="Paragraph _style" Tag="text.paragraphStyle"
                   AutomationProperties.Name="Paragraph style" />
         <Separator />

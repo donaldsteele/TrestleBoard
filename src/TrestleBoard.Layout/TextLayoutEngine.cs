@@ -303,8 +303,34 @@ public sealed class TextLayoutEngine
             paragraph.Style.LineSpacing * naturalHeight,
             Math.Max(naturalHeight * MinimumLineSpacing, MinimumLineHeightPt));
         List<WordCluster> words = BuildWords(text, glyphs);
+
+        // M61. The marker is shaped in the paragraph's own default run, so it takes the paragraph
+        // style's face and size: a bullet in a heading is heading-sized, which is what a printed
+        // list does. It is shaped once here rather than per line — it is drawn on the first line
+        // only, and its width is what every line of the paragraph hangs by.
+        ShapedRun? marker = null;
+        float markerWidth = 0f;
+        if (!string.IsNullOrEmpty(paragraph.Style.MarkerText))
+        {
+            CharacterStyle markerStyle = paragraph.Style.DefaultRun;
+            ResolvedFont markerFont = _fonts.Resolve(ToKey(markerStyle));
+            marker = HarfBuzzShaper.Shape(
+                markerFont,
+                markerStyle.SizePt,
+                markerStyle.ColorArgb,
+                paragraph.Style.MarkerText,
+                0,
+                paragraph.Style.MarkerText.Length,
+                new ShapeOptions(true, true));
+            markerWidth = marker.Glyphs.Sum(g => g.XAdvancePt);
+        }
+
         return new ParagraphPlan(storyId, paragraphIndex, paragraph.Style, text, glyphs, words,
-            lineHeight, maxAscent, maxDescent);
+            lineHeight, maxAscent, maxDescent)
+        {
+            Marker = marker,
+            MarkerWidthPt = markerWidth,
+        };
     }
 
     private static List<WordCluster> BuildWords(string text, List<(ShapedGlyph Glyph, ShapedRun Run)> glyphs)
@@ -464,7 +490,15 @@ public sealed class TextLayoutEngine
         {
             FloatInterval segment = segments[segIdx];
             float contentLeft = segment.Left;
-            if (isParagraphStart && segIdx == 0)
+            if (para.MarkerWidthPt > 0f)
+            {
+                // A hanging indent, and it applies to EVERY line: the marker sits in the gutter on
+                // the first line and the words line up under each other on all of them. That is
+                // the whole visual point of a list, and the reason typing "1." by hand does not
+                // work — the second line comes back to the margin.
+                contentLeft += para.MarkerWidthPt;
+            }
+            else if (isParagraphStart && segIdx == 0)
             {
                 contentLeft += para.Style.FirstLineIndentPt;
             }
@@ -494,7 +528,9 @@ public sealed class TextLayoutEngine
 
             if (placed.Count > 0)
             {
-                lineSegments.Add(BuildSegment(para, segment, contentLeft, placed, baselineY, paragraphIndex));
+                lineSegments.Add(BuildSegment(
+                    para, segment, contentLeft, placed, baselineY, paragraphIndex,
+                    withMarker: isParagraphStart && lineSegments.Count == 0));
             }
 
             if (mandatoryStop)
@@ -508,11 +544,15 @@ public sealed class TextLayoutEngine
             // Nothing fit anywhere: force-place the next word in the first segment (it overflows
             // the right edge) — documents the no-hyphenation behavior for over-wide tokens.
             FloatInterval segment = segments[0];
-            float contentLeft = segment.Left + (isParagraphStart ? para.Style.FirstLineIndentPt : 0f);
+            float contentLeft = segment.Left
+                + (para.MarkerWidthPt > 0f
+                    ? para.MarkerWidthPt
+                    : isParagraphStart ? para.Style.FirstLineIndentPt : 0f);
             WordCluster word = para.Words[wordIdx];
             wordIdx++;
             lineSegments.Add(BuildSegment(
-                para, segment, contentLeft, [(word, contentLeft)], baselineY, paragraphIndex));
+                para, segment, contentLeft, [(word, contentLeft)], baselineY, paragraphIndex,
+                withMarker: isParagraphStart));
         }
 
         int lastWord = wordIdx - 1;
@@ -540,7 +580,8 @@ public sealed class TextLayoutEngine
         float contentLeft,
         List<(WordCluster Word, float X)> placed,
         float baselineY,
-        int paragraphIndex)
+        int paragraphIndex,
+        bool withMarker = false)
     {
         // Alignment shift: content width excludes the last placed word's trailing whitespace.
         (WordCluster lastWord, float lastX) = placed[^1];
@@ -553,6 +594,42 @@ public sealed class TextLayoutEngine
         };
 
         var runs = new List<PositionedGlyphRun>();
+
+        // M61. The marker goes in the gutter the hanging indent opened for it: at the segment's own
+        // left edge, on the paragraph's first line only. It is a glyph run like any other, so the
+        // renderer and the PDF exporter draw it without knowing what it is — but it carries no
+        // SourceSpan, because it is not in the story and the caret must never be able to land in it.
+        if (withMarker && para.Marker is { } marker && marker.Glyphs.Count > 0)
+        {
+            var markerGlyphs = new ushort[marker.Glyphs.Count];
+            var markerOffsets = new SKPoint[marker.Glyphs.Count];
+            var markerClusters = new int[marker.Glyphs.Count];
+            var markerPens = new float[marker.Glyphs.Count];
+            float markerPen = 0f;
+            for (int i = 0; i < marker.Glyphs.Count; i++)
+            {
+                ShapedGlyph glyph = marker.Glyphs[i];
+                markerGlyphs[i] = glyph.GlyphId;
+                markerOffsets[i] = new SKPoint(glyph.XOffsetPt, -glyph.YOffsetPt);
+                markerClusters[i] = 0;
+                markerPens[i] = markerPen;
+                markerPen += glyph.XAdvancePt;
+            }
+
+            runs.Add(new PositionedGlyphRun(
+                marker.Font,
+                marker.SizePt,
+                marker.ColorArgb,
+                segment.Left,
+                baselineY,
+                markerGlyphs,
+                markerOffsets,
+                markerClusters,
+                markerPens,
+                new SourceSpan(para.StoryId, paragraphIndex, 0, 0),
+                markerPen));
+        }
+
         ShapedRun? currentRun = null;
         var glyphIds = new List<ushort>();
         var offsets = new List<SKPoint>();
@@ -649,7 +726,14 @@ public sealed class TextLayoutEngine
         List<WordCluster> Words,
         float LineHeight,
         float MaxAscentPt,
-        float MaxDescentPt);
+        float MaxDescentPt)
+    {
+        /// <summary>M61: the shaped bullet or number, or null for ordinary writing.</summary>
+        public ShapedRun? Marker { get; init; }
+
+        /// <summary>M61: how far the whole paragraph hangs — the marker's width.</summary>
+        public float MarkerWidthPt { get; init; }
+    }
 
     private sealed record WordCluster(
         int StartChar,

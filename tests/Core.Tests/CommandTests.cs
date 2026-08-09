@@ -52,6 +52,11 @@ public sealed class CommandTests
         ["ApplyCharacterStyle"] = _ => new ApplyCharacterStyleCommand("story-1", 0, 5, 20, "body"),
         ["ApplyCharacterStyle.Clear"] = _ => new ApplyCharacterStyleCommand("story-1", 0, 0, 10, null),
         ["ApplyParagraphStyle"] = _ => new ApplyParagraphStyleCommand("story-1", 0, "body-tight"),
+
+        // M61: making a paragraph a point in a list is one undo step, and reverting it puts the
+        // paragraph back byte for byte — the number was never stored, so there is nothing else to
+        // put back.
+        ["SetListKind"] = _ => new SetListKindCommand("story-1", 0, ListKinds.Bullet),
         ["Composite"] = _ => new CompositeCommand(
             "Replace text",
             new ChangeScope(ChangeKind.Text, StoryId: "story-1"),

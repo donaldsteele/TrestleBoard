@@ -180,8 +180,9 @@ public static class DocumentLayoutAdapter
     private static LayoutStory BuildStory(Document document, Story story)
     {
         var paragraphs = new List<LayoutParagraph>(story.Paragraphs.Count);
-        foreach (StoryParagraph para in story.Paragraphs)
+        for (int index = 0; index < story.Paragraphs.Count; index++)
         {
+            StoryParagraph para = story.Paragraphs[index];
             ParagraphStyleDef paraStyle = document.StyleSheet.GetParagraphStyle(para.ParagraphStyleRef);
             CharacterStyle defaultRun = MapCharacter(document.StyleSheet.GetCharacterStyle(paraStyle.CharacterStyleRef));
             var runs = new List<LayoutRun>(para.Runs.Count);
@@ -200,11 +201,56 @@ public static class DocumentLayoutAdapter
                     paraStyle.SpaceAfterPt,
                     paraStyle.FirstLineIndentPt,
                     MapAlign(paraStyle.Align),
-                    defaultRun),
+                    defaultRun,
+                    MarkerFor(story.Paragraphs, index)),
                 runs));
         }
 
         return new LayoutStory(story.Id, paragraphs);
+    }
+
+    /// <summary>
+    /// The bullet or number a paragraph prints in front of it (M61), or "" for ordinary writing.
+    ///
+    /// <para><b>A numbered point's number is counted here, not stored.</b> It is one more than the
+    /// run of numbered paragraphs immediately above it, so inserting a point in the middle
+    /// renumbers everything after it with no edit to the document — and a normal paragraph between
+    /// two numbered ones starts the count again, which is what a reader expects of two separate
+    /// lists.</para>
+    ///
+    /// <para>One level only, deliberately (PLAN.md §11 M61): nesting is bookkeeping this audience
+    /// does not need, and the cap is what keeps the two commands self-explanatory.</para>
+    /// </summary>
+    public static string MarkerFor(IReadOnlyList<StoryParagraph> paragraphs, int index)
+    {
+        ArgumentNullException.ThrowIfNull(paragraphs);
+        if (index < 0 || index >= paragraphs.Count)
+        {
+            return string.Empty;
+        }
+
+        return paragraphs[index].ListKind switch
+        {
+            ListKinds.Bullet => "• ",
+            ListKinds.Number => NumberFor(paragraphs, index) + ". ",
+            _ => string.Empty,
+        };
+    }
+
+    private static int NumberFor(IReadOnlyList<StoryParagraph> paragraphs, int index)
+    {
+        int number = 1;
+        for (int i = index - 1; i >= 0; i--)
+        {
+            if (paragraphs[i].ListKind != ListKinds.Number)
+            {
+                break;
+            }
+
+            number++;
+        }
+
+        return number;
     }
 
     /// <summary>Internal from M18 so <see cref="CaptionLayout"/> sets a caption in the same way.</summary>

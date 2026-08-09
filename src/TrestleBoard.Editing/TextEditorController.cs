@@ -622,6 +622,73 @@ public sealed class TextEditorController
         RequestReveal();
     }
 
+    /// <summary>
+    /// What kind of list the paragraph the caret is in belongs to, or null (M61).
+    /// </summary>
+    public string? CurrentListKind =>
+        IsActive && CurrentStory() is { } story
+        && _selection.Range.Start.ParagraphIndex < story.Paragraphs.Count
+            ? story.Paragraphs[_selection.Range.Start.ParagraphIndex].ListKind
+            : null;
+
+    /// <summary>
+    /// Makes the paragraphs the selection touches a list of the given kind — or, when they are
+    /// already that kind, puts them back to normal writing (PLAN.md §11 M61).
+    ///
+    /// <para>A toggle that plainly undoes itself, reached the way Bold is reached: no wizard, no
+    /// dialog, and one undo step however many paragraphs the selection covers, because making six
+    /// points into a list is one thing the user did.</para>
+    /// </summary>
+    public bool ToggleList(string listKind)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(listKind);
+        if (!IsActive || CurrentStory() is not { } story)
+        {
+            return false;
+        }
+
+        TextRange range = _selection.Range;
+        int first = Math.Clamp(range.Start.ParagraphIndex, 0, story.Paragraphs.Count - 1);
+        int last = Math.Clamp(range.End.ParagraphIndex, first, story.Paragraphs.Count - 1);
+
+        // Off when every paragraph the selection touches is already this kind. Anything else turns
+        // them all on, which is what somebody who highlighted a mixed run means by pressing it.
+        bool allAlready = true;
+        for (int p = first; p <= last; p++)
+        {
+            if (!string.Equals(story.Paragraphs[p].ListKind, listKind, StringComparison.Ordinal))
+            {
+                allAlready = false;
+                break;
+            }
+        }
+
+        string? wanted = allAlready ? null : listKind;
+        var children = new List<IDocumentCommand>();
+        for (int p = first; p <= last; p++)
+        {
+            if (!string.Equals(story.Paragraphs[p].ListKind, wanted, StringComparison.Ordinal))
+            {
+                children.Add(new SetListKindCommand(story.Id, p, wanted));
+            }
+        }
+
+        if (children.Count == 0)
+        {
+            return false;
+        }
+
+        _session.Execute(children.Count == 1
+            ? children[0]
+            : new CompositeCommand(
+                children[0].Description,
+                new ChangeScope(ChangeKind.Text, StoryId: story.Id),
+                children));
+        RaiseChanged();
+        RequestReveal();
+        return true;
+    }
+
     private void PasteText(string sanitized)
     {
         TextRange range = _selection.Range;
