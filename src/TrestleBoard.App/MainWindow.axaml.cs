@@ -2925,7 +2925,15 @@ public partial class MainWindow : Window
 
         IReadOnlyList<Misspelling> words = Spelling.ScanDocument(_package.Document);
         _spellingWindow = new SpellingWindow(
-            words, Spelling.Checker, TakeMeToTheWord, ChangeTheWord, Announce);
+            words,
+            Spelling.Checker,
+            TakeMeToTheWord,
+            ChangeTheWord,
+            Announce,
+
+            // M52 fix: the walk re-reads the document after each change instead of trusting the
+            // list it opened with. Correcting one word moves every later word in its paragraph.
+            () => Spelling.ScanDocument(_package!.Document));
         _spellingWindow.Closed += (_, _) =>
         {
             _spellingWindow = null;

@@ -26,14 +26,22 @@ namespace TrestleBoard.App.Dialogs;
 /// </summary>
 public sealed class SpellingWindow : Window
 {
-    private readonly IReadOnlyList<Misspelling> _words;
+    /// <summary>
+    /// Not readonly, and that is the fix for M52's staleness bug: the list is re-read from the
+    /// document after every change. Correcting one word moves every later word in the same
+    /// paragraph, so a list captured once goes wrong the moment a replacement is a different length
+    /// from what it replaced.
+    /// </summary>
+    private IReadOnlyList<Misspelling> _words;
     private readonly SpellChecker _checker;
     private readonly Action<Misspelling> _takeMeThere;
     private readonly Func<Misspelling, string, bool> _changeItTo;
+    private readonly Func<IReadOnlyList<Misspelling>> _lookAgain;
     private readonly Action<string> _say;
     private readonly TextBlock _heading;
     private readonly TextBlock _progress;
     private readonly TextBlock _sentence;
+    private readonly TextBlock _status;
     private readonly StackPanel _buttons;
     private readonly Button _back;
     private readonly Button _next;
@@ -47,13 +55,18 @@ public sealed class SpellingWindow : Window
         SpellChecker checker,
         Action<Misspelling> takeMeThere,
         Func<Misspelling, string, bool> changeItTo,
-        Action<string> say)
+        Action<string> say,
+        Func<IReadOnlyList<Misspelling>>? lookAgain = null)
     {
         _words = words ?? throw new ArgumentNullException(nameof(words));
         _checker = checker ?? throw new ArgumentNullException(nameof(checker));
         _takeMeThere = takeMeThere ?? throw new ArgumentNullException(nameof(takeMeThere));
         _changeItTo = changeItTo ?? throw new ArgumentNullException(nameof(changeItTo));
         _say = say ?? throw new ArgumentNullException(nameof(say));
+
+        // Defaulted rather than required so a test can build the window with a fixed list; the app
+        // always passes the real re-scan.
+        _lookAgain = lookAgain ?? (() => _words);
 
         Title = "Check my spelling";
         Width = 640;
@@ -66,6 +79,15 @@ public sealed class SpellingWindow : Window
         _progress = Text(16);
         _sentence = Text(20);
         _sentence.FontStyle = FontStyle.Italic;
+
+        // M52's answers used to go only to the main window's status bar — behind this window, at the
+        // far bottom of the screen, while the user is looking here. "Nothing happened" was the
+        // report, and the app had in fact said what happened, somewhere they were never going to
+        // look. It is said in both places now, and a polite live region so a screen reader hears it.
+        _status = Text(17);
+        _status.Text = "";
+        AutomationProperties.SetName(_status, "What just happened");
+        AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
 
         _buttons = new StackPanel
         {
@@ -91,6 +113,7 @@ public sealed class SpellingWindow : Window
                 _heading,
                 _progress,
                 _sentence,
+                _status,
                 _buttons,
                 new StackPanel
                 {
@@ -213,15 +236,23 @@ public sealed class SpellingWindow : Window
             {
                 if (_changeItTo(word, replacement))
                 {
-                    _say($"Changed “{word.Word}” to “{replacement}”.");
-                    GoTo(_screen + 1);
+                    Tell($"Changed “{word.Word}” to “{replacement}”.");
+
+                    // Re-read the document rather than stepping an index down a list that is now
+                    // one word out of date. The corrected word drops out of the new list, so the
+                    // word that was next has taken this screen's number — going to _screen, not
+                    // _screen + 1, is what keeps the walk on the next unfixed word.
+                    _words = _lookAgain();
+                    GoTo(_screen);
                 }
                 else
                 {
-                    // The word moved or was edited since the list was made. Saying so beats
-                    // changing the wrong six characters.
-                    _say($"“{word.Word}” is not where it was any more, so nothing was "
-                        + "changed. Close this and check the spelling again.");
+                    // Kept as a guard even though the list is now refreshed after every change: the
+                    // page is editable behind this window, so the user can still move the word
+                    // themselves between the scan and the click. Changing the wrong six characters
+                    // would be far worse than saying nothing happened.
+                    Tell($"“{word.Word}” is not where it was any more, so nothing was changed. "
+                        + "Press Next and come back to it, or close this and check again.");
                 }
             };
             _buttons.Children.Add(change);
@@ -239,6 +270,17 @@ public sealed class SpellingWindow : Window
             GoTo(_screen + 1);
         };
         _buttons.Children.Add(name);
+    }
+
+    /// <summary>
+    /// Says it here AND in the main window's status bar. Here because this is the window the user is
+    /// looking at; there because the status bar is where every other answer in the app appears and a
+    /// screen-reader user may be following that one.
+    /// </summary>
+    private void Tell(string message)
+    {
+        _status.Text = message;
+        _say(message);
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
