@@ -1,6 +1,7 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
 using TrestleBoard.Widgets.Wizards;
@@ -21,6 +22,13 @@ public sealed class WidgetGridWindow : Window
     private readonly IReadOnlyList<PersonSuggestion> _people;
     private readonly StackPanel _body = new() { Spacing = 16, Margin = new Avalonia.Thickness(24) };
     private readonly StackPanel _errorPanel = new() { Spacing = 4, IsVisible = false };
+
+    /// <summary>
+    /// The box the rebuilt page should land on. The whole list is cleared and built again whenever
+    /// one field is filled in, so without this a keyboard or screen-reader user is put back at the
+    /// top of a twelve-row page by the act of answering one question (M70(e)).
+    /// </summary>
+    private WizardWindow.WizardFieldTag? _focusAfterRender;
 
     /// <param name="session">The same session the step wizard drives. One POCO, one command.</param>
     /// <param name="people">
@@ -182,6 +190,11 @@ public sealed class WidgetGridWindow : Window
 
     private void Render()
     {
+        // Asked before anything is torn down; answered again at the bottom, once the replacement
+        // for that box exists (M70(e)).
+        WizardWindow.WizardFieldTag? standingOn = _focusAfterRender ?? FocusedFieldTag();
+        _focusAfterRender = null;
+
         _body.Children.Clear();
         foreach (IWizardStep step in _session.ActiveSteps)
         {
@@ -203,6 +216,66 @@ public sealed class WidgetGridWindow : Window
                 {
                     _body.Children.Add(BuildField(step, field, -1));
                 }
+            }
+        }
+
+        if (!FocusField(standingOn))
+        {
+            FocusFirstInput();
+        }
+    }
+
+    /// <summary>
+    /// Which box the user is standing in, or null if they are not standing in one. The ancestors are
+    /// walked because an AutoCompleteBox focuses the text box inside its own template, so the
+    /// focused element is never the control the tag is on.
+    /// </summary>
+    private WizardWindow.WizardFieldTag? FocusedFieldTag()
+    {
+        if (FocusManager?.GetFocusedElement() is not Control focused)
+        {
+            return null;
+        }
+
+        return focused.GetSelfAndLogicalAncestors()
+            .OfType<Control>()
+            .Select(c => c.Tag as WizardWindow.WizardFieldTag)
+            .FirstOrDefault(tag => tag is not null);
+    }
+
+    /// <summary>Puts focus back in one particular box. False when the rebuilt page has no such box.</summary>
+    private bool FocusField(WizardWindow.WizardFieldTag? tag)
+    {
+        if (tag is null)
+        {
+            return false;
+        }
+
+        foreach (Control control in Descendants(_body))
+        {
+            if (Equals(control.Tag, tag))
+            {
+                control.Focus();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// The fallback: a row was removed, or the page has only just opened, and there is no particular
+    /// box to go back to. Landing on the first one is still an answer to "where am I?" — this window
+    /// used to have no <c>Focus()</c> call in it at all.
+    /// </summary>
+    private void FocusFirstInput()
+    {
+        foreach (Control control in Descendants(_body))
+        {
+            if (control is TextBox or ComboBox or AutoCompleteBox)
+            {
+                control.Focus();
+                return;
             }
         }
     }
@@ -233,25 +306,45 @@ public sealed class WidgetGridWindow : Window
             int captured = row;
             if (list.FixedRows is null)
             {
-                buttons.Children.Add(MakeButton("Remove", (_, _) =>
+                Button remove = MakeButton("Remove", (_, _) =>
                 {
                     _session.RemoveRow(step, captured);
+
+                    // Somebody clearing out three rows presses Remove three times, so the button
+                    // has to be under their finger again afterwards. When the last row goes there
+                    // is no Remove left to go back to and Add is the only thing standing there.
+                    int left = _session.GetRowCount(step);
+                    _focusAfterRender = left == 0
+                        ? new WizardWindow.WizardFieldTag(step, AddRowKey, -1)
+                        : new WizardWindow.WizardFieldTag(step, RemoveKey, Math.Min(captured, left - 1));
                     Render();
-                }));
+                });
+                remove.Tag = new WizardWindow.WizardFieldTag(step, RemoveKey, captured);
+                buttons.Children.Add(remove);
             }
 
             if (list.AllowReorder)
             {
-                buttons.Children.Add(MakeButton("▲ Move up", (_, _) =>
+                Button up = MakeButton("▲ Move up", (_, _) =>
                 {
                     _session.MoveRow(step, captured, captured - 1);
+                    // The row has moved, so the button that moves it again is one row further up.
+                    _focusAfterRender = new WizardWindow.WizardFieldTag(
+                        step, MoveUpKey, Math.Max(0, captured - 1));
                     Render();
-                }));
-                buttons.Children.Add(MakeButton("▼ Move down", (_, _) =>
+                });
+                up.Tag = new WizardWindow.WizardFieldTag(step, MoveUpKey, captured);
+                buttons.Children.Add(up);
+
+                Button down = MakeButton("▼ Move down", (_, _) =>
                 {
                     _session.MoveRow(step, captured, captured + 1);
+                    _focusAfterRender = new WizardWindow.WizardFieldTag(
+                        step, MoveDownKey, Math.Min(_session.GetRowCount(step) - 1, captured + 1));
                     Render();
-                }));
+                });
+                down.Tag = new WizardWindow.WizardFieldTag(step, MoveDownKey, captured);
+                buttons.Children.Add(down);
             }
 
             if (buttons.Children.Count > 0)
@@ -270,13 +363,30 @@ public sealed class WidgetGridWindow : Window
 
         if (list.FixedRows is null)
         {
-            _body.Children.Add(MakeButton(list.AddButtonText, (_, _) =>
+            Button add = MakeButton(list.AddButtonText, (_, _) =>
             {
                 _session.AddRow(step);
+
+                // Into the new row's first box, not back onto Add: the reason for adding a row is
+                // to type in it, and the empty row is a long way down the page.
+                _focusAfterRender = step.Fields.Count > 0
+                    ? new WizardWindow.WizardFieldTag(
+                        step, step.Fields[0].Key, _session.GetRowCount(step) - 1)
+                    : new WizardWindow.WizardFieldTag(step, AddRowKey, -1);
                 Render();
-            }));
+            });
+            add.Tag = new WizardWindow.WizardFieldTag(step, AddRowKey, -1);
+            _body.Children.Add(add);
         }
     }
+
+    // The row buttons are tagged the same way the boxes are, so the same "put them back where they
+    // were" machinery covers them. A '#' cannot collide with a widget's own field key — those are
+    // declared by the wizard steps and are plain names.
+    private const string RemoveKey = "#remove";
+    private const string MoveUpKey = "#move-up";
+    private const string MoveDownKey = "#move-down";
+    private const string AddRowKey = "#add-row";
 
     private StackPanel BuildField(IWizardStep step, WizardField field, int rowIndex)
     {
@@ -358,6 +468,8 @@ public sealed class WidgetGridWindow : Window
 
         AutomationProperties.SetName(input, label.Text);
         AutomationProperties.SetLabeledBy(input, label);
+        // Which box this is, so the next rebuild can put the user back in it (M70(e)).
+        input.Tag = new WizardWindow.WizardFieldTag(step, field.Key, rowIndex);
         panel.Children.Add(input);
 
         if (field is { Kind: WizardFieldKind.MultiLineText, AllowsPeoplePicker: true } && _people.Count > 0)
@@ -372,6 +484,10 @@ public sealed class WidgetGridWindow : Window
                         field.Key,
                         rowIndex,
                         existing.Length == 0 ? person.Name : existing.TrimEnd('\n') + "\n" + person.Name);
+
+                    // Back into the box the name was just added to — the picker dialog took focus
+                    // and this rebuild takes the box away, so there is nowhere else for it to land.
+                    _focusAfterRender = new WizardWindow.WizardFieldTag(step, field.Key, rowIndex);
                     Render();
                 }
             }));
@@ -393,10 +509,52 @@ public sealed class WidgetGridWindow : Window
         return -1;
     }
 
+    /// <summary>
+    /// What "Save it" says when it cannot save (M70(f)).
+    ///
+    /// <para>This used to print a warning glyph in a warning colour and do nothing else — the window
+    /// stayed open, the title did not change, focus did not move, and a screen-reader user pressing
+    /// Save heard <em>nothing whatever</em>. Both signals it had were visual. Three things answer now
+    /// and each covers a different reader: a polite live region says how many answers are still
+    /// wanted, the window renames itself so the whole-panel change is announced (docs/M7-spec.md
+    /// §6.6), and focus goes to the first box that needs filling in — carrying the reason in its
+    /// HelpText, so landing there says what is wrong with it.</para>
+    /// </summary>
     private void RenderErrors(IReadOnlyList<WizardFieldError> errors)
     {
         _errorPanel.Children.Clear();
         _errorPanel.IsVisible = errors.Count > 0;
+
+        // Last attempt's complaints are not this attempt's; a box that is fine now must not still be
+        // telling a screen reader it is wrong.
+        foreach (Control control in Descendants(_body))
+        {
+            if (control.Tag is WizardWindow.WizardFieldTag)
+            {
+                AutomationProperties.SetHelpText(control, null);
+            }
+        }
+
+        if (errors.Count == 0)
+        {
+            AutomationProperties.SetName(this, Title ?? string.Empty);
+            return;
+        }
+
+        string summary = WizardWindow.ErrorSummary(errors);
+        var line = new TextBlock
+        {
+            Text = summary,
+            FontSize = 18,
+            FontWeight = FontWeight.Bold,
+            TextWrapping = TextWrapping.Wrap,
+            MaxWidth = 780,
+            HorizontalAlignment = HorizontalAlignment.Left,
+        }.Token(TextBlock.ForegroundProperty, Tokens.Warning);
+        AutomationProperties.SetName(line, summary);
+        AutomationProperties.SetLiveSetting(line, AutomationLiveSetting.Polite);
+        _errorPanel.Children.Add(line);
+
         foreach (WizardFieldError error in errors)
         {
             _errorPanel.Children.Add(new TextBlock
@@ -407,6 +565,29 @@ public sealed class WidgetGridWindow : Window
                 MaxWidth = 780,
                 HorizontalAlignment = HorizontalAlignment.Left,
             }.Token(TextBlock.ForegroundProperty, Tokens.Warning));
+        }
+
+        WizardWindow.Rename(this, $"{Title} — {summary}");
+        FocusFirstError(errors[0]);
+    }
+
+    /// <summary>
+    /// Into the box the first complaint is about. The grid is one long page, so the box may well be
+    /// off the bottom of it — focusing scrolls it into view, which is the other half of the answer.
+    /// </summary>
+    private void FocusFirstError(WizardFieldError error)
+    {
+        foreach (Control control in Descendants(_body))
+        {
+            if (control.Tag is WizardWindow.WizardFieldTag tag
+                && string.Equals(tag.Key, error.FieldKey, StringComparison.Ordinal)
+                && tag.Row == error.RowIndex)
+            {
+                AutomationProperties.SetHelpText(control, error.Message);
+                control.Focus();
+                control.BringIntoView();
+                return;
+            }
         }
     }
 

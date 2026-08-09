@@ -282,10 +282,14 @@ public sealed class PositionPhotoWindow : Window
             _overlay.Height = crop.Height * dispHeight;
         }
 
-        AutomationProperties.SetName(
-            _stage,
-            $"Crop window, {PercentAcross()} across, {PercentDown()} down, zoom {ZoomLadder.Label(_zoom)}");
+        // The zoom readout beside the buttons is deliberately NOT a live region (M70's audit says
+        // so): it is redundant, because the stage the user is standing on renames itself with the
+        // zoom in it on every change, and that is the announcement.
+        AutomationProperties.SetName(_stage, StageName());
     }
+
+    private string StageName() =>
+        $"Crop window, {PercentAcross()} across, {PercentDown()} down, zoom {ZoomLadder.Label(_zoom)}";
 
     private string PercentAcross() => $"{(int)MathF.Round(_centerX * 100f)}%";
 

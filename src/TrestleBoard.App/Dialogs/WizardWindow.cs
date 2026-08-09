@@ -2,6 +2,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using TrestleBoard.Widgets.Wizards;
 
@@ -19,6 +20,41 @@ public sealed class WizardWindow : Window
 {
     /// <summary>One brother picked from the address book, and where he was picked.</summary>
     private sealed record PersonPick(IWizardStep Step, int RowIndex, string? PhoneFieldKey, PersonSuggestion Person);
+
+    /// <summary>
+    /// Which question a built control belongs to (M70(e)). Both wizard windows clear their body and
+    /// build it again from scratch, so the control a keyboard or screen-reader user was standing on
+    /// is destroyed under them; this is how the rebuilt screen finds the same box again. The step is
+    /// compared by reference — two steps can legitimately share a field key.
+    /// </summary>
+    internal sealed record WizardFieldTag(IWizardStep Step, string Key, int Row);
+
+    /// <summary>
+    /// The whole-panel announcement (docs/M7-spec.md §6.6): Avalonia has no live region for "this
+    /// entire screen is now about something else", so the window renames itself and the screen
+    /// reader reads the new name.
+    ///
+    /// <para><b>Cleared first, deliberately.</b> Pressing "Save it" twice with the same thing still
+    /// unfilled composes the identical string, and Avalonia raises no property change for a value
+    /// that has not changed — which is exactly why the second press used to be silent (PLAN.md §11
+    /// M70(f)). Blanking the name first guarantees there is a change to announce.</para>
+    /// </summary>
+    internal static void Rename(Window window, string name)
+    {
+        AutomationProperties.SetName(window, string.Empty);
+        AutomationProperties.SetName(window, name);
+    }
+
+    /// <summary>
+    /// The one sentence that says how many answers are still wanted, for the window rename and for
+    /// the polite live region above the list of them. Empty when nothing is wrong.
+    /// </summary>
+    internal static string ErrorSummary(IReadOnlyList<WizardFieldError> errors) => errors.Count switch
+    {
+        0 => string.Empty,
+        1 => "One thing still needs your attention before this can be saved.",
+        _ => $"{errors.Count} things still need your attention before this can be saved.",
+    };
 
     /// <summary>A confirm dialog is already open; a second Esc must not stack another.</summary>
     private bool _confirming;
@@ -55,6 +91,17 @@ public sealed class WizardWindow : Window
 
     private readonly StackPanel _errorPanel = new() { Spacing = 4, IsVisible = false };
     private readonly StackPanel _body = new() { Spacing = 16 };
+
+    /// <summary>What <see cref="RenderErrors"/> found, for the window rename further down the same
+    /// render. Empty when the screen is clean.</summary>
+    private string _errorSummary = string.Empty;
+
+    /// <summary>
+    /// The field the rebuilt screen should land on, when the caller knows better than "the first
+    /// one" — the box the user was filling in when the rebuild happened (M70(e)).
+    /// </summary>
+    private WizardFieldTag? _focusAfterRender;
+
     private readonly Button _back;
     private readonly Button _next;
     private readonly Button _showAll;
@@ -390,6 +437,11 @@ public sealed class WizardWindow : Window
 
     private void RenderScreen(IReadOnlyList<WizardFieldError>? errors = null)
     {
+        // Captured before anything is torn down: the box the user was standing in is about to stop
+        // existing, and afterwards there is nothing left to ask (M70(e)).
+        WizardFieldTag? standingOn = _focusAfterRender ?? FocusedFieldTag();
+        _focusAfterRender = null;
+
         IWizardStep step = _session.CurrentStep;
         _header.Text = _session.ScreenTitle;
         _progress.Text = _session.ProgressText;
@@ -398,7 +450,8 @@ public sealed class WizardWindow : Window
             : step.HelpText ?? "";
         _help.IsVisible = _help.Text.Length > 0;
 
-        RenderErrors(errors ?? _session.Errors);
+        IReadOnlyList<WizardFieldError> showing = errors ?? _session.Errors;
+        RenderErrors(showing);
 
         _back.IsEnabled = !_session.IsFirstScreen;
         // Rebuilt rather than assigned a string, because the content is an IconText and "Save it"
@@ -436,20 +489,62 @@ public sealed class WizardWindow : Window
                 break;
         }
 
-        AutomationProperties.SetName(this, $"{_session.Title} — {_session.ProgressText}");
+        string name = $"{_session.Title} — {_session.ProgressText}";
+        if (_errorSummary.Length > 0)
+        {
+            // M70(f): a validation failure leaves the title and the progress text exactly as they
+            // were, so the rename below used to be a rename to the same string and nothing was
+            // said. The refusal goes in the name, and Rename makes sure it is heard on the second
+            // press of "Save it" as well as the first.
+            Rename(this, $"{name} — {_errorSummary}");
+        }
+        else
+        {
+            AutomationProperties.SetName(this, name);
+        }
 
         // Avalonia has no live region, so the header is focused to make Narrator/VoiceOver announce
-        // the new question (docs/M7-spec.md §6.6). Focus then moves to the first input.
+        // the new question (docs/M7-spec.md §6.6). Focus then moves into the screen: to the box the
+        // user was filling in when this rebuild happened, or to the first question they still owe an
+        // answer to, and only failing both to the first input on the screen.
         _header.Focusable = true;
         _header.Focus();
         _header.Focusable = false;
-        FocusFirstInput();
+
+        WizardFieldTag? wanted = showing.Count > 0
+            ? new WizardFieldTag(_session.CurrentStep, showing[0].FieldKey, showing[0].RowIndex)
+            : standingOn;
+
+        if (!FocusField(wanted))
+        {
+            FocusFirstInput();
+        }
     }
 
     private void RenderErrors(IReadOnlyList<WizardFieldError> errors)
     {
         _errorPanel.Children.Clear();
         _errorPanel.IsVisible = errors.Count > 0;
+        _errorSummary = ErrorSummary(errors);
+        if (errors.Count > 0)
+        {
+            // The words that say something is wrong at all. A polite live region, so the sentence
+            // arrives without waiting for the reader to find its way back up the screen; the window
+            // rename in RenderScreen is the belt to this pair of braces.
+            var summary = new TextBlock
+            {
+                Text = _errorSummary,
+                FontSize = 18,
+                FontWeight = FontWeight.Bold,
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 760,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            }.Token(TextBlock.ForegroundProperty, Tokens.Warning);
+            AutomationProperties.SetName(summary, _errorSummary);
+            AutomationProperties.SetLiveSetting(summary, AutomationLiveSetting.Polite);
+            _errorPanel.Children.Add(summary);
+        }
+
         foreach (WizardFieldError error in errors)
         {
             // Colour is never the only signal: the warning glyph and the words carry it too.
@@ -655,6 +750,8 @@ public sealed class WizardWindow : Window
         }
 
         AutomationProperties.SetLabeledBy(input, label);
+        // Which question this box is, so the next rebuild can put the user back in it (M70(e)).
+        input.Tag = new WizardFieldTag(owner, field.Key, rowIndex);
         panel.Children.Add(input);
 
         // Committees keep a plain list of names, so the picker only ever appends a line (M13).
@@ -670,6 +767,10 @@ public sealed class WizardWindow : Window
                         field.Key,
                         rowIndex,
                         existing.Length == 0 ? person.Name : existing.TrimEnd('\n') + "\n" + person.Name);
+
+                    // The picker dialog took focus and this rebuild takes the box away, so without
+                    // this the user lands back at the top of a screen they were part-way down.
+                    _focusAfterRender = new WizardFieldTag(owner, field.Key, rowIndex);
                     RenderScreen();
                 }
             }));
@@ -873,6 +974,44 @@ public sealed class WizardWindow : Window
         {
             RenderScreen();
         }
+    }
+
+    /// <summary>
+    /// Which question the user is standing in right now, or null if they are not standing in one.
+    /// The ancestors are walked because an AutoCompleteBox focuses the text box inside its own
+    /// template, so the focused element is never the control the tag is on.
+    /// </summary>
+    private WizardFieldTag? FocusedFieldTag()
+    {
+        if (FocusManager?.GetFocusedElement() is not Control focused)
+        {
+            return null;
+        }
+
+        return focused.GetSelfAndLogicalAncestors()
+            .OfType<Control>()
+            .Select(c => c.Tag as WizardFieldTag)
+            .FirstOrDefault(tag => tag is not null);
+    }
+
+    /// <summary>Puts focus back in one particular question. False when the rebuilt screen has no such box.</summary>
+    private bool FocusField(WizardFieldTag? tag)
+    {
+        if (tag is null)
+        {
+            return false;
+        }
+
+        foreach (Control control in Descendants(_body))
+        {
+            if (Equals(control.Tag, tag))
+            {
+                control.Focus();
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void FocusFirstInput()

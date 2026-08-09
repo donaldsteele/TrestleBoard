@@ -359,11 +359,32 @@ public partial class MainWindow : Window
 
         RebuildParagraphStyleMenu();
 
+        // M70(e): the panel is cleared and built again from scratch here, so a keyboard or
+        // screen-reader user who tabbed to an offer and pressed it has that button torn out from
+        // under them a moment later and is left standing on nothing. Asked before the rebuild,
+        // answered after it — and only when they were in the panel to begin with, because this runs
+        // on every keystroke and must never pull focus out of the page.
+        string? standingOn = FocusedPanelActionId();
+
         _panel.Update(
             _context,
             ActionCatalog.ForSelection(_context),
             WhatsNext.Suggestions(_context),
             (id, source) => _ = _actions.RunAsync(id, source));
+
+        if (standingOn is not null)
+        {
+            if (PanelButtonFor(standingOn) is { } sameOffer)
+            {
+                sameOffer.Focus();
+            }
+            else
+            {
+                // The command is no longer offered — the selection it belonged to has gone. The
+                // heading says what the panel is about now, which is the honest answer.
+                _panel.FocusHeading();
+            }
+        }
 
         UpdatePageChrome();
         UpdateStatus();
@@ -3882,6 +3903,35 @@ public partial class MainWindow : Window
     /// The action panel's button for one command, as it stands right now. Null when the panel is
     /// not offering it — in which case the caller falls back to whatever it was given.
     /// </summary>
+    /// <summary>
+    /// The action whose panel button currently has focus, "" when focus is in the panel but not on
+    /// an offer, and null when focus is somewhere else entirely — which is the overwhelmingly common
+    /// case and the one where nothing must be touched.
+    /// </summary>
+    private string? FocusedPanelActionId()
+    {
+        if (FocusManager?.GetFocusedElement() is not Control focused)
+        {
+            return null;
+        }
+
+        string? actionId = null;
+        foreach (Control control in focused.GetSelfAndLogicalAncestors().OfType<Control>())
+        {
+            if (actionId is null && control is Button { Tag: string id })
+            {
+                actionId = id;
+            }
+
+            if (ReferenceEquals(control, _panel))
+            {
+                return actionId ?? string.Empty;
+            }
+        }
+
+        return null;
+    }
+
     private Button? PanelButtonFor(string actionId) =>
         _panel.GetLogicalDescendants()
             .OfType<Button>()

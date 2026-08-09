@@ -76,6 +76,14 @@ public sealed class SettingsDialog : Window
             MaxWidth = 540,
         };
 
+        // M70(f): this sentence is the only place the app says in words what the two choices above
+        // will actually do, and it is the one thing a screen-reader user cannot check by looking
+        // before pressing Save. A polite live region, so it is re-read every time either choice
+        // changes it. Its name is the sentence itself, kept in step in UpdatePreview — a fixed name
+        // would REPLACE the text a screen reader reads rather than introduce it, which is the trap
+        // in naming a TextBlock whose whole value is its content.
+        AutomationProperties.SetLiveSetting(_preview, AutomationLiveSetting.Polite);
+
         _scale.PropertyChanged += (_, e) =>
         {
             if (e.Property == RangeBase.ValueProperty)
@@ -192,5 +200,6 @@ public sealed class SettingsDialog : Window
         _preview.Text = themeNote
             + $"Menus and buttons will be {percent}% of their normal size. "
             + "The newsletter page itself always stays white, because that is how it will print.";
+        AutomationProperties.SetName(_preview, _preview.Text);
     }
 }

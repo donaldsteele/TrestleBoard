@@ -110,6 +110,7 @@ public sealed class HelpWindow : Window
         };
         _answer = new TextBlock { FontSize = 20, TextWrapping = TextWrapping.Wrap };
         _whereItIs = new TextBlock { FontSize = 18, TextWrapping = TextWrapping.Wrap };
+        AutomationProperties.SetLiveSetting(_whereItIs, AutomationLiveSetting.Polite);
 
         // M70: "Take me there" used to answer into the main window's status bar, which is behind
         // this window and at the far bottom of the screen — and when the command had gone
@@ -222,6 +223,7 @@ public sealed class HelpWindow : Window
             _answerTitle.Text = "";
             _answer.Text = "";
             _whereItIs.Text = "";
+            AutomationProperties.SetName(_whereItIs, "");
             _takeMeThere.IsVisible = false;
             return;
         }
@@ -232,20 +234,30 @@ public sealed class HelpWindow : Window
         // A different answer is a different question, and last question's "Done" beside it would
         // read as an answer to this one.
         _status.Text = "";
-        _whereItIs.Text = WhereToFindIt(topic);
+
+        // M11's rule, kept here too: a thing that cannot be done says why, in the same words the
+        // menu bar and the action panel would use. Silence would read as "the help is broken".
+        //
+        // M70(f): asked BEFORE the rename, not after. This sentence used to be appended to
+        // "where it is" on the line below the rename, so it fell outside the only thing a screen
+        // reader was told about — the user heard the whole answer and never learnt the command was
+        // blocked. It is in the window's name now, and "where it is" is a live region in its own
+        // right for the reader who is standing further down the window.
+        ActionAvailability can = _ask(topic.ActionId);
+        _takeMeThere.IsVisible = can.IsAvailable;
+
+        _whereItIs.Text = can.IsAvailable
+            ? WhereToFindIt(topic)
+            : WhereToFindIt(topic) + Environment.NewLine + Environment.NewLine + can.Reason;
+        AutomationProperties.SetName(_whereItIs, _whereItIs.Text);
 
         // The window renames itself so a screen reader announces which answer is open; there is no
         // live region for a whole panel (the WizardWindow technique, docs/M7-spec.md §6.6).
-        AutomationProperties.SetName(this, $"How do I…? — {_answerTitle.Text}");
-
-        ActionAvailability can = _ask(topic.ActionId);
-        _takeMeThere.IsVisible = can.IsAvailable;
-        if (!can.IsAvailable)
-        {
-            // M11's rule, kept here too: a thing that cannot be done says why, in the same words the
-            // menu bar and the action panel would use. Silence would read as "the help is broken".
-            _whereItIs.Text += Environment.NewLine + Environment.NewLine + can.Reason;
-        }
+        AutomationProperties.SetName(
+            this,
+            can.IsAvailable
+                ? $"How do I…? — {_answerTitle.Text}"
+                : $"How do I…? — {_answerTitle.Text}. {can.Reason}");
     }
 
     /// <summary>

@@ -48,6 +48,11 @@ public sealed class RosterImportWindow : Window
         AutomationProperties.SetLiveSetting(_title, AutomationLiveSetting.Polite);
 
         _explanation = new TextBlock { FontSize = 20, TextWrapping = TextWrapping.Wrap };
+
+        // M70(f): the heading above is already a live region, so the move to a new step is
+        // announced — but the paragraph that says what to DO on that step was not, and it is the
+        // half that carries the instructions.
+        AutomationProperties.SetLiveSetting(_explanation, AutomationLiveSetting.Polite);
         _status = new TextBlock { FontSize = 18, TextWrapping = TextWrapping.Wrap };
         AutomationProperties.SetName(_status, "What just happened");
         AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);

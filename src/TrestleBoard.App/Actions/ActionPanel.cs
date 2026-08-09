@@ -57,6 +57,11 @@ internal sealed class ActionPanel : Border
         AutomationProperties.SetName(_heading, "No newsletter is open");
         AutomationProperties.SetLiveSetting(_heading, AutomationLiveSetting.Polite);
 
+        // M70(e): the heading is the fallback landing place when the button a keyboard user was
+        // standing on is no longer offered after a rebuild. It is not a tab stop the rest of the
+        // time — it becomes focusable only for as long as it is holding focus.
+        _heading.LostFocus += (_, _) => _heading.Focusable = false;
+
         _content = new StackPanel { Spacing = 8 };
 
         var scroller = new ScrollViewer
@@ -85,6 +90,18 @@ internal sealed class ActionPanel : Border
 
     /// <summary>The panel's heading, which is also what a screen reader announces on a selection change.</summary>
     internal string HeadingForTest => _heading.Text ?? string.Empty;
+
+    /// <summary>
+    /// Somewhere to stand when the action a keyboard user had just pressed is no longer on offer
+    /// (M70(e)). It is the heading rather than the first remaining button, because the heading says
+    /// what the panel is now about and pressing Tab from it walks the offers in order — whereas
+    /// landing on some unrelated button is one Space away from doing a thing nobody asked for.
+    /// </summary>
+    internal void FocusHeading()
+    {
+        _heading.Focusable = true;
+        _heading.Focus();
+    }
 
     /// <summary>
     /// The label a panel button carries.
