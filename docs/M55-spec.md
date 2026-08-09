@@ -50,8 +50,12 @@ the very line that proves it. The comment that said so is gone.
 A free-text list per member, offered as tick boxes rather than typed, because a group that is nearly
 spelled right is a brother who quietly stops receiving his newsletter. `MemberGroups` names the
 three the app itself reads — `Gets the newsletter by email` (M56), `Gets a printed copy` (M56 counts
-them, M62 prints their labels), `Officers` — and `InUse` offers those plus every group the lodge has
-invented, so a name is never re-typed.
+them), `Officers` — and `InUse` offers those plus every group the lodge has invented, so a name is
+never re-typed.
+
+> **Amended 2026-08-08.** This section originally said M62 would print the printed-copy group's
+> labels. **M62 was dropped**: the roster holds no postal address, so labels meant collecting them,
+> and this is not a membership management tool. The group is a count, not an addressing list.
 
 `MemberGroups.Members` returns only people who `IsInTheNewsletter`. A deceased brother left in the
 printed-copy group would otherwise be posted a newsletter.

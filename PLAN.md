@@ -55,8 +55,10 @@ The example PDFs contain real people's names, phone numbers, and emails. These r
    - **M57** — user templates carry real names: personal files per rule 4 while in AppData; export
      behaves like roster export (user-chosen path only); the screenshot harness's temporary
      app-state root must cover the template store per rule 6.
-   - **M62** — label and envelope PDFs are pages of real names and addresses: user-chosen path via
-     the save dialog only, no default location, never a fixture.
+   - ~~**M62** — label and envelope PDFs are pages of real names and addresses: user-chosen path via
+     the save dialog only, no default location, never a fixture.~~ **Moot: M62 was dropped
+     2026-08-08.** The roster holds no postal address and now never will, so the app produces no
+     artifact of this kind. This is a privacy surface removed rather than one defended.
    - **M64** — the successor pack bundles the roster and every personal store in one file: the
      single most concentrated personal-data artifact the app produces. User-chosen path only, the
      pack extension gitignored, fictional fixtures only, privacy gate re-runs.
@@ -2925,8 +2927,35 @@ back byte-unchanged if untouched.
 > separate licence required for profit. Ordering: M62 (labels) depends on M55's groups; M68 (the
 > licence) can ship any time and should ship early; the rest are independent of M51–M61 and of
 > each other. Every constraint from the first batch's preamble applies unchanged.
+>
+> **Amended 2026-08-08, on the owner's decision: M62 is dropped.** The batch is M51–M61 and
+> M63–M68. See M62's own entry — in short, the roster has no postal address, so the milestone was
+> address *collection* wearing a printing milestone's clothes, and this is not a membership
+> management tool.
 
-### M62 — Print the labels (M)
+### M62 — Print the labels (M) — **DROPPED 2026-08-08 by the owner. Not built, and not deferred.**
+
+> **"We do not want to collect addresses here — this is not a membership management tool."**
+>
+> The milestone was written as though the addresses were already in hand and only the printing was
+> missing. They are not. **`Member` has no postal address field** — it never has; the roster carries
+> a name, a birthday, a telephone number, an email and (from M55) a status and groups. So M62 was
+> not "print what we already hold". It was: add street, city, state and postcode to the roster
+> schema, build a data-entry surface for them, and then ask a volunteer committee to type sixty
+> households' home addresses into it.
+>
+> That is a different product. It also cuts against §0: every field added to the roster is more
+> real personal data on a volunteer's laptop, in the backup ring, and in M64's successor pack. The
+> app's existing answer to "how does it reach people" is M56's email hand-off, which needs no new
+> personal data at all. The lodge's own secretary already keeps the addresses wherever the lodge
+> keeps them; TrestleBoard producing the newsletter does not make it the right place to hold them.
+>
+> **Consequence for M64:** the successor pack is unaffected — it packs what the roster has, and the
+> roster is unchanged. **Consequence for M55:** the "Gets a printed copy" group keeps its meaning
+> (it is a count, and M56 reports it) but no longer implies the app will address the envelopes.
+>
+> Nothing below was built. It is kept for the record so a future reader knows the ground was
+> considered and declined, not overlooked.
 
 **Goal.** M55 creates the "Gets a printed copy" group and M56 counts the copies; nobody prints the
 addresses. Hand-addressing sixty envelopes monthly is the committee's remaining manual chore, and

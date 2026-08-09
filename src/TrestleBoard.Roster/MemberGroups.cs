@@ -8,9 +8,8 @@ namespace TrestleBoard.Roster;
 /// The groups the app itself knows the meaning of (PLAN.md §11 M55).
 ///
 /// <para>Groups are free text, so a lodge can invent any list it needs. These three are different
-/// only in that later milestones read them: M56 sends the newsletter to the email group, and M62
-/// prints labels for the printed-copy group. Naming them here keeps those two features from each
-/// guessing at a spelling.</para>
+/// only in that the app itself reads them: M56 sends the newsletter to the email group. Naming
+/// them here keeps a feature from guessing at a spelling.</para>
 ///
 /// <para>They are offered as tick boxes rather than typed, because a group that is nearly spelled
 /// right is a brother who quietly stops receiving his newsletter.</para>
@@ -20,7 +19,14 @@ public static class MemberGroups
     /// <summary>M56 fills the BCC line from this group.</summary>
     public const string ByEmail = "Gets the newsletter by email";
 
-    /// <summary>M56 counts these, and M62 prints their labels.</summary>
+    /// <summary>
+    /// M56 counts these, so the user is told how many copies to run off.
+    ///
+    /// <para>It is a count and nothing more. M62 would have addressed their envelopes; it was
+    /// dropped on 2026-08-08 because the roster holds no postal address and this is not a
+    /// membership management tool. The group still earns its place — knowing "eleven printed" is
+    /// what the committee needs at the copier — but the app will not be addressing them.</para>
+    /// </summary>
     public const string Printed = "Gets a printed copy";
 
     /// <summary>Not the officers table — that is driven by each member's office — but a mailing list.</summary>

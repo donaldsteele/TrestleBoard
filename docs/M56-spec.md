@@ -48,8 +48,11 @@ an email about a newsletter that is not there.
 ## 6. The printed-copy group
 
 Every message the feature produces also says how many brethren still need a printed copy, when there
-are any. That is the other half of M55's groups, and it is what connects this to M53's Print and
-M62's labels.
+are any. That is the other half of M55's groups, and it is what connects this to M53's Print.
+
+> **Amended 2026-08-08.** This section originally also pointed at M62's labels. **M62 was dropped**
+> — the roster holds no postal address, and collecting one is not this app's business. The count
+> stands on its own: it tells the committee how many copies to run off, which is what they needed.
 
 ## 7. When nobody is on a list
 
