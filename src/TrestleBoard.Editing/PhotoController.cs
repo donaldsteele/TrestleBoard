@@ -136,7 +136,8 @@ public sealed class PhotoController
         string altText,
         string? caption = null,
         (float X, float Y)? centre = null,
-        (string AssetRef, int Page)? fromPdf = null)
+        (string AssetRef, int Page)? fromPdf = null,
+        ImageFit fit = ImageFit.Cover)
     {
         ArgumentNullException.ThrowIfNull(bytes);
         if (pageIndex < 0 || pageIndex >= _session.Document.Pages.Count)
@@ -176,6 +177,12 @@ public sealed class PhotoController
             FrameRect = rect,
             ZOrder = page.Blocks.Count == 0 ? 0 : page.Blocks.Max(b => b.ZOrder) + 1,
             WrapMode = WrapMode.Rectangle,
+
+            // M69: Cover for a photograph, where reshaping the frame is how somebody chooses what
+            // shows. Contain for a picture the app drew itself — an emblem or a page of a PDF is a
+            // whole thing, and a cropped square and compasses is a mutilated symbol rather than a
+            // cropped photograph.
+            Fit = fit,
             WrapMarginPt = 6f,
             AltText = altText ?? "",
             Caption = string.IsNullOrWhiteSpace(caption) ? null : caption,

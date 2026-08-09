@@ -1871,7 +1871,8 @@ public partial class MainWindow : Window
             $"Page {pageNumber} of {Path.GetFileName(path)}.",
             caption: null,
             centre: null,
-            fromPdf: (pdfAsset, pageNumber));
+            fromPdf: (pdfAsset, pageNumber),
+            fit: Core.Model.ImageFit.Contain);
 
         if (blockId is null)
         {
@@ -2245,7 +2246,11 @@ public partial class MainWindow : Window
 
         _editor?.End();
         string? blockId = _photos.InsertPhoto(
-            _pageIndex, EmblemRenderer.ToPng(chosen), chosen.Description, caption: "");
+            _pageIndex,
+            EmblemRenderer.ToPng(chosen),
+            chosen.Description,
+            caption: "",
+            fit: Core.Model.ImageFit.Contain);
 
         if (blockId is null)
         {

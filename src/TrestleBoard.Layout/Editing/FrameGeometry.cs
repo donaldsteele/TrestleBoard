@@ -177,6 +177,52 @@ public static class FrameGeometry
         return new RectPt(left, top, right - left, bottom - top);
     }
 
+    /// <summary>
+    /// A corner drag that keeps the frame's shape (M69): the frame scales instead of being reshaped.
+    ///
+    /// <para><b>Why a picture needs this and a text frame does not.</b> Reshaping a text frame
+    /// reflows the words, which is what the user asked for. Reshaping a picture frame does not
+    /// reshape the picture — <see cref="Core.Model.ImageFit.Cover"/> crops the source to the frame's
+    /// new aspect instead, so dragging a corner to make an emblem bigger silently cut its bottom
+    /// off, and M22's "Position the picture" could only pan the crop, never undo it. Scaling from a
+    /// corner is what every layout program does and what "make it bigger" means.</para>
+    ///
+    /// <para>The side handles are deliberately left alone: reshaping the frame IS how somebody
+    /// chooses a different crop, and taking that away would remove the only direct way to do it.
+    /// A corner scales; an edge reshapes.</para>
+    ///
+    /// <para><paramref name="aspect"/> is width over height, and it is the frame's own aspect
+    /// rather than the picture's — the frame is what the user has hold of, and a frame already
+    /// cropped on purpose keeps its crop while it scales.</para>
+    /// </summary>
+    public static RectPt ResizeKeepingAspect(
+        RectPt rect, FrameHandle handle, float dxPt, float dyPt, float aspect)
+    {
+        if (!IsCorner(handle) || aspect <= 0f || rect.Width <= 0f || rect.Height <= 0f)
+        {
+            return Resize(rect, handle, dxPt, dyPt);
+        }
+
+        RectPt free = Resize(rect, handle, dxPt, dyPt);
+
+        // Follow whichever edge the pointer moved further, measured in the same units: a diagonal
+        // drag then tracks the hand rather than snapping to whichever axis the code happened to
+        // read first.
+        float width = Math.Abs(free.Width - rect.Width) >= Math.Abs((free.Height - rect.Height) * aspect)
+            ? free.Width
+            : free.Height * aspect;
+
+        width = Math.Max(width, MinFrameSizePt);
+        float height = Math.Max(width / aspect, MinFrameSizePt);
+        width = height * aspect;
+
+        // The corner opposite the one being dragged stays put, so the frame grows away from the
+        // hand rather than crawling across the page.
+        float left = MovesLeftEdge(handle) ? rect.Right - width : rect.X;
+        float top = MovesTopEdge(handle) ? rect.Bottom - height : rect.Y;
+        return new RectPt(left, top, width, height);
+    }
+
     public static bool MovesLeftEdge(FrameHandle handle) =>
         handle is FrameHandle.TopLeft or FrameHandle.Left or FrameHandle.BottomLeft;
 

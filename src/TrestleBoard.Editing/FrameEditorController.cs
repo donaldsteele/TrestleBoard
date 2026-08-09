@@ -425,6 +425,27 @@ public sealed class FrameEditorController
     }
 
     /// <summary>
+    /// A drag delta applied the way this kind of block should take it (M69).
+    ///
+    /// <para>A picture dragged by a <b>corner</b> scales and keeps its shape; everything else
+    /// reshapes as it always has. The reason is that reshaping a picture frame does not reshape the
+    /// picture — <c>ImageFit.Cover</c> crops the source to the frame's new aspect — so a corner
+    /// drag used to cut the bottom off an emblem with no way back short of undo.</para>
+    /// </summary>
+    private RectPt ResizeForBlock(string blockId, RectPt start, FrameHandle handle, float dxPt, float dyPt)
+    {
+        if (FrameGeometry.IsCorner(handle)
+            && _session.Document.TryFindBlock(blockId, out _, out Block? block)
+            && block is ImageFrame
+            && start.Height > 0f)
+        {
+            return FrameGeometry.ResizeKeepingAspect(start, handle, dxPt, dyPt, start.Width / start.Height);
+        }
+
+        return FrameGeometry.Resize(start, handle, dxPt, dyPt);
+    }
+
+    /// <summary>
     /// Live drag step: recomputes the rect, snaps it (unless suppressed), and installs it as the
     /// render source's preview so text reflows around it without touching the document.
     /// </summary>
@@ -435,8 +456,8 @@ public sealed class FrameEditorController
             return;
         }
 
-        RectPt candidate = FrameGeometry.Resize(
-            _dragStartRect, _dragHandle, xPt - _dragStartXPt, yPt - _dragStartYPt);
+        RectPt candidate = ResizeForBlock(
+            _selectedBlockId, _dragStartRect, _dragHandle, xPt - _dragStartXPt, yPt - _dragStartYPt);
 
         _snapGuides.Clear();
         if (snap && TryBuildSnapContext(out SnapContext context))
