@@ -3091,7 +3091,28 @@ symbol and a particular rendering of it are different rights. No asset ships wit
 Emblems carry default descriptions for the screen reader ("Square and compasses"). Rendering is
 deterministic across OSes; snapshot-tested.
 
-### M66 — Bring in writing from a file (M)
+### M66 — Bring in writing from a file (M) — **delivered 2026-08-09, `docs/M66-spec.md`**
+
+> **The recorded risk was fidelity temptation, and what holds the line is honesty about what
+> arrived rather than willpower.** Words and pictures come in; tables, text boxes, field codes,
+> tracked deletions and character formatting do not. The confirmation card names the paragraph
+> count, the word count and the picture count before anything happens and says plainly that tables
+> do not come through — so somebody sent a three-page article and told "2 paragraphs" learns the
+> words were in a table before they print sixty copies, not after. Tables are skipped **whole**,
+> because their text arriving as loose paragraphs would be worse than its absence.
+>
+> Pure managed: a `.docx` is a zip with XML in it and the BCL already opens both, so the reader is
+> an `XmlReader` walk and no new package. A file that arrived by email is not trusted — no DTD, no
+> resolver, sizes capped, and every failure a sentence. A password-protected document gets its own
+> message, because it opens cleanly as a container and would otherwise be reported as damaged,
+> sending somebody hunting a fault that is not there.
+>
+> Pictures are **offered** one at a time with a preview, never taken: a Word file's media folder
+> holds the author's letterhead and their signature scan as readily as the photograph they meant to
+> send. Accepting sends them through M18's ingest path, bytes untouched. The writing is one undo
+> step because the frame and its contents arrive as one composite command — and a test seam,
+> `SwallowErrorsForTest`, was added on the way, because a headless test has nobody to press an error
+> dialog's button and the app's failure paths were the ones the shell tests could not reach.
 
 **Goal.** Committee members email articles as Word documents. Today: open Word, select, copy,
 switch, paste — a two-app round trip with formatting shrapnel. The app should accept the file.

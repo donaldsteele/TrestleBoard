@@ -325,6 +325,11 @@ public static class ActionCatalog
         new(ActionId.RestorePeople, "Restore an earlier version…",
             "Puts your address book back as it was on an earlier day.", ActionGroup.People),
 
+        // ---- Bringing writing in (M66) ------------------------------------------------------------
+        new(ActionId.BringInWriting, "Bring in writing from a file…",
+            "Reads a Word document or a text file and puts the writing on the page, in this "
+            + "newsletter's own lettering.", ActionGroup.Insert),
+
         // ---- The emblem shelf (M65) ---------------------------------------------------------------
         new(ActionId.InsertEmblem, "Add an emblem…",
             "Puts one of the craft's emblems on the page — the square and compasses, the working "
@@ -612,7 +617,7 @@ public static class ActionCatalog
                 or ActionId.InsertBirthdays or ActionId.InsertCommittees
                 or ActionId.InsertDistrictCalendar or ActionId.InsertEventCard
                 or ActionId.InsertCoverBanner or ActionId.InsertSimpleList
-                or ActionId.InsertEmblem => RequiresDocument(context),
+                or ActionId.InsertEmblem or ActionId.BringInWriting => RequiresDocument(context),
 
             // ---- The selected thing -------------------------------------------------------------
             ActionId.DeleteFrame => context.HasFrameSelection

@@ -253,6 +253,9 @@ internal static class ActionIcons
         // away. This is a thing you hand to somebody, and the sentence is what carries that.
         [ActionId.PackUpForSuccessor] = "reached twice in a decade, and never by hunting for a picture",
         [ActionId.BringInAPack] = "reached twice in a decade, and never by hunting for a picture",
+        // M66. A document-with-arrow glyph is what every other program uses for "import", and this
+        // audience reads that shape as "download". The sentence is unambiguous and the glyph is not.
+        [ActionId.BringInWriting] = "the usual import arrow reads as download to this audience",
         [ActionId.HowDoI] = "the words are shorter and plainer than any glyph for them",
         [ActionId.ShowTheTour] = "reached from the Help menu once a decade, never hunted for",
     };

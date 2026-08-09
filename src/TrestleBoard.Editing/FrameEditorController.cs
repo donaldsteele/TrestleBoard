@@ -524,7 +524,23 @@ public sealed class FrameEditorController
 
     /// <summary>Adds an empty text frame inside the page margins and selects it
     /// (docs/M5-spec.md §7). Returns the new block id.</summary>
-    public string AddTextFrame(int pageIndex)
+    public string AddTextFrame(int pageIndex) => AddFrame(pageIndex, paragraphs: null, "Add text frame");
+
+    /// <summary>
+    /// A new frame that already has writing in it (M66): the same frame the command above makes,
+    /// with somebody else's article in place of the empty paragraph.
+    ///
+    /// <para><b>One command, so one Ctrl+Z.</b> The acceptance says the import is a single undo
+    /// step, and it is single because the frame and its writing arrive as one composite — not
+    /// because anything afterwards merges a run of little edits back together.</para>
+    /// </summary>
+    public string AddTextFrameWith(int pageIndex, IReadOnlyList<StoryParagraph> paragraphs)
+    {
+        ArgumentNullException.ThrowIfNull(paragraphs);
+        return AddFrame(pageIndex, paragraphs, "Bring in writing");
+    }
+
+    private string AddFrame(int pageIndex, IReadOnlyList<StoryParagraph>? paragraphs, string label)
     {
         Document document = _session.Document;
         Page page = document.Pages[pageIndex];
@@ -534,11 +550,18 @@ public sealed class FrameEditorController
         string blockId = NextId("frame", id => document.Pages.Any(p => p.Blocks.Any(b => b.Id == id)));
 
         var story = new Story { Id = storyId };
-        story.Paragraphs.Add(new StoryParagraph
+        if (paragraphs is { Count: > 0 })
         {
-            ParagraphStyleRef = DefaultParagraphStyleRef(document),
-            Runs = [new StoryRun { Text = "" }],
-        });
+            story.Paragraphs.AddRange(paragraphs);
+        }
+        else
+        {
+            story.Paragraphs.Add(new StoryParagraph
+            {
+                ParagraphStyleRef = DefaultParagraphStyleRef(document),
+                Runs = [new StoryRun { Text = "" }],
+            });
+        }
 
         float cascade = Math.Min(page.Blocks.Count * 18f, 90f);
         float maxX = Math.Max(
@@ -562,7 +585,7 @@ public sealed class FrameEditorController
         };
 
         _session.Execute(new CompositeCommand(
-            "Add text frame",
+            label,
             new ChangeScope(ChangeKind.PageStructure, PageId: page.Id, BlockId: blockId),
             [new AddStoryCommand(story), new AddBlockCommand(page.Id, block)]));
         Select(blockId);

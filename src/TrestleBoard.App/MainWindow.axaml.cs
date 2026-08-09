@@ -11,6 +11,7 @@ using Avalonia.VisualTree;
 using TrestleBoard.App.Actions;
 using TrestleBoard.App.Canvas;
 using TrestleBoard.App.Dialogs;
+using TrestleBoard.Core.Import;
 using TrestleBoard.Emblems;
 using TrestleBoard.App.Help;
 using TrestleBoard.App.Settings;
@@ -1752,6 +1753,298 @@ public partial class MainWindow : Window
         ShowPackage(package, startsDirty: true);
         Announce("Started from one of your templates. It has no file yet, so Save it when you are ready.");
     }
+
+    // ---- Bringing writing in from a file (PLAN.md §11 M66) -------------------------------------
+
+    /// <summary>Set by tests in place of the open dialog.</summary>
+    internal string? WritingPathForTest { get; set; }
+
+    /// <summary>Set by tests in place of the "bring it in?" card. True to go ahead.</summary>
+    internal bool? BringItInAnswerForTest { get; set; }
+
+    /// <summary>Set by tests in place of the picture-by-picture asks. True to take each one.</summary>
+    internal bool? UseEachPictureForTest { get; set; }
+
+    /// <summary>How many pictures the last import actually put on the page.</summary>
+    internal int PicturesTakenForTest { get; private set; }
+
+    /// <summary>
+    /// Reads a Word document or a text file and puts the writing on the page (M66).
+    ///
+    /// <para><b>What arrives is words in this newsletter's own lettering.</b> Not Word's fonts, not
+    /// its margins, not its tables — the writing, mapped onto the app's own five paragraph styles.
+    /// That line is drawn in <c>WritingImport</c> and the reason is written there; what matters
+    /// here is that the user is told what came in, in a count they can check against the article
+    /// they were sent.</para>
+    ///
+    /// <para><b>The writing is one undo step</b>, because the frame and everything in it arrive as
+    /// a single command. Each picture is its own step afterwards — they are separate decisions and
+    /// undoing one should not undo the article.</para>
+    /// </summary>
+    internal async Task BringInWritingAsync()
+    {
+        if (_photos is null || _frames is null)
+        {
+            return;
+        }
+
+        PicturesTakenForTest = 0;
+
+        string? path = WritingPathForTest;
+        if (path is null)
+        {
+            IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Bring in writing from a file",
+                AllowMultiple = false,
+                FileTypeFilter =
+                [
+                    new FilePickerFileType("Word documents and text files")
+                    {
+                        Patterns = ["*.docx", "*.txt"],
+                    },
+                ],
+            });
+
+            path = files.Count > 0 ? files[0].TryGetLocalPath() : null;
+        }
+
+        if (path is null)
+        {
+            return;
+        }
+
+        ImportedWriting writing;
+        try
+        {
+            writing = WritingImport.Read(path);
+        }
+        catch (Core.Migrations.UnsupportedFormatException e)
+        {
+            await ShowErrorAsync("That file could not be brought in", e.Message);
+            return;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            await ShowErrorAsync(
+                "That file could not be opened",
+                $"TrestleBoard could not read that file. ({e.Message})");
+            return;
+        }
+
+        if (writing.IsEmpty)
+        {
+            await ShowErrorAsync(
+                "There was nothing in that file",
+                "TrestleBoard found no writing and no pictures in it. If the words are inside a "
+                + "table or a text box, they will not come through — copy them into an ordinary "
+                + "paragraph first.");
+            return;
+        }
+
+        if (!(BringItInAnswerForTest ?? await ConfirmTheWritingAsync(writing, Path.GetFileName(path))))
+        {
+            return;
+        }
+
+        if (writing.Paragraphs.Count > 0)
+        {
+            _editor?.End();
+            string blockId = _frames.AddTextFrameWith(_pageIndex, [.. writing.Paragraphs.Select(ToStoryParagraph)]);
+            _frames.Select(blockId);
+
+            Announce($"{Describe(writing.Paragraphs.Count, "paragraph")} came in, on this page. "
+                + "It is an ordinary frame of writing — drag it where you want it, and one Ctrl+Z "
+                + "takes the whole lot back out.");
+        }
+
+        await OfferThePicturesAsync(writing.Pictures);
+        RefreshActions();
+    }
+
+    /// <summary>
+    /// Each picture from the document, one at a time, through M18's single picture ingest path.
+    ///
+    /// <para>Never all of them unasked: a Word document's media folder holds the author's
+    /// letterhead and their signature scan as readily as the photograph they meant to send.</para>
+    /// </summary>
+    private async Task OfferThePicturesAsync(IReadOnlyList<ImportedPicture> pictures)
+    {
+        foreach (ImportedPicture picture in pictures)
+        {
+            bool take = UseEachPictureForTest
+                ?? await AskAboutAPictureAsync(picture, pictures.Count);
+            if (!take)
+            {
+                continue;
+            }
+
+            // The same ingest path a dropped or pasted picture takes, description and caption asks
+            // and all — so the bytes land in the container untouched (gate 7) and the picture is a
+            // picture, with nothing about where it came from written anywhere.
+            await PlacePictureAsync(picture.Bytes, picture.Name, centre: null);
+            PicturesTakenForTest++;
+        }
+    }
+
+    private async Task<bool> AskAboutAPictureAsync(ImportedPicture picture, int outOf)
+    {
+        bool use = false;
+        var dialog = new Window
+        {
+            Title = "A picture came with the writing",
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+        };
+
+        Avalonia.Controls.Image preview = new()
+        {
+            Width = 260,
+            Height = 200,
+            Stretch = Avalonia.Media.Stretch.Uniform,
+        };
+
+        Avalonia.Media.Imaging.Bitmap? bitmap = null;
+        try
+        {
+            bitmap = new Avalonia.Media.Imaging.Bitmap(new MemoryStream(picture.Bytes));
+            preview.Source = bitmap;
+        }
+        catch (Exception e) when (e is ArgumentException or NotSupportedException or IOException)
+        {
+            // A picture the app cannot show is one it cannot place either; say so rather than
+            // offering an empty box and then failing at the last moment.
+            return false;
+        }
+
+        var yes = new Button { Content = "Use it", FontSize = 18, MinHeight = 44, MinWidth = 180, IsDefault = true };
+        yes.Action();
+        var no = new Button { Content = "Leave it out", FontSize = 18, MinHeight = 44, MinWidth = 180, IsCancel = true };
+        no.Action();
+        yes.Click += (_, _) => { use = true; dialog.Close(); };
+        no.Click += (_, _) => dialog.Close();
+        Avalonia.Automation.AutomationProperties.SetName(yes, "Use this picture");
+        Avalonia.Automation.AutomationProperties.SetName(no, "Leave this picture out");
+
+        dialog.Content = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(24),
+            Spacing = 16,
+            Children =
+            {
+                new Avalonia.Controls.TextBlock
+                {
+                    Text = outOf == 1
+                        ? "This picture came with the writing — use it?"
+                        : $"This is one of {outOf} pictures that came with the writing — use it?",
+                    FontSize = 20,
+                    FontWeight = Avalonia.Media.FontWeight.Bold,
+                    MaxWidth = 460,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                preview,
+                new Avalonia.Controls.TextBlock
+                {
+                    Text = "If you use it, TrestleBoard will ask you to describe it, the same as any "
+                        + "other picture. Letterheads and signatures often travel inside a Word "
+                        + "document without anybody meaning to send them.",
+                    FontSize = 17,
+                    MaxWidth = 460,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Horizontal,
+                    Spacing = 12,
+                    Children = { yes, no },
+                },
+            },
+        };
+
+        Avalonia.Automation.AutomationProperties.SetName(dialog, "A picture came with the writing");
+        await dialog.ShowDialog(this);
+        bitmap?.Dispose();
+        return use;
+    }
+
+    /// <summary>
+    /// What was found, before anything happens to the newsletter. The counts are the point: somebody
+    /// who was sent a three-page article and is told "2 paragraphs" has learned that the words were
+    /// in a table before they printed sixty copies.
+    /// </summary>
+    private async Task<bool> ConfirmTheWritingAsync(ImportedWriting writing, string fileName)
+    {
+        bool go = false;
+        var dialog = new Window
+        {
+            Title = "Bring in writing from a file",
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+        };
+
+        var yes = new Button { Content = "Bring it in", FontSize = 18, MinHeight = 44, MinWidth = 200, IsDefault = true };
+        yes.Action();
+        var no = new Button { Content = "Cancel", FontSize = 18, MinHeight = 44, MinWidth = 200, IsCancel = true };
+        no.Action();
+        yes.Click += (_, _) => { go = true; dialog.Close(); };
+        no.Click += (_, _) => dialog.Close();
+        Avalonia.Automation.AutomationProperties.SetName(yes, "Bring it in");
+        Avalonia.Automation.AutomationProperties.SetName(no, "Cancel");
+
+        string found = writing.Pictures.Count == 0
+            ? $"{Describe(writing.Paragraphs.Count, "paragraph")}, about {writing.WordCount} words."
+            : $"{Describe(writing.Paragraphs.Count, "paragraph")}, about {writing.WordCount} words, "
+              + $"and {Describe(writing.Pictures.Count, "picture")}.";
+
+        dialog.Content = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(24),
+            Spacing = 16,
+            Children =
+            {
+                new Avalonia.Controls.TextBlock
+                {
+                    Text = $"In {fileName}: {found}",
+                    FontSize = 20,
+                    FontWeight = Avalonia.Media.FontWeight.Bold,
+                    MaxWidth = 480,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                new Avalonia.Controls.TextBlock
+                {
+                    Text = "The words come in wearing this newsletter's own lettering, not the ones "
+                        + "they were written with. Anything in a table or a text box does not come "
+                        + "through — if the count above looks short, that is usually why.",
+                    FontSize = 17,
+                    MaxWidth = 480,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Horizontal,
+                    Spacing = 12,
+                    Children = { yes, no },
+                },
+            },
+        };
+
+        Avalonia.Automation.AutomationProperties.SetName(dialog, "Bring in writing from a file");
+        await dialog.ShowDialog(this);
+        return go;
+    }
+
+    private static Core.Model.StoryParagraph ToStoryParagraph(ImportedParagraph paragraph) =>
+        new()
+        {
+            ParagraphStyleRef = paragraph.StyleRef,
+            ListKind = paragraph.ListKind,
+            Runs = [new Core.Model.StoryRun { Text = paragraph.Text }],
+        };
+
+    private static string Describe(int n, string thing) =>
+        n == 1 ? $"1 {thing}" : $"{n} {thing}s";
 
     // ---- The emblem shelf (PLAN.md §11 M65) ----------------------------------------------------
 
@@ -5403,8 +5696,24 @@ public partial class MainWindow : Window
         await dialog.ShowDialog(this);
     }
 
+    /// <summary>The last thing the app told the user had gone wrong, title and message.</summary>
+    internal string? LastErrorForTest { get; private set; }
+
+    /// <summary>
+    /// Set by tests that drive a path which is supposed to fail. The error is still recorded in
+    /// <see cref="LastErrorForTest"/> — the point is to assert the sentence, not to skip it — but
+    /// the modal window is not opened, because a headless test has nobody to press its button.
+    /// </summary>
+    internal bool SwallowErrorsForTest { get; set; }
+
     private async Task ShowErrorAsync(string title, string message)
     {
+        LastErrorForTest = $"{title}: {message}";
+        if (SwallowErrorsForTest)
+        {
+            return;
+        }
+
         // Plain-language error dialog (PLAN.md §6).
         var dialog = new Window
         {

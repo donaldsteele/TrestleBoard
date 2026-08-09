@@ -266,6 +266,10 @@
         <Separator />
         <!-- M65: below the widgets and beside the picture, because that is what it is — a picture,
              from the app's own shelf rather than from a folder. -->
+        <!-- M66: beside the emblem, because both are "something from outside goes on the page". -->
+        <MenuItem Header="Writing from a fil_e…" Tag="insert.writingFromFile"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Bring in writing from a Word document or a text file" />
         <MenuItem Header="An e_mblem…" Tag="insert.emblem"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Add one of the craft's emblems" />

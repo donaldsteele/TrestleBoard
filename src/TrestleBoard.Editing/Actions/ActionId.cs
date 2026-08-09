@@ -296,6 +296,13 @@ public static class ActionId
     public const string ShowExampleIssue = "help.exampleIssue";
 
     /// <summary>
+    /// M66: reads a Word document or a text file and brings the writing in. Committee members email
+    /// articles; the round trip through Word and the clipboard is where the formatting shrapnel
+    /// comes from.
+    /// </summary>
+    public const string BringInWriting = "insert.writingFromFile";
+
+    /// <summary>
     /// M65: the emblem shelf. The craft's symbols are bundled with the app and drawn by it, so a
     /// committee never again has to find, vet and import a picture of the square and compasses.
     /// </summary>

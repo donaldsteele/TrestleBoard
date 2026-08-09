@@ -73,6 +73,11 @@ public static class HelpSearchWords
         [ActionId.Undo] = ["mistake", "wrong", "go back", "revert", "oops"],
         [ActionId.Redo] = ["mistake", "forward", "put it back"],
 
+        // Bringing writing in (M66). Nobody types "import" — they name the program it came from.
+        [ActionId.BringInWriting] =
+            ["word", "docx", "document", "article", "import", "paste", "text file", "emailed me",
+             "someone sent"],
+
         // The emblem shelf (M65). Nobody searches for "emblem" either — they search for the thing.
         [ActionId.InsertEmblem] =
             ["emblem", "square and compasses", "logo", "symbol", "picture", "ornament", "star",

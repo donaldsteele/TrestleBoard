@@ -890,6 +890,46 @@ sharpness — it is an ordinary picture from here on, and nothing about it is sp
 
 ---
 
+## 19. Bringing in writing from a file (M66)
+
+**19.1** With a newsletter open, go to **Insert → Writing from a file** and choose a Word document.
+**What you should hear:** a window named "Bring in writing from a file", then a sentence naming the
+file and what was found in it — how many paragraphs, roughly how many words, and how many pictures.
+Confirm the second sentence, about tables and text boxes not coming through, is read out too: it is
+the one that explains a count that looks short.
+
+**19.2** Press **Cancel**.
+**What you should confirm:** the newsletter is unchanged and nothing was added to the page.
+
+**19.3** Do it again and press **Bring it in**.
+**What you should hear:** a spoken confirmation of how many paragraphs came in, that they are on
+this page, and that one Ctrl+Z takes the whole lot back out. Confirm the new frame is what is
+selected.
+
+**19.4** Press `Ctrl+Z`.
+**What you should confirm:** the entire import is gone in **one** undo — not one paragraph at a
+time.
+
+**19.5** Bring in a document that has a picture in it.
+**What you should hear:** a window named "A picture came with the writing", the question, and the
+sentence explaining that letterheads and signatures often travel inside a Word document without
+anybody meaning to send them. Confirm there are "Use it" and "Leave it out" buttons and that
+Escape leaves it out.
+
+**19.6** Choose **Use it**.
+**What you should hear:** the ordinary picture description question you get for any picture — the
+emblem and the photograph and this all go through the same path.
+
+**19.7** Try to bring in a file that is not a Word document at all (rename anything to `.docx`).
+**What you should hear:** one sentence saying TrestleBoard could not read it and what to do about
+it. Not an error code, not a stack trace, and not silence.
+
+**19.8** Try a password-protected Word document.
+**What you should hear:** that it is password-protected and to take the password off in Word — not
+that it is damaged, which would send you looking for a fault that is not there.
+
+---
+
 ## Results table
 
 Copy this table (or the row shape) into a spreadsheet or a copy of this file as you go. Use the
@@ -1027,6 +1067,14 @@ step numbers from above so the full "what you should hear" text doesn't need to 
 | 18.6 | | | | already described |
 | 18.7 | | | | one undo |
 | 18.8 | | | | it is an ordinary picture from here on |
+| 19.1 | | | | the "tables do not come through" sentence must be read |
+| 19.2 | | | | |
+| 19.3 | | | | the new frame is selected |
+| 19.4 | | | | ONE undo, not one per paragraph |
+| 19.5 | | | | Escape leaves it out |
+| 19.6 | | | | the ordinary picture description question |
+| 19.7 | | | | a sentence, never a code |
+| 19.8 | | | | "password", not "damaged" |
 
 Add rows for anything else you notice along the way, even if it isn't in a numbered step.
 
