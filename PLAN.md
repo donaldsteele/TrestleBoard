@@ -3228,7 +3228,33 @@ workaround. The same shape appeared twice more the same day (the paragraph-style
 and shut; the spelling walk that refused into a status bar behind the window being read), which is
 what prompted the audit below.
 
-### M70 — The answer has to land where they are looking (M/L)
+### M70 — The answer has to land where they are looking (M/L) — **delivered 2026-08-09, all eight items**
+
+> Delivered across `8325602`, `e8f5273`, `22d1ad3`, `e5712b9` and `2e80112`. Chrome only throughout:
+> no file in `Core`, `Layout`, `Rendering` or `Export.Pdf` was opened for any of the eight items, and
+> no snapshot baseline moved — the acceptance's own test of whether the milestone overreached.
+>
+> **Three of the eight found the defect again while fixing it.** (a)'s repeat-press failure — an
+> identical string is not a property change, so a live region says nothing the second time —
+> reappeared in (f) as a dialog renaming itself with the same title twice. (a)'s "newest sentence
+> wins" reappeared in (b) as the reason a window must not blanket-confirm after an await. The shape
+> generalises further than the audit put it.
+>
+> **Corrections found by doing the work.** Draining controller messages instead of polling them was
+> tried in (a) and reverted: polling is why a link-mode instruction disappears when link mode ends,
+> and the real bug was one-shot sentences stored in a state-shaped field. Two of (c)'s eleven turned
+> out unreachable and were left silent rather than given a sentence nobody could see. `LastYearWindow`
+> is not merely read-only, so it closes on a document switch. `SpellingWindow` was already closed on a
+> switch — it just never said so. Bringing in a predecessor's pack is not a document switch at all.
+>
+> **Found on the way, unrelated to the brief:** `RetargetSpans` executed its composite even when every
+> span already had the style it was being given — a command that rewrote each run as itself, costing
+> an undo step and marking the newsletter unsaved for no visible change.
+>
+> **What is NOT closed.** Gate 23's last clause is a human with a screen reader. The tests prove a
+> live region is declared, not that it is spoken, and two of them read source text because
+> constructing those dialogs needs a live document. `docs/accessibility-test-script.md` §21 is the
+> sixteen steps that actually close it, and it has not been walked.
 
 **Goal.** Four defects in one day shared a root: **the app answered, and the answer arrived somewhere
 the user was not.** Not one was a broken mechanism. This audience is elderly, some using a screen
