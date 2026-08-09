@@ -296,6 +296,12 @@ public static class ActionId
     public const string ShowExampleIssue = "help.exampleIssue";
 
     /// <summary>
+    /// M65: the emblem shelf. The craft's symbols are bundled with the app and drawn by it, so a
+    /// committee never again has to find, vet and import a picture of the square and compasses.
+    /// </summary>
+    public const string InsertEmblem = "insert.emblem";
+
+    /// <summary>
     /// M64: writes the address book, the templates, the phrase shelf, the personal dictionary and
     /// the settings into one file for whoever takes over. Committee turnover is the existential risk
     /// for a volunteer lodge, and until this everything but a single template died with the laptop.

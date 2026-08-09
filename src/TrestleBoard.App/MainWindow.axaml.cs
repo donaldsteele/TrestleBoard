@@ -11,6 +11,7 @@ using Avalonia.VisualTree;
 using TrestleBoard.App.Actions;
 using TrestleBoard.App.Canvas;
 using TrestleBoard.App.Dialogs;
+using TrestleBoard.Emblems;
 using TrestleBoard.App.Help;
 using TrestleBoard.App.Settings;
 using TrestleBoard.App.Startup;
@@ -1750,6 +1751,67 @@ public partial class MainWindow : Window
         DocumentPath = null;
         ShowPackage(package, startsDirty: true);
         Announce("Started from one of your templates. It has no file yet, so Save it when you are ready.");
+    }
+
+    // ---- The emblem shelf (PLAN.md §11 M65) ----------------------------------------------------
+
+    /// <summary>Set by tests in place of the picker.</summary>
+    internal string? EmblemAnswerForTest { get; set; }
+
+    /// <summary>
+    /// Opens the shelf and puts the chosen emblem on the page.
+    ///
+    /// <para><b>It becomes an ordinary picture.</b> The emblem is drawn once, here, into PNG bytes,
+    /// and handed to the same <c>PhotoController.InsertPhoto</c> that a photograph from the user's
+    /// camera goes through — so it can be moved, resized, wrapped, captioned and re-described with
+    /// the commands that already exist, it lands in the container as an ordinary asset, and the
+    /// layout engine and the PDF export never learn that emblems are a thing. A second kind of
+    /// frame would have been a second thing to keep working for ever.</para>
+    ///
+    /// <para>No description dialog, unlike a photograph: the app knows what this picture is, and
+    /// asking somebody to describe the square and compasses to the app that just drew it would be
+    /// the software pretending not to know something. M23's "Describe this picture" changes it.</para>
+    /// </summary>
+    internal async Task InsertEmblemAsync()
+    {
+        if (_photos is null)
+        {
+            return;
+        }
+
+        Emblem? chosen;
+        if (EmblemAnswerForTest is { } id)
+        {
+            chosen = EmblemLibrary.Find(id);
+        }
+        else
+        {
+            var picker = new EmblemPickerWindow();
+            await picker.ShowDialog(this);
+            chosen = picker.Chosen;
+        }
+
+        if (chosen is null)
+        {
+            return;
+        }
+
+        _editor?.End();
+        string? blockId = _photos.InsertPhoto(
+            _pageIndex, EmblemRenderer.ToPng(chosen), chosen.Description, caption: "");
+
+        if (blockId is null)
+        {
+            await ShowErrorAsync(
+                "That emblem could not be added",
+                "TrestleBoard could not put that emblem on the page. Your newsletter is unchanged.");
+            return;
+        }
+
+        _frames?.Select(blockId);
+        Announce($"{chosen.Name} is on the page. Drag its corners to size it, and it can be moved, "
+            + "captioned and wrapped like any other picture.");
+        RefreshActions();
     }
 
     // ---- Pack it up for my successor (PLAN.md §11 M64) -----------------------------------------

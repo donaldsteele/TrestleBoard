@@ -357,6 +357,10 @@ public sealed class AccessibilityTests
         // to arrive with a screen reader running, so it above all must pass this walk.
         yield return (nameof(TourWindow), new TourWindow());
 
+        // M65. Nineteen tiles, each of which must name itself out loud — the window where a
+        // screen-reader user is choosing a picture they cannot see.
+        yield return (nameof(EmblemPickerWindow), new EmblemPickerWindow());
+
         // M64. The window where a wrong click costs the lodge its address book, walked by ear.
         yield return (
             nameof(BringInPackWindow),

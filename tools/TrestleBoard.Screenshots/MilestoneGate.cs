@@ -29,6 +29,8 @@ internal static class MilestoneGate
                 "the how-do-I window and the first-run tour"),
             ["M64"] = ("TrestleBoard.App.Dialogs.BringInPackWindow, TrestleBoard.App",
                 "packing everything up for a successor"),
+            ["M65"] = ("TrestleBoard.App.Dialogs.EmblemPickerWindow, TrestleBoard.App",
+                "the emblem shelf"),
         };
 
     /// <summary>

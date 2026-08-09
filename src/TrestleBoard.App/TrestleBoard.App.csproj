@@ -33,6 +33,7 @@
     <ProjectReference Include="..\TrestleBoard.Editing\TrestleBoard.Editing.csproj" />
     <ProjectReference Include="..\TrestleBoard.Layout\TrestleBoard.Layout.csproj" />
     <ProjectReference Include="..\TrestleBoard.Rendering\TrestleBoard.Rendering.csproj" />
+    <ProjectReference Include="..\TrestleBoard.Emblems\TrestleBoard.Emblems.csproj" />
     <ProjectReference Include="..\TrestleBoard.Imaging\TrestleBoard.Imaging.csproj" />
     <ProjectReference Include="..\TrestleBoard.Widgets\TrestleBoard.Widgets.csproj" />
     <ProjectReference Include="..\TrestleBoard.Roster\TrestleBoard.Roster.csproj" />

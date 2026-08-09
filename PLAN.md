@@ -3048,7 +3048,28 @@ restore (roster only, say) touches nothing else. **Privacy (§0 rule 7): the pac
 more in one file** — user-chosen path only, no default beside the repo, `*.tbpack` (or chosen
 extension) gitignored, fictional fixtures only, privacy gate re-runs.
 
-### M65 — The emblem shelf (M)
+### M65 — The emblem shelf (M) — **delivered 2026-08-09, `docs/M65-spec.md`**
+
+> **The artwork is geometry in the source, not a folder of files.** Nineteen emblems, each a handful
+> of SVG path strings drawn through SkiaSharp — no SVG files, no PNGs in the repository, no new
+> dependency. That is what makes them diffable, scalable, hashable like a font face, and honest to
+> state provenance for: nothing was imported, so there is nothing to trace back. Every emblem was
+> drawn for TrestleBoard and is released by the project under CC0; the symbols themselves are
+> centuries old and unowned, and the manifest records a SHA-256 of each drawing so gate 22 refuses
+> an emblem that has changed since somebody wrote down where it came from.
+>
+> **The open question in the deliverable is settled: rasterized once, at insert time, into an
+> ordinary picture.** The app has exactly one thing proven byte-identical across three operating
+> systems — its own Skia pipeline — so the emblem goes through M18's single picture ingest path and
+> the layout engine, the PDF export and the snapshot suite never learn that emblems exist. Moving,
+> wrapping, captioning and one-step undo all come for free; a vector carried to the page would have
+> been a second renderer, and WYSIWYG is a promise about there being one.
+>
+> Three findings from drawing them: the crescent moon had to be stated as one outline rather than a
+> circle minus a circle, because an arc bulges where its radius says it must and what came out was a
+> ring with a bite; "dividers" belongs to the compasses and not to the decorative rule; and a test
+> that walks every path's bounds against its own viewbox caught two emblems that would have been
+> silently cropped on the page.
 
 **Goal.** Real trestle boards carry the craft's emblems — the square and compasses, the working
 tools, the officers' jewels, seasonal ornaments, rules and dividers. Today the user must find,

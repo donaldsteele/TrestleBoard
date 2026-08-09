@@ -175,6 +175,15 @@ internal static class ShotList
 
         // M64. Shot with the address book already here and the wordings not, because the whole
         // point of this window is the difference between the two rows.
+        // M65. Shot with the box empty, because the thing worth showing is how much is on the
+        // shelf — a searched-down shelf would look like a small one.
+        new("emblem-shelf", ShotKind.Dialog, "M65",
+            "Nineteen emblems, bundled and drawn by the app itself.",
+            "The Add an emblem window. A search box sits at the top, and under it the emblems are "
+            + "laid out as large labelled tiles under headings: the working tools, the lodge, "
+            + "lights and seasons, and ornaments.",
+            stage => Task.FromResult(Stage.Shoot(stage.OpenDialog(new EmblemPickerWindow(), height: 760)))),
+
         new("bring-in-a-pack", ShotKind.Dialog, "M64",
             "What is in a predecessor's pack, and what taking it would replace.",
             "The Bring in a predecessor's pack window. Two things are listed with tick boxes: the "

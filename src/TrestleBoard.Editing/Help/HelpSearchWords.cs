@@ -73,6 +73,11 @@ public static class HelpSearchWords
         [ActionId.Undo] = ["mistake", "wrong", "go back", "revert", "oops"],
         [ActionId.Redo] = ["mistake", "forward", "put it back"],
 
+        // The emblem shelf (M65). Nobody searches for "emblem" either — they search for the thing.
+        [ActionId.InsertEmblem] =
+            ["emblem", "square and compasses", "logo", "symbol", "picture", "ornament", "star",
+             "clip art", "decoration"],
+
         // Handing over (M64). Nobody searches for "pack" — they search for the event.
         [ActionId.PackUpForSuccessor] =
             ["successor", "handover", "hand over", "new computer", "leaving", "move everything", "backup"],

@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "file": "EMBLEMS-PROVENANCE.txt",
+    "origin": "Drawn for TrestleBoard. No imported, traced or stock artwork.",
+    "licence": "CC0-1.0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  "emblems": [
+    {
+      "id": "square-and-compasses-g",
+      "name": "Square and compasses, with the G",
+      "category": "The working tools",
+      "parts": 7,
+      "sha256": "a5cc964418cee87e543b9c04b36386061210182b1604669069515d5464f859b9"
+    },
+    {
+      "id": "square-and-compasses",
+      "name": "Square and compasses",
+      "category": "The working tools",
+      "parts": 6,
+      "sha256": "b8d22a4dec6b26dfd83f3e49c2583042d66cea8447f38c9bf0aaf918a103a566"
+    },
+    {
+      "id": "square",
+      "name": "The square",
+      "category": "The working tools",
+      "parts": 1,
+      "sha256": "1e9335add941af14f7310d189693baab149cbf3dadd582c829ba1a8c2c9519de"
+    },
+    {
+      "id": "compasses",
+      "name": "The compasses",
+      "category": "The working tools",
+      "parts": 5,
+      "sha256": "f014f57ef9d59c89e9184b8d6fa00fa8b63de2f2a35a999dd4b947b99d8eab46"
+    },
+    {
+      "id": "plumb",
+      "name": "The plumb",
+      "category": "The working tools",
+      "parts": 3,
+      "sha256": "4cd0dd3557d297363e281368f5495ffe1fd4fd6fd23da94c3ad45de5021c6167"
+    },
+    {
+      "id": "level",
+      "name": "The level",
+      "category": "The working tools",
+      "parts": 4,
+      "sha256": "ce3ee723eee48bf738641fe4a9470b4f78bd428e8833555793ab63e0f823a8d3"
+    },
+    {
+      "id": "trowel",
+      "name": "The trowel",
+      "category": "The working tools",
+      "parts": 3,
+      "sha256": "0730533392ac7a1cb8323f7fd877a94e6d0a11daf5860cb37024d79e8d435b02"
+    },
+    {
+      "id": "gavel",
+      "name": "The gavel",
+      "category": "The working tools",
+      "parts": 2,
+      "sha256": "c8fad370ace61a65a704cd1cae2c4c8cf57e087d0993826a640ac50d5a8bc4f9"
+    },
+    {
+      "id": "gauge",
+      "name": "The twenty-four inch gauge",
+      "category": "The working tools",
+      "parts": 8,
+      "sha256": "a18310f33f0dfeb7980f879ce6e104f934941f1e724ad04a1aca9d6ee834a891"
+    },
+    {
+      "id": "ashlars",
+      "name": "The two ashlars",
+      "category": "The lodge",
+      "parts": 7,
+      "sha256": "b0e39b06302e22aa13954a51fe9f76a44106579216668739eaaed5d59ba8d528"
+    },
+    {
+      "id": "pillars",
+      "name": "The two pillars",
+      "category": "The lodge",
+      "parts": 8,
+      "sha256": "9908a916885f2375ec89ebb682ccfcdb7104b6c54641fb39a1656f0519246fde"
+    },
+    {
+      "id": "mosaic-pavement",
+      "name": "The mosaic pavement",
+      "category": "The lodge",
+      "parts": 9,
+      "sha256": "3280326d2ef2802fb2cf9e3fad3b045c8561e326664a994608a468cfc751381f"
+    },
+    {
+      "id": "all-seeing-eye",
+      "name": "The all-seeing eye",
+      "category": "Lights and seasons",
+      "parts": 3,
+      "sha256": "ad1fa2fc125ef298c51d35baa6a5ed7e4d4d044c8a5e0579819e3bbe33bc4e61"
+    },
+    {
+      "id": "blazing-star",
+      "name": "The blazing star",
+      "category": "Lights and seasons",
+      "parts": 1,
+      "sha256": "867f3f896ea38020873bfe118a08de1097fdfb36abedb1960a33741a11c90793"
+    },
+    {
+      "id": "sun",
+      "name": "The sun",
+      "category": "Lights and seasons",
+      "parts": 9,
+      "sha256": "9a486ce178fd8e44e6857778606c711fe58c40bc648a0c422814820f0f55a069"
+    },
+    {
+      "id": "moon-and-stars",
+      "name": "The moon and stars",
+      "category": "Lights and seasons",
+      "parts": 4,
+      "sha256": "eb5c5785e876fc213f3513fbea1dd8bbd0756408af0b996e7eec4cc2af5e5563"
+    },
+    {
+      "id": "rule-diamond",
+      "name": "A rule with a diamond",
+      "category": "Ornaments",
+      "parts": 5,
+      "sha256": "c993941a0b4c7d7a5996252017aebfb53d86c4ce8526888acd12956d89797f46"
+    },
+    {
+      "id": "rule-plain",
+      "name": "A plain rule",
+      "category": "Ornaments",
+      "parts": 2,
+      "sha256": "e3142c3e3f89ecac512bfe2b2e9dd15cbe59973d8f4140a95bae6b7201184643"
+    },
+    {
+      "id": "corner-ornament",
+      "name": "A corner ornament",
+      "category": "Ornaments",
+      "parts": 4,
+      "sha256": "b3d4ac1116ec28626683c5b24ea0c86e39868ea1ac32cb22ccc8e16a2a6ea00f"
+    }
+  ]
+}

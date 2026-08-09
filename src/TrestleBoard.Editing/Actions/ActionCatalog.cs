@@ -325,6 +325,11 @@ public static class ActionCatalog
         new(ActionId.RestorePeople, "Restore an earlier version…",
             "Puts your address book back as it was on an earlier day.", ActionGroup.People),
 
+        // ---- The emblem shelf (M65) ---------------------------------------------------------------
+        new(ActionId.InsertEmblem, "Add an emblem…",
+            "Puts one of the craft's emblems on the page — the square and compasses, the working "
+            + "tools, a rule or a corner ornament.", ActionGroup.Insert),
+
         // ---- Everything on this computer (M64) --------------------------------------------------
         new(ActionId.PackUpForSuccessor, "Pack everything up for my successor…",
             "Writes your address book, your templates, your saved wordings and your settings into "
@@ -606,7 +611,8 @@ public static class ActionCatalog
             ActionId.AddTextFrame or ActionId.InsertPhoto or ActionId.InsertOfficers
                 or ActionId.InsertBirthdays or ActionId.InsertCommittees
                 or ActionId.InsertDistrictCalendar or ActionId.InsertEventCard
-                or ActionId.InsertCoverBanner or ActionId.InsertSimpleList => RequiresDocument(context),
+                or ActionId.InsertCoverBanner or ActionId.InsertSimpleList
+                or ActionId.InsertEmblem => RequiresDocument(context),
 
             // ---- The selected thing -------------------------------------------------------------
             ActionId.DeleteFrame => context.HasFrameSelection

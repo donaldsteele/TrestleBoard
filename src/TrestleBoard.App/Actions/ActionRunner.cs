@@ -160,6 +160,7 @@ internal sealed class ActionRunner
             [ActionId.FontLicences] = _ => window.ShowFontLicencesAsync(),
             [ActionId.Licence] = _ => window.ShowLicenceAsync(),
             [ActionId.ShowExampleIssue] = Sync(window.OpenIssueSample),
+            [ActionId.InsertEmblem] = _ => window.InsertEmblemAsync(),
             [ActionId.PackUpForSuccessor] = _ => window.PackUpForSuccessorAsync(),
             [ActionId.BringInAPack] = _ => window.BringInAPackAsync(),
             [ActionId.HowDoI] = Sync(window.ShowHowDoI),

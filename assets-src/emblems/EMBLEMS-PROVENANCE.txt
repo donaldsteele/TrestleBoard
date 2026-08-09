@@ -1,0 +1,39 @@
+TrestleBoard — bundled emblems: provenance and licence
+======================================================
+
+PLAN.md §11 M65, verification gate 22. This file is the emblem shelf's equivalent of
+assets-src/fonts/THIRD-PARTY-FONTS.txt, and it exists for the same reason: a symbol and a
+particular rendering of that symbol are different rights.
+
+The symbols
+-----------
+The square and compasses, the working tools, the pillars, the mosaic pavement and the rest are
+the common symbols of Freemasonry. They are centuries old and no one party owns them. The owner
+of this project is a Mason and holds full authority to use the craft's symbols in an application
+made for a lodge's own use. That statement is recorded in PLAN.md §11 M65 and repeated here.
+
+The artwork
+-----------
+Every emblem shipped with TrestleBoard was drawn for TrestleBoard. There is no imported artwork
+in this application: no clip art, no traced scan, no file from a search result, no asset from any
+stock library, free or paid. Each emblem is original geometry authored directly in
+src/TrestleBoard.Emblems/EmblemLibrary.cs as SVG path data, and rendered by the application's own
+SkiaSharp pipeline.
+
+That is why there is no folder of image files beside this one. The artwork IS the source, which is
+also what lets it be hashed and checked the way a bundled font face is: assets-src/emblems/
+emblems.json records a SHA-256 of every emblem's geometry, and tests/Emblems.Tests fails the build
+if an emblem exists without a manifest entry, or if an entry's hash no longer matches the drawing.
+
+Licence
+-------
+The emblem artwork is released by the project under CC0 1.0 Universal (public domain dedication).
+Anyone may copy, modify and redistribute it, for any purpose, with or without attribution.
+
+    https://creativecommons.org/publicdomain/zero/1.0/
+
+This dedication covers the artwork only. It does not extend to the TrestleBoard application, whose
+licence is in LICENSE at the root of the repository, and it makes no claim of any kind over the
+underlying masonic symbols themselves.
+
+No third-party rights are asserted or required for anything in this directory.

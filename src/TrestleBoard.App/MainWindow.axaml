@@ -263,6 +263,12 @@
         <MenuItem Header="A list of m_y own" Tag="insert.simpleList"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Add a list of my own" />
+        <Separator />
+        <!-- M65: below the widgets and beside the picture, because that is what it is — a picture,
+             from the app's own shelf rather than from a folder. -->
+        <MenuItem Header="An e_mblem…" Tag="insert.emblem"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Add one of the craft's emblems" />
       </MenuItem>
       <!-- M17 dissolves "This item". It was named after a model concept, and its own submenus put
            four of the app's commands three levels deep. Every command it held kept a menu home:

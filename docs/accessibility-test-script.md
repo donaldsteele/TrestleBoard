@@ -852,6 +852,44 @@ book, not the one that was loaded when the app started.
 
 ---
 
+## 18. Putting an emblem on the page (M65)
+
+**18.1** With a newsletter open, go to **Insert → An emblem**.
+**What you should hear:** a window named "Add an emblem", then the box named "Search for an
+emblem". Focus must already be **in the box** — you should be able to type without pressing Tab.
+
+**18.2** Tab into the shelf and walk it with Tab.
+**What you should hear:** for each tile, the emblem's **name and then a sentence saying what it
+looks like** — "Square and compasses. The square and compasses." A name on its own is a failure
+here: you are choosing a picture you cannot see, and the sentence is the only thing that tells you
+what will land on the page. Confirm you meet the working tools before the ornaments.
+
+**18.3** Type `gavel` into the box.
+**What you should hear:** the count announced politely as one emblem, without interrupting your
+typing.
+
+**18.4** Type `kubernetes`.
+**What you should hear:** a sentence saying nothing on the shelf matches and what to do about it.
+Not silence, and not a bare zero.
+
+**18.5** Empty the box, find the square and compasses and press Space on it.
+**What you should confirm:** the window closes, the app says the emblem is on the page and that it
+can be moved and captioned like any other picture, and the newly added picture is what is selected.
+
+**18.6** Now use **Format → Describe this picture** on it.
+**What you should hear:** the description box **already filled in** — the app drew this picture, so
+it knows what it is. An empty box here would mean an emblem could reach a reader with nothing said
+about it.
+
+**18.7** Press `Ctrl+Z`.
+**What you should confirm:** the emblem is gone in a single undo, and the page is as it was.
+
+**18.8** Add an emblem again and print or export the PDF.
+**What you should confirm:** the emblem appears in the PDF exactly as it does on screen, at full
+sharpness — it is an ordinary picture from here on, and nothing about it is special.
+
+---
+
 ## Results table
 
 Copy this table (or the row shape) into a spreadsheet or a copy of this file as you go. Use the
@@ -981,6 +1019,14 @@ step numbers from above so the full "what you should hear" text doesn't need to 
 | 17.7 | | | | a sentence, never "0 selected" |
 | 17.8 | | | | silence here is a failure |
 | 17.9 | | | | the app must pick up what was written under it |
+| 18.1 | | | | focus must already be in the box |
+| 18.2 | | | | the name AND the sentence, on the tile itself |
+| 18.3 | | | | polite live region |
+| 18.4 | | | | never a bare zero |
+| 18.5 | | | | the new picture is what is selected |
+| 18.6 | | | | already described |
+| 18.7 | | | | one undo |
+| 18.8 | | | | it is an ordinary picture from here on |
 
 Add rows for anything else you notice along the way, even if it isn't in a numbered step.
 

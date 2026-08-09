@@ -3,6 +3,7 @@
     <Project Path="src/TrestleBoard.App/TrestleBoard.App.csproj" />
     <Project Path="src/TrestleBoard.Core/TrestleBoard.Core.csproj" />
     <Project Path="src/TrestleBoard.Editing/TrestleBoard.Editing.csproj" />
+    <Project Path="src/TrestleBoard.Emblems/TrestleBoard.Emblems.csproj" />
     <Project Path="src/TrestleBoard.Export.Pdf/TrestleBoard.Export.Pdf.csproj" />
     <Project Path="src/TrestleBoard.Imaging/TrestleBoard.Imaging.csproj" />
     <Project Path="src/TrestleBoard.Layout/TrestleBoard.Layout.csproj" />
@@ -20,6 +21,7 @@
     <Project Path="tests/App.HeadlessTests/App.HeadlessTests.csproj" />
     <Project Path="tests/Core.Tests/Core.Tests.csproj" />
     <Project Path="tests/Editing.Tests/Editing.Tests.csproj" />
+    <Project Path="tests/Emblems.Tests/Emblems.Tests.csproj" />
     <Project Path="tests/Imaging.Tests/Imaging.Tests.csproj" />
     <Project Path="tests/Layout.Tests/Layout.Tests.csproj" />
     <Project Path="tests/Rendering.SnapshotTests/Rendering.SnapshotTests.csproj" />

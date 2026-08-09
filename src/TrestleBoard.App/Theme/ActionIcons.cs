@@ -64,6 +64,11 @@ internal static class ActionIcons
         // the same glyph: the user is choosing a photograph either way, and the frame it lands in is
         // the only difference between them.
         [ActionId.ReplacePicture] = "photo",
+
+        // M65. An emblem wears the picture glyph for the reason above: the user is putting a
+        // picture on the page, and where it came from — their camera or the app's own shelf — is
+        // not a difference a glyph should be trying to draw.
+        [ActionId.InsertEmblem] = "photo",
         [ActionId.FixPhoto] = "wand",
         [ActionId.ToggleWrap] = "wrap",
         [ActionId.ShowPeople] = "people",
