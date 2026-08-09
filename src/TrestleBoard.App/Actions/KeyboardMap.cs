@@ -156,6 +156,11 @@ internal static class KeyboardMap
         new(Key.D1, Ctrl, ActionId.FitPage),
         new(Key.F6, KeyModifiers.None, ActionId.NextRegion),
         new(Key.F6, KeyModifiers.Shift, ActionId.PreviousRegion),
+
+        // ---- Asking the app (M63) ----------------------------------------------------------------
+        // F1 is the one shortcut this audience already knows from every other program they have
+        // ever used, and it is the only unmodified function key here that is not already taken.
+        new(Key.F1, KeyModifiers.None, ActionId.HowDoI),
     ];
 
     internal static IReadOnlyList<KeyShortcut> All => Bindings;

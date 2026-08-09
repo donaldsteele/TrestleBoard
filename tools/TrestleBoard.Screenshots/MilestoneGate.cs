@@ -25,6 +25,8 @@ internal static class MilestoneGate
                 "putting a picture into a frame that is already on the page"),
             ["M19"] = ("TrestleBoard.Widgets.Roster.OfficersRosterProjection, TrestleBoard.Widgets",
                 "filling the officers table in from the address book"),
+            ["M63"] = ("TrestleBoard.App.Dialogs.HelpWindow, TrestleBoard.App",
+                "the how-do-I window and the first-run tour"),
         };
 
     /// <summary>

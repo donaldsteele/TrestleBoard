@@ -7,6 +7,7 @@ using Avalonia.Headless;
 using TrestleBoard.App.Dialogs;
 using TrestleBoard.App.Settings;
 using TrestleBoard.Core.Model;
+using TrestleBoard.Editing.Actions;
 using TrestleBoard.Layout.Widgets;
 using TrestleBoard.Roster;
 using TrestleBoard.Widgets;
@@ -351,6 +352,19 @@ public sealed class AccessibilityTests
         [
             new RosterBackup("roster-20260727-090000-000.roster.bak.json", DateTimeOffset.UnixEpoch, 3),
         ]));
+
+        // M63's two. The help window is the one place in the app a confused person is most likely
+        // to arrive with a screen reader running, so it above all must pass this walk.
+        yield return (nameof(TourWindow), new TourWindow());
+        yield return (
+            nameof(HelpWindow),
+            new HelpWindow(
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    [ActionId.Bold] = "Format ▸ Bold",
+                },
+                _ => ActionAvailability.Available,
+                _ => Task.CompletedTask));
     }
 
     private static RosterService FictionalRoster()

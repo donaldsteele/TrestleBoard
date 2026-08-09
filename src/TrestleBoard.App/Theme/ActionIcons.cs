@@ -240,6 +240,12 @@ internal static class ActionIcons
         [ActionId.InsertPhrase] = "no glyph for a memorial is either dignified or clear",
         [ActionId.SavePhrase] = "would wear the save disk, which already means the newsletter",
         [ActionId.ShowExampleIssue] = "read once, never hunted for",
+
+        // M63. A question mark is the obvious glyph and it is the wrong one: it is also what this
+        // app puts beside anything it is unsure of, and the one place help must not look is
+        // uncertain. The words "How do I…?" are already the clearest possible label for it.
+        [ActionId.HowDoI] = "the words are shorter and plainer than any glyph for them",
+        [ActionId.ShowTheTour] = "reached from the Help menu once a decade, never hunted for",
     };
 
     /// <summary>The glyph resource key for an action, or null if it is deliberately text-only.</summary>

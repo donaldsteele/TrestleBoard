@@ -1,0 +1,89 @@
+using System;
+using System.Collections.Generic;
+using TrestleBoard.Editing.Actions;
+
+namespace TrestleBoard.Editing.Help;
+
+/// <summary>
+/// What somebody might type instead of the word the app uses (PLAN.md §11 M63).
+///
+/// <para>The help index is generated from the catalog, so every command is findable by its own
+/// name without anything being written here. This table exists for the gap between the app's
+/// vocabulary and the user's: the app says "photo" and a seventy-year-old types "picture"; the app
+/// says "Make the PDF" and they type "print"; the app says "address book" and they type "members".
+/// A search box that answers "no results" to a word the user actually knows is worse than no search
+/// box, because it teaches them the answer is not in there.</para>
+///
+/// <para><b>Deliberately partial.</b> Most commands are not listed, because most titles already
+/// contain the word anybody would look for — "Bold" is searched for as "bold". Listing every one of
+/// the catalog's hundred-odd entries would be a hundred-odd chances to write a synonym nobody uses,
+/// and the corpus test
+/// in <c>HelpIndexTests</c> is what actually proves the search works, not the size of this table.
+/// </para>
+///
+/// <para>Every id here must be a real action: <c>EverySynonymNamesARealAction</c> holds it, the
+/// same guard <c>KeyboardAuditTests.EveryRegisteredGestureNamesARealAction</c> puts on the keyboard
+/// table. A renamed action leaves dead search words behind otherwise, and dead search words fail
+/// silently — the user simply does not find the thing.</para>
+/// </summary>
+public static class HelpSearchWords
+{
+    private static readonly Dictionary<string, string[]> Words = new(StringComparer.Ordinal)
+    {
+        // The word this audience uses for a photograph is "picture", and the app says "photo".
+        [ActionId.InsertPhoto] = ["picture", "image", "photograph", "add a picture"],
+        [ActionId.ReplacePicture] = ["picture", "image", "change the picture", "swap"],
+        [ActionId.FixPhoto] = ["picture", "image", "sideways", "rotate", "upside down"],
+        [ActionId.AdjustPhoto] = ["picture", "image", "brightness", "dark", "washed out"],
+        [ActionId.PositionPicture] = ["picture", "image", "crop", "move the picture"],
+        [ActionId.CaptionPicture] = ["picture", "image", "words under the picture"],
+        [ActionId.DescribePicture] = ["picture", "image", "blind", "screen reader", "alt text"],
+
+        // "Print" is what people call making the PDF, because the PDF is what they print.
+        [ActionId.ExportPdf] = ["print", "pdf", "finish", "send to the printer", "make it"],
+        [ActionId.PrintPdf] = ["pdf", "paper", "printer"],
+        [ActionId.ExportDraftPdf] = ["print", "pdf", "proof", "draft copy", "watermark"],
+        [ActionId.SendIt] = ["email", "e-mail", "mail", "send out", "distribute", "post"],
+
+        // The monthly cycle, in the words the committee uses for it.
+        [ActionId.StartFromLastMonth] = ["new", "next month", "begin", "start", "carry forward"],
+        [ActionId.NewFromTemplate] = ["new", "blank", "start", "layout"],
+        [ActionId.RestoreDocument] = ["lost", "crash", "gone", "recover", "backup", "power cut"],
+        [ActionId.ReviewNewsletter] = ["check", "mistakes", "before i send", "look it over"],
+        [ActionId.CheckSpelling] = ["spelling", "spell check", "misspelled", "typo"],
+        [ActionId.ReadAloud] = ["speak", "voice", "hear", "proofread", "out loud"],
+        [ActionId.ShowLastYear] = ["last year", "previous", "old issue", "what did we say"],
+
+        // The address book. Nobody calls it that until the app teaches them to.
+        [ActionId.ShowPeople] = ["members", "roster", "brethren", "addresses", "people", "list"],
+        [ActionId.ImportPeople] = ["members", "roster", "spreadsheet", "excel", "csv", "bring in"],
+        [ActionId.ExportPeople] = ["members", "roster", "spreadsheet", "excel", "save the list"],
+
+        // The words on the page.
+        [ActionId.BulletList] = ["bullet", "points", "dots", "list"],
+        [ActionId.NumberList] = ["numbered", "numbers", "1 2 3", "list"],
+        [ActionId.FontsAndStyles] = ["font", "typeface", "size", "look", "appearance"],
+        // The two complaints are mirror images, so their words must not overlap: somebody typing
+        // "too small" wants the writing made bigger, and a shared word would let Smaller win it.
+        [ActionId.BiggerText] = ["font", "size", "larger", "too small", "cannot read"],
+        [ActionId.SmallerText] = ["font", "size", "shrink", "does not fit", "runs over"],
+        [ActionId.InsertPhrase] = ["death", "passed away", "sick", "funeral", "hard news", "wording"],
+
+        // Undoing a mistake is the single most-asked question from this audience.
+        [ActionId.Undo] = ["mistake", "wrong", "go back", "revert", "oops"],
+        [ActionId.Redo] = ["mistake", "forward", "put it back"],
+
+        // Looking at the app itself.
+        [ActionId.Settings] = ["colours", "colors", "dark", "theme", "bigger app", "contrast"],
+        [ActionId.ZoomIn] = ["bigger", "closer", "magnify", "cannot see"],
+        [ActionId.ZoomOut] = ["smaller", "further", "whole page"],
+        [ActionId.ShowExampleIssue] = ["example", "sample", "what should it look like"],
+    };
+
+    /// <summary>The words for one action, or nothing if the title already says it.</summary>
+    public static IReadOnlyList<string> For(string actionId) =>
+        Words.TryGetValue(actionId, out string[]? words) ? words : [];
+
+    /// <summary>Every action that has extra words, for the test that they all still exist.</summary>
+    public static IReadOnlyCollection<string> ActionsWithExtraWords => Words.Keys;
+}

@@ -2973,7 +2973,24 @@ fictional fixtures. **Privacy (§0 rule 7):** the output is a page of real names
 it writes only to a user-chosen path via the save dialog, exactly as roster export does; no
 default location, never a fixture, and the privacy gate re-runs.
 
-### M63 — How do I…? (M)
+### M63 — How do I…? (M) — **delivered 2026-08-09, `docs/M63-spec.md`**
+
+> **The help is generated from the action catalog, so it cannot drift from the app** — one topic per
+> catalog entry, asserted equal by test, which means adding a command *is* adding its answer and a
+> stale sentence has nowhere to live. The menu path in each answer is read off the live menu bar at
+> the moment the window opens (every item already carries its action id in `Tag`, the M11
+> discipline), so it describes the app that is running rather than the app somebody documented once.
+> The only hand-written text is a small synonym table for the gap between the app's vocabulary and
+> the user's — "picture" for photo, "print" for the PDF, "members" for the address book — proved by
+> a corpus test that ranks each real word against the command it means.
+>
+> Two findings from writing that corpus: "too small" and "shrink" must not share a word, or Bigger
+> and Smaller steal each other's complaint; and "mistake" is genuinely ambiguous in this app, so it
+> was **left** ranking third behind the two commands literally about mistakes rather than forced to
+> Undo. The tour is five screens on the shape of a month, marked seen the moment it opens — skipping
+> counts as deciding. `HasSeenTheTour` defaults to false, so an existing committee sees it once after
+> updating; that is the safer wrong answer, because the successor who inherited the laptop is the
+> person the tour is most for.
 
 **Goal.** "Show me an example newsletter" exists; a way to ask the app how to do something does
 not. This audience will not read a README on GitHub — the help has to live where the confusion

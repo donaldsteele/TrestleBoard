@@ -377,6 +377,14 @@
       <!-- Updates are automatic and quiet (docs/M10-spec.md §2); this item exists so someone who
            wonders "am I on the newest one?" gets an answer instead of having to wonder. -->
       <MenuItem Header="_Help" AutomationProperties.Name="Help menu">
+        <!-- M63: first in the menu and on F1, because it is the way to everything else in it. -->
+        <MenuItem Header="_How do I…?" Tag="help.howDoI"
+                  Click="OnActionClicked" InputGesture="F1"
+                  AutomationProperties.Name="How do I…?" />
+        <MenuItem Header="Show me _round again" Tag="help.tour"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Show me round again" />
+        <Separator />
         <MenuItem Header="_Check for an update" Tag="help.checkForUpdates"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Check for an update" />

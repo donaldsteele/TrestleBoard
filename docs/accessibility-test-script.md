@@ -738,6 +738,71 @@ take back.
 
 ---
 
+## 16. Asking the app how to do something (M63)
+
+This section matters more than its length suggests. A screen-reader user who cannot work out how to
+do something arrives *here* — so if any part of this app has to be reachable by ear, it is this
+part. Everything below must work without a mouse.
+
+**16.1** From anywhere in the main window, press `F1`.
+**What you should hear:** the window's name, "How do I…?", and then the box named "Type what you are
+trying to do". Focus must already be **in the box** — you should be able to start typing without
+pressing Tab first. The window is **not modal**: the newsletter behind it stays reachable, which is
+deliberate, because "Take me there" would be a lie otherwise.
+
+**16.2** Without typing anything, Tab once to the list.
+**What you should hear:** "The things TrestleBoard can do", and the first entry, which names a
+command and the part of the app it belongs to. Confirm the count above it was announced as
+everything the app can do rather than as a number on its own.
+
+**16.3** Go back to the box and type `picture`.
+**What you should hear:** the count change announced politely — it is a live region, so it should
+arrive without you asking, and it should not interrupt your typing. Confirm it says how many things
+matched rather than only a digit.
+
+**16.4** Tab to the list and read the first entry, then Tab on.
+**What you should hear:** the answer is **already open** for the first entry without you choosing
+it. You should hear one sentence saying what the command does, then a sentence naming which menu it
+is in, then its keyboard shortcut if it has one. The menu path is read from the menu bar itself, so
+it must match what you find if you go there — check one.
+
+**16.5** Type `kubernetes` into the box.
+**What you should hear:** a sentence saying nothing matched **and what to do next**. Silence, or a
+bare "0", is a failure of this step: somebody who is already unsure will read it as having broken
+the app.
+
+**16.6** Empty the box, type `bold`, Tab to the list and Tab on to the buttons.
+**What you should hear:** a button named "Take me there". Press it with Space, and confirm the
+command actually ran on the newsletter behind — and that **this window stayed open**.
+
+**16.7** Now click into a text frame so no picture is selected, come back to this window (`F1`) and
+search for `sideways`.
+**What you should hear:** the answer for fixing a picture, and — instead of a "Take me there"
+button — a plain sentence saying why it cannot be done right now. Confirm the reason is the *same
+wording* the menu bar gives for the same command in the same state. A silent missing button is a
+failure.
+
+**16.8** Press `Escape`.
+**What you should hear:** focus returning to the main window. Confirm the help window closed.
+
+**16.9** Open **Help → Show me round again**.
+**What you should hear:** the tour window named with its screen count — "A quick look round —
+Screen 1 of 5" — and then the heading read out. Tab through and confirm there are Back, Next and
+"Skip this" buttons, that Back is **absent** on the first screen rather than merely dimmed, and that
+`Alt+N` and `Alt+B` move between screens.
+
+**16.10** Walk to screen 5.
+**What you should hear:** each new screen's heading read out **without you asking** — the heading
+takes focus on every move, which is how this app makes a whole panel announce itself. Confirm the
+progress text is spoken as "Screen 4 of 5" and not just "4", and that on the last screen the
+buttons have become "Done" and "Close".
+
+**16.11** Press `Escape` to leave the tour, then close and reopen TrestleBoard.
+**What you should confirm:** the tour does **not** come back on its own. Skipping it counts as
+having seen it. **Help → Show me round again** must still bring it back on request.
+
+---
+
 ## Results table
 
 Copy this table (or the row shape) into a spreadsheet or a copy of this file as you go. Use the
@@ -847,6 +912,17 @@ step numbers from above so the full "what you should hear" text doesn't need to 
 | 15.9 | | | | |
 | 15.10 | | | | |
 | 15.11 | | | | the one step in this script that needs a mouse |
+| 16.1 | | | | focus must already be in the box |
+| 16.2 | | | | |
+| 16.3 | | | | the count is a polite live region |
+| 16.4 | | | | the menu path must match where the command really is |
+| 16.5 | | | | silence or a bare "0" is a failure |
+| 16.6 | | | | the window must stay open behind it |
+| 16.7 | | | | same wording as the menu bar's reason |
+| 16.8 | | | | |
+| 16.9 | | | | Back absent, not dimmed, on screen 1 |
+| 16.10 | | | | the heading takes focus on every move |
+| 16.11 | | | | shown once; skipping counts as seeing it |
 
 Add rows for anything else you notice along the way, even if it isn't in a numbered step.
 

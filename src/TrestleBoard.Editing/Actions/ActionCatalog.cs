@@ -326,6 +326,13 @@ public static class ActionCatalog
             "Puts your address book back as it was on an earlier day.", ActionGroup.People),
 
         // ---- Help -------------------------------------------------------------------------------
+        new(ActionId.HowDoI, "How do I…?",
+            "Opens a search box over everything TrestleBoard can do. Type it in your own words.",
+            ActionGroup.Help, "F1", IsPrimary: true),
+        new(ActionId.ShowTheTour, "Show me round again",
+            "Walks through how a month goes, in five screens. The same one you were shown the first "
+            + "time TrestleBoard opened.",
+            ActionGroup.Help),
         new(ActionId.CheckForUpdates, "Check for an update", "Asks whether a newer TrestleBoard exists.",
             ActionGroup.Help),
         new(ActionId.About, "About TrestleBoard", "Shows which version this is.", ActionGroup.Help),
@@ -407,6 +414,9 @@ public static class ActionCatalog
                 or ActionId.ToggleActionPanel or ActionId.CheckForUpdates or ActionId.About
                 or ActionId.FontLicences or ActionId.Licence or ActionId.ShowExampleIssue
                 or ActionId.ManageTemplates
+                // M63: help must never be unavailable. An app that will not tell you how to do
+                // something because of what you have selected is the exact moment help is needed.
+                or ActionId.HowDoI or ActionId.ShowTheTour
                 or ActionId.ShowPeople or ActionId.ImportPeople =>
                 ActionAvailability.Available,
 

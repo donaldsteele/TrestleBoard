@@ -11,6 +11,7 @@ using Avalonia.VisualTree;
 using TrestleBoard.App.Actions;
 using TrestleBoard.App.Canvas;
 using TrestleBoard.App.Dialogs;
+using TrestleBoard.App.Help;
 using TrestleBoard.App.Settings;
 using TrestleBoard.App.Startup;
 using TrestleBoard.App.Theme;
@@ -689,6 +690,11 @@ public partial class MainWindow : Window
     /// </summary>
     private async Task RunStartupAsync()
     {
+        // M63: the tour comes before everything, because everything else here assumes the person
+        // already knows what this app is for. It shows once and then never again, and skipping it
+        // counts as having seen it.
+        await ShowTheTourAsync(becauseTheyAsked: false);
+
         // Double-clicking a .tboard file is an instruction, not a suggestion: it skips both the
         // recovery offer and the start screen (docs/M10-spec.md §3).
         if (StartupOptions.DocumentPath is { } path && OpenDocumentFromPath(path))
@@ -1271,6 +1277,90 @@ public partial class MainWindow : Window
         Announce(questions == 0
             ? "Nothing jumped out at me. We will look at each page together."
             : $"There {(questions == 1 ? "is 1 thing" : $"are {questions} things")} worth asking you about.");
+    }
+
+    private HelpWindow? _helpWindow;
+
+    internal HelpWindow? HelpWindowForTest => _helpWindow;
+
+    internal TourWindow? TourWindowForTest { get; private set; }
+
+    /// <summary>
+    /// Opens "How do I…?" (M63). Not modal, for <see cref="ShowReview"/>'s reason: "Take me there"
+    /// would be a lie if the user were not allowed to touch what it took them to.
+    ///
+    /// <para>The menu paths are read off this window's own menu bar at the moment it opens, so the
+    /// help describes the app that is running rather than the app somebody documented once.</para>
+    /// </summary>
+    internal void ShowHowDoI()
+    {
+        if (_helpWindow is not null)
+        {
+            _helpWindow.Activate();
+            return;
+        }
+
+        _helpWindow = new HelpWindow(
+            MenuPaths.From(this),
+            id => ActionCatalog.Evaluate(id, CurrentActionContext),
+            id => _actions.RunAsync(id));
+        _helpWindow.Closed += (_, _) => _helpWindow = null;
+        _helpWindow.Show(this);
+        _helpWindow.Activate();
+    }
+
+    /// <summary>
+    /// The five-screen tour (M63). Shown once on a new installation, and afterwards only when asked
+    /// for from the Help menu.
+    /// </summary>
+    /// <param name="becauseTheyAsked">
+    /// True from the menu item, false from start-up. The start-up call is the one that checks
+    /// whether it has been seen; asking for it again always works, or "Show me round again" would
+    /// be a menu item that silently did nothing.
+    /// </param>
+    internal async Task ShowTheTourAsync(bool becauseTheyAsked)
+    {
+        if (!ClaimTheTour(becauseTheyAsked))
+        {
+            return;
+        }
+
+        // Modal, unlike the help window. Nothing behind it matters yet on a first run, and at
+        // start-up it has to finish before the start screen appears or it would open underneath it.
+        var tour = new TourWindow();
+        TourWindowForTest = tour;
+        tour.Closed += (_, _) => TourWindowForTest = null;
+        await tour.ShowDialog(this);
+    }
+
+    /// <summary>
+    /// Whether to open the tour, and — as one step — the record that it has now been offered.
+    ///
+    /// <para>Separate from opening it so the "once, and only once" rule can be tested without a
+    /// modal window: the decision is the part worth holding, and a test that has to drive a dialog
+    /// to check it would be testing the dialog.</para>
+    ///
+    /// <para>Marked seen when it <b>opens</b>, not when it finishes. Somebody who closes it on
+    /// screen two has decided; showing it again next Tuesday would be overriding that decision.
+    /// </para>
+    /// </summary>
+    internal bool ClaimTheTour(bool becauseTheyAsked)
+    {
+        bool seen = _settings.HasSeenTheTour;
+        if (!seen)
+        {
+            _settings = _settings with { HasSeenTheTour = true };
+            _settings.Save();
+        }
+
+        return becauseTheyAsked || !seen;
+    }
+
+    /// <summary>Puts the flag back after a test has tripped it — the settings file is shared state.</summary>
+    internal void SetHasSeenTheTourForTest(bool seen)
+    {
+        _settings = _settings with { HasSeenTheTour = seen };
+        _settings.Save();
     }
 
     /// <summary>

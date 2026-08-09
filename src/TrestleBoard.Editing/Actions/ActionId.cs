@@ -294,4 +294,18 @@ public static class ActionId
     /// at, which is exactly what someone opening this app for the first time wants to see.
     /// </summary>
     public const string ShowExampleIssue = "help.exampleIssue";
+
+    /// <summary>
+    /// M63: the "How do I…?" window. Its index is generated from this very catalog, so adding a
+    /// command adds its answer — the help cannot fall behind the app because there is nowhere for a
+    /// stale sentence to live.
+    /// </summary>
+    public const string HowDoI = "help.howDoI";
+
+    /// <summary>
+    /// M63: the five-screen tour, shown once on a new installation and afterwards only when asked
+    /// for from here. Somebody who skipped it in their first minute needs a way back to it that is
+    /// not reinstalling the app.
+    /// </summary>
+    public const string ShowTheTour = "help.tour";
 }

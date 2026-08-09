@@ -160,6 +160,8 @@ internal sealed class ActionRunner
             [ActionId.FontLicences] = _ => window.ShowFontLicencesAsync(),
             [ActionId.Licence] = _ => window.ShowLicenceAsync(),
             [ActionId.ShowExampleIssue] = Sync(window.OpenIssueSample),
+            [ActionId.HowDoI] = Sync(window.ShowHowDoI),
+            [ActionId.ShowTheTour] = _ => window.ShowTheTourAsync(becauseTheyAsked: true),
         };
 
         foreach ((string actionId, string widgetTypeId) in WidgetInserts)

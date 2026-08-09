@@ -1,7 +1,11 @@
+using System;
+using System.Collections.Generic;
 using TrestleBoard.App;
 using TrestleBoard.App.Dialogs;
+using TrestleBoard.App.Help;
 using TrestleBoard.App.Settings;
 using TrestleBoard.Editing;
+using TrestleBoard.Editing.Actions;
 using TrestleBoard.Roster;
 using TrestleBoard.Widgets.Builtins.OfficersTable;
 using TrestleBoard.Widgets.Roster;
@@ -132,6 +136,41 @@ internal static class ShotList
             }),
 
         // ---- Dialogs --------------------------------------------------------------------------------
+        // M63. The help window is shot with a word typed into it rather than empty, because an
+        // empty one shows a list and the thing worth showing is that plain words find the answer.
+        new("how-do-i", ShotKind.Dialog, "M63",
+            "Ask in your own words; the answers come from the app itself.",
+            "The How do I question window. The word \"picture\" has been typed into a large search "
+            + "box, and underneath is a list of matching things the app can do, with the first one "
+            + "open showing what it does, which menu it is in and its keyboard shortcut.",
+            stage =>
+            {
+                HelpWindow window = stage.OpenDialog(
+                    new HelpWindow(
+                        new Dictionary<string, string>(StringComparer.Ordinal)
+                        {
+                            [ActionId.InsertPhoto] = "Insert " + MenuPaths.Arrow.Trim() + " Insert a picture",
+                        },
+                        _ => ActionAvailability.Available,
+                        _ => Task.CompletedTask),
+                    height: 720);
+                window.TypeForTest("picture");
+                return Task.FromResult(Stage.Shoot(window));
+            }),
+
+        new("first-run-tour", ShotKind.Dialog, "M63",
+            "Five screens on how a month goes, shown once.",
+            "The second screen of the welcome tour, headed \"Start from last month\", explaining "
+            + "that a new newsletter begins as a copy of the last one with the news cleared out. "
+            + "Underneath are large Back, Next and Skip this buttons.",
+            stage =>
+            {
+                var tour = new TourWindow();
+                TourWindow window = stage.OpenDialog(tour, height: 420);
+                window.GoToForTest(1);
+                return Task.FromResult(Stage.Shoot(window));
+            }),
+
         new("start-screen", ShotKind.Dialog, null,
             "The three ways to begin a month's newsletter.",
             "The start screen, offering three large buttons: start from last month, open a "

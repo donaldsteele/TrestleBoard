@@ -65,6 +65,22 @@ public sealed record AppSettings
     /// </summary>
     public string? OldIssuesFolder { get; init; }
 
+    /// <summary>
+    /// Whether the five-screen tour has been shown (M63). False until it has, so a brand-new
+    /// installation gets it once and nobody else ever does.
+    ///
+    /// <para><b>Defaults to false, which means an existing committee sees the tour once after
+    /// updating.</b> That is deliberate and is the safer of the two wrong answers: defaulting to
+    /// true would hide it from everybody who already has TrestleBoard, including the successor who
+    /// inherited the laptop and has never seen the app before — which is the person the tour is
+    /// most for. One skippable window once is the cost.</para>
+    ///
+    /// <para>Not to be confused with Velopack's <c>OnFirstRun</c> in <c>Program.cs</c>: that is an
+    /// installer hook which runs and exits before Avalonia is up, so a tour hung off it would run
+    /// with no window and never be seen again.</para>
+    /// </summary>
+    public bool HasSeenTheTour { get; init; }
+
     [JsonIgnore]
     public double UiScale => Math.Clamp(UiScalePercent, MinScalePercent, MaxScalePercent) / 100d;
 
