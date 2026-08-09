@@ -32,6 +32,7 @@ public sealed class PageFlowController
     /// <summary>Plain-language feedback for the shell's status line (PLAN.md §6).</summary>
     public string? StatusMessage { get; private set; }
 
+
     public int PageCount => _session.Document.Pages.Count;
 
     // ---- page structure ----------------------------------------------------------------------

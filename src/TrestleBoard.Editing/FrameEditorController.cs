@@ -72,6 +72,7 @@ public sealed class FrameEditorController
     /// <summary>Plain-language feedback for the shell's status line (PLAN.md §6).</summary>
     public string? StatusMessage { get; private set; }
 
+
     public IReadOnlyList<SnapGuide> SnapGuides => _snapGuides;
 
     /// <summary>Selection rect: the live preview while dragging, else the block's own rect.</summary>

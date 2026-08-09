@@ -54,6 +54,14 @@ public sealed class PhotoController
     public string? StatusMessage { get; private set; }
 
     /// <summary>
+    /// Forgets whatever was last said (M70). Called at the top of every operation so a one-shot
+    /// sentence cannot outlive the act it describes — the shell polls this property on every
+    /// refresh, so anything left in it keeps being repeated.
+    /// </summary>
+    private void ClearStatus() => StatusMessage = null;
+
+
+    /// <summary>
     /// M27: the undo depth, so a live-preview dialog can offer a real Cancel — see
     /// <see cref="DocumentSession.UndoDepth"/>. Exposed here rather than handing the whole session
     /// to a window, which would let a dialog execute commands the controller knows nothing about.
@@ -253,6 +261,8 @@ public sealed class PhotoController
     /// </summary>
     public bool FixPhoto(string blockId)
     {
+        ClearStatus();
+
         if (GetPhoto(blockId) is not { } frame)
         {
             return false;
@@ -386,6 +396,8 @@ public sealed class PhotoController
     /// </summary>
     public bool SetPosition(string blockId, NormalizedRect crop)
     {
+        ClearStatus();
+
         if (GetPhoto(blockId) is not { } frame)
         {
             return false;
@@ -497,6 +509,8 @@ public sealed class PhotoController
     /// <summary>Back to the untouched original — the reassuring escape hatch.</summary>
     public bool ResetPhoto(string blockId)
     {
+        ClearStatus();
+
         if (GetPhoto(blockId) is null)
         {
             return false;
@@ -517,6 +531,8 @@ public sealed class PhotoController
     /// </summary>
     public bool SetAltText(string blockId, string altText)
     {
+        ClearStatus();
+
         if (GetPhoto(blockId) is null)
         {
             return false;
@@ -531,6 +547,8 @@ public sealed class PhotoController
     /// <summary>The words printed under the picture; null or blank removes the caption (M18).</summary>
     public bool SetCaption(string blockId, string? caption)
     {
+        ClearStatus();
+
         if (GetPhoto(blockId) is null)
         {
             return false;

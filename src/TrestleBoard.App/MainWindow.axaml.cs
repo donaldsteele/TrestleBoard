@@ -125,6 +125,7 @@ public partial class MainWindow : Window
     private readonly WidgetLayoutProvider _widgetProvider = WidgetLayoutProvider.CreateDefault();
     private ActionContext _context = ActionContext.Empty;
     private string? _announcement;
+
     private int _pageIndex;
     private bool _fitToWindow = true;
     private bool _exportedThisSession;
@@ -273,6 +274,15 @@ public partial class MainWindow : Window
     internal void Announce(string message)
     {
         _announcement = message;
+
+        // M70: an identical string is not a property change, so Avalonia raises nothing and the
+        // polite live region stays silent. Pressing a blocked command twice used to answer once.
+        // Clearing first makes the second press a real change, and a screen reader hears it again.
+        if (string.Equals(StatusLabel.Text, message, StringComparison.Ordinal))
+        {
+            StatusLabel.Text = string.Empty;
+        }
+
         StatusLabel.Text = message;
     }
 
@@ -5783,6 +5793,13 @@ public partial class MainWindow : Window
 
     private void UpdateStatus()
     {
+        // Polled, deliberately. A controller's StatusMessage is LIVE STATE, not a one-shot: link
+        // mode says "click the frame to continue into" for exactly as long as link mode is armed,
+        // and it disappears because the controller stops saying it. Draining these instead was
+        // tried and reverted — it made a sentence vanish on the next selection change, and left a
+        // stale link-mode instruction on screen after the mode ended. The staleness bug the audit
+        // found is a one-shot message stored in a state-shaped field, and it is fixed where it is
+        // written rather than here.
         string? message = _pages?.StatusMessage
             ?? _widgets?.StatusMessage
             ?? _photos?.StatusMessage
@@ -5794,7 +5811,19 @@ public partial class MainWindow : Window
                 ? "There is more writing than fits — 'Make the rest fit' (Ctrl+Shift+M) will flow it."
                 : null);
 
-        StatusLabel.Text = message ?? _announcement ?? ModeHint() ?? "";
+        // M70. Two rules, and the order is the whole of the fix.
+        //
+        // THE ANNOUNCEMENT WINS. It is the sentence the command the user just invoked chose to say —
+        // most often the plain-language reason it refused — and it used to lose to whatever a
+        // controller happened to be holding, so M11's "nothing becomes unavailable without saying
+        // why" was broken at the point of delivery.
+        //
+        // A SENTENCE STAYS UNTIL SOMETHING NEWER REPLACES IT. Draining the controllers above stops a
+        // message resurfacing three commands later, but a refresh happens on every selection change,
+        // so displaying only what was drained THIS pass would wipe a sentence a fraction of a second
+        // after it appeared — over-correcting the bug into a different way of not being read. What
+        // was last said is held here and kept on screen until the app has something newer.
+        StatusLabel.Text = _announcement ?? message ?? ModeHint() ?? "";
         _announcement = null;
     }
 

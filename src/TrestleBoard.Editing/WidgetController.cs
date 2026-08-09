@@ -32,6 +32,7 @@ public sealed class WidgetController
     /// <summary>Plain-language feedback for the shell's status line (PLAN.md §6).</summary>
     public string? StatusMessage { get; private set; }
 
+
     public bool IsWidget(string? blockId) => Find(blockId) is not null;
 
     public string? GetWidgetType(string? blockId) => Find(blockId)?.WidgetType;
