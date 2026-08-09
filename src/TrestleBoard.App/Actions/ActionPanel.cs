@@ -239,6 +239,10 @@ internal sealed class ActionPanel : Border
             Padding = new Avalonia.Thickness(isPrimary ? 12 : 10, 8),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Left,
+
+            // The action this button runs, so anything that has to find it again in the rebuilt
+            // panel can — the panel is cleared and rebuilt whole on every refresh.
+            Tag = actionId,
         };
 
         // Primary carries its own treatment; everything else takes the action affordance. Panel

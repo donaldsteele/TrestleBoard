@@ -3696,6 +3696,9 @@ public partial class MainWindow : Window
     /// The panel's "Paragraph style ▸" opens the same list the Format menu shows, beside the button
     /// that was pressed — a menu the user can reach without leaving the panel.
     /// </summary>
+    /// <summary>The menu the panel button opens, for the test that it actually opens.</summary>
+    internal MenuFlyout? ParagraphStyleFlyoutForTest { get; private set; }
+
     internal void ShowParagraphStyles(Control? source)
     {
         if (source is null)
@@ -3721,8 +3724,32 @@ public partial class MainWindow : Window
             flyout.Items.Add(item);
         }
 
-        flyout.ShowAt(source);
+        ParagraphStyleFlyoutForTest = flyout;
+
+        // NOT `flyout.ShowAt(source)` — and this is the whole of the bug it fixes. Every command
+        // ends with ActionRunner refreshing the shell, and the refresh clears the action panel and
+        // builds it again from scratch. So the button that was just pressed is torn out of the
+        // visual tree a moment after this returns, and a flyout anchored to a detached control
+        // closes on the spot: the user pressed "Paragraph style ▸", nothing appeared, and there was
+        // nothing to see in any log because nothing had gone wrong — the menu had opened and shut.
+        //
+        // Opening it on the next turn of the loop puts it against whichever button is standing in
+        // the rebuilt panel, which is the same offer in the same place to the person looking at it.
+        Avalonia.Threading.Dispatcher.UIThread.Post(
+            () => flyout.ShowAt(PanelButtonFor(ActionId.ParagraphStyle) ?? source));
     }
+
+    /// <summary>
+    /// The action panel's button for one command, as it stands right now. Null when the panel is
+    /// not offering it — in which case the caller falls back to whatever it was given.
+    /// </summary>
+    private Button? PanelButtonFor(string actionId) =>
+        _panel.GetLogicalDescendants()
+            .OfType<Button>()
+            .FirstOrDefault(b =>
+                b.Tag is string id
+                && string.Equals(id, actionId, StringComparison.Ordinal)
+                && b.IsAttachedToVisualTree());
 
     // ---- Fonts and sizes (PLAN.md M14) ---------------------------------------------------------
 
