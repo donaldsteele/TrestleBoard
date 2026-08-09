@@ -152,3 +152,17 @@ jobs:
             --releaseName "TrestleBoard ${{ steps.version.outputs.value }}" \
             --merge \
             --publish
+
+      # A version with a SemVer pre-release suffix (v0.10.0-preview.1) is marked as a GitHub
+      # pre-release. That is what makes "preview" mean anything: VelopackUpdateChannel builds its
+      # GithubSource with prerelease: false, so an installed copy on a committee member's machine
+      # is not offered this build and cannot auto-update onto it. Without this step a preview tag
+      # publishes an ordinary release and every installation takes it on next close.
+      #
+      # gh rather than vpk's --pre, so it does not depend on a flag of the pinned CLI. Idempotent:
+      # each RID job runs it against the same merged release.
+      - name: Mark a pre-release version as a pre-release
+        if: contains(steps.version.outputs.value, '-')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${{ steps.version.outputs.tag }}" --prerelease --repo "${{ github.repository }}"
