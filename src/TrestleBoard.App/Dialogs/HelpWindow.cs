@@ -187,6 +187,22 @@ public sealed class HelpWindow : Window
 
     internal void ChooseForTest(int index) => _list.SelectedIndex = index;
 
+    /// <summary>
+    /// M70(g): a different newsletter is open now.
+    ///
+    /// <para>This window survives a document switch where the other four non-modal windows close,
+    /// because it holds no copy of anything: the answers come from the catalog, the menu paths from
+    /// the menu bar, and "Take me there" asks whether the command can run at the moment it is
+    /// pressed. The one thing that went stale is the answer already drawn — "Take me there" was
+    /// shown or hidden, and the reason beside it written, for a newsletter that has gone. So the
+    /// answer is drawn again, and the window says why it changed under them.</para>
+    /// </summary>
+    internal void ADifferentNewsletterIsOpen()
+    {
+        ShowAnswer();
+        Echo("A different newsletter is open now, so this answer has been checked again against it.");
+    }
+
     /// <summary>Runs the search and rebuilds the list. Called on every keystroke.</summary>
     private void Look()
     {

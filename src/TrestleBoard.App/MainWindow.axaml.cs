@@ -273,6 +273,16 @@ public partial class MainWindow : Window
     /// </summary>
     internal void Announce(string message)
     {
+        // M70(g): a document switch closes the windows that were showing the newsletter being
+        // replaced, and every switch path ends with a sentence of its own — "Carried forward…",
+        // "Your work is back…". The status bar holds one sentence at a time, so the reason a window
+        // vanished is added to that sentence rather than written over by it a moment later.
+        if (_switchNote is { Length: > 0 } note)
+        {
+            _switchNote = null;
+            message = string.IsNullOrEmpty(message) ? note : message + " " + note;
+        }
+
         _announcement = message;
 
         // M70: an identical string is not a property change, so Avalonia raises nothing and the
@@ -284,6 +294,24 @@ public partial class MainWindow : Window
         }
 
         StatusLabel.Text = message;
+    }
+
+    /// <summary>
+    /// M70(g): the sentence naming whatever a document switch has just closed, waiting for the next
+    /// announcement to carry it. Null when the switch closed nothing.
+    /// </summary>
+    private string? _switchNote;
+
+    /// <summary>
+    /// For the document-switch paths that have no sentence of their own — opening a newsletter from
+    /// a file, starting from a template. A window that shut itself still has to say why.
+    /// </summary>
+    private void SayWhatTheSwitchClosed()
+    {
+        if (_switchNote is not null)
+        {
+            Announce(string.Empty);
+        }
     }
 
     /// <summary>
@@ -862,6 +890,7 @@ public partial class MainWindow : Window
             // Recovery offers to put the work back where it came from, so the path has to be known.
             DocumentPath = files[0].TryGetLocalPath();
             ShowPackage(TboardContainer.Load(buffer));
+            SayWhatTheSwitchClosed();
         }
         catch (Exception ex) when (ex is Core.Migrations.UnsupportedFormatException or System.IO.InvalidDataException)
         {
@@ -897,6 +926,7 @@ public partial class MainWindow : Window
             using var buffer = new MemoryStream(File.ReadAllBytes(path));
             DocumentPath = path;
             ShowPackage(TboardContainer.Load(buffer));
+            SayWhatTheSwitchClosed();
             return true;
         }
         catch (Exception ex) when (ex is IOException
@@ -3570,10 +3600,18 @@ public partial class MainWindow : Window
     internal UpdateCoordinator? UpdatesForTest => _updates;
 
     /// <summary>Also the headless-test entry point (no file dialog involved).</summary>
-    internal void OpenSample() => ShowPackage(SampleDocument.CreatePackage(SamplePhoto.CreatePng()));
+    internal void OpenSample()
+    {
+        ShowPackage(SampleDocument.CreatePackage(SamplePhoto.CreatePng()));
+        SayWhatTheSwitchClosed();
+    }
 
     /// <summary>The whole five-page issue fixture (docs/M8-spec.md §6); the headless tests' entry point.</summary>
-    internal void OpenIssueSample() => ShowPackage(SampleIssue.CreatePackage(SamplePhoto.CreatePng()));
+    internal void OpenIssueSample()
+    {
+        ShowPackage(SampleIssue.CreatePackage(SamplePhoto.CreatePng()));
+        SayWhatTheSwitchClosed();
+    }
 
     internal string? PageLabelTextForTest => PageLabel.Text;
 
@@ -3598,6 +3636,7 @@ public partial class MainWindow : Window
     {
         DocumentPath = null;
         ShowPackage(TemplateLibrary.Create(templateId));
+        SayWhatTheSwitchClosed();
     }
 
     /// <summary>
@@ -3895,8 +3934,36 @@ public partial class MainWindow : Window
         //
         // Opening it on the next turn of the loop puts it against whichever button is standing in
         // the rebuilt panel, which is the same offer in the same place to the person looking at it.
-        Avalonia.Threading.Dispatcher.UIThread.Post(
-            () => flyout.ShowAt(PanelButtonFor(ActionId.ParagraphStyle) ?? source));
+        // M70(h): and NOT `?? source` either, which is what stood here. `source` is the very
+        // control the paragraph above is about — so in the one case the fallback existed for, the
+        // menu opened against a detached button and shut again: the original bug, in a narrow case.
+        //
+        // The panel stops offering paragraph style only when the writing it belonged to is no
+        // longer being edited, and that is the same moment `AvailableParagraphStyles` goes empty —
+        // so the menu being anchored somewhere would be a menu with nothing in it. A sentence is
+        // the honest answer, and the catalog already has it in the words the menu bar would use.
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (PanelButtonFor(ActionId.ParagraphStyle) is { } offer)
+            {
+                flyout.ShowAt(offer);
+                return;
+            }
+
+            ParagraphStyleFlyoutForTest = null;
+
+            ActionAvailability can = ActionCatalog.Evaluate(ActionId.ParagraphStyle, CurrentActionContext);
+            if (can.IsAvailable)
+            {
+                // Allowed, but with no button standing in the panel to hang it on — the panel is
+                // folded away on a narrow window. The menu bar carries the same list and never
+                // leaves the window, so the offer is still made, one place along.
+                ParagraphStyleMenu.Open();
+                return;
+            }
+
+            Announce(can.Reason);
+        });
     }
 
     /// <summary>
@@ -5739,9 +5806,9 @@ public partial class MainWindow : Window
         _pageIndex = 0;
         _exportedThisSession = false;
 
-        // M21: a find window left open over the newsletter that has just been closed would be
-        // searching a document nobody is looking at any more.
-        _findWindow?.Close();
+        // M21 for the find window, M70(g) for the other four: a window left open over the
+        // newsletter that has just been closed is showing a newsletter nobody has any more.
+        _switchNote = CloseWhatIsShowingTheOldNewsletter();
         _find = new FindController(session, editor);
         _find.Changed += (_, _) =>
         {
@@ -5766,7 +5833,6 @@ public partial class MainWindow : Window
         // vanishing under a half-typed word is exactly the jitter this audience does not need, and
         // a whole page re-checked per character is work nobody asked for. The dotted line is a
         // reminder, not a running commentary.
-        _spellingWindow?.Close();
         RefreshSpellingMarks();
 
         // M24: a newsletter just opened from a file matches that file; one carried forward or put
@@ -5807,6 +5873,85 @@ public partial class MainWindow : Window
         _fitToWindow = true;
         ApplyFitZoom();
         RefreshActions();
+    }
+
+    /// <summary>
+    /// M70(g): closes the non-modal windows that are showing the newsletter being replaced, and
+    /// returns the one sentence that says so — null when none of them was open.
+    ///
+    /// <para>Four of the five hold a copy of a newsletter taken at the moment they opened. The
+    /// review's findings are built once and never re-run; the read-back copies the sentence list at
+    /// construction; the spelling walk is a scan of a particular document; and last year's window
+    /// was chosen for <em>this</em> issue's month, so its "Copy this into this month" would put a
+    /// June article into whatever happens to be on screen now. Their "Take me there" buttons would
+    /// be pointing into a newsletter nobody has open. The find window has been closed here since
+    /// M21 for exactly this reason — all that is new is that the app now says so.</para>
+    ///
+    /// <para><b>"How do I…?" is deliberately left open.</b> It holds nothing of the document: the
+    /// menu paths are the app's own, and whether a command can run is asked of the live catalog at
+    /// the moment the button is pressed, which is why it already refuses in plain language rather
+    /// than going somewhere wrong. The one stale thing in it is the answer drawn on screen, which is
+    /// re-checked below against the newsletter that is open now.</para>
+    /// </summary>
+    private string? CloseWhatIsShowingTheOldNewsletter()
+    {
+        var closed = new List<string>();
+
+        if (_findWindow is { } find)
+        {
+            closed.Add(find.Title ?? "Find");
+            _findWindow = null;
+            find.Close();
+        }
+
+        if (_reviewWindow is { } review)
+        {
+            closed.Add(review.Title ?? "Look it over");
+            _reviewWindow = null;
+            review.Close();
+        }
+
+        if (_spellingWindow is { } spelling)
+        {
+            closed.Add(spelling.Title ?? "Check my spelling");
+            _spellingWindow = null;
+            spelling.Close();
+        }
+
+        if (_readAloudWindow is { } reading)
+        {
+            // Its own Closed handler hushes the voice and takes the highlight off the page, which is
+            // the whole of what stopping means here.
+            closed.Add(reading.Title ?? "Read it back to me");
+            _readAloudWindow = null;
+            reading.Close();
+        }
+
+        if (_lastYearWindow is { } lastYear)
+        {
+            closed.Add("Last year's newsletter");
+            _lastYearWindow = null;
+            lastYear.Close();
+        }
+
+        _helpWindow?.ADifferentNewsletterIsOpen();
+
+        if (closed.Count == 0)
+        {
+            return null;
+        }
+
+        string names = closed.Count == 1
+            ? Quote(closed[0])
+            : string.Join(", ", closed.Take(closed.Count - 1).Select(Quote)) + " and " + Quote(closed[^1]);
+
+        return closed.Count == 1
+            ? $"The {names} window has closed, because it was showing the newsletter you had open "
+                + "before this one."
+            : $"The {names} windows have closed, because they were showing the newsletter you had "
+                + "open before this one.";
+
+        static string Quote(string title) => "“" + title + "”";
     }
 
     private void OnCaretReveal(object? sender, CaretRevealEventArgs e)

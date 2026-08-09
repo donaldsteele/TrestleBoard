@@ -969,6 +969,91 @@ picture in the file now — the PDF is kept alongside it, but nothing needs it t
 
 ---
 
+## 21. Does the answer reach you? (M70)
+
+This section is different from the rest. Everywhere else you are checking that a feature works by
+ear; here you are checking that the app **tells you** what it did — and the whole milestone exists
+because four defects in one day were the app doing the right thing silently. Nothing in this section
+can be automated: a test can prove a live region is declared, not that your screen reader spoke it.
+
+Have the reader running throughout, and keep the main window's status bar OUT of view where the step
+says so — behind another window is exactly the situation being tested.
+
+**21.1** With a newsletter open and nothing selected, press `Delete`.
+**What you should hear:** the plain-language reason the command cannot run. Now press it **again**.
+**You should hear the same sentence a second time.** A repeated press that says nothing is the
+defect this step exists for — it is the commonest thing anybody does when they think nothing
+happened.
+
+**21.2** Fix a picture (Format ▸ Fix this picture), then invoke any command that refuses.
+**What you should hear:** the refusal. Not "Picture fixed" — a controller's older sentence used to
+outrank the newest one and the refusal was discarded entirely.
+
+**21.3** Open **Check my spelling** and position it over the status bar. Correct one word, then try
+to correct a second whose word you have already edited by hand.
+**What you should hear:** the answer **inside the spelling window**, not only in the status bar
+behind it.
+
+**21.4** Open **Look it over with me**, and before acting on a finding, delete the frame it points
+at. Now press its button.
+**What you should hear:** that the part has been taken out since the review was made, and that
+nothing was pointed at. Confirm the remedy did **not** run.
+
+**21.5** Open **How do I…?**, find a command that needs something selected, select nothing, and
+press "Take me there".
+**What you should hear:** the reason, in the help window. It used to return in silence.
+
+**21.6** Open **Show me last year's** and press "Copy this into this month" with no cursor in any
+writing.
+**What you should hear:** the refusal, in that window.
+
+**21.7** Open **Read it back to me** on a machine with no working voice (or stop the speech service).
+**What you should hear:** that the computer could not say the sentence out loud, that nothing is
+wrong with the newsletter, and what to do. Confirm the heading does **not** say "Reading" while you
+hear nothing.
+
+**21.8** Select a frame that is already at the front and choose **Move it to the front**. Then press
+`Ctrl+V` with an empty clipboard. Then zoom in until it stops.
+**What you should hear:** a sentence each time saying there was nothing to do. Silence is the failure.
+
+**21.9** Press `Ctrl+Z`.
+**What you should hear:** what was taken back, named — "Taken back: add a text frame." Not silence.
+
+**21.10** Put the caret in some writing, highlight nothing, and press `Ctrl+B`.
+**What you should hear:** that the next words you type will be bold. Nothing changes on screen, so
+this sentence is the only signal that the key did anything.
+
+**21.11** Narrow the window until the action panel folds away, then press the key that toggles it.
+**What you should hear:** that the window is too narrow and the panel stays folded. It used to
+announce that the panel was showing when it was not.
+
+**21.12** Tab to a button in the action panel and press it.
+**What you should confirm:** focus is still on that command afterwards, not lost to the top of the
+window. Every panel button is destroyed and rebuilt after each command.
+
+**21.13** Open a widget's grid editor, leave a required box empty and press **Save it**.
+**What you should hear:** that something needs your attention, how many things, and — as focus
+moves — what is wrong with the first one. This was the worst case in the app: the window simply
+stayed open and said nothing, because the warning was a glyph and a colour.
+
+**21.14** Open **Look it over with me**, then open a different newsletter.
+**What you should hear:** that the window closed, and why. Confirm it is gone rather than still
+offering to take you to a finding in a newsletter that is no longer open.
+
+**21.15** Open **How do I…?**, choose an answer for a command that needs writing selected, then —
+leaving the help window open — start next month's newsletter (File ▸ Start next month's).
+**What you should confirm:** the help window is **still open** — it is the one that holds nothing of
+the newsletter — and **what you should hear** from it is that a different newsletter is open now and
+the answer has been checked again. Then press "Take me there" and confirm it either goes somewhere
+or says why, and never both nothing.
+
+**21.16** Put the caret in some writing, press **Paragraph style** in the action panel, and — before
+the menu appears — click on the page outside any writing.
+**What you should hear:** the plain reason paragraph style needs some writing first. **What you
+should not see** is a menu that flashes open and shuts again with nothing said.
+
+---
+
 ## Results table
 
 Copy this table (or the row shape) into a spreadsheet or a copy of this file as you go. Use the
@@ -1122,6 +1207,22 @@ step numbers from above so the full "what you should hear" text doesn't need to 
 | 20.5 | | | | one undo |
 | 20.6 | | | | a sentence, never a code |
 | 20.7 | | | | it is an ordinary picture in the file |
+| 21.1 | | | | the SECOND press must answer too |
+| 21.2 | | | | the newest sentence wins |
+| 21.3 | | | | in the window, not only the bar behind it |
+| 21.4 | | | | and the remedy must not run |
+| 21.5 | | | | it used to return in silence |
+| 21.6 | | | | |
+| 21.7 | | | | the heading must not claim to be reading |
+| 21.8 | | | | silence is the failure |
+| 21.9 | | | | the step is named |
+| 21.10 | | | | the only signal that the key did anything |
+| 21.11 | | | | it used to report the opposite |
+| 21.12 | | | | focus survives the rebuild |
+| 21.13 | | | | the worst case in the app |
+| 21.14 | | | | closed, and said why |
+| 21.15 | | | | help survives, and re-checks its answer |
+| 21.16 | | | | a sentence, never a menu that vanishes |
 
 Add rows for anything else you notice along the way, even if it isn't in a numbered step.
 
