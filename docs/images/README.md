@@ -18,7 +18,7 @@ regeneration adds a full copy to the repository's history:
 dotnet run --project tools/TrestleBoard.Screenshots -- --only font-picker
 ```
 
-Last regenerated: **2026-08-08**, TrestleBoard **0.1.0**.
+Last regenerated: **2026-08-09**, TrestleBoard **0.1.0**.
 That date covers the run that last touched this file; a `--only` run rewrites it
 while leaving the other images as they were, which is the honest reading of it.
 
@@ -87,6 +87,46 @@ The same window with everything set to twice the size. (the whole editor window,
 `dotnet run --project tools/TrestleBoard.Screenshots -- --only scale-200`
 
 ![The same newsletter page with the menus, buttons and panel text at twice their usual size, and the page itself unchanged.](scale-200.png)
+
+### `how-do-i.png`
+
+Ask in your own words; the answers come from the app itself. (one dialog on its own)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only how-do-i`
+
+![The How do I question window. The word "picture" has been typed into a large search box, and underneath is a list of matching things the app can do, with the first one open showing what it does, which menu it is in and its keyboard shortcut.](how-do-i.png)
+
+### `first-run-tour.png`
+
+Five screens on how a month goes, shown once. (one dialog on its own)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only first-run-tour`
+
+![The second screen of the welcome tour, headed "Start from last month", explaining that a new newsletter begins as a copy of the last one with the news cleared out. Underneath are large Back, Next and Skip this buttons.](first-run-tour.png)
+
+### `pdf-page-picker.png`
+
+The pages of a PDF, as pictures of themselves. (one dialog on its own)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only pdf-page-picker`
+
+![The A page from a PDF window. Two large tiles show small pictures of the pages of a PDF, labelled Page 1 and Page 2, with a sentence above saying the chosen page comes in as a picture.](pdf-page-picker.png)
+
+### `emblem-shelf.png`
+
+Nineteen emblems, bundled and drawn by the app itself. (one dialog on its own)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only emblem-shelf`
+
+![The Add an emblem window. A search box sits at the top, and under it the emblems are laid out as large labelled tiles under headings: the working tools, the lodge, lights and seasons, and ornaments.](emblem-shelf.png)
+
+### `bring-in-a-pack.png`
+
+What is in a predecessor's pack, and what taking it would replace. (one dialog on its own)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only bring-in-a-pack`
+
+![The Bring in a predecessor's pack window. Two things are listed with tick boxes: the address book, which is not ticked because one is already on this computer and taking it would replace it, and the saved wordings, which is ticked because nothing here would be lost. Underneath, a line says what will happen.](bring-in-a-pack.png)
 
 ### `start-screen.png`
 
