@@ -3180,7 +3180,12 @@ M/L and carries an explicit fallback: on a platform where the rasterizer fails t
 feature refuses plainly ("This computer cannot read PDFs into the newsletter") rather than
 half-working; the availability rule says so through the catalog.
 
-### M68 — The licence, at last (S)
+### M68 — The licence, at last (S) — **delivered 2026-08-08, `docs/M68-spec.md`**
+
+> The owner read PolyForm Noncommercial 1.0.0 and signed it off; `LICENSE` and the README's
+> permissions paragraph now match, and §13's standing "no licence file" item is struck through.
+> Marked here on 2026-08-09 — the milestone shipped in `65b2cd0` and this heading was the one place
+> the delivery was not recorded.
 
 **Goal.** §13 has carried "the application has no licence file" since M15, blocked on the owner's
 decision. **The decision is made (2026-08-08): free for non-profit use; profit-making use requires
