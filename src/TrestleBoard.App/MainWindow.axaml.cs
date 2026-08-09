@@ -1378,6 +1378,99 @@ public partial class MainWindow : Window
         RefreshActions();
     }
 
+    // ---- Show me last year's (PLAN.md §11 M59) -------------------------------------------------
+
+    private LastYearWindow? _lastYearWindow;
+
+    internal LastYearWindow? LastYearWindowForTest => _lastYearWindow;
+
+    /// <summary>Set by tests in place of the folder picker.</summary>
+    internal string? OldIssuesFolderAnswerForTest { get; set; }
+
+    /// <summary>
+    /// M59: opens the same month of last year beside this one, to look at.
+    /// </summary>
+    internal async Task ShowLastYearAsync()
+    {
+        if (_package is null)
+        {
+            return;
+        }
+
+        if (_lastYearWindow is not null)
+        {
+            _lastYearWindow.Activate();
+            return;
+        }
+
+        Core.Model.DocumentMetadata meta = _package.Document.Metadata;
+        PastIssue issue = PastIssues.Find(_settings.OldIssuesFolder, meta.IssueMonth, meta.IssueYear);
+
+        if (issue.Problem == PastIssueProblem.NoFolderYet)
+        {
+            string? folder = OldIssuesFolderAnswerForTest ?? await AskForTheOldIssuesFolderAsync();
+            if (string.IsNullOrWhiteSpace(folder))
+            {
+                return;
+            }
+
+            _settings = _settings with { OldIssuesFolder = folder };
+            _settings.Save();
+            issue = PastIssues.Find(folder, meta.IssueMonth, meta.IssueYear);
+        }
+
+        if (!issue.Opened)
+        {
+            await ShowErrorAsync("Last year's newsletter", issue.Message ?? "It could not be opened.");
+            return;
+        }
+
+        _lastYearWindow = new LastYearWindow(
+            issue,
+            meta.IssueMonth,
+            meta.IssueYear,
+            () => issue.Package!.Thumbnails.TryGetValue("page-1.png", out byte[]? png) ? png : null,
+            CopyLastYearsArticle);
+        _lastYearWindow.Closed += (_, _) => _lastYearWindow = null;
+        _lastYearWindow.Show(this);
+        _lastYearWindow.Activate();
+        Announce($"Last year's issue is open beside this one, to look at. It cannot be changed.");
+    }
+
+    /// <summary>
+    /// Brings one of last year's articles across as ordinary editable writing — through the same
+    /// one-undo-step composite M54's phrases use.
+    /// </summary>
+    private void CopyLastYearsArticle(PastArticle article)
+    {
+        if (_editor is not { IsActive: true })
+        {
+            Announce(
+                "Click into some writing in this month's newsletter first, and the article will go "
+                + "in where the cursor is.");
+            return;
+        }
+
+        _editor.InsertBlock(article.Text, "Copy last year's article");
+        Announce(
+            "That article is in this month's newsletter. It is ordinary writing now — change any "
+            + "of it you like.");
+        RefreshSpellingMarks();
+        RefreshActions();
+    }
+
+    private async Task<string?> AskForTheOldIssuesFolderAsync()
+    {
+        IReadOnlyList<Avalonia.Platform.Storage.IStorageFolder> chosen =
+            await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Where do you keep your old newsletters?",
+                AllowMultiple = false,
+            });
+
+        return chosen.Count > 0 ? chosen[0].TryGetLocalPath() : null;
+    }
+
     // ---- Read it back to me (PLAN.md §11 M58) --------------------------------------------------
 
     private ReadAloudWindow? _readAloudWindow;

@@ -2802,7 +2802,23 @@ final station. Complements, never replaces, the §6 screen-reader story.
 depends on audio — tests cover sentence segmentation and the silent walk-through. The highlight is
 chrome overlay, never in the PDF; no snapshot baseline moves.
 
-### M59 — What we said last year (M)
+### M59 — What we said last year (M) — **delivered 2026-08-08, `docs/M59-spec.md`**
+
+> The acceptance asks that the undo stack and autosave be provably scoped to the editable document
+> with two open. The answer taken is stronger: **there are not two documents open in any sense the
+> app understands.** `PastIssues` returns a package and some strings; `LastYearWindow` gets a
+> picture and a callback; neither constructs a `DocumentSession`, and a source-scan test forbids one
+> appearing. A picture cannot be edited.
+>
+> The folder is asked for once and remembered. Every failure is a sentence: no folder, none matching,
+> or the M25 standard for a file this version cannot read — which caught a real gap, because the
+> first catch list missed `UnsupportedFormatException` and a too-old file would have taken the
+> command down instead of being stepped over.
+>
+> **Fifth milestone running where writing the break first found something.** Here the obvious test
+> for "finds *last* year's" passed with the year check removed, because files sort oldest-first and
+> the right answer came up by accident; the replacement names the current year's file so it is
+> examined first.
 
 **Goal.** The monthly cycle has an annual rhythm the product ignores: the picnic announcement, the
 awards night, the installation notice. Committee members today keep old PDFs open in another window

@@ -57,6 +57,14 @@ public sealed record AppSettings
     /// </summary>
     public bool ShowSpelling { get; init; } = true;
 
+    /// <summary>
+    /// Where the committee keeps its old newsletters (M59), or null until they have been asked.
+    ///
+    /// <para>Asked once and remembered, because "where do you keep them?" is a question worth
+    /// answering once a decade and not once a month.</para>
+    /// </summary>
+    public string? OldIssuesFolder { get; init; }
+
     [JsonIgnore]
     public double UiScale => Math.Clamp(UiScalePercent, MinScalePercent, MaxScalePercent) / 100d;
 

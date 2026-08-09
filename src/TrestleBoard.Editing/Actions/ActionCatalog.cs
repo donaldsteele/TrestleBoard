@@ -84,6 +84,9 @@ public static class ActionCatalog
         new(ActionId.CheckSpelling, "Check my spelling…",
             "Shows you one word at a time that TrestleBoard does not know, with the sentence it is in.",
             ActionGroup.Newsletter),
+        new(ActionId.ShowLastYear, "Show me last year's…",
+            "Opens the same month from last year, to look at while you write this one.",
+            ActionGroup.Newsletter),
         new(ActionId.ReadAloud, "Read it back to me…",
             "Goes through the newsletter one sentence at a time, out loud where this computer can.",
             ActionGroup.Newsletter),
@@ -450,6 +453,7 @@ public static class ActionCatalog
                         + "to yet. TrestleBoard keeps a copy every time you save over it."),
 
             ActionId.ReviewNewsletter or ActionId.CheckSpelling or ActionId.ReadAloud
+                or ActionId.ShowLastYear
                 or ActionId.ExportPdf
                 or ActionId.ExportDraftPdf =>
                 RequiresDocument(context),

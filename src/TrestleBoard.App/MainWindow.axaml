@@ -60,6 +60,10 @@
         <MenuItem Header="Check my spelli_ng…" Tag="newsletter.checkSpelling"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Check my spelling" />
+        <!-- M59: beside the reviewing commands, because looking at last year is part of writing. -->
+        <MenuItem Header="Show me last _year's…" Tag="newsletter.lastYear"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Show me the same month from last year" />
         <!-- M58: the last of the three ways to look it over, beside the other two. -->
         <MenuItem Header="_Read it back to me…" Tag="newsletter.readAloud"
                   Click="OnActionClicked"

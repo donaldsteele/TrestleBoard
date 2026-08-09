@@ -205,6 +205,10 @@ internal static class ActionIcons
         // M58. A loudspeaker would be a lie on a machine with no voice, which is exactly the
         // machine where this command matters most.
         [ActionId.ReadAloud] = "a loudspeaker would promise sound this computer may not have",
+
+        // M59. A calendar glyph would say "a date", and this is about one particular old
+        // newsletter; the sentence names it and no picture can.
+        [ActionId.ShowLastYear] = "a calendar would say 'a date', not 'last year's September'",
         [ActionId.ShowSpelling] = "a diagnostic overlay; no picture explains it",
 
         // M53. The draft copy would wear export-pdf's glyph, which is the whole confusion it

@@ -51,6 +51,12 @@ public static class ActionId
     /// </summary>
     public const string ReadAloud = "newsletter.readAloud";
 
+    /// <summary>
+    /// M59: last year's issue of this month, beside the one being written. The annual rhythm the
+    /// product ignored — the picnic, the awards night, the installation notice.
+    /// </summary>
+    public const string ShowLastYear = "newsletter.lastYear";
+
     public const string ExportPdf = "newsletter.exportPdf";
 
     /// <summary>
