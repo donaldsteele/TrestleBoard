@@ -3536,7 +3536,32 @@ free as content-stream operators.
 (`SnapshotInfra.cs:117-138`) and **not by architecture**. Once antialiased paths reach a fixture, the
 macOS baseline is implicitly an arm64 artifact, and it must be baked on arm64.
 
-### M73 — the app does not offer what it cannot do, or claim what it did not (L)
+### M73 — the app does not offer what it cannot do, or claim what it did not (L) — **delivered 2026-08-10, all nine items, `docs/M73-spec.md`**
+
+> Delivered across `c221581` (b), `48c26a1` (a, c), `88c3a85` (e, f), `3072f9e` (g), and the gates
+> and records of (h) and (i). Chrome, catalog and editing only; no snapshot baseline moved.
+>
+> **Three deviations, recorded here rather than left in commit messages.** `ShowPeople` was **not**
+> gated — the M64 decision it would have reversed is quoted in (a) below, and gate 26 is satisfied at
+> the offer instead. `RunAsync`'s three-way outcome is **per-handler**, so handlers that were not
+> individually widened still default to `DidSomething` and a cancelled Open or Export picker still
+> reads as done in the two windows of (f). And `SpellChecker.cs` gained a one-line pass-through
+> property, slightly outside "chrome, catalog and editing".
+>
+> **The (e) list below was stale on six sites**, corrected in place: `BeginFrameLink`,
+> `UnlinkFrames`, `AlignSelection`, `DistributeSelection` and `FixPhoto` were verified already
+> correct, and `:4184-4185` had been fixed by (b2) before the sweep reached it. A finding that cannot
+> be reproduced is not a finding.
+>
+> **Gate 27 is a ratchet, not a net, and that is the milestone's own finding.** Run against the
+> pre-M73 tree it reports **nothing** — the defects it was written for were operations that returned
+> *nothing at all*, and a sentence cannot be a function of a value that does not exist. (e) and (f)
+> created those return values; the gate stops them being discarded again, and says so in its own
+> doc comment rather than overclaiming.
+>
+> **What is still open.** Gate 23's screen-reader pass (`docs/accessibility-test-script.md` §21) is
+> still unwalked and gate 13's by-eye pass has not been re-run since M16 — *Family A* has no other
+> answer. Five findings were deliberately not fixed; they are listed in `docs/M73-spec.md` §11.
 
 **Goal.** Five owner-reported bugs in one day share a family, and three audits in a row each drew a
 boundary that excluded the next one. M70 asked *"does the answer reach the user?"* and missed whether
@@ -3638,15 +3663,18 @@ that needs a *caret*; `IsActive` is set only by clicking into text (`TextEditorC
 (`LastYearWindow.cs:132`), and "Put them all back".
 
 **(e) Discarded returns that reach an announcement.** Mechanically findable, and it is the single
-highest-yield sweep in the milestone. `SelectAll`/`ClearFontOverride` (`:4184-4185`), `SelectRange` in
-`TakeMeToTheWord` (`:3074`), `UseFontJustHere` (`TextEditorController.cs:872`, literally `_ =
-RetargetSpans(...)`), `NeverAskAgain` (`SpellingWindow.cs:268`, whose `PersonalDictionary.Save`
-swallows `IOException` into a `CouldNotBeSaved` flag nobody reads), `AppSettings.Save` (`void`, empty
-catch, announced as *"Saved."* at `:5470` — raise UI scale to 150%, be told it saved, find 100% next
-launch), and eight `PhotoController`/`FrameEditorController` siblings of the `Restack` fix M70 made
-but did not generalise: `DeleteSelectedFrame`, `ToggleWrap`, `BeginFrameLink`, `UnlinkFrames`,
-`AlignSelection`, `DistributeSelection`, `FixPhoto`, `DismissCropNotice`, plus **`AutoFlow`** — M71's
-own command, silent on failure because `PageFlowController:153` also nulls its own `StatusMessage`.
+highest-yield sweep in the milestone. ~~`SelectAll`/`ClearFontOverride` (`:4184-4185`)~~ *(fixed by
+(b2) before this sweep reached it)*, `SelectRange` in `TakeMeToTheWord` (`:3074`), `UseFontJustHere`
+(`TextEditorController.cs:872`, literally `_ = RetargetSpans(...)`), `NeverAskAgain`
+(`SpellingWindow.cs:268`, whose `PersonalDictionary.Save` swallows `IOException` into a
+`CouldNotBeSaved` flag nobody reads), `AppSettings.Save` (`void`, empty catch, announced as
+*"Saved."* at `:5470` — raise UI scale to 150%, be told it saved, find 100% next launch), and eight
+`PhotoController`/`FrameEditorController` siblings of the `Restack` fix M70 made but did not
+generalise: `DeleteSelectedFrame`, `ToggleWrap`, ~~`BeginFrameLink`, `UnlinkFrames`,
+`AlignSelection`, `DistributeSelection`, `FixPhoto`~~ *(all five verified already correct, and not
+touched)*, `DismissCropNotice`, plus **`AutoFlow`** — M71's own command, silent on failure because
+`PageFlowController:153` also nulls its own `StatusMessage`. Also widened on the way, as (b) left
+for this sweep: `IRecoveryStore.Delete` (`void` → `bool`).
 
 **(f) `RunAsync`'s null is a success claim the runner cannot make.** `ActionRunner.cs:224-251` returns
 `null` for "ran and nothing threw", which covers every silent early return, every cancelled picker,
@@ -3654,6 +3682,10 @@ every cancelled wizard, and (`:225`) an action id with **no handler at all**. Tw
 "it happened": `HelpWindow.cs:336` (Help → "Do it for me" → picker → **Cancel** → *"Done: Put a
 picture here…"*) and `ReviewWindow.cs:293`, every remedy button. These are the two windows where a
 nervous user is likeliest to cancel. Needs a three-way outcome: refused / did nothing / did something.
+**Delivered as `ActionOutcome`, and the widening is per-handler** — a handler that was not
+individually wired still defaults to `DidSomething`, so a cancelled Open or Export picker still reads
+as done in those two windows. `Refused(reason)` throws on an empty reason, mirroring
+`ActionAvailability`; an action id with no handler is now loud rather than a silent success.
 
 **(g) Staleness from document *mutation*.** M70 (g) closed only the document-*switch* case.
 `FindController.cs:32` is the **only** `session.Changed` subscriber in the app and is the reference
@@ -3678,6 +3710,14 @@ elsewhere.
 Both must pass a control that is *sometimes* unavailable and explains itself — that is M11 working
 correctly, and a gate that fails it will be switched off within a month.
 
+**Delivered** as `tests/App.HeadlessTests/OfferIntegrityTests.cs` and
+`tests/App.HeadlessTests/OutcomeHonestyGateTests.cs`, each carrying gate 24's two guards: a
+`TheGateDoesNotObjectToAnHonestRefusal` and an anti-vacuity test. Gate 26 is honest about being three
+different strengths of check — 492 catalog comparisons and all 113 help answers are *proved* by
+running the app; the eighteen dialog controls gated in code are *enumerated and classified*, which
+holds the question open rather than answering it. Gate 27 is a ratchet: see the note on the heading
+and `docs/M73-spec.md` §9.
+
 **(i) Two records of ours that overclaim, corrected in the same pass.** PLAN.md M70 says roughly
 thirty "can never fire" guards "are listed in the audit" — **there is no audit**. No
 `docs/M69-spec.md`, `M70-spec.md` or `M71-spec.md` exist; the spec-doc convention held for M6–M68 was
@@ -3687,6 +3727,16 @@ distinguish a defensive guard from a live one. And
 asserted once rather than command by command"* while iterating a hardcoded two-element array — every
 finding in (e) is invisible to it. Write the missing exclusion lists; make the rule a rule or stop
 calling it one.
+
+**Delivered.** `docs/M69-spec.md`, `docs/M70-spec.md` and `docs/M71-spec.md` are written, and
+`docs/M73-spec.md` with them. The thirty guards **could not be honestly reconstructed** and
+`docs/M70-spec.md` §7 says so plainly, with the rule they were recorded for and a method for
+regenerating the list, rather than inventing one for the next person to trust. The `SilentNoOpTests`
+rule was **widened rather than renamed**: it enumerates the catalog now — every command in the groups
+that act on the page, minus those whose title ends in "…" or "▸", the app's own mark for "this opens
+something and asks you" — and runs 24 commands where it ran 2. It found no new defects. The groups
+left out each open a window, a picker or a confirmation, and a window IS an answer; that gap is
+stated in the test's own doc comment.
 
 **Acceptance.** Chrome, catalog and editing only; nothing in `Core`/`Layout`/`Rendering`/`Export.Pdf`,
 and no snapshot baseline moves. Each gate fails against the current tree before its fix, demonstrated
@@ -3826,12 +3876,20 @@ five bugs were found by the owner using the app, and gate 23's screen-reader pas
     precondition rather than restated beside it, so nothing can be offered in a state where it will be
     refused. Must stay quiet about a control that is sometimes unavailable and says why — that is M11
     working, and gate 24 already carries the same guard against its own breadth.
+    **Implemented** in `tests/App.HeadlessTests/OfferIntegrityTests.cs`. Where a pure function exists
+    it is a proof; where none does — the dialogs — it enumerates the gated controls and requires each
+    to be classified, which catches the next one rather than judging this one.
 
 27. **Outcome-honesty gate (M73):** no method announces an outcome that is not a function of a value
     returned by the operation it announces. Enumerated as discarded `bool`/`int` returns on a path
     reaching an announcement in the same method. This is the gate that would have caught the app
     saying "3 pieces of text were put back" having put nothing back, and telling the user to press
     Ctrl+Z — which would then have undone something else.
+    **Implemented** in `tests/App.HeadlessTests/OutcomeHonestyGateTests.cs`, and it would *not* in
+    fact have caught it: run against the pre-M73 tree it reports nothing, because those operations
+    returned `void`. It is a ratchet on the return values M73 (e) and (f) created, it says so in its
+    own doc comment, and its ability to fail is demonstrated against the defect written out as
+    source.
 
 ## 13. Remaining open items (status as at 2026-07-27)
 

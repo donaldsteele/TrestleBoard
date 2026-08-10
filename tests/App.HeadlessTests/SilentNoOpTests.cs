@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using TrestleBoard.Core.Model;
@@ -168,9 +169,29 @@ public sealed class SilentNoOpTests
     }
 
     /// <summary>
-    /// The rule behind (c), asserted once rather than command by command: invoking an AVAILABLE
-    /// command must leave the user with something to read. A command the catalog refuses is a
-    /// different case and is covered by <see cref="AnswerDeliveryTests"/>.
+    /// **The rule behind (c), and since M73 (i) it really is one.** Invoking an AVAILABLE command
+    /// must leave the user with something to read. A command the catalog refuses is a different case
+    /// and is covered by <see cref="AnswerDeliveryTests"/>.
+    ///
+    /// <para><b>It used to iterate a hardcoded pair</b> — "Move it to the front" and "Move it to the
+    /// back" — while calling itself the rule asserted once rather than command by command. Every
+    /// single finding of M73 (e) was invisible to it, which is what a claim like that costs when it
+    /// is not true. It now enumerates the catalog.</para>
+    ///
+    /// <para><b>What is enumerated, and why that set.</b> Every command in the groups that act on the
+    /// page, minus those whose own title ends in "…" or "▸" — the app's own mark, used everywhere
+    /// from the menu bar to the help window, for "this opens something and asks you". Both halves are
+    /// read off the catalog, so a new command joins this test by existing. The groups left out are
+    /// <see cref="ActionGroup.Newsletter"/>, <see cref="ActionGroup.Page"/>,
+    /// <see cref="ActionGroup.People"/>, <see cref="ActionGroup.Everything"/> and
+    /// <see cref="ActionGroup.Help"/>: each of those opens a window, a file picker or a confirmation
+    /// — and a window IS an answer, so silence is not the failure mode there. That is a real gap and
+    /// it is stated rather than hidden: this rule covers the commands that act on the page in place,
+    /// which is where a command can finish having done nothing and leave the screen unchanged.</para>
+    ///
+    /// <para>Each command starts from the same state — a fresh frame of writing, selected — because
+    /// running them in sequence would let one command's effect decide the next one's availability,
+    /// and the second press is what makes the "nothing to do" case certain.</para>
     /// </summary>
     [Fact]
     public async Task AnAvailableCommandAlwaysLeavesSomethingToRead()
@@ -181,28 +202,56 @@ public sealed class SilentNoOpTests
                 var window = new MainWindow();
                 window.OpenSample();
 
-                string blockId = window.FramesForTest!.AddTextFrame(0);
-                window.FramesForTest.Select(blockId);
-                window.RefreshActions();
-
-                // The z-order and fit commands are the ones the audit found; they are available with
-                // a frame selected and each has a "nothing to do" case reachable immediately.
-                string[] available =
+                ActionGroup[] actOnThePage =
                 [
-                    ActionId.BringToFront,
-                    ActionId.SendToBack,
+                    ActionGroup.Edit, ActionGroup.Text, ActionGroup.Insert, ActionGroup.Item,
+                    ActionGroup.Picture, ActionGroup.TextFlow, ActionGroup.Arrange, ActionGroup.View,
                 ];
 
-                foreach (string id in available.Where(
-                    i => ActionCatalog.Evaluate(i, window.CurrentActionContext).IsAvailable))
-                {
-                    await window.ActionsForTest.RunAsync(id);
-                    await window.ActionsForTest.RunAsync(id);   // the second is certainly a no-op
+                string[] candidates =
+                [
+                    .. ActionCatalog.All
+                        .Where(a => actOnThePage.Contains(a.Group))
+                        .Where(a => !a.Title.Contains('…', StringComparison.Ordinal)
+                                    && !a.Title.Contains('▸', StringComparison.Ordinal))
+                        .Select(a => a.Id),
+                ];
 
-                    Assert.False(
-                        string.IsNullOrWhiteSpace(window.StatusLabelTextForTest),
-                        $"{id} ran with nothing to do and said nothing");
+                List<string> silent = [];
+                int ran = 0;
+
+                foreach (string id in candidates)
+                {
+                    // The same starting point every time, so one command cannot decide the next
+                    // one's availability.
+                    string blockId = window.FramesForTest!.AddTextFrame(0);
+                    window.FramesForTest.Select(blockId);
+                    window.RefreshActions();
+
+                    if (!ActionCatalog.Evaluate(id, window.CurrentActionContext).IsAvailable)
+                    {
+                        continue;
+                    }
+
+                    ran++;
+                    await window.ActionsForTest.RunAsync(id);
+                    await window.ActionsForTest.RunAsync(id);   // the second is far likelier a no-op
+
+                    if (string.IsNullOrWhiteSpace(window.StatusLabelTextForTest))
+                    {
+                        silent.Add(id);
+                    }
                 }
+
+                // Anti-vacuity: the enumeration must not quietly stop finding commands. The old
+                // version of this test checked two; anything near two means the filter has eaten it.
+                Assert.True(ran >= 12, $"only {ran} available commands were run — the rule checked almost nothing");
+
+                Assert.True(
+                    silent.Count == 0,
+                    "these commands ran with nothing to do and left the user nothing to read: "
+                    + string.Join(", ", silent)
+                    + " — PLAN.md §11 M70 (c).");
 
                 window.Close();
             },
