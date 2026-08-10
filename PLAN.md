@@ -3802,6 +3802,110 @@ five bugs were found by the owner using the app, and gate 23's screen-reader pas
 (`docs/accessibility-test-script.md` §21, sixteen steps, rows 21.1–21.16 still blank) remains unwalked.
 **A hands-on pass is worth more than another audit round**, and the milestone is not a substitute for it.
 
+### M74 — the final-check findings (M)
+
+**Goal.** Four independent reviewers went over v1.3.0 as the last gate before calling it
+production-ready — one on M72 (the newest code), one on the M73 fix wave (fast fixes breed
+regressions), one on the data-integrity core (the ground nobody had fresh-eyed since M24/M39), and
+one on the release artifacts and the v1.2.0 interop seam. The headline verdicts are good: the
+emblem-format seam is safe (a v1.2.0 build shows the plain "please update" sentence, verified
+against the v1.2.0 tag's own code), the container save is atomic, the M24 fixes hold on the main
+paths, and nothing found is a regression introduced by v1.3.0. But the reviews surfaced two HIGH
+findings and a tail of real ones, and they are this milestone.
+
+**Deliverables, grouped by the work.**
+
+**(a) PDF export becomes atomic — the one HIGH that touches user data.**
+`MainWindow.axaml.cs:1044-1051` writes the PDF straight into the destination with truncate-on-open.
+Disk-full or an AV lock mid-write leaves a partial PDF at the final name: last month's good
+`Trestle Board 2026-08.pdf` destroyed, and the truncated file — right name, right icon — is exactly
+what the committee member then emails. This is the only file-write path in the data core without the
+temp-then-rename discipline; `TboardContainer.SaveToFile` (`TboardContainer.cs:113-142`),
+`SuccessorPackContainer`, `RosterStore.Save` and `FileRecoveryStore.WriteAtomic` all share it. Copy
+that discipline. Present in every release ever shipped, so it is not a v1.3.0 regression — it is
+older and worse.
+
+**(b) Gate 27's scanner is blind to ~75% of MainWindow.axaml.cs — fix the regex, then triage what
+it surfaces.** `OutcomeHonestyGateTests.EnclosingType` matches `\b(?:class|record|struct)\s+(\w+)`
+over raw source, and a doc comment at `MainWindow.axaml.cs:1455` — "the **record that** it has now
+been offered" — parses as a type named `that` (again at :5053). Every method below is attributed to
+that phantom type, receiver resolution fails, and no discard can be reported there. Proven
+empirically: `ToggleShowSpelling` (:3235) discards `_settings.Save()` in the identical pattern the
+gate exists to catch and is invisible, as are six more `_settings.Save()` discards (:1253, :1273,
+:1471, :1481, :1648, :3238). The ratchet does not cover the very return values M73 (e) created. Fix
+is an anchored regex; then re-run the gate and **triage every newly surfaced discard** — fix the
+real ones, allow-list the false positives with reasons, exactly as `ToggleActionPanel` was. The
+gate's honest-limits doc comment gains this limit, now closed.
+
+**(c) The (f) boundary was worse than the commit admitted — widen the worst flows.** Three of the
+four review remedies are unwidened (`ReplacePicture`, `CaptionPicture`, `DescribePicture` return
+`Task` and cancel silently, e.g. `MainWindow.axaml.cs:4843-4873`), so cancelling the caption dialog
+has `ReviewWindow.cs:299` say "Done: …" and the user ticks off a real accessibility worry — the
+exact defect class on the exact window (f) was named for. Help → "Words for hard news" → Cancel →
+"Done." to a grieving user (`InsertPhraseAsync:2806` returns silently on `!Confirmed`). And a live
+contradiction: Help → "Bring people in" → "Stop the import" has `ImportPeopleAsync` announce "The
+import was stopped…" while `HelpWindow.cs:534` simultaneously says "Done:" — two live regions
+asserting opposite outcomes of one action. Mechanical widenings in the pattern (f) established.
+
+**(d) Data-integrity tail.**
+- `RosterStore.ReadBackup` (`:173-185`) swallows read failures and returns `Empty` with no flag;
+  `RosterService.Restore` (`:94`) then writes that empty book over `roster.json`. The M24 item-4
+  shape, on the one reader that never got the `CouldNotBeRead` contract. Mitigated (ring copy first,
+  one-step undo) but silent.
+- `OpenDocumentFromPath` (`MainWindow.axaml.cs:957-972`) sets `DocumentPath = path` before `Load`
+  and nulls it on failure instead of restoring the previous value: a failed open of a damaged file
+  leaves newsletter A on screen with no path — Ctrl+S becomes a surprise Save-As and crash recovery
+  would offer A as "never saved".
+- `TboardManifest.RequiredVersionFor` (`:43-49`) walks `document.Pages` only, not `PageMasters` —
+  master blocks render through the same switch and carry-forward walks them, so a drawing on a
+  master would be stamped 1.0.0 and crash a pre-M72 reader past the version gate. Latent (no UI path
+  puts drawings on masters today); one line.
+
+**(e) ReadAloud's live-session fix fights the workflow it was built for.** Every keystroke raises
+`session.Changed` → `Render()`, which (i) calls `ShowTheSentence` → `GoToPage`, snapping the canvas
+back to the sentence being read when the user is editing on a different page — the stated workflow;
+(ii) runs `_heading.Focus()` per keystroke (`ReadAloudWindow.cs:262-265`), at minimum a per-keystroke
+screen-reader re-announcement, possibly a cross-window focus steal; (iii) in the voice-failed state
+re-`Tell`s the failure to the window and the status bar on every keystroke. Fix conservatively: a
+`Changed`-triggered render must not `GoToPage`, must not steal focus, and must not repeat an
+unchanged sentence — those belong to the user pressing a button. Also two narration overclaims from
+the same wave: when a whole story is deleted, the fallback clamp lands on an arbitrary sentence in a
+different story and says "this is that sentence as it reads now" (the honest "not in the newsletter
+any more" branch is unreachable while `Count > 0`, `ReadAloudSession.cs:180-260`); and
+`TakeMeToTheFinding` (`:1583-1609`) never re-derives the block's current page, so a block reflowed
+from page 4 to 3 gets "picked out on page 4" while the highlight sits on page 3. **The focus-steal
+severity needs the owner's hands-on pass to confirm; the mechanism fixes are safe regardless.**
+
+**(f) The small and the compliance tail.**
+- PDFium: gate 22 names it and it has no manifest entry, no SHA-256, no licence surfaced in Help →
+  "Fonts and licences", no test. BSD-3/Apache-2.0 requires the notice to accompany distribution.
+- `release.yml` never runs `vpk download github` before packing, so no delta updates are ever built
+  — every update is a full ~57MB download on a lodge connection — while the workflow's own comment
+  at :92 claims the publish layout exists so Velopack can "build the delta updates". Add the step or
+  fix the comment; prefer the step.
+- The memorial queue is not drained on the add-new path (`PeopleWindow.cs:1094-1106`, `:1003-1008`)
+  — deferred, not lost, but the card then appears at a wrong later moment about a different brother.
+- "It's a name" uses `_say` only (`SpellingWindow.cs:287-291`), so M73 (e)'s new could-not-save
+  warning lands solely in the status bar behind the window — the channel the window's own M52
+  comment says users never see.
+- `SelectedPictureHasCaption`/`SelectedPictureIsEmpty` (`ActionContextFactory.cs:139-141`) computed
+  only for `Photo`: a captioned drawing is offered "Write a caption…" instead of "Change the
+  caption…", and the greyed swap item says "Swap this picture…" of a drawing.
+- `VectorArtRenderer.cs:77`: negative pen width paints a fill — a solid blob — instead of drawing
+  nothing per the file-tolerance policy.
+- `ReviewChecklist.cs:86` reaches picture findings through `case ImageFrame` only, so a drawing
+  whose description was blanked is never flagged.
+- PLAN.md/commit `3a3223a` say "18 dialog controls"; `OfferIntegrityTests.Classified` has 17 — an
+  off-by-one in the milestone whose deliverable was "records that overclaim".
+
+**Acceptance.** Every fix carries a test verified failing beforehand, except where the defect needs
+a return value that did not exist — those are guarded and say so, the M73 (e) precedent. Gate 27
+re-run after the regex fix with every surfaced discard triaged and the allow-list carrying reasons.
+Findings deliberately not fixed are listed here with why. The four review reports' clean lists are
+recorded in `docs/M74-spec.md` — they are the current verified map of what is trusted and why, and a
+clean result nobody wrote down is how this project got a milestone called M73. v1.3.1 is tagged only
+after CI is green on all three operating systems.
+
 ---
 
 ## 12. Verification (end-to-end)
