@@ -1024,19 +1024,21 @@ public partial class MainWindow : Window
         }
     }
 
-    internal Task ExportPdfAsync() => ExportPdfAsync(draft: false);
+    internal Task<bool> ExportPdfAsync() => ExportPdfAsync(draft: false);
 
     /// <summary>
     /// M53: "Make a draft copy" — the same renderer, the same bytes, plus a diagonal saying what it
     /// is. The review copy and the final copy differed only in the sender's memory before this.
     /// </summary>
-    internal Task ExportDraftPdfAsync() => ExportPdfAsync(draft: true);
+    internal Task<bool> ExportDraftPdfAsync() => ExportPdfAsync(draft: true);
 
-    internal async Task ExportPdfAsync(bool draft)
+    /// <returns>M74 (c): false where the user backed out, so no surface built on <c>ActionOutcome</c>
+    /// says "Done" about work that was declined.</returns>
+    internal async Task<bool> ExportPdfAsync(bool draft)
     {
         if (_source is null || _package is null)
         {
-            return;
+            return false;
         }
 
         // M51. The offer, and only an offer: whatever the answer, the export goes ahead. The one
@@ -1046,7 +1048,7 @@ public partial class MainWindow : Window
         // is going to somebody who will read it.
         if (!draft && await OfferTheReviewAsync())
         {
-            return;
+            return false;
         }
 
         Core.Model.DocumentMetadata meta = _package.Document.Metadata;
@@ -1063,7 +1065,7 @@ public partial class MainWindow : Window
             });
             if (file is null)
             {
-                return;
+                return false;
             }
 
             path = file.TryGetLocalPath();
@@ -1080,7 +1082,7 @@ public partial class MainWindow : Window
                 "TrestleBoard cannot tell where that place is on this computer, so it cannot save "
                 + "the PDF there safely. Nothing was written. Choose a folder on this computer and "
                 + "try again.");
-            return;
+            return false;
         }
 
         try
@@ -1098,6 +1100,7 @@ public partial class MainWindow : Window
             LastExportedPdf = path;
             RefreshActions();
             await OfferToPrintAsync(draft);
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
@@ -1106,6 +1109,7 @@ public partial class MainWindow : Window
                 "The PDF could not be saved. If a PDF with this name was already there, it has not "
                 + "been touched. Make sure the file is not open in another program and try again. "
                 + $"({ex.Message})");
+            return false;
         }
     }
 
@@ -1634,7 +1638,16 @@ public partial class MainWindow : Window
     /// </summary>
     private ReviewLanding TakeMeToTheFinding(ReviewFinding finding)
     {
-        GoToPage(Math.Clamp(finding.PageNumber - 1, 0, Math.Max(0, (_source?.PageCount ?? 1) - 1)));
+        // M74 (e): where the finding is about a block, the page is the one that block is on NOW,
+        // not the one the scan wrote down. The review is a snapshot and the page behind it stays
+        // editable, so writing added above a frame can reflow it from page 4 to page 3 — and the
+        // window then said "That is it, picked out on page 4" with the highlight sitting on page 3.
+        // The page number is the one thing the user checks against the screen.
+        int wanted = finding.BlockId is { } live
+            && _session?.Document.TryFindBlock(live, out _, out _) == true
+                ? PageOf(live)
+                : finding.PageNumber - 1;
+        GoToPage(Math.Clamp(wanted, 0, Math.Max(0, (_source?.PageCount ?? 1) - 1)));
 
         bool found = true;
         if (finding.BlockId is { } blockId)
@@ -1817,8 +1830,15 @@ public partial class MainWindow : Window
     /// <summary>
     /// Turns the page to the sentence being read and lights it up. Page first, then the highlight —
     /// the M21 ordering lesson, the same as M51's and M55's.
+    ///
+    /// <para>M74 (e): only where the user asked for this sentence. The walk follows the newsletter
+    /// as it is edited, and editing on a different page from the one being read is what the window
+    /// is for — so a redraw caused by a keystroke turned the canvas back to the sentence and left
+    /// the caret off the screen, on every letter typed. Where the page is not turned the highlight
+    /// is still worked out for the page on screen, and comes back empty if the sentence is not on
+    /// it, which is the truth.</para>
     /// </summary>
-    private void ShowTheSentence(Core.Text.Sentence? sentence)
+    private void ShowTheSentence(Core.Text.Sentence? sentence, bool mayTurnThePage)
     {
         if (_source is null || _package is null || sentence is null)
         {
@@ -1826,7 +1846,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (PageOfStory(sentence.StoryId) is { } page && page != _pageIndex)
+        if (mayTurnThePage && PageOfStory(sentence.StoryId) is { } page && page != _pageIndex)
         {
             GoToPage(page);
         }
@@ -1851,11 +1871,11 @@ public partial class MainWindow : Window
     /// M57: writes this newsletter as a template — layout, styles, widgets and pictures kept, the
     /// writing reset to the same prompts carry-forward uses, the issue date cleared.
     /// </summary>
-    internal async Task SaveAsTemplateAsync()
+    internal async Task<bool> SaveAsTemplateAsync()
     {
         if (_package is null)
         {
-            return;
+            return false;
         }
 
         // The thumbnail is refreshed first, so the tile shows the layout as it is now rather than
@@ -1875,7 +1895,7 @@ public partial class MainWindow : Window
                     suggested));
         if (string.IsNullOrWhiteSpace(name))
         {
-            return;
+            return false;
         }
 
         Core.Container.TboardPackage template = Core.Workflow.NewsletterTemplate.From(_package);
@@ -1886,6 +1906,7 @@ public partial class MainWindow : Window
             : $"“{saved.Name}” is one of your templates now. You will find it on the screen that "
               + "asks what you would like to do, and under File, “My templates”.");
         RefreshActions();
+        return saved is not null;
     }
 
     /// <summary>M57: rename, remove or hand on a template.</summary>
@@ -2426,11 +2447,13 @@ public partial class MainWindow : Window
     /// asking somebody to describe the square and compasses to the app that just drew it would be
     /// the software pretending not to know something. M23's "Describe this picture" changes it.</para>
     /// </summary>
-    internal async Task InsertEmblemAsync()
+    /// <returns>M74 (c): false where the user backed out, so no surface built on <c>ActionOutcome</c>
+    /// says "Done" about work that was declined.</returns>
+    internal async Task<bool> InsertEmblemAsync()
     {
         if (_photos is null)
         {
-            return;
+            return false;
         }
 
         Emblem? chosen;
@@ -2447,7 +2470,7 @@ public partial class MainWindow : Window
 
         if (chosen is null)
         {
-            return;
+            return false;
         }
 
         _editor?.End();
@@ -2465,13 +2488,14 @@ public partial class MainWindow : Window
             await ShowErrorAsync(
                 "That emblem could not be added",
                 "TrestleBoard could not put that emblem on the page. Your newsletter is unchanged.");
-            return;
+            return false;
         }
 
         _frames?.Select(blockId);
         Announce($"{chosen.Name} is on the page. Drag its corners to size it, and it can be moved, "
             + "captioned and wrapped like any other picture.");
         RefreshActions();
+        return true;
     }
 
     // ---- Pack it up for my successor (PLAN.md §11 M64) -----------------------------------------
@@ -2870,11 +2894,11 @@ public partial class MainWindow : Window
     /// <summary>
     /// M54: choose a paragraph, fill its blanks, put it in as ordinary editable writing.
     /// </summary>
-    internal async Task InsertPhraseAsync()
+    internal async Task<bool> InsertPhraseAsync()
     {
         if (_editor is not { IsActive: true })
         {
-            return;
+            return false;
         }
 
         string? words = PhraseAnswerForTest;
@@ -2882,14 +2906,17 @@ public partial class MainWindow : Window
         {
             if (SuppressStartupForTest)
             {
-                return;
+                return false;
             }
 
             var window = new PhraseWindow(Phrases.All(), WhatTheAppAlreadyKnows(_settings));
             await window.ShowDialog(this);
             if (!window.Confirmed)
             {
-                return;
+                // M74 (c). Cancelling the shelf answered exactly as inserting from it did, so Help
+                // said "Done." to somebody who had just closed "Words for hard news" without
+                // choosing anything — at the worst possible moment to be told a thing happened.
+                return false;
             }
 
             words = window.Words;
@@ -2897,7 +2924,7 @@ public partial class MainWindow : Window
 
         if (string.IsNullOrWhiteSpace(words))
         {
-            return;
+            return false;
         }
 
         // InsertBlock, not InsertText: a bare insert coalesces with the typing either side of it,
@@ -2909,17 +2936,20 @@ public partial class MainWindow : Window
             + "you like.");
         RefreshSpellingMarks();
         RefreshActions();
+        return true;
     }
 
     /// <summary>
     /// M54: keep the highlighted words on the shelf. The committee's own wording for a hard moment
     /// is usually better than ours, and next year they will want it again.
     /// </summary>
-    internal async Task SavePhraseAsync()
+    /// <returns>M74 (c): false where the user backed out, so no surface built on <c>ActionOutcome</c>
+    /// says "Done" about work that was declined.</returns>
+    internal async Task<bool> SavePhraseAsync()
     {
         if (_editor is not { IsActive: true } editor || _session is null)
         {
-            return;
+            return false;
         }
 
         string words = Core.Text.StoryNavigator.GetRangeText(
@@ -2929,7 +2959,7 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(words))
         {
             Announce("Highlight the words you would like to keep first.");
-            return;
+            return false;
         }
 
         string? title = PhraseTitleAnswerForTest;
@@ -2937,7 +2967,7 @@ public partial class MainWindow : Window
         {
             if (SuppressStartupForTest)
             {
-                return;
+                return false;
             }
 
             title = await AskForTextAsync(
@@ -2948,7 +2978,7 @@ public partial class MainWindow : Window
 
         if (string.IsNullOrWhiteSpace(title))
         {
-            return;
+            return false;
         }
 
         Phrases.Save(title, words);
@@ -2957,6 +2987,7 @@ public partial class MainWindow : Window
               + "it will be gone when you close the program."
             : $"“{title}” is on your shelf. You will find it under Insert, “Words for hard news”.");
         RefreshActions();
+        return true;
     }
 
     /// <summary>Set by tests in place of the naming dialog.</summary>
@@ -4640,18 +4671,20 @@ public partial class MainWindow : Window
     /// its own <c>StatusMessage</c> when it refuses — so "Make the rest fit" on writing it could not
     /// move looked exactly like a dead button. What is said is now a function of what it returned.
     /// </summary>
-    internal void AutoFlow()
+    /// <returns>M74 (c): false where the user backed out, so no surface built on <c>ActionOutcome</c>
+    /// says "Done" about work that was declined.</returns>
+    internal bool AutoFlow()
     {
         if (_pages is null)
         {
-            return;
+            return false;
         }
 
         if (FlowTarget(out string? chose) is not { } blockId)
         {
             Announce(
                 "Nothing in this newsletter has more writing than fits, so there is nothing to move.");
-            return;
+            return false;
         }
 
         bool moved = _pages.AutoFlow(blockId);
@@ -4665,6 +4698,7 @@ public partial class MainWindow : Window
         // The controller's own sentence — "the text still does not all fit" — must survive being
         // told what was chosen, so the two are said together rather than one over the other (M70).
         Announce(chose is not null ? chose + " " + said : said);
+        return moved;
     }
 
     /// <summary>
@@ -4884,11 +4918,16 @@ public partial class MainWindow : Window
     /// "Put a picture here…" / "Swap this picture…". The bytes land in the package verbatim, exactly
     /// as on the insert path — a swap never re-encodes — and the whole change is one undo step.
     /// </summary>
-    internal async Task ReplacePictureAsync()
+    /// <returns>
+    /// M74 (c): false where the user backed out — no picture chosen, the file unreadable, the
+    /// description dialog cancelled. This is a review remedy, and the review said "Done: Swap this
+    /// picture..." to somebody who had just pressed Cancel on it.
+    /// </returns>
+    internal async Task<bool> ReplacePictureAsync()
     {
         if (_photos is null || PictureTarget() is not { } blockId)
         {
-            return;
+            return false;
         }
 
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -4899,15 +4938,15 @@ public partial class MainWindow : Window
         });
         if (files.Count == 0)
         {
-            return;
+            return false;
         }
 
         if (await ReadPictureBytesAsync(files[0]) is not { } bytes)
         {
-            return;
+            return false;
         }
 
-        await ReplacePictureFromBytesAsync(blockId, bytes, files[0].Name);
+        return await ReplacePictureFromBytesAsync(blockId, bytes, files[0].Name);
     }
 
     /// <summary>
@@ -4915,13 +4954,13 @@ public partial class MainWindow : Window
     /// paste both come through here, so a picture arriving by any route is described before it lands
     /// (PLAN.md §6).
     /// </summary>
-    private async Task ReplacePictureFromBytesAsync(string blockId, byte[] bytes, string fileName)
+    private async Task<bool> ReplacePictureFromBytesAsync(string blockId, byte[] bytes, string fileName)
     {
         var dialog = new PhotoInsertDialog(fileName);
         await dialog.ShowDialog(this);
         if (!dialog.Confirmed)
         {
-            return;
+            return false;
         }
 
         _editor?.End();
@@ -4930,18 +4969,43 @@ public partial class MainWindow : Window
             await ShowErrorAsync(
                 "That file is not a picture",
                 "TrestleBoard could not read that file as a picture. JPEG and PNG files work best.");
-            return;
+            return false;
         }
 
         _frames?.Select(blockId);
         RefreshActions();
+        return true;
     }
 
-    internal async Task DescribePictureAsync()
+    /// <summary>
+    /// What a headless test types into <see cref="PictureWordsDialog"/>. Null means nobody typed
+    /// anything, which is what pressing Cancel amounts to - there is no other way to reach the
+    /// cancelled path of a modal dialog from a test.
+    /// </summary>
+    internal string? PictureWordsAnswerForTest { get; set; }
+
+    /// <summary>
+    /// M74 (c): false where the description dialog was cancelled. "Add a description" is the remedy
+    /// the review offers for a picture nobody can see, so a false "Done: ..." there has the user
+    /// tick off a real accessibility worry they had just declined to fix.
+    /// </summary>
+    internal async Task<bool> DescribePictureAsync()
     {
         if (_photos is null || WordsTarget() is not { } blockId)
         {
-            return;
+            return false;
+        }
+
+        if (PictureWordsAnswerForTest is { } typed)
+        {
+            _photos.SetAltText(blockId, typed);
+            RefreshActions();
+            return true;
+        }
+
+        if (SuppressStartupForTest)
+        {
+            return false;
         }
 
         PictureWordsDialog dialog = PictureWordsDialog.ForAltText(_photos.GetWorded(blockId)?.AltText);
@@ -4950,14 +5014,30 @@ public partial class MainWindow : Window
         {
             _photos.SetAltText(blockId, description);
             RefreshActions();
+            return true;
         }
+
+        return false;
     }
 
-    internal async Task CaptionPictureAsync()
+    /// <summary>M74 (c): false where the caption dialog was cancelled - see above.</summary>
+    internal async Task<bool> CaptionPictureAsync()
     {
         if (_photos is null || WordsTarget() is not { } blockId)
         {
-            return;
+            return false;
+        }
+
+        if (PictureWordsAnswerForTest is { } typed)
+        {
+            _photos.SetCaption(blockId, typed);
+            RefreshActions();
+            return true;
+        }
+
+        if (SuppressStartupForTest)
+        {
+            return false;
         }
 
         PictureWordsDialog dialog = PictureWordsDialog.ForCaption(_photos.GetWorded(blockId)?.Caption);
@@ -4966,7 +5046,10 @@ public partial class MainWindow : Window
         {
             _photos.SetCaption(blockId, dialog.Text);
             RefreshActions();
+            return true;
         }
+
+        return false;
     }
 
     /// <summary>Drag-and-drop is an accelerator; the Insert menu item is the primary path (PLAN.md §6).</summary>
@@ -5155,25 +5238,42 @@ public partial class MainWindow : Window
         }
     }
 
-    internal async Task ImportPeopleAsync()
+    /// <summary>What a headless test brings back from the import wizard; null is "stopped".</summary>
+    internal RosterBook? ImportAnswerForTest { get; set; }
+
+    /// <summary>
+    /// M74 (c): the outcome follows what the wizard brought back. This method already announced
+    /// "The import was stopped..." for itself, while Help - reading a bare <c>Task</c> as success -
+    /// said "Done:" at the same moment: two live regions asserting opposite outcomes of one action,
+    /// which is worse than either of them being wrong on its own.
+    /// </summary>
+    internal async Task<bool> ImportPeopleAsync()
     {
-        var window = new RosterImportWindow(Roster.Book);
-        await window.ShowDialog(this);
+        RosterBook? result = ImportAnswerForTest;
+        if (result is null && !SuppressStartupForTest)
+        {
+            var window = new RosterImportWindow(Roster.Book);
+            await window.ShowDialog(this);
+            result = window.Result;
+        }
 
         // M73(b1), gate 27: what is said is a function of what the window returned, and both
         // answers are said. Stopping the import used to be met with silence, which reads exactly
         // like a window that did something and did not mention it.
-        if (window.Result is { } book)
+        if (result is { } book)
         {
             Roster.Replace(book, "Import people from a file");
             Announce($"Your address book now has {book.Count} people.");
-            return;
+            return true;
         }
 
         Announce("The import was stopped. Nothing in your address book was changed.");
+        return false;
     }
 
-    internal async Task ExportPeopleAsync()
+    /// <returns>M74 (c): false where the user backed out, so no surface built on <c>ActionOutcome</c>
+    /// says "Done" about work that was declined.</returns>
+    internal async Task<bool> ExportPeopleAsync()
     {
         IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
@@ -5187,19 +5287,21 @@ public partial class MainWindow : Window
         // or the newsletter (PLAN.md §0 rule 5).
         if (file?.TryGetLocalPath() is not { } path)
         {
-            return;
+            return false;
         }
 
         try
         {
             RosterExport.Save(Roster.Book, path);
             Announce($"Your address book was saved as {Path.GetFileName(path)}.");
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             await ShowErrorAsync(
                 "Could not save your address book",
                 "TrestleBoard could not write that file. It may be open in Excel. " + ex.Message);
+            return false;
         }
     }
 
@@ -5214,22 +5316,28 @@ public partial class MainWindow : Window
         }
     }
 
-    internal async Task RestorePeopleAsync()
+    /// <returns>M74 (c): false where the user backed out, so no surface built on <c>ActionOutcome</c>
+    /// says "Done" about work that was declined.</returns>
+    internal async Task<bool> RestorePeopleAsync()
     {
         var dialog = new RosterRestoreDialog(Roster.Backups());
         await dialog.ShowDialog(this);
 
         if (dialog.Chosen is { } backup)
         {
+            bool put = Roster.Restore(backup);
             // M74 (d): the sentence follows what Restore says happened. False means the kept copy
             // could not be read and nothing was written — saying "put back" then would have the
             // user trusting an address book that never changed.
-            Announce(Roster.Restore(backup)
+            Announce(put
                 ? $"Your address book was put back as it was on {RosterRestoreDialog.Describe(backup)}. "
                     + "Undo the last change reverses this."
                 : "That earlier version could not be read, so your address book was not changed. "
                     + "It is exactly as it was. Try a different earlier version.");
+            return put;
         }
+
+        return false;
     }
 
     /// <summary>
@@ -5316,11 +5424,13 @@ public partial class MainWindow : Window
     /// <see cref="WidgetController.ApplyWidgetData"/> the wizard uses — no new command type, so
     /// Ctrl+Z restores exactly what was printed before (PLAN.md §11 M13).
     /// </summary>
-    internal async Task SyncBirthdaysAsync()
+    /// <returns>M74 (c): false where the user backed out, so no surface built on <c>ActionOutcome</c>
+    /// says "Done" about work that was declined.</returns>
+    internal async Task<bool> SyncBirthdaysAsync()
     {
         if (_session is null || _widgets is null)
         {
-            return;
+            return false;
         }
 
         // The panel offers this beside a selected list; the "what's next" card offers it with
@@ -5334,7 +5444,7 @@ public partial class MainWindow : Window
             if (blockId is null)
             {
                 Announce("There is no birthday list on this newsletter yet. Add one from the Insert menu.");
-                return;
+                return false;
             }
 
             // Page FIRST, then select. GoToPage clears the selection — deliberately, because a
@@ -5349,13 +5459,13 @@ public partial class MainWindow : Window
         if (!_widgets.CanEdit(blockId))
         {
             Announce(WidgetController.NewerVersionMessage);
-            return;
+            return false;
         }
 
         if (!TryReadBirthdayList(blockId, out BirthdayListData current))
         {
             Announce("TrestleBoard could not read what is in this birthday list, so it left it alone.");
-            return;
+            return false;
         }
 
         int month = _session.Document.Metadata.IssueMonth;
@@ -5366,19 +5476,21 @@ public partial class MainWindow : Window
         // the button, so the provenance is brought up to date without a dialog nobody needs.
         if (!plan.ChangesAnything)
         {
+            // Still a change: the provenance stamp is written even though no name moved.
             ApplyBirthdayPlan(blockId, plan);
             Announce("The birthday list already matches your address book.");
-            return;
+            return true;
         }
 
         if (!await ConfirmBirthdaysAsync(plan, month, inserting: false))
         {
             Announce("The birthday list was left exactly as it was.");
-            return;
+            return false;
         }
 
         ApplyBirthdayPlan(blockId, plan);
         Announce(Describe(plan, month));
+        return true;
     }
 
     /// <summary>
@@ -5542,11 +5654,13 @@ public partial class MainWindow : Window
     /// same <see cref="WidgetController.ApplyWidgetData"/> the wizard uses — no new command type, so
     /// Ctrl+Z restores exactly what was printed before (PLAN.md §11 M19).
     /// </summary>
-    internal async Task SyncOfficersAsync()
+    /// <returns>M74 (c): false where the user backed out, so no surface built on <c>ActionOutcome</c>
+    /// says "Done" about work that was declined.</returns>
+    internal async Task<bool> SyncOfficersAsync()
     {
         if (_session is null || _widgets is null)
         {
-            return;
+            return false;
         }
 
         // The panel offers this beside a selected table; the "what's next" card offers it with
@@ -5558,7 +5672,7 @@ public partial class MainWindow : Window
             if (blockId is null)
             {
                 Announce("There is no officers table on this newsletter yet. Add one from the Insert menu.");
-                return;
+                return false;
             }
 
             // Page FIRST, then select. GoToPage clears the selection — deliberately, because a
@@ -5573,13 +5687,13 @@ public partial class MainWindow : Window
         if (!_widgets.CanEdit(blockId))
         {
             Announce(WidgetController.NewerVersionMessage);
-            return;
+            return false;
         }
 
         if (!TryReadOfficers(blockId, out OfficersTableData current))
         {
             Announce("TrestleBoard could not read what is in this officers table, so it left it alone.");
-            return;
+            return false;
         }
 
         OfficersProjection plan = OfficersRosterProjection.Plan(current, Roster.Book.Members);
@@ -5589,21 +5703,23 @@ public partial class MainWindow : Window
         // the button, so the provenance is brought up to date without a dialog nobody needs.
         if (!plan.HasAnythingToSay)
         {
+            // Still a change: the provenance stamp is written even though no office moved.
             ApplyOfficerDecisions(blockId, current, plan, plan.DefaultDecisions);
             Announce("The officers table already matches your address book.");
-            return;
+            return true;
         }
 
         OfficersSyncAnswer answer = await AskAboutOfficersAsync(plan, inserting: false);
         if (!answer.Confirmed)
         {
             Announce("The officers table was left exactly as it was.");
-            return;
+            return false;
         }
 
         ApplyOfficerDecisions(blockId, current, plan, answer.Decisions);
         WritePhoneNumbersBack(answer.PhoneWriteBacks);
         Announce(Describe(answer.Decisions, plan));
+        return true;
     }
 
     /// <summary>
@@ -5948,13 +6064,10 @@ public partial class MainWindow : Window
         await RunWizardAsync(blockId, grid: false, seeded, justInserted: true);
     }
 
-    internal async Task EditWidgetAsync(bool grid)
-    {
-        if (WidgetTarget() is { } blockId)
-        {
-            await RunWizardAsync(blockId, grid);
-        }
-    }
+    /// <returns>M74 (c): false where the user backed out, so no surface built on <c>ActionOutcome</c>
+    /// says "Done" about work that was declined.</returns>
+    internal async Task<bool> EditWidgetAsync(bool grid) =>
+        WidgetTarget() is { } blockId && await RunWizardAsync(blockId, grid);
 
     /// <summary>
     /// The item "Change what this says" acts on: the chosen one, or — when nothing is chosen and the
@@ -6021,7 +6134,7 @@ public partial class MainWindow : Window
         ? "Nothing was filled in yet. Press Ctrl+Z to take it back off the page."
         : "Nothing was changed. This box is exactly as it was.");
 
-    private async Task RunWizardAsync(
+    private async Task<bool> RunWizardAsync(
         string blockId,
         bool grid,
         System.Text.Json.JsonElement? seeded = null,
@@ -6030,12 +6143,12 @@ public partial class MainWindow : Window
         if (_widgets is null || _session is null || !_widgets.CanEdit(blockId))
         {
             RefreshActions();
-            return;
+            return false;
         }
 
         if (CreateSession(blockId, seeded) is not { } wizard)
         {
-            return;
+            return false;
         }
 
         IReadOnlyList<PersonSuggestion> people = PeopleForWizards();
@@ -6050,7 +6163,7 @@ public partial class MainWindow : Window
             if (CancelTheWizardForTest)
             {
                 SayTheWizardWasCancelled(justInserted);
-                return;
+                return false;
             }
 
             var window = new WidgetGridWindow(wizard, people, banner);
@@ -6061,7 +6174,7 @@ public partial class MainWindow : Window
                 // asymmetric silence in the same `if`, which reads like a window that did
                 // something and did not mention it.
                 SayTheWizardWasCancelled(justInserted);
-                return;
+                return false;
             }
 
             _widgets.ApplyWidgetData(blockId, window.Data, window.DataVersion, window.UndoLabel);
@@ -6071,7 +6184,7 @@ public partial class MainWindow : Window
             if (CancelTheWizardForTest)
             {
                 SayTheWizardWasCancelled(justInserted);
-                return;
+                return false;
             }
 
             var window = new WizardWindow(wizard, people, banner);
@@ -6079,7 +6192,7 @@ public partial class MainWindow : Window
             if (!window.Confirmed)
             {
                 SayTheWizardWasCancelled(justInserted);
-                return;
+                return false;
             }
 
             _widgets.ApplyWidgetData(blockId, window.Data, window.DataVersion, window.UndoLabel);
@@ -6087,6 +6200,7 @@ public partial class MainWindow : Window
         }
 
         RefreshActions();
+        return true;
     }
 
     /// <summary>

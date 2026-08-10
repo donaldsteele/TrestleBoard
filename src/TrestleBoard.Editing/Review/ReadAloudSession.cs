@@ -157,10 +157,24 @@ public sealed class ReadAloudSession : IDisposable
             return;
         }
 
-        _at = WhereThatSentenceIsNow(was);
-        _notice = WhatToSay(was, wasPosition);
+        (int landed, bool anchored) = WhereThatSentenceIsNow(was);
+        _at = landed;
+
+        // M74 (e): an unanchored landing is a guess, and it must not be narrated as continuity.
+        _notice = anchored ? WhatToSay(was, wasPosition) : TheWritingIsGone();
         Raise();
     }
+
+    /// <summary>
+    /// What is said when the piece of writing the reader was in has gone out of the newsletter
+    /// altogether — a whole story deleted, or the frame holding it removed. There is no honest
+    /// "that sentence as it reads now" to offer, because the sentence now under the reader belongs
+    /// to somebody else's story; all that can be said truthfully is that their place is gone and
+    /// where they have been put instead.
+    /// </summary>
+    private string TheWritingIsGone() =>
+        "The writing you were on is not in the newsletter any more. TrestleBoard has moved you to "
+        + $"sentence {Math.Max(1, Position)} of {_sentences.Count}.";
 
     /// <summary>
     /// The place, carried across a cut that may have moved everything.
@@ -172,12 +186,23 @@ public sealed class ReadAloudSession : IDisposable
     /// After that: the same offset (the words themselves were edited), then the nearest sentence
     /// after it in the same paragraph, then the end of that paragraph, then the start of the same
     /// story. A reader would far rather be a line out than back at the beginning.</para>
+    ///
+    /// <para><b>M74 (e): and it says whether it found the place or guessed at it.</b> All five
+    /// anchors are inside the story being read, so deleting that story outright misses every one of
+    /// them and the last clamp lands on an arbitrary sentence of somebody else's article. That is a
+    /// reasonable place to stand and an indefensible thing to narrate — the caller was telling the
+    /// reader "this is that sentence as it reads now" about writing that had been deleted. The
+    /// second half of the answer is what stops it.</para>
     /// </summary>
-    private int WhereThatSentenceIsNow(Sentence was)
+    /// <returns>
+    /// Where to stand, and whether that place is really the one the reader was on
+    /// (<c>Anchored</c>) or the fallback clamp with no relation to it.
+    /// </returns>
+    private (int At, bool Anchored) WhereThatSentenceIsNow(Sentence was)
     {
         if (_sentences.Count == 0)
         {
-            return 0;
+            return (0, true);
         }
 
         int sameWords = -1;
@@ -228,11 +253,11 @@ public sealed class ReadAloudSession : IDisposable
         {
             if (candidate >= 0)
             {
-                return candidate;
+                return (candidate, true);
             }
         }
 
-        return Math.Clamp(_at, 0, _sentences.Count - 1);
+        return (Math.Clamp(_at, 0, _sentences.Count - 1), false);
     }
 
     /// <summary>

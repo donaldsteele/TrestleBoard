@@ -28,9 +28,24 @@ namespace TrestleBoard.App.Dialogs;
 /// </summary>
 internal sealed class ReadAloudWindow : Window
 {
+    /// <summary>
+    /// Why the window is drawing itself again — and therefore how much it is allowed to do. M74 (e):
+    /// this used to be guesswork, because there was nothing to guess from. Every keystroke on the
+    /// page behind raises <c>Changed</c>, and the redraw that followed turned the page, took the
+    /// focus and repeated itself, all of which belong to somebody pressing a button in this window.
+    /// </summary>
+    private enum Because
+    {
+        /// <summary>Next, Say-that-again, or the window opening. The user asked; act like it.</summary>
+        TheUserAsked,
+
+        /// <summary>Somebody typed on the page behind. Redraw, and do nothing they did not ask for.</summary>
+        TheNewsletterChanged,
+    }
+
     private readonly ReadAloudSession _session;
     private readonly ISpeaker _speaker;
-    private readonly Action<Sentence?> _show;
+    private readonly Action<Sentence?, bool> _show;
     private readonly Action<string> _say;
     private readonly TextBlock _heading;
     private readonly TextBlock _progress;
@@ -45,10 +60,17 @@ internal sealed class ReadAloudWindow : Window
     /// </summary>
     private bool _voiceAnswered = true;
 
+    /// <summary>
+    /// The sentence the "this computer could not say that out loud" message was last said about, or
+    /// null while no such message is standing. M74 (e): the message was re-said on every keystroke,
+    /// to the window and to the status bar, about a failure that had not happened again.
+    /// </summary>
+    private string? _toldTheVoiceFailedFor;
+
     internal ReadAloudWindow(
         ReadAloudSession session,
         ISpeaker speaker,
-        Action<Sentence?> show,
+        Action<Sentence?, bool> show,
         Action<string> say)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
@@ -121,10 +143,10 @@ internal sealed class ReadAloudWindow : Window
             _session.Changed -= OnTheNewsletterChanged;
             _session.Dispose();
             _speaker.Hush();
-            _show(null);
+            _show(null, false);
         };
 
-        Render();
+        Render(Because.TheUserAsked);
     }
 
     internal string HeadingForTest => _heading.Text ?? "";
@@ -174,6 +196,12 @@ internal sealed class ReadAloudWindow : Window
     /// unasked in the middle of a correction would be alarming, and the user is looking at the
     /// words they just typed rather than waiting to be read to. "Say that again" speaks the new
     /// wording the moment they ask for it.
+    ///
+    /// <para><b>M74 (e): and not to move anything either.</b> Editing on a different page from the
+    /// one being read is the stated workflow, and the redraw turned the canvas back to the sentence
+    /// on every keystroke, leaving the caret off-screen; it also took the focus and repeated the
+    /// voice-failure message each time. A redraw caused by typing draws, and that is all: turning
+    /// the page and moving the focus belong to Next, Back and Say-that-again.</para>
     /// </summary>
     private void OnTheNewsletterChanged(object? sender, EventArgs e)
     {
@@ -182,7 +210,7 @@ internal sealed class ReadAloudWindow : Window
         // Render redraws the highlight from the sentence's new offsets and rewrites the status line,
         // so the notice goes on afterwards — beside, not instead of, anything Render put there
         // (the "this computer has no voice for that sentence" message is still true).
-        Render();
+        Render(Because.TheNewsletterChanged);
         if (notice is null)
         {
             return;
@@ -202,13 +230,18 @@ internal sealed class ReadAloudWindow : Window
             _voiceAnswered = _speaker.Say(sentence.Text);
         }
 
-        Render();
+        Render(Because.TheUserAsked);
     }
 
-    private void Render()
+    private void Render(Because because)
     {
+        bool theUserAsked = because == Because.TheUserAsked;
         Sentence? current = _session.Current;
-        _show(current);
+
+        // Turning the page is a navigation, and navigations belong to the user. On a redraw caused
+        // by typing the highlight is still drawn — on the page they are looking at, where the
+        // sentence may well not be, in which case there is nothing to light up and nothing moves.
+        _show(current, theUserAsked);
 
         if (_session.IsEmpty)
         {
@@ -242,13 +275,22 @@ internal sealed class ReadAloudWindow : Window
 
         if (_speaker.Available && !_voiceAnswered)
         {
-            Tell("This computer could not say that sentence out loud, so it is here to read "
-                + "instead. Nothing is wrong with your newsletter. Press “Read the next one” to "
-                + "carry on, or close this and ask somebody to check the computer's voice.");
+            // Said once per sentence it is about. The failure did not happen again because somebody
+            // typed a letter, and saying so again — in the window and in the status bar, on every
+            // keystroke — is the app reporting an event that did not occur.
+            string about = current?.Text ?? "";
+            if (theUserAsked || !string.Equals(about, _toldTheVoiceFailedFor, StringComparison.Ordinal))
+            {
+                Tell("This computer could not say that sentence out loud, so it is here to read "
+                    + "instead. Nothing is wrong with your newsletter. Press “Read the next one” to "
+                    + "carry on, or close this and ask somebody to check the computer's voice.");
+                _toldTheVoiceFailedFor = about;
+            }
         }
         else
         {
             _status.Text = "";
+            _toldTheVoiceFailedFor = null;
         }
 
         _progress.Text = _session.ProgressText;
@@ -256,11 +298,16 @@ internal sealed class ReadAloudWindow : Window
 
         AutomationProperties.SetName(this, $"{Title} — {_progress.Text}");
 
-        // Avalonia has no live region for a whole panel, so the heading is focused to make a screen
-        // reader read the new sentence (the WizardWindow technique, docs/M7-spec.md §6.6).
-        _heading.Focusable = true;
-        _heading.Focus();
-        _heading.Focusable = false;
+        if (theUserAsked)
+        {
+            // Avalonia has no live region for a whole panel, so the heading is focused to make a
+            // screen reader read the new sentence (the WizardWindow technique, docs/M7-spec.md
+            // §6.6). Only where the user asked for a new sentence: doing it per keystroke moves the
+            // focus off whatever they were on and makes a screen reader start again, mid-word.
+            _heading.Focusable = true;
+            _heading.Focus();
+            _heading.Focusable = false;
+        }
     }
 
     /// <summary>
