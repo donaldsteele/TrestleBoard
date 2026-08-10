@@ -372,13 +372,14 @@ internal static class ShotList
             }),
 
         new("settings", ShotKind.Dialog, null,
-            "Theme and text size, and nothing else.",
-            "The how-things-look window, offering a theme and a size for the app's own text, both "
-            + "as large controls.",
+            "Theme, text size, and who to speak to about sickness and distress.",
+            "The how-things-look window, offering a theme and a size for the app's own text as "
+            + "large controls, and asking in plain words which officer members should speak to "
+            + "about sickness and distress.",
             stage =>
             {
                 SettingsDialog dialog = stage.OpenDialog(
-                    new SettingsDialog(Stage.DocumentationSettings), height: 420);
+                    new SettingsDialog(Stage.DocumentationSettings), height: 560);
                 return Task.FromResult(Stage.Shoot(dialog));
             }),
 

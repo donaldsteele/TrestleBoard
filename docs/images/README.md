@@ -194,11 +194,11 @@ A photo page waiting for its photograph, and saying so. (the whole editor window
 
 ### `settings.png`
 
-Theme and text size, and nothing else. (one dialog on its own)
+Theme, text size, and who to speak to about sickness and distress. (one dialog on its own)
 
 `dotnet run --project tools/TrestleBoard.Screenshots -- --only settings`
 
-![The how-things-look window, offering a theme and a size for the app's own text, both as large controls.](settings.png)
+![The how-things-look window, offering a theme and a size for the app's own text as large controls, and asking in plain words which officer members should speak to about sickness and distress.](settings.png)
 
 ### `restore-dialog.png`
 
