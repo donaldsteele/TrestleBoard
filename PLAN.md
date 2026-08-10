@@ -3804,6 +3804,32 @@ five bugs were found by the owner using the app, and gate 23's screen-reader pas
 (`docs/accessibility-test-script.md` §21, sixteen steps, rows 21.1–21.16 still blank) remains unwalked.
 **A hands-on pass is worth more than another audit round**, and the milestone is not a substitute for it.
 
+### M74 — the final-check findings (M) — **delivered 2026-08-10, `docs/M74-spec.md`**
+
+> **Everything below was fixed, including the parts each wave first proposed to leave.** Two waves
+> named a remainder — M74 (c) left eleven "replace what is on screen" handlers as "the honest
+> remainder", and gate 27's allow-list carried `ToggleActionPanel` with a comment admitting its
+> silent settings-save was an open question. Both were closed rather than recorded, because a named
+> live gap is exactly how M71's boundary became M73's bug. The allow-list is now **empty**.
+>
+> **What the fixes taught, kept in `docs/M74-spec.md` §4 beside each finding.** Four correct
+> implementations of temp-then-rename did not cause the fifth site to adopt it — consistency has to
+> be checked for, not assumed. An anti-vacuity floor set comfortably below the true number measures
+> nothing: gate 27's floor of 100 sat under a poisoned score of 234, so a 75% coverage collapse
+> passed for a day. "This fix is partial" is not sufficient disclosure unless it names the remaining
+> surface. And a render triggered by the document changing has not earned the right to navigate or
+> move focus — only one the user asked for has.
+>
+> **Two limits found and recorded rather than closed.** Gate 27's value-returning regex matches bare
+> `bool`/`int`, so every `Task<bool>` widening in (c) and (f) is invisible to it — the gate protects
+> the synchronous discards and no others. And `ShowTextStylesAsync` is the one widened handler with
+> no test: its sheet is an awaited modal with no override, and no seam was invented to manufacture
+> coverage.
+>
+> **`docs/M74-spec.md` §5 is the point of the document** — the verified clean lists from all four
+> reviewers, traced to real lines. A clean result nobody wrote down is how this project came to need
+> M73 at all.
+
 ### M74 — the final-check findings (M)
 
 **Goal.** Four independent reviewers went over v1.3.0 as the last gate before calling it

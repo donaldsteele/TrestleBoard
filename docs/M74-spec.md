@@ -1,6 +1,12 @@
 # M74 — The final-check findings
 
-**In progress.** PLAN.md §11 M74. Opened 2026-08-10, after v1.3.0 was published.
+**Delivered 2026-08-10**, in v1.3.1. PLAN.md §11 M74. Opened the same day, after v1.3.0 was published.
+
+> **Every finding was fixed, including the two each wave first proposed to leave** — the eleven
+> unwidened "replace what is on screen" handlers, and gate 27's `ToggleActionPanel` allow-list entry.
+> The allow-list is now empty. Two *limits* remain, recorded in §7: gate 27 cannot see `Task<bool>`
+> widenings, and `ShowTextStylesAsync` has no test because its sheet is an awaited modal with no
+> override and no seam was invented to manufacture coverage.
 
 ## 1. What this milestone is
 
@@ -211,6 +217,20 @@ originally placed the phantom-making prose *above* the class declaration, where 
 broken regex. Demanding failing-first is what caught all four.
 
 ## 7. What is deliberately not fixed
+
+**Two limits of the fixes themselves, found while making them:**
+
+- **Gate 27 cannot see a `Task<bool>` discard.** Its value-returning regex matches bare `bool` and
+  `int`, so every handler widened in (c) and (f) — thirty-odd of them — is outside its view. The gate
+  protects the synchronous discards it was built for and no others. Widening the regex is a
+  follow-up; doing it during a release candidate, immediately after the same gate proved to have been
+  blind for a day, was the wrong moment.
+- **`ShowTextStylesAsync` is the one widened handler with no test.** Its sheet is
+  `await window.ShowDialog(this)` with no test override, so a headless run would block on a modal
+  nothing can close. No seam was invented to manufacture coverage — an untested widening that is
+  honest about being untested is better than a test that proves the seam works.
+
+**Older items, unchanged by this milestone:**
 
 - The remaining `_settings.Save()` discards in methods that announce nothing (`ClaimTheTour`,
   `OfferTheReviewAsync`, two test seams) are outside gate 27's rule, which is about announcements
