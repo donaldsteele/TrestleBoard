@@ -3934,6 +3934,42 @@ recorded in `docs/M74-spec.md` — they are the current verified map of what is 
 clean result nobody wrote down is how this project got a milestone called M73. v1.3.1 is tagged only
 after CI is green on all three operating systems.
 
+### M75 — the newsletter knows which issue it is (M) — **delivered 2026-08-10**
+
+> **Delivered in four commits** — `f49bc36` (the wizard, the start paths, the ask-at-point-of-need,
+> `MeetingRule`), `109d994` (the five reporting defects, the roster load state, the blast radius),
+> `5ae28ba` (the `LodgeName` hole and the census). Suite 1834 → **1952**.
+>
+> **The shape turned out to be a pattern, not a bug.** Three fields — `IssueMonth`/`IssueYear`,
+> `MeetingRule`, and then `LodgeName` — each held a user-typed answer in the cover banner that never
+> reached the newsletter itself. So the milestone closes with a **census**: every settable property on
+> `DocumentMetadata` is classified `AskedFor` or `NeverAsked` with a written reason, default-deny, and
+> an unclassified new field fails the build. Its ability to fail was demonstrated with a scratch
+> property rather than assumed — and the classification half is recorded as *passing beforehand*,
+> because it guards the next field, not this one.
+>
+> **Gate 24 caught an M75 mistake while M75 was being written.** Adding a "nobody has said which issue
+> this is" context made the reachability gate fail, which forced withholding "Update the birthday
+> list" and "Make the PDF" from the what's-next card while the date is unanswered — both would have
+> offered a button that could only refuse. An M71 gate catching an M75 defect before it shipped is the
+> first time a gate in this project has paid for itself unprompted.
+>
+> **What the owner would now see**, and the sentence that would have saved two agents' tracing:
+> *"Nobody in your address book has a birthday in **January**, which is the month this issue is for."*
+> Naming the month is the whole fix — "this issue's month" reads as the month the user believes they
+> are in, which is precisely how a wrong issue date hides.
+>
+> **The test gap is closed at the shape, not the instance.** Every projection test passed the month in
+> as a literal `int` and never mentioned `Document`; every headless birthday test loaded the July
+> sample; **no test had ever started from a template**, the one path a real user takes. The new
+> invariant enumerates routes from `TemplateLibrary.All` with an anti-vacuity floor, so a fourth
+> shipped template is covered without anybody remembering to add it.
+>
+> **Title was settled by argument, not asked:** the leading space in `" 2000-01.pdf"` was an empty
+> `Metadata.Title`, not the issue date, and a second question on the way into a newsletter is a second
+> question to get wrong. One fallback, `IssueNaming.DefaultTitle`, used everywhere — including the
+> window title bar, which the census caught reading `"TrestleBoard —  — not saved yet"`.
+
 ### M75 — the newsletter knows which issue it is (M)
 
 **The report.** The owner set a cover date of 7 July, had a member with a 3 July birthday, and the
