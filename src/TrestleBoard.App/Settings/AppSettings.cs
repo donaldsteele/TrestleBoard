@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using TrestleBoard.Core.Phrases;
 
 namespace TrestleBoard.App.Settings;
 
@@ -81,6 +82,21 @@ public sealed record AppSettings
     /// </summary>
     public bool HasSeenTheTour { get; init; }
 
+    /// <summary>
+    /// Which officer members are told to speak to about sickness and distress (M54, the owner's
+    /// ruling of 2026-08-09 — docs/M54-spec.md §3).
+    ///
+    /// <para><b>Free text, not a list of offices.</b> A list is safer to render, and wrong: a lodge
+    /// that routes this through its Chaplain, its Junior Warden, a Sunshine Committee or a named
+    /// visiting officer would find its own answer missing from a list somebody in another state
+    /// wrote. The blank is one short phrase that lands in one sentence, and the committee can read
+    /// the sentence back before it goes in — the two ways free text usually goes wrong.</para>
+    ///
+    /// <para>Empty is the one thing it may not be, so <see cref="Normalised"/> puts the default
+    /// back. "Please speak to the , who is keeping in touch" is not a sentence to print.</para>
+    /// </summary>
+    public string SicknessContactOffice { get; init; } = PhraseLibrary.DefaultOffice;
+
     [JsonIgnore]
     public double UiScale => Math.Clamp(UiScalePercent, MinScalePercent, MaxScalePercent) / 100d;
 
@@ -89,6 +105,9 @@ public sealed record AppSettings
     {
         UiScalePercent = Math.Clamp(UiScalePercent, MinScalePercent, MaxScalePercent),
         Theme = Enum.IsDefined(Theme) ? Theme : ThemeChoice.System,
+        SicknessContactOffice = string.IsNullOrWhiteSpace(SicknessContactOffice)
+            ? PhraseLibrary.DefaultOffice
+            : SicknessContactOffice.Trim(),
     };
 
     /// <summary>

@@ -2633,14 +2633,25 @@ fonts; snapshot-tested). No print subsystem is built — the PDF hand-off *is* t
 fallback card is honest when the hand-off fails. No bleed, imposition or print-shop features:
 out of scope, matching the declined-ground spirit of M47.
 
-### M54 — Words for hard news (S) — **delivered 2026-08-08, `docs/M54-spec.md`** ⚠ tone awaiting owner
+### M54 — Words for hard news (S) — **delivered 2026-08-08, `docs/M54-spec.md`; wording signed off 2026-08-09**
 
 > Five paragraphs — memorial, sickness and distress, get-well, newly raised, thank-you to a degree
 > team — chosen from a list, blanks asked one at a time, read back, then inserted as ordinary
-> editable writing. **The wording is a draft: PLAN.md's acceptance requires the owner to review the
-> tone before it ships, and `docs/M54-spec.md` §3 sets out the three choices that are the owner's to
-> confirm** (the "Celestial Lodge above" usage, naming the Almoner, and the memorial's claim of many
-> years' service). The machinery is finished either way.
+> editable writing.
+>
+> **The owner reviewed the tone on 2026-08-09 and all three of `docs/M54-spec.md` §3's open choices
+> are decided.** The memorial was rewritten into his own register ("laid down his working tools and
+> joined that Celestial Lodge above"); the sickness paragraph names the **Secretary**, not the
+> Almoner, **and the office became a setting** because it varies by lodge and by year; the memorial's
+> claim of many years' service stands as drafted. §13's item is closed.
+>
+> **The office is pre-filled, not asked.** `PhraseBlank` gained a `Default`: a blank that has one is
+> not a question, so the wizard skips it in the one-per-screen run and shows it filled in on the
+> read-back screen, editable for that one insert. Adding a "who handles this?" screen to every
+> sickness notice would have made the feature worse at the exact moment it exists for. The value is
+> free text in `AppSettings.SicknessContactOffice`, handed to Core through the same `Phrase.Fill`
+> seam as `{name}` and `{date}` — Core still references BCL only (§9) — and an empty office falls
+> back to "Secretary" at both ends rather than printing "speak to the , who is keeping in touch".
 >
 > A blank may be left empty on purpose — a memorial is often written before the date is settled — and
 > what prints is a line of underscores rather than `{date}`, which would read as the program having
@@ -3943,10 +3954,14 @@ The one item a machine could take on is the last defect named after the list, an
       and made the previews transparent, which is what the defects asked for; whether the result
       looks right at 200% in High Contrast is a judgement. It folds into M16's by-eye item above
       rather than standing as a second sitting.
-- [!] **The bundled "Words for hard news" texts need the owner's voice review before M54 ships**
-      (added 2026-08-08, from the product-owner pass). A memorial paragraph is lodge voice, not app
-      voice; the shipped snippets are drafts until the owner has read them aloud and agreed. Blocked
-      on the owner; §11 M54 carries the acceptance criterion.
+- [x] **The bundled "Words for hard news" texts need the owner's voice review before M54 ships**
+      (added 2026-08-08, from the product-owner pass) — **closed 2026-08-09, the owner read them and
+      ruled on all three of `docs/M54-spec.md` §3's open choices.** The memorial went into his own
+      register; the sickness paragraph names the **Secretary** rather than the Almoner, and the
+      office became `AppSettings.SicknessContactOffice` — pre-filled into the words, never asked,
+      because it varies by lodge and by year; the memorial's claim of many years' service stands as
+      drafted, left standing in the same sitting that rewrote the sentence before it. No wording in
+      M54 is a draft any longer, and §11 M54's acceptance criterion is met.
 
 Of the three known defects recorded here, **the two cosmetic ones are fixed (2026-07-27)** — they
 turned out to be App-only chrome fixes that re-bake no snapshot baseline, so closing them opened no

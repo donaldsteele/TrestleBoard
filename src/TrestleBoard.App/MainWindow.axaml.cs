@@ -2754,6 +2754,21 @@ public partial class MainWindow : Window
     internal string? PhraseAnswerForTest { get; set; }
 
     /// <summary>
+    /// The blanks the app can answer without asking (M54, the owner's ruling of 2026-08-09): the
+    /// office the sickness paragraph names comes from the user's settings, pre-filled rather than
+    /// asked. <c>TrestleBoard.Core</c> knows nothing of <see cref="AppSettings"/> — the value
+    /// arrives through the same <c>Fill</c> seam as <c>{name}</c> and <c>{date}</c>.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string> WhatTheAppAlreadyKnows(AppSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        return new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["{office}"] = settings.SicknessContactOffice,
+        };
+    }
+
+    /// <summary>
     /// M54: choose a paragraph, fill its blanks, put it in as ordinary editable writing.
     /// </summary>
     internal async Task InsertPhraseAsync()
@@ -2771,7 +2786,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var window = new PhraseWindow(Phrases.All());
+            var window = new PhraseWindow(Phrases.All(), WhatTheAppAlreadyKnows(_settings));
             await window.ShowDialog(this);
             if (!window.Confirmed)
             {

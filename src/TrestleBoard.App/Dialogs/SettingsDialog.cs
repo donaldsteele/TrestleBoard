@@ -5,19 +5,23 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using TrestleBoard.App.Settings;
 using TrestleBoard.App.Theme;
+using TrestleBoard.Core.Phrases;
 
 namespace TrestleBoard.App.Dialogs;
 
 /// <summary>
-/// Look and size (PLAN.md §6). Two settings only, both of which some people genuinely need to use
-/// the app at all — so they are plainly worded, previewed live, and reachable from the keyboard
-/// like everything else.
+/// Look and size (PLAN.md §6), and from M54 the one word of the app's writing that is the lodge's
+/// rather than ours. All of it plainly worded, previewed live, and reachable from the keyboard like
+/// everything else — the first two settings are ones some people genuinely need to use the app at
+/// all, and the third is one no lodge but Indian Land 414 would get right by default.
 /// </summary>
 public sealed class SettingsDialog : Window
 {
+    private readonly AppSettings _current;
     private readonly ComboBox _theme;
     private readonly Slider _scale;
     private readonly TextBlock _scaleLabel;
+    private readonly TextBox _sicknessOffice;
     private readonly TextBlock _preview;
 
     private static readonly (ThemeChoice Choice, string Label)[] Themes =
@@ -31,6 +35,7 @@ public sealed class SettingsDialog : Window
     public SettingsDialog(AppSettings current)
     {
         ArgumentNullException.ThrowIfNull(current);
+        _current = current;
 
         Title = "How things look";
         SizeToContent = SizeToContent.Height;
@@ -69,6 +74,22 @@ public sealed class SettingsDialog : Window
         AutomationProperties.SetName(_scale, "How big the buttons and menus are");
 
         _scaleLabel = new TextBlock { FontSize = 20, MinWidth = 80 };
+
+        // M54, the owner's ruling of 2026-08-09. Free text rather than a list of offices: a list
+        // would be safer to render and wrong for the first lodge whose answer nobody here thought
+        // of. Left empty it goes back to Secretary — the sentence has to name somebody.
+        _sicknessOffice = new TextBox
+        {
+            Text = current.SicknessContactOffice,
+            FontSize = 20,
+            MinHeight = 44,
+            Width = 380,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Watermark = PhraseLibrary.DefaultOffice,
+        };
+        AutomationProperties.SetName(
+            _sicknessOffice, "Who should members speak to about sickness and distress?");
+
         _preview = new TextBlock
         {
             FontSize = 16,
@@ -92,6 +113,7 @@ public sealed class SettingsDialog : Window
             }
         };
         _theme.SelectionChanged += (_, _) => UpdatePreview();
+        _sicknessOffice.TextChanged += (_, _) => UpdatePreview();
         UpdatePreview();
 
         var save = new Button
@@ -147,6 +169,24 @@ public sealed class SettingsDialog : Window
                         EndLabel($"Twice as big ({AppSettings.MaxScalePercent}%)", 1, HorizontalAlignment.Right),
                     },
                 },
+                new TextBlock
+                {
+                    Text = "Who should members speak to about sickness and distress?",
+                    FontSize = 20,
+                    FontWeight = FontWeight.Bold,
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 540,
+                },
+                _sicknessOffice,
+                new TextBlock
+                {
+                    Text = "The office, not a person's name — it goes into the sickness and "
+                        + "distress words under Insert, Words for hard news. If you leave it "
+                        + $"empty, it goes back to {PhraseLibrary.DefaultOffice}.",
+                    FontSize = 16,
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 540,
+                },
                 _preview,
                 new StackPanel
                 {
@@ -161,11 +201,20 @@ public sealed class SettingsDialog : Window
 
     public bool Confirmed { get; private set; }
 
-    public AppSettings Result => new AppSettings
+    /// <summary>
+    /// The settings that were brought in, with the three this window can change put back — rather
+    /// than a fresh <see cref="AppSettings"/>, which would take everything the window does not show
+    /// back to its default.
+    /// </summary>
+    public AppSettings Result => (_current with
     {
         Theme = Themes[Math.Max(0, _theme.SelectedIndex)].Choice,
         UiScalePercent = (int)_scale.Value,
-    }.Normalised();
+        SicknessContactOffice = OfficeAsTyped,
+    }).Normalised();
+
+    /// <summary>Empty means "the default", which <see cref="AppSettings.Normalised"/> puts back.</summary>
+    private string OfficeAsTyped => _sicknessOffice.Text ?? "";
 
     /// <summary>
     /// One end of the size slider - what "all the way left" and "all the way right" actually mean,
@@ -197,9 +246,14 @@ public sealed class SettingsDialog : Window
             _ => "Matches whatever your computer is set to. ",
         };
 
+        string office = string.IsNullOrWhiteSpace(OfficeAsTyped)
+            ? PhraseLibrary.DefaultOffice
+            : OfficeAsTyped.Trim();
+
         _preview.Text = themeNote
             + $"Menus and buttons will be {percent}% of their normal size. "
-            + "The newsletter page itself always stays white, because that is how it will print.";
+            + "The newsletter page itself always stays white, because that is how it will print. "
+            + $"The sickness and distress words will say to speak to the {office}.";
         AutomationProperties.SetName(_preview, _preview.Text);
     }
 }

@@ -45,6 +45,45 @@ public sealed class SettingsTests
     }
 
     /// <summary>
+    /// M54, the owner's ruling of 2026-08-09: at Indian Land 414 sickness enquiries go to the
+    /// Secretary, and the office is settable because it varies by lodge and by year.
+    /// </summary>
+    [Fact]
+    public void TheSicknessOfficeStartsAtSecretaryAndSurvivesTheDisk()
+    {
+        Assert.Equal("Secretary", new AppSettings().SicknessContactOffice);
+
+        string path = Path.Combine(Path.GetTempPath(), $"trestleboard-settings-{Guid.NewGuid():N}.json");
+        try
+        {
+            new AppSettings { SicknessContactOffice = "Chaplain" }.Save(path);
+
+            Assert.Equal("Chaplain", AppSettings.Load(path).SicknessContactOffice);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    /// <summary>
+    /// The one thing the office may not be is nothing: "please speak to the , who is keeping in
+    /// touch" is not a sentence to print in a newsletter.
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void AnEmptyOfficeGoesBackToSecretary(string typed)
+    {
+        Assert.Equal(
+            "Secretary",
+            new AppSettings { SicknessContactOffice = typed }.Normalised().SicknessContactOffice);
+        Assert.Equal(
+            "Chaplain",
+            new AppSettings { SicknessContactOffice = "  Chaplain " }.Normalised().SicknessContactOffice);
+    }
+
+    /// <summary>
     /// Losing a preference is a nuisance; refusing to start is not. A settings file that has been
     /// hand-edited into nonsense must yield defaults, not an exception.
     /// </summary>
@@ -149,6 +188,55 @@ public sealed class SettingsTests
             Assert.Equal(ThemeChoice.Dark, result.Theme);
             Assert.Equal(125, result.UiScalePercent);
             Assert.False(dialog.Confirmed);
+
+            dialog.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M54: the office is asked for in plain words, previewed in the sentence the live region
+    /// announces, and handed back on Save.
+    /// </summary>
+    [Fact]
+    public async Task TheDialogAsksWhoToSpeakToAndSaysWhatWillBePrinted()
+    {
+        await Session.Dispatch(() =>
+        {
+            var dialog = new SettingsDialog(
+                new AppSettings { SicknessContactOffice = "Almoner", HasSeenTheTour = true });
+            dialog.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            TextBox box = Assert.Single(dialog.GetLogicalDescendants().OfType<TextBox>());
+            Assert.Equal("Almoner", box.Text);
+            Assert.Equal(
+                "Who should members speak to about sickness and distress?",
+                Avalonia.Automation.AutomationProperties.GetName(box));
+
+            // The question is on the screen, not only in the screen reader.
+            Assert.Contains(
+                "Who should members speak to about sickness and distress?",
+                dialog.GetLogicalDescendants().OfType<TextBlock>().Select(t => t.Text ?? ""));
+
+            box.Text = "Chaplain";
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            TextBlock preview = Assert.Single(
+                dialog.GetLogicalDescendants().OfType<TextBlock>(),
+                t => (t.Text ?? "").Contains("will say to speak to the", StringComparison.Ordinal));
+            Assert.Contains("speak to the Chaplain", preview.Text!, StringComparison.Ordinal);
+            Assert.Equal(
+                preview.Text,
+                Avalonia.Automation.AutomationProperties.GetName(preview));
+            Assert.Equal("Chaplain", dialog.Result.SicknessContactOffice);
+
+            // And what this window does not show, it does not quietly reset.
+            Assert.True(dialog.Result.HasSeenTheTour);
+
+            // Emptied, it goes back to the default rather than out into the newsletter.
+            box.Text = "   ";
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Equal("Secretary", dialog.Result.SicknessContactOffice);
 
             dialog.Close();
         }, TestContext.Current.CancellationToken);

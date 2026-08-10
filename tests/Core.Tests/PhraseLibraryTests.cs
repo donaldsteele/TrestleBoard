@@ -105,6 +105,89 @@ public sealed class PhraseLibraryTests
             StringComparison.Ordinal);
     }
 
+    // ---- the office members are told to speak to (the owner's ruling of 2026-08-09) -------------
+
+    /// <summary>
+    /// docs/M54-spec.md §3, choice 2. The drafted paragraph named the Almoner; at Indian Land 414
+    /// it is the Secretary, and nobody who never opens the settings should have to say so.
+    /// </summary>
+    [Fact]
+    public void TheSicknessWordsSayTheSecretaryUnlessSomebodySaysOtherwise()
+    {
+        Phrase sickness = PhraseLibrary.Find("sickness-and-distress")!;
+
+        string filled = sickness.Fill(new Dictionary<string, string> { ["{name}"] = "A. Placeholder" });
+
+        Assert.Contains("speak to the Secretary, who is keeping", filled, StringComparison.Ordinal);
+        Assert.DoesNotContain("Almoner", filled, StringComparison.Ordinal);
+        Assert.Equal("Secretary", PhraseLibrary.DefaultOffice);
+    }
+
+    /// <summary>
+    /// The office varies by lodge and can change year to year, so it is a blank the app answers
+    /// from a setting rather than a word baked into the sentence.
+    /// </summary>
+    [Fact]
+    public void ALodgeThatSaysChaplainGetsChaplainInTheWords()
+    {
+        Phrase sickness = PhraseLibrary.Find("sickness-and-distress")!;
+
+        string filled = sickness.Fill(new Dictionary<string, string>
+        {
+            ["{name}"] = "A. Placeholder",
+            ["{office}"] = "  Chaplain  ",
+        });
+
+        Assert.Contains("speak to the Chaplain, who is keeping", filled, StringComparison.Ordinal);
+        Assert.DoesNotContain("Secretary", filled, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Whoever supplies the office may supply nothing. "Please speak to the , who is keeping in
+    /// touch" is not a sentence to print, and neither is a row of underscores where an office the
+    /// app already knows should be — so a blank with a default falls back to it.
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void AnEmptyOfficeFallsBackToTheDefaultRatherThanLeavingAHole(string given)
+    {
+        Phrase sickness = PhraseLibrary.Find("sickness-and-distress")!;
+
+        string filled = sickness.Fill(new Dictionary<string, string>
+        {
+            ["{name}"] = "A. Placeholder",
+            ["{office}"] = given,
+        });
+
+        Assert.Contains("speak to the Secretary, who is keeping", filled, StringComparison.Ordinal);
+        Assert.DoesNotContain("speak to the ,", filled, StringComparison.Ordinal);
+        Assert.DoesNotContain("speak to the __________", filled, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A blank carrying a default is one the app already has an answer for — the wizard shows it
+    /// filled in instead of asking. A blank without one is a question somebody must answer.
+    /// </summary>
+    [Fact]
+    public void OnlyTheOfficeArrivesAlreadyAnswered()
+    {
+        foreach (Phrase phrase in PhraseLibrary.Bundled)
+        {
+            foreach (PhraseBlank blank in phrase.Blanks)
+            {
+                if (string.Equals(blank.Token, "{office}", StringComparison.Ordinal))
+                {
+                    Assert.Equal(PhraseLibrary.DefaultOffice, blank.Default);
+                }
+                else
+                {
+                    Assert.Null(blank.Default);
+                }
+            }
+        }
+    }
+
     [Fact]
     public void EveryParagraphSaysWhenAPersonWouldReachForIt()
     {

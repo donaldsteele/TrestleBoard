@@ -5,8 +5,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.LogicalTree;
 using TrestleBoard.App.Dialogs;
 using TrestleBoard.App.Integration;
+using TrestleBoard.App.Settings;
 using TrestleBoard.Core.Phrases;
 using TrestleBoard.Editing.Actions;
 using Xunit;
@@ -251,6 +253,86 @@ public sealed class PhraseShellTests
             window.AdvanceForTest();
             Assert.True(window.Confirmed);
             Assert.Contains("A. Placeholder", window.Words!, StringComparison.Ordinal);
+
+            return Task.CompletedTask;
+        }, TestContext.Current.CancellationToken);
+    }
+
+    // ---- the office, pre-filled rather than asked (the owner's ruling of 2026-08-09) ------------
+
+    /// <summary>
+    /// docs/M54-spec.md §3, choice 2. The office is a setting, and a setting must not become one
+    /// more question at the worst possible moment: the wizard still asks for the brother's name and
+    /// nothing else, and the office arrives already answered.
+    /// </summary>
+    [Fact]
+    public async Task TheOfficeIsFilledInAlreadyRatherThanAskedFor()
+    {
+        await HeadlessSession.DispatchAsync(() =>
+        {
+            var window = new PhraseWindow(
+                PhraseLibrary.Bundled,
+                MainWindow.WhatTheAppAlreadyKnows(new AppSettings()));
+            Phrase sickness = PhraseLibrary.Find("sickness-and-distress")!;
+
+            window.ChooseForTest(sickness);
+
+            // Two blanks in the text; one question on the way through.
+            Assert.Equal(2, sickness.Blanks.Count);
+            IReadOnlyList<PhraseBlank> asked = window.QuestionsForTest;
+            Assert.Equal("{name}", Assert.Single(asked).Token);
+            Assert.Equal("Secretary", window.AnswerSoFarForTest("{office}"));
+
+            window.AnswerForTest("{name}", "A. Placeholder");
+            window.AdvanceForTest();
+
+            // Straight to the read-back, which shows the office filled in and changeable.
+            Assert.Contains("how it reads", window.HeadingForTest, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("speak to the Secretary", window.BodyForTest, StringComparison.Ordinal);
+
+            TextBox box = Assert.Single(window.GetLogicalDescendants().OfType<TextBox>());
+            Assert.Equal("Secretary", box.Text);
+            Assert.Equal(
+                "Who should members speak to about sickness and distress?",
+                Avalonia.Automation.AutomationProperties.GetName(box));
+
+            // Changing it here changes these words only — and the sentence is re-read as it changes.
+            box.Text = "Chaplain";
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Contains("speak to the Chaplain", window.BodyForTest, StringComparison.Ordinal);
+
+            window.AdvanceForTest();
+            Assert.True(window.Confirmed);
+            Assert.Contains("speak to the Chaplain", window.Words!, StringComparison.Ordinal);
+
+            return Task.CompletedTask;
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// The whole path the owner asked for: a lodge changes the setting, and the words that land in
+    /// the newsletter say what that lodge says.
+    /// </summary>
+    [Theory]
+    [InlineData("Chaplain", "speak to the Chaplain")]
+    [InlineData("   ", "speak to the Secretary")]
+    public async Task TheSettingReachesTheWordsThatGoIn(string office, string expected)
+    {
+        await HeadlessSession.DispatchAsync(() =>
+        {
+            var settings = new AppSettings { SicknessContactOffice = office }.Normalised();
+            var window = new PhraseWindow(
+                PhraseLibrary.Bundled, MainWindow.WhatTheAppAlreadyKnows(settings));
+
+            window.ChooseForTest(PhraseLibrary.Find("sickness-and-distress")!);
+            window.AnswerForTest("{name}", "A. Placeholder");
+            window.AdvanceForTest();
+            window.AdvanceForTest();
+
+            Assert.True(window.Confirmed);
+            Assert.Contains(expected, window.Words!, StringComparison.Ordinal);
+            Assert.DoesNotContain("speak to the ,", window.Words!, StringComparison.Ordinal);
+            Assert.DoesNotContain("Almoner", window.Words!, StringComparison.Ordinal);
 
             return Task.CompletedTask;
         }, TestContext.Current.CancellationToken);

@@ -10,7 +10,21 @@ namespace TrestleBoard.Core.Phrases;
 /// <param name="Token">What to replace in the text, e.g. <c>{name}</c>.</param>
 /// <param name="Question">What the user is asked, one to a screen.</param>
 /// <param name="Hint">An example of the shape of answer wanted. Never a real person.</param>
-public sealed record PhraseBlank(string Token, string Question, string Hint);
+/// <param name="Default">
+/// An answer this blank already has, or null if it is a question somebody must be asked.
+///
+/// <para>A blank with a default is <b>not asked</b> — it arrives filled in, and the wizard shows it
+/// on the read-back screen as something the user may change for this one insert. That is the whole
+/// point: M54's design is that blanks are asked one at a time at an emotionally hard moment, and a
+/// question everybody would answer the same way every time makes the feature worse. The office a
+/// lodge sends sickness enquiries to is such a question — it varies by lodge, but not by month.</para>
+///
+/// <para>It is also the last line against a broken sentence. Whoever supplies the answer — a
+/// setting, a wizard box — may supply nothing, and "please speak to the , who is keeping in touch"
+/// is not a sentence to print in a newsletter. <see cref="Phrase.Fill"/> falls back here first and
+/// only then to underscores.</para>
+/// </param>
+public sealed record PhraseBlank(string Token, string Question, string Hint, string? Default = null);
 
 /// <summary>
 /// A ready-made paragraph for a moment that is hard to write (PLAN.md §11 M54).
@@ -33,17 +47,23 @@ public sealed record Phrase(
     /// The paragraph with the answers put in. An unanswered blank keeps a plain line of
     /// underscores rather than the token: the user is about to see this text in their newsletter,
     /// and <c>{name}</c> would read as a fault in the program rather than as something to fill in.
+    ///
+    /// <para>A blank carrying a <see cref="PhraseBlank.Default"/> falls back to that first, so a
+    /// setting somebody emptied cannot leave a hole in the middle of a sentence.</para>
     /// </summary>
     public string Fill(IReadOnlyDictionary<string, string>? answers)
     {
         string filled = Text;
         foreach (PhraseBlank blank in Blanks)
         {
-            string value = answers is not null
+            string value =
+                answers is not null
                 && answers.TryGetValue(blank.Token, out string? given)
                 && !string.IsNullOrWhiteSpace(given)
                     ? given.Trim()
-                    : "__________";
+                    : !string.IsNullOrWhiteSpace(blank.Default)
+                        ? blank.Default.Trim()
+                        : "__________";
             filled = filled.Replace(blank.Token, value, StringComparison.Ordinal);
         }
 
@@ -75,6 +95,26 @@ public static class PhraseLibrary
     private static readonly PhraseBlank Date =
         new("{date}", "What was the date?", "For example: 14 September 2026");
 
+    /// <summary>
+    /// Which officer a member should speak to about sickness and distress. The owner's ruling of
+    /// 2026-08-09 (docs/M54-spec.md §3, choice 2): at Indian Land 414 it is the <b>Secretary</b>,
+    /// and it must be settable, because the office varies by lodge and can change year to year.
+    ///
+    /// <para>It carries a <see cref="PhraseBlank.Default"/>, so it is pre-filled rather than asked
+    /// — see that property for why. The app hands the user's setting in through
+    /// <see cref="Phrase.Fill"/>, the same seam <c>{name}</c> and <c>{date}</c> come through;
+    /// Core has no idea a settings file exists.</para>
+    /// </summary>
+    public const string DefaultOffice = "Secretary";
+
+    private static readonly PhraseBlank Office =
+        new(
+            "{office}",
+            "Who should members speak to about sickness and distress?",
+            "The sentence reads \"speak to the …\", so put in Secretary, or Almoner, or "
+            + "Chaplain — whichever officer your lodge asks people to go to.",
+            DefaultOffice);
+
     /// <summary>The paragraphs that ship with the app.</summary>
     public static readonly IReadOnlyList<Phrase> Bundled =
     [
@@ -82,21 +122,29 @@ public static class PhraseLibrary
             "memorial",
             "A memorial notice",
             "When a brother has passed away.",
-            "It is with sorrow that we record the passing of Brother {name}, who was called to the "
-            + "Celestial Lodge above on {date}. He gave many years of faithful service to this "
-            + "lodge and to the craft, and his place among us will not easily be filled. The "
-            + "brethren extend their heartfelt sympathy to his family, and he will be remembered "
-            + "with affection whenever we meet.",
+            // The craft register here is the owner's, given on 2026-08-09, replacing the drafted
+            // "was called to the Celestial Lodge above". The date leads the sentence because the
+            // longer phrasing pushes it too far from the verb otherwise. docs/M54-spec.md §3.
+            "It is with sorrow that we record that on {date}, Brother {name} laid down his working "
+            + "tools and joined that Celestial Lodge above, where the Supreme Architect presides. "
+            + "He gave many years of faithful service to this lodge and to the craft, and his "
+            + "place among us will not easily be filled. The brethren extend their heartfelt "
+            + "sympathy to his family, and he will be remembered with affection whenever we meet.",
             [Name, Date]),
 
         new(
             "sickness-and-distress",
             "Sickness and distress",
             "When a brother is unwell and the lodge should know.",
+            // The office is the owner's, given on 2026-08-09, replacing the drafted "the Almoner":
+            // at Indian Land 414 sickness enquiries go to the Secretary. It is a blank rather than
+            // a word in the sentence because the office varies by lodge and can change year to
+            // year — and a pre-filled blank, not a question, because nobody should be asked it
+            // twice. docs/M54-spec.md §3.
             "Brother {name} is unwell at present, and the lodge holds him in its thoughts. Cards "
             + "and visits would be welcome. If you would like to know how best to help, please "
-            + "speak to the Almoner, who is keeping in touch with the family.",
-            [Name]),
+            + "speak to the {office}, who is keeping in touch with the family.",
+            [Name, Office]),
 
         new(
             "get-well",

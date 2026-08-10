@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -30,6 +31,7 @@ namespace TrestleBoard.App.Dialogs;
 public sealed class PhraseWindow : Window
 {
     private readonly IReadOnlyList<Phrase> _shelf;
+    private readonly IReadOnlyDictionary<string, string> _alreadyKnown;
     private readonly Dictionary<string, string> _answers = new(StringComparer.Ordinal);
     private readonly TextBlock _heading;
     private readonly TextBlock _progress;
@@ -44,9 +46,15 @@ public sealed class PhraseWindow : Window
     /// <summary>0 = choose a paragraph; 1..n = its blanks; n+1 = read it back.</summary>
     private int _screen;
 
-    public PhraseWindow(IReadOnlyList<Phrase> shelf)
+    /// <param name="shelf">What the user may choose from — the bundled paragraphs, then their own.</param>
+    /// <param name="alreadyKnown">
+    /// Answers the app can supply without asking, by token — M54's office setting comes in here.
+    /// They pre-fill their blanks rather than becoming questions: see <see cref="PhraseBlank.Default"/>.
+    /// </param>
+    public PhraseWindow(IReadOnlyList<Phrase> shelf, IReadOnlyDictionary<string, string>? alreadyKnown = null)
     {
         _shelf = shelf ?? throw new ArgumentNullException(nameof(shelf));
+        _alreadyKnown = alreadyKnown ?? new Dictionary<string, string>(StringComparer.Ordinal);
 
         Title = "Words for hard news";
         Width = 660;
@@ -131,17 +139,53 @@ public sealed class PhraseWindow : Window
         }
     }
 
-    internal void ChooseForTest(Phrase phrase)
-    {
-        _chosen = phrase;
-        GoTo(1);
-    }
+    internal void ChooseForTest(Phrase phrase) => Choose(phrase);
 
     internal void AnswerForTest(string token, string value) => _answers[token] = value;
 
     internal void AdvanceForTest() => Advance();
 
-    private int LastScreen => 1 + (_chosen?.Blanks.Count ?? 0);
+    /// <summary>What the window currently holds for a blank — a seeded answer counts.</summary>
+    internal string? AnswerSoFarForTest(string token) =>
+        _answers.TryGetValue(token, out string? value) ? value : null;
+
+    /// <summary>The blanks this paragraph will actually stop and ask about, in order.</summary>
+    internal IReadOnlyList<PhraseBlank> QuestionsForTest =>
+        _chosen is { } phrase ? Asked(phrase) : [];
+
+    /// <summary>
+    /// The blanks that become a screen of their own. A blank that already has an answer — because
+    /// it carries a default, or because the app knew it — is not a question: it is shown filled in
+    /// on the read-back screen, where it can be changed for this one insert without standing
+    /// between a grieving committee member and the words they came for.
+    /// </summary>
+    private static IReadOnlyList<PhraseBlank> Asked(Phrase phrase) =>
+        [.. phrase.Blanks.Where(b => b.Default is null)];
+
+    private static IReadOnlyList<PhraseBlank> PreFilled(Phrase phrase) =>
+        [.. phrase.Blanks.Where(b => b.Default is not null)];
+
+    private int LastScreen => 1 + (_chosen is { } phrase ? Asked(phrase).Count : 0);
+
+    private void Choose(Phrase phrase)
+    {
+        _chosen = phrase;
+        ResetAnswers();
+        GoTo(1);
+    }
+
+    /// <summary>
+    /// Back to nothing typed — except what the app already knew, which is not something the user
+    /// typed and so is not something going back can undo.
+    /// </summary>
+    private void ResetAnswers()
+    {
+        _answers.Clear();
+        foreach (KeyValuePair<string, string> known in _alreadyKnown)
+        {
+            _answers[known.Key] = known.Value;
+        }
+    }
 
     private void Advance()
     {
@@ -173,7 +217,7 @@ public sealed class PhraseWindow : Window
         if (screen == 0)
         {
             _chosen = null;
-            _answers.Clear();
+            ResetAnswers();
         }
 
         _screen = screen;
@@ -188,9 +232,9 @@ public sealed class PhraseWindow : Window
         {
             RenderShelf();
         }
-        else if (_chosen is { } phrase && _screen <= phrase.Blanks.Count)
+        else if (_chosen is { } phrase && _screen <= Asked(phrase).Count)
         {
-            RenderBlank(phrase, phrase.Blanks[_screen - 1]);
+            RenderBlank(phrase, Asked(phrase)[_screen - 1]);
         }
         else if (_chosen is { } ready)
         {
@@ -222,12 +266,7 @@ public sealed class PhraseWindow : Window
             Phrase chosen = phrase;
             Button choose = Wide(phrase.Title);
             AutomationProperties.SetHelpText(choose, phrase.WhenToUse);
-            choose.Click += (_, _) =>
-            {
-                _chosen = chosen;
-                _answers.Clear();
-                GoTo(1);
-            };
+            choose.Click += (_, _) => Choose(chosen);
             _content.Children.Add(choose);
 
             _content.Children.Add(new TextBlock
@@ -289,6 +328,52 @@ public sealed class PhraseWindow : Window
         _heading.Text = "Here is how it reads";
         _progress.Text = $"Last step — {phrase.Title}";
         _body.Text = phrase.Fill(_answers);
+
+        // Anything already filled in shows here rather than as a question of its own: visible, and
+        // changeable for this one insert, without being one more thing to answer.
+        foreach (PhraseBlank blank in PreFilled(phrase))
+        {
+            _content.Children.Add(new TextBlock
+            {
+                Text = blank.Question,
+                FontSize = 16,
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 560,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            });
+
+            var box = new TextBox
+            {
+                Text = _answers.TryGetValue(blank.Token, out string? already) && already.Length > 0
+                    ? already
+                    : blank.Default ?? "",
+                FontSize = 20,
+                MinHeight = 44,
+                MinWidth = 300,
+                MaxWidth = 560,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            };
+            AutomationProperties.SetName(box, blank.Question);
+            PhraseBlank which = blank;
+            box.TextChanged += (_, _) =>
+            {
+                _answers[which.Token] = box.Text ?? "";
+
+                // The sentence above rewrites itself as they type, so the change is read back
+                // before it goes anywhere — this screen's whole job.
+                _body.Text = phrase.Fill(_answers);
+            };
+            _content.Children.Add(box);
+
+            _content.Children.Add(new TextBlock
+            {
+                Text = "This is what your settings say. Changing it here changes these words only.",
+                FontSize = 16,
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 560,
+                HorizontalAlignment = HorizontalAlignment.Left,
+            });
+        }
 
         _content.Children.Add(new TextBlock
         {

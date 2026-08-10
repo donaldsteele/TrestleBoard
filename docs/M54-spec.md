@@ -2,10 +2,11 @@
 
 **Delivered 2026-08-08.** PLAN.md §11 M54.
 
-> **⚠ The owner has not signed off the wording yet.** PLAN.md's acceptance says the tone of the
+> **✔ The owner signed the wording off on 2026-08-09.** PLAN.md's acceptance said the tone of the
 > shipped paragraphs is reviewed by the owner before shipping, because *this is lodge voice, not app
-> voice*. What is committed is a draft for that review. Everything else in the milestone — the
-> machinery, the shelf, the tests — is finished; §3 below is the part that needs a reading.
+> voice*. All three of §3's open choices are now decided: the memorial register was rewritten, the
+> Almoner became the **Secretary** *and* a setting, and the memorial's claim of long service stands
+> as drafted. §3 keeps the drafts and the reasoning beside the rulings.
 
 ## 1. What it is for
 
@@ -26,6 +27,11 @@ it reachable; this one asks a short series of questions and then does a single t
 wizard shape, and it takes the wizard's manners — one question per screen, 20pt, a big Back and a
 big Next, and a look at the finished words before anything touches the newsletter.
 
+**One blank is never asked about.** From 2026-08-09 the office in the sickness paragraph comes
+pre-filled from the user's settings and appears on the read-back screen, changeable for that one
+insert. A blank the app already has an answer for is not a question, and the moment this wizard is
+opened is the wrong moment to ask one nobody's answer changes from month to month. §3 choice 2.
+
 **A blank may be left empty**, and that is deliberate: a memorial is often written before the date
 is settled. What prints is then a line of underscores — something a person can see and fill in —
 rather than `{date}`, which reads as the program having gone wrong. Two tests hold that.
@@ -33,19 +39,20 @@ rather than `{date}`, which reads as the program having gone wrong. Two tests ho
 **What arrives is ordinary editable writing.** The paragraph lands in the newsletter as words the
 committee can change, and most of them will. It is a starting point, not a form letter.
 
-## 3. The wording, for review
+## 3. The wording, as the owner settled it (2026-08-09)
 
 Each paragraph below is what a committee member will read. `{name}` and `{date}` are asked for one
-at a time; nothing else is filled in.
+at a time. `{office}` is **not asked**: it arrives pre-filled from the user's settings and can be
+changed on the read-back screen — see the ruling on choice 2.
 
-- **A memorial notice** — *"It is with sorrow that we record the passing of Brother {name}, who was
-  called to the Celestial Lodge above on {date}. He gave many years of faithful service to this
-  lodge and to the craft, and his place among us will not easily be filled. The brethren extend
-  their heartfelt sympathy to his family, and he will be remembered with affection whenever we
-  meet."*
+- **A memorial notice** — *"It is with sorrow that we record that on {date}, Brother {name} laid
+  down his working tools and joined that Celestial Lodge above, where the Supreme Architect
+  presides. He gave many years of faithful service to this lodge and to the craft, and his place
+  among us will not easily be filled. The brethren extend their heartfelt sympathy to his family,
+  and he will be remembered with affection whenever we meet."*
 - **Sickness and distress** — *"Brother {name} is unwell at present, and the lodge holds him in its
   thoughts. Cards and visits would be welcome. If you would like to know how best to help, please
-  speak to the Almoner, who is keeping in touch with the family."*
+  speak to the {office}, who is keeping in touch with the family."*
 - **A get-well message** — *"The brethren send their warmest wishes to Brother {name} for a full and
   swift recovery. We look forward to welcoming him back to lodge before long."*
 - **Welcome to a newly raised brother** — *"The lodge is pleased to welcome Brother {name}, who was
@@ -55,16 +62,59 @@ at a time; nothing else is filled in.
   degree team who worked on {date}. Their preparation and their care did credit to the craft, and
   the evening will be remembered by all who were present."*
 
-Three choices in there that are the owner's to confirm, not mine:
+Three choices in there were the owner's to confirm, not mine. All three were put to him and all
+three came back on **2026-08-09**. The drafts and the reasoning stay below, because the next person
+to reword one of these paragraphs needs to know what was already considered and rejected.
 
-1. **"called to the Celestial Lodge above"** rather than "passed away" or "died". PLAN.md itself
-   uses the phrase, and it is the one a lodge would print — but it is a jurisdictional usage and the
-   owner should say whether it is this lodge's.
-2. **The Almoner is named** in the sickness entry as the person to speak to. If this lodge routes
-   that through the Secretary, the sentence is wrong for them.
+1. **"called to the Celestial Lodge above"** rather than "passed away" or "died" — *drafted as:*
+   "It is with sorrow that we record the passing of Brother {name}, who was called to the Celestial
+   Lodge above on {date}." PLAN.md itself uses the phrase, and it is the one a lodge would print —
+   but it is a jurisdictional usage and the owner had to say whether it is this lodge's.
+
+   **Ruled 2026-08-09: rewritten in the owner's own register** — "on {date}, Brother {name} laid
+   down his working tools and joined that Celestial Lodge above, where the Supreme Architect
+   presides". The date leads the sentence because the longer phrasing pushes it too far from the
+   verb otherwise. The text above is what ships.
+
+2. **The Almoner is named** in the sickness entry as the person to speak to — *drafted as:* "please
+   speak to the Almoner, who is keeping in touch with the family." The worry recorded here was that
+   a lodge routing this through its Secretary would be given a wrong sentence.
+
+   **Ruled 2026-08-09: it is the Secretary at Indian Land 414, and the office is a setting.** Not a
+   correction of one word — the owner's point is that the office varies by lodge and can change year
+   to year, so it must not be baked into the text at all. Three things follow, and they are the
+   whole of this change:
+
+   - **It is `{office}`, a blank, filled through the same `Phrase.Fill(answers)` seam as `{name}`
+     and `{date}`.** `TrestleBoard.Core` references BCL only (§9); it cannot read `AppSettings` and
+     does not learn how. `TrestleBoard.App` hands the value in
+     (`MainWindow.WhatTheAppAlreadyKnows`).
+   - **It is pre-filled, never asked.** M54's design is that blanks are asked one at a time at an
+     emotionally hard moment; a "who handles this?" screen on every sickness notice would make the
+     feature worse for the sake of an answer that is the same every month. `PhraseBlank` gained a
+     `Default`, and a blank that has one is not a question: the wizard skips it in the one-per-screen
+     run and shows it on the read-back screen as a filled-in box the user may change **for this one
+     insert**, with the sentence above it rewriting itself as they type.
+   - **Free text, not a list of offices.** A fixed list renders more safely and is wrong for the
+     first lodge whose answer nobody here thought of — Chaplain, Junior Warden, a sunshine
+     committee, a named visiting officer. The two ways free text usually goes wrong are both closed
+     here: it is one short phrase in one sentence, and the committee reads that sentence back before
+     it goes in. **Empty is the only value it may not have**, so `AppSettings.Normalised()` puts
+     "Secretary" back, and `Phrase.Fill` falls back to the blank's own `Default` before it falls back
+     to underscores. "Please speak to the , who is keeping in touch" cannot be produced from either
+     end, and four tests hold it.
+
+   The setting lives in `AppSettings.SicknessContactOffice` and is asked for in "How things look" as
+   *"Who should members speak to about sickness and distress?"* — the question, not the name of a
+   key. Its answer joins the preview sentence that dialog already announces as a polite live region
+   (M70 (f)), so a screen-reader user hears what will be printed before pressing Save.
+
 3. **The memorial claims "many years of faithful service"**, which will occasionally be untrue of a
    brother who was raised recently. The alternative is a blander sentence that says less for
    everyone; the committee can edit either way, and a starting text that says something is the point.
+
+   **Ruled 2026-08-09: kept as drafted.** The owner rewrote the sentence before it in the same
+   sitting (choice 1) and left this one standing. Nothing in the shipped text changed for it.
 
 ## 4. Keeping your own words
 
@@ -104,16 +154,26 @@ fails against a version that executes the children loose.
 
 ## 7. What guards it
 
-- **`tests/Core.Tests/PhraseLibraryTests.cs`** (9): the five paragraphs are there; none names
+- **`tests/Core.Tests/PhraseLibraryTests.cs`** (14): the five paragraphs are there; none names
   anybody; every token in the text is a question somebody is asked and every question ends in a
   question mark; an unanswered blank prints as underscores; whitespace-only counts as unanswered;
   answers are trimmed; each carries a when-to-use line and enough text to be a starting point; no
-  shipped paragraph speaks like a typesetter; a user's own paragraph has no blanks.
-- **`tests/App.HeadlessTests/PhraseShellTests.cs`** (9): the words land where the cursor is; one
+  shipped paragraph speaks like a typesetter; a user's own paragraph has no blanks. **From
+  2026-08-09:** the sickness words say Secretary with nothing supplied; a lodge that says Chaplain
+  gets Chaplain; an empty or whitespace office falls back to the default rather than leaving "the ,"
+  or a row of underscores mid-sentence; and `{office}` is the only blank that arrives already
+  answered.
+- **`tests/App.HeadlessTests/SettingsTests.cs`**, **from 2026-08-09**: the office starts at
+  Secretary and survives the disk; emptied, it normalises back; the dialog asks the question in
+  words on screen and to a screen reader, previews the sentence that will be printed, and hands the
+  office back on Save without resetting what it does not show.
+- **`tests/App.HeadlessTests/PhraseShellTests.cs`** (12): the words land where the cursor is; one
   undo takes the whole paragraph back out; typing afterwards and undoing does **not**; both commands
   refuse in words with the right instruction; the shelf survives a restart, keeps the shipped ones
   first, replaces rather than twins, and shrugs off a corrupt file; the window asks one blank at a
-  time and reads back before anything goes in; §6 on every button.
+  time and reads back before anything goes in; §6 on every button. **From 2026-08-09:** the sickness
+  paragraph has two blanks and asks one question, with the office already filled in and editable on
+  the read-back screen; and the setting reaches the words that actually go into the newsletter.
 
 ### Failure-first evidence
 
