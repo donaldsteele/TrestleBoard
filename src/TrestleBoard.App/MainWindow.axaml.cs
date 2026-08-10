@@ -145,6 +145,7 @@ public partial class MainWindow : Window
     private bool _closeAgreed;
     private int _regionIndex;
     private TextStylesWindow? _textStylesForTest;
+    private Dialogs.RestoreDialog? _restoreDialogForTest;
 
     /// <summary>M21: one find controller per open newsletter, one window at a time over it.</summary>
     private FindController? _find;
@@ -846,12 +847,24 @@ public partial class MainWindow : Window
 
         package.Thumbnails.TryGetValue("page-1.png", out byte[]? thumbnail);
         var dialog = new RestoreDialog(snapshot, thumbnail, DateTimeOffset.UtcNow);
+        _restoreDialogForTest = dialog;
         await dialog.ShowDialog(this);
 
-        if (!dialog.Restore)
+        // M73(b3), gate 27: three answers, three sentences, and the deleting one is only reached by
+        // the user saying so. "Not restored" used to be enough to delete the snapshot, so the
+        // title-bar X on a card that had just said "Nothing has been lost" lost it.
+        switch (dialog.Choice)
         {
-            _recoveryStore.Delete(snapshot.Id);
-            return false;
+            case RestoreChoice.StartFresh:
+                _recoveryStore.Delete(snapshot.Id);
+                Announce("You chose to start fresh, so the work TrestleBoard had kept was thrown away.");
+                return false;
+
+            case RestoreChoice.Closed:
+                Announce(
+                    "That window was closed without an answer, so your work is still kept safe. "
+                    + "TrestleBoard will offer it to you again next time it starts.");
+                return false;
         }
 
         DocumentPath = snapshot.OriginalPath;
@@ -3651,6 +3664,12 @@ public partial class MainWindow : Window
 
     internal RecoveryService? RecoveryForTest => _recovery;
 
+    /// <summary>
+    /// The recovery card while it is on the screen, so a test can answer it the way a user does —
+    /// including with the title-bar X, which is the whole point of M73(b3).
+    /// </summary>
+    internal RestoreDialog? RestoreDialogForTest => _restoreDialogForTest;
+
     internal void UseRecoveryStoreForTest(IRecoveryStore store) => _recoveryStore = store;
 
     /// <summary>Opens one of the shipped templates (PLAN.md §7).</summary>
@@ -4181,7 +4200,16 @@ public partial class MainWindow : Window
         RefreshActions();
     }
 
-    /// <summary>Puts every "just here" font in the newsletter back, in one undo step.</summary>
+    /// <summary>
+    /// Puts every "just here" font in the newsletter back, in one undo step.
+    ///
+    /// <para>M73(b2), gate 27: this used to count the overrides across the whole newsletter, then
+    /// clear them with <c>SelectAll(); ClearFontOverride();</c> — which needs a caret and, with
+    /// one, reaches only the frame the caret is in — and then announce the count regardless. With
+    /// no caret nothing at all changed and the app still said so and told the user to press Ctrl+Z,
+    /// which took back some earlier edit instead. The number said out loud is now the number the
+    /// editor reports it actually put back, and the clearing is whole-document like the offer.</para>
+    /// </summary>
     internal void ClearEveryFontOverride()
     {
         if (_session is null || _editor is null)
@@ -4189,18 +4217,16 @@ public partial class MainWindow : Window
             return;
         }
 
-        int count = _editor.CountFontOverrides();
-        if (count == 0)
+        int putBack = _editor.ClearEveryFontOverride();
+        if (putBack == 0)
         {
             Announce("Nothing in this newsletter uses a font of its own.");
             return;
         }
 
-        _editor.SelectAll();
-        _editor.ClearFontOverride();
-        Announce(count == 1
+        Announce(putBack == 1
             ? "One piece of text was put back to its usual font. Press Ctrl+Z to undo."
-            : $"{count} pieces of text were put back to their usual fonts. Press Ctrl+Z to undo.");
+            : $"{putBack} pieces of text were put back to their usual fonts. Press Ctrl+Z to undo.");
         RefreshActions();
     }
 
@@ -4884,11 +4910,17 @@ public partial class MainWindow : Window
         var window = new RosterImportWindow(Roster.Book);
         await window.ShowDialog(this);
 
+        // M73(b1), gate 27: what is said is a function of what the window returned, and both
+        // answers are said. Stopping the import used to be met with silence, which reads exactly
+        // like a window that did something and did not mention it.
         if (window.Result is { } book)
         {
             Roster.Replace(book, "Import people from a file");
             Announce($"Your address book now has {book.Count} people.");
+            return;
         }
+
+        Announce("The import was stopped. Nothing in your address book was changed.");
     }
 
     internal async Task ExportPeopleAsync()

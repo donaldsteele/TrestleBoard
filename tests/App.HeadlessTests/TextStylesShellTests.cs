@@ -256,4 +256,82 @@ public sealed class TextStylesShellTests
             window.Close();
         }, TestContext.Current.CancellationToken);
     }
+
+    /// <summary>
+    /// M73(b2), gate 27: "Put them all back" is offered whenever the newsletter holds a font of its
+    /// own anywhere, and the styles window is reached from a menu — so there is usually no caret.
+    /// The shell used to do the job with <c>SelectAll(); ClearFontOverride();</c>, which needs one,
+    /// discard both bools, and announce the whole-document count anyway. Nothing was put back, and
+    /// the Ctrl+Z it then recommended took back an earlier edit instead.
+    ///
+    /// <para>With a caret it was wrong the other way: <c>SelectAll</c> covers the caret's story
+    /// alone, so it cleared one frame and reported the number for the whole newsletter.</para>
+    /// </summary>
+    [Fact]
+    public async Task PuttingEveryFontBackWithNoCaretPutsThemAllBackAndCountsWhatItDid()
+    {
+        await Session.Dispatch(() =>
+        {
+            var window = new MainWindow();
+
+            // Closed whatever happens: a MainWindow left open by a failing assertion is laid out
+            // again when the headless session is torn down, and the font manager's exception there
+            // replaces the assertion message that explains the failure.
+            try
+            {
+                window.Show();
+                window.OpenIssueSample();
+
+                var stories = window.SessionForTest!.Document.Stories
+                    .Where(s => s.Paragraphs.Count > 0 && s.Paragraphs[0].Length > 0)
+                    .Take(2)
+                    .Select(s => s.Id)
+                    .ToList();
+                Assert.Equal(2, stories.Count);
+
+                // An edit of the user's own, first, so that a wrongly-offered Ctrl+Z has something
+                // to eat. Nothing below may take this back.
+                Assert.True(window.EditorForTest!.SelectRange(stories[0], 0, 0, 0));
+                window.EditorForTest.InsertText("Brethren");
+
+                // A font of its own in two different stories, so a one-story clear cannot pass.
+                foreach (string storyId in stories)
+                {
+                    Story story = window.SessionForTest.Document.GetStory(storyId);
+                    Assert.True(
+                        window.EditorForTest.SelectRange(storyId, 0, 0, story.Paragraphs[0].Length));
+                    window.EditorForTest.UseFontJustHere("Lora", null);
+                }
+
+                Assert.Equal(2, window.EditorForTest.CountFontOverrides());
+
+                // No caret anywhere: the state the menu route actually arrives in.
+                window.EditorForTest.End();
+                Assert.False(window.EditorForTest.IsActive);
+
+                int overrides = window.EditorForTest.CountFontOverrides();
+                window.ClearEveryFontOverride();
+
+                Assert.Equal(0, window.EditorForTest.CountFontOverrides());
+                Assert.Contains(
+                    $"{overrides} pieces of text were put back",
+                    window.StatusLabelTextForTest ?? string.Empty,
+                    StringComparison.Ordinal);
+
+                // And the Ctrl+Z the sentence recommends takes back the putting-back, not the
+                // typing — one undo step for the lot, across both stories.
+                window.SessionForTest.Undo();
+                Assert.Equal(overrides, window.EditorForTest.CountFontOverrides());
+                Assert.StartsWith(
+                    "Brethren",
+                    StoryNavigator.GetParagraphText(
+                        window.SessionForTest.Document.GetStory(stories[0]).Paragraphs[0]),
+                    StringComparison.Ordinal);
+            }
+            finally
+            {
+                window.Close();
+            }
+        }, TestContext.Current.CancellationToken);
+    }
 }

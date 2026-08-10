@@ -923,6 +923,81 @@ public sealed class TextEditorController
     }
 
     /// <summary>
+    /// Puts <b>every</b> "just here" font in the whole newsletter back on its role's own font, in
+    /// one undo step, and says how many pieces of text that was.
+    ///
+    /// <para>M73(b2). The styles window offers "Put them all back" whenever
+    /// <see cref="CountFontOverrides"/> is above zero, and that count is whole-document and needs no
+    /// caret — but the shell used to carry it out with <c>SelectAll(); ClearFontOverride();</c>,
+    /// which needs a caret and reaches one story even when it has one. With no caret both calls
+    /// returned early and the app still announced that N pieces had been put back and offered
+    /// Ctrl+Z, which then undid an unrelated earlier edit. The offer is whole-document, so the
+    /// deed has to be too, and the number said out loud has to be the number this returns.</para>
+    /// </summary>
+    /// <returns>How many pieces of text were put back. Zero means nothing changed at all.</returns>
+    public int ClearEveryFontOverride()
+    {
+        StyleSheet sheet = _session.Document.StyleSheet;
+        var children = new List<IDocumentCommand>();
+        var ensured = new HashSet<string>(StringComparer.Ordinal);
+        int putBack = 0;
+
+        foreach (Story story in _session.Document.Stories)
+        {
+            for (int p = 0; p < story.Paragraphs.Count; p++)
+            {
+                StoryParagraph paragraph = story.Paragraphs[p];
+                string paragraphDefault =
+                    sheet.GetParagraphStyle(paragraph.ParagraphStyleRef).CharacterStyleRef;
+                int offset = 0;
+                foreach (StoryRun run in paragraph.Runs)
+                {
+                    int start = offset;
+                    offset += run.Text.Length;
+                    if (run.CharacterStyleRef is not { } reference
+                        || !StyleOverrides.IsOverride(reference))
+                    {
+                        continue;
+                    }
+
+                    CharacterStyleDef from = sheet.GetCharacterStyle(reference);
+                    string roleName = StyleOverrides.RoleOf(reference);
+                    string name = CharacterStyleResolver.VariantName(roleName, from.Weight, from.Slant);
+                    if (sheet.CharacterStyles.Find(s => s.Name == name) is null && ensured.Add(name))
+                    {
+                        CharacterStyleDef role =
+                            sheet.CharacterStyles.Find(s => s.Name == roleName) ?? from;
+                        children.Insert(0, new EnsureCharacterStyleCommand(
+                            CharacterStyleResolver.Derive(role, name, from.Weight, from.Slant)));
+                    }
+
+                    // Bold and italic are carried by the variant name, so they survive; the run
+                    // simply stops naming a style of its own when the role's is what it lands on.
+                    string? applied = string.Equals(name, paragraphDefault, StringComparison.Ordinal)
+                        ? null
+                        : name;
+                    children.Add(new ApplyCharacterStyleCommand(
+                        story.Id, p, start, run.Text.Length, applied));
+                    putBack++;
+                }
+            }
+        }
+
+        if (putBack == 0)
+        {
+            return 0;
+        }
+
+        // No StoryId on the scope: this is a broad change on purpose, because it crosses stories.
+        _session.Execute(new CompositeCommand(
+            "Put every font back",
+            new ChangeScope(ChangeKind.Text),
+            children));
+        RaiseChanged();
+        return putBack;
+    }
+
+    /// <summary>
     /// Retargets every span in the selection (or the caret's pending style) at a style chosen per
     /// span. Factored out because "use a different font here" and "put it back" differ only in how
     /// they name the target.

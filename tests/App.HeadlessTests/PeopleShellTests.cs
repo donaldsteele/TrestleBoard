@@ -5,6 +5,7 @@ using TrestleBoard.Layout.Widgets;
 using TrestleBoard.App.Theme;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.LogicalTree;
 using TrestleBoard.App.Dialogs;
 using TrestleBoard.App.Settings;
@@ -355,6 +356,66 @@ public sealed class PeopleShellTests
             Assert.Equal("Your address book now has 100 people.", window.StatusTextForTest);
 
             window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M73(b1): "Stop the import" — automation name "Stop importing and change nothing" — was still
+    /// on the screen after the import had been committed, and the shell reads <c>Result</c> however
+    /// the window closed. Pressing it, or pressing Escape, imported everybody into the real address
+    /// book while promising it would change nothing.
+    ///
+    /// <para>Before the review step the promise is true and the button stays. On the Done step it
+    /// cannot be true, so the button is gone and Escape means the same as the one button left.</para>
+    /// </summary>
+    [Fact]
+    public async Task StoppingTheImportBeforeItRunsChangesNothingAndAfterwardsIsNotOffered()
+    {
+        await HeadlessSession.DispatchAsync(async () =>
+        {
+            static IReadOnlyList<Button> Footer(RosterImportWindow w) =>
+                w.GetLogicalDescendants().OfType<Button>()
+                    .Where(b => b.TemplatedParent is null)
+                    .ToList();
+
+            var stopped = new RosterImportWindow(RosterBook.Empty);
+            stopped.Show();
+            stopped.ChooseFileForTest(Fixture("members-100.csv"));
+            await stopped.NextForTest();
+            await stopped.NextForTest();
+            Assert.Equal(ImportStep.Review, stopped.SessionForTest.Step);
+
+            // Up to here the button tells the truth: Escape abandons the import, and the shell is
+            // handed nothing to write.
+            stopped.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Null(stopped.Result);
+
+            var done = new RosterImportWindow(RosterBook.Empty);
+            done.Show();
+            done.ChooseFileForTest(Fixture("members-100.csv"));
+            await done.NextForTest();
+            await done.NextForTest();
+            await done.NextForTest();
+            Assert.Equal(ImportStep.Done, done.SessionForTest.Step);
+
+            // The import happened when "Add these people" was pressed. Nothing on this step may
+            // offer to unsay it, so the button that promised to is not here at all.
+            Assert.DoesNotContain(
+                Footer(done),
+                b => b.IsVisible && (b.Content as string) == "Stop the import");
+            Assert.DoesNotContain(
+                Footer(done),
+                b => b.IsVisible
+                    && AutomationProperties.GetName(b) == "Stop importing and change nothing");
+
+            // And Escape does what the one remaining button does — closes, keeping the import.
+            Button close = Assert.Single(Footer(done), b => b.IsVisible && b.IsCancel);
+            Assert.Equal("Close", close.Content as string);
+
+            done.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Equal(100, done.Result!.Count);
         }, TestContext.Current.CancellationToken);
     }
 

@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.LogicalTree;
 using TrestleBoard.Core.Container;
 using TrestleBoard.Editing;
 using TrestleBoard.Editing.Actions;
@@ -438,6 +439,71 @@ public sealed class SaveShellTests : IDisposable
             Assert.True(ActionCatalog.Evaluate(ActionId.Save, window.CurrentActionContext).IsAvailable);
 
             window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M73(b3): the recovery card says "Nothing has been lost", and then closing it with the
+    /// title-bar X deleted the snapshot — the caller read a plain <c>Restore == false</c> and could
+    /// not tell "no, throw it away" from "closed the window". A window close is not a decision to
+    /// discard recovered work, so the work stays and the app says so; only "Start fresh", pressed
+    /// on purpose, throws it away, and that is said out loud too.
+    /// </summary>
+    [Fact]
+    public async Task ClosingTheRecoveryCardKeepsTheWorkAndOnlyStartFreshThrowsItAway()
+    {
+        var store = new SpyRecoveryStore();
+
+        await HeadlessSession.DispatchAsync(async () =>
+        {
+            var window = new MainWindow();
+            try
+            {
+                window.UseRecoveryStoreForTest(store);
+                window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+                window.Show();
+                window.OpenIssueSample();
+
+                MakeAnEdit(window);
+                Assert.True(window.RecoveryForTest!.SaveNow());
+                Assert.True(store.HoldsAnything);
+                int deletesBefore = store.Deletes;
+
+                // The title-bar X. No answer was given, so nothing may be thrown away.
+                Task<bool> closed = window.OfferRecoveryAsync();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                Assert.NotNull(window.RestoreDialogForTest);
+                window.RestoreDialogForTest!.Close();
+                Assert.False(await closed);
+
+                Assert.Equal(deletesBefore, store.Deletes);
+                Assert.True(store.HoldsAnything);
+                Assert.Contains(
+                    "still kept safe",
+                    window.StatusLabelTextForTest ?? string.Empty,
+                    StringComparison.Ordinal);
+
+                // "Start fresh" is the one answer that means throw it away, and it still does.
+                Task<bool> fresh = window.OfferRecoveryAsync();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                Button startFresh = Assert.Single(
+                    window.RestoreDialogForTest!.GetLogicalDescendants().OfType<Button>()
+                        .Where(b => b.TemplatedParent is null),
+                    b => (b.Content as string) == "Start fresh");
+                startFresh.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+                Assert.False(await fresh);
+
+                Assert.True(store.Deletes > deletesBefore);
+                Assert.False(store.HoldsAnything);
+                Assert.Contains(
+                    "thrown away",
+                    window.StatusLabelTextForTest ?? string.Empty,
+                    StringComparison.Ordinal);
+            }
+            finally
+            {
+                window.Close();
+            }
         }, TestContext.Current.CancellationToken);
     }
 }

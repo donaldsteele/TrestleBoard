@@ -31,6 +31,7 @@ public sealed class RosterImportWindow : Window
     private readonly ContentControl _body;
     private readonly Button _back;
     private readonly Button _next;
+    private readonly Button _stop;
     private readonly TextBlock _status;
 
     public RosterImportWindow(RosterBook current)
@@ -77,9 +78,16 @@ public sealed class RosterImportWindow : Window
 
         // M42: "Stop" alone did not say stop WHAT — the step, the import, or the program. The
         // automation name had said it in full since M12; the visible label now agrees with it.
-        var cancel = Big("Stop the import", "Stop importing and change nothing");
-        cancel.IsCancel = true;
-        cancel.Click += (_, _) => Close();
+        //
+        // M73(b1): it kept saying it on the Done step, where it was no longer true. By then
+        // Commit() has run, Result holds the merged book and the shell writes it to the address
+        // book however this window closed — so "Stop importing and change nothing" imported
+        // everything, and because the button was IsCancel, so did Escape. Render() now takes the
+        // button away on Done: once the user has pressed "Add these people" there is nothing left
+        // to stop, and a button that cannot keep its own promise must not be on the screen.
+        _stop = Big("Stop the import", "Stop importing and change nothing");
+        _stop.IsCancel = true;
+        _stop.Click += (_, _) => Close();
 
         Content = new DockPanel
         {
@@ -97,7 +105,7 @@ public sealed class RosterImportWindow : Window
                     Spacing = 12,
                     HorizontalAlignment = HorizontalAlignment.Right,
                     Margin = new Avalonia.Thickness(0, 16, 0, 0),
-                    Children = { cancel, _back, _next },
+                    Children = { _stop, _back, _next },
                 }, Avalonia.Controls.Dock.Bottom),
                 Dock(_status, Avalonia.Controls.Dock.Bottom),
                 new ScrollViewer { Content = _body, Margin = new Avalonia.Thickness(0, 16, 0, 0) },
@@ -107,7 +115,11 @@ public sealed class RosterImportWindow : Window
         Render();
     }
 
-    /// <summary>The address book as the import left it, or null if the user stopped.</summary>
+    /// <summary>
+    /// The address book as the import left it, or null if the user stopped. It is set by one thing
+    /// only — pressing "Add these people" on the review step — and from that moment the import is
+    /// what the user asked for, however the window is then closed (M73(b1)).
+    /// </summary>
     public RosterBook? Result { get; private set; }
 
     internal RosterImportSession SessionForTest => _session;
@@ -240,6 +252,17 @@ public sealed class RosterImportWindow : Window
             _ => "Next",
         };
         AutomationProperties.SetName(_next, (string)_next.Content);
+
+        // M73(b1). On the Done step the import has happened: "Stop the import" cannot be honoured,
+        // so it goes away rather than lying. Escape has to mean the same thing as the button the
+        // user can still see — a dialog where Escape and the visible button disagree is its own
+        // bug — so IsCancel moves onto "Close", which is now the only way out and does the one
+        // thing left to do. On every earlier step nothing has been committed, so stopping really
+        // does change nothing and the button stays exactly as it was.
+        bool done = _session.Step == ImportStep.Done;
+        _stop.IsVisible = !done;
+        _stop.IsCancel = !done;
+        _next.IsCancel = done;
 
         _body.Content = _session.Step switch
         {

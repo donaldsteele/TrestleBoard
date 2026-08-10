@@ -44,7 +44,7 @@ public sealed class RestoreDialog : Window
         };
         restore.Click += (_, _) =>
         {
-            Restore = true;
+            Choice = RestoreChoice.PutItBack;
             Close();
         };
         AutomationProperties.SetName(restore, "Put my work back");
@@ -57,7 +57,16 @@ public sealed class RestoreDialog : Window
             MinWidth = 160,
         };
         discard.Action();
-        discard.Click += (_, _) => Close();
+
+        // M73(b3): this is the ONLY thing that means "throw the recovered work away". Closing the
+        // window with the title-bar X used to mean the same, because the caller read a plain false
+        // — so a card that had just promised "Nothing has been lost" deleted the snapshot on a
+        // window close, which is nobody's decision about anything.
+        discard.Click += (_, _) =>
+        {
+            Choice = RestoreChoice.StartFresh;
+            Close();
+        };
         AutomationProperties.SetName(discard, "Start fresh without recovering");
 
         var panel = new StackPanel
@@ -119,6 +128,25 @@ public sealed class RestoreDialog : Window
         Content = panel;
     }
 
-    /// <summary>True when the user asked for the work back. "Start fresh" leaves it false.</summary>
-    public bool Restore { get; private set; }
+    /// <summary>
+    /// What the user decided, which is three answers and not two (M73(b3)). Closing the window is
+    /// not one of the two decisions this card asks for, and it must not be read as either.
+    /// </summary>
+    public RestoreChoice Choice { get; private set; } = RestoreChoice.Closed;
+
+    /// <summary>True when the user asked for the work back.</summary>
+    public bool Restore => Choice == RestoreChoice.PutItBack;
+}
+
+/// <summary>The three ways out of <see cref="RestoreDialog"/> (M73(b3)).</summary>
+public enum RestoreChoice
+{
+    /// <summary>The window was closed without answering. The recovered work stays where it is.</summary>
+    Closed,
+
+    /// <summary>"Put my work back."</summary>
+    PutItBack,
+
+    /// <summary>"Start fresh" — said deliberately, and the only answer that throws the work away.</summary>
+    StartFresh,
 }
