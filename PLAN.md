@@ -3525,6 +3525,166 @@ free as content-stream operators.
 (`SnapshotInfra.cs:117-138`) and **not by architecture**. Once antialiased paths reach a fixture, the
 macOS baseline is implicitly an arm64 artifact, and it must be baked on arm64.
 
+### M73 — the app does not offer what it cannot do, or claim what it did not (L)
+
+**Goal.** Five owner-reported bugs in one day share a family, and three audits in a row each drew a
+boundary that excluded the next one. M70 asked *"does the answer reach the user?"* and missed whether
+the control could work at all — next bug, the cover-date button. M71 asked *"can this control's
+catalog action run?"* and recorded *"other dialogs run no catalog action, nothing to audit"* — next
+bug, the memorial, an offer that never touches the catalog. Both conclusions were true as written and
+too narrow. This milestone is scoped by the **user-visible promise** rather than by any mechanism, and
+it is deliberately the widest of the three.
+
+**The owner's words, which are the acceptance test for the milestone as a whole:** *"this has happened
+a few times now lets double check our work and make sure we are catching them all."*
+
+#### The invariant, and why it is two and not one
+
+There is no single property behind all five, and forcing one would produce the noise M71 (d) warns
+gets a gate switched off. There are two families.
+
+*Family A* (corner-drag crop, chrome overlap): the state was correct and **not perceivable**.
+`ImageFit.Cover` did what it says; the scrollbar drew where Avalonia draws it. A rendering property,
+with no shared testable form. Gate 13's by-eye pass is the honest answer, and it has not been re-run
+since M16.
+
+*Family B* (everything else), which **is** testable:
+
+> Every question the app asks about the document is asked more than once — to decide whether to
+> **offer** a thing, to decide whether to **do** it, and to decide what to **say** afterwards — and a
+> defect is any pair of those evaluations that can disagree without the later one winning out loud.
+
+The three known instances are the three possible pairings, which is why this generalises rather than
+abstracting over coincidences: offer-time vs do-time (cover date), offer-time vs do-time across
+layers (memorial), do-time vs report-time (the M69 flyout anchored to a control the refresh
+destroyed).
+
+#### Deliverables
+
+**(a) The memorial, which is five defects and not one.** Recording a brother as passed offers *"Would
+you like to write a memorial notice for him?"* (`PeopleWindow.cs:744`) and then declines its own
+offer: `OfferTheMemorialAsync` (`MainWindow.axaml.cs:2944`) refuses on `_editor is not { IsActive:
+true }`, and People is reached from a menu, so a caret is rare. Also —
+
+- `PeopleWindow.cs:955` fires `_ = OfferAMemorialAsync(name)` from a synchronous `Save()`, but
+  `MemorialRequestedFor` is assigned only after the card closes (`:761`). On the **close** path
+  (`FinishClosingAsync:232` saves, then `Close()` at `:237`) the window closes while its own modal
+  child is being raised and the request is lost in **total silence**. Tick "passed", press the X,
+  choose "Save" — an ordinary sequence. This is the only `_ = …Async()` in the app with no
+  `try`/`catch`, and an unobserved `Task` is outside `ActionRunner`'s catch-all, so M70's "no `catch`
+  swallows silently" clean result never covered it.
+- `MemorialRequestedFor` is a single slot: two brothers recorded in one visit, and "Not now" on the
+  second writes `null` over the first accepted yes.
+- `PhraseLibrary.Find("memorial")` returning null returns with **no message at all**
+  (`MainWindow.axaml.cs:2958`).
+- `ActionId.ShowPeople` is unconditionally available, so People opens with **no newsletter at all**,
+  and the refusal's instruction to "click into some writing" is then impossible to follow.
+
+The fix follows M66's `AddTextFrameWith` precedent — a new text frame, one undo step, and say where it
+went — and `LastYearWindow` is the shape to copy: `CopyLastYearsArticle` **returns** its refusal
+string rather than announcing it, and `Tell` puts it in both places.
+
+**`PassedBrotherShellTests.WithNowhereToWriteItTheAppSaysWhereToStart` asserts the bug as correct
+behaviour and is green.** The fix deletes a passing test, which is the same trap as
+`DeleteEverythingLeavesEmptyRunList`. Say so in the commit rather than quietly flipping it.
+
+**(b) Three defects that destroy work — these ship ahead of the rest, on their own.**
+
+1. **"Stop the import" performs the import.** `RosterImportWindow.cs:80`, automation name *"Stop
+   importing and change nothing"*. On the Done step `Render():229` never hides or disables it and
+   `Result` was already set by `Commit():180`; `MainWindow.axaml.cs:4872` reads `Result` however the
+   window closed and calls `Roster.Replace`. It is `IsCancel`, **so Escape does it too**. The target
+   is the real address book — real member data, and the reason the backup ring exists.
+2. **"Put them all back" claims success having done nothing.** `TextStylesWindow.cs:191` shows
+   whenever `overrideCount > 0`, counted document-wide with no caret needed
+   (`TextEditorController.cs:834`). With no caret `ClearEveryFontOverride` (`:4170`) calls
+   `SelectAll(); ClearFontOverride();` — both return early, both bools discarded — then announces
+   *"3 pieces of text were put back… Press Ctrl+Z to undo"*. **Ctrl+Z then eats an unrelated edit.**
+   With a caret it is still wrong: `SelectAll` covers one story, the count is the whole document.
+3. **The recovery card promises then deletes.** `MainWindow.axaml.cs:851` says *"Nothing has been
+   lost"*; `RestoreDialog` has no `IsCancel` and no Esc handler, but the title-bar X yields
+   `Restore == false` → `_recoveryStore.Delete(snapshot.Id)`.
+
+**(c) The defect M71 introduced while fixing M71's defect.** `RunWizardAsync:5738` is shared by insert
+and re-edit and says, unconditionally, *"Nothing was filled in yet. Press Ctrl+Z to take it back off
+the page."* The owner's own acceptance sequence now ends in a false instruction: fresh template →
+"Fill in the meeting date on the cover" → wizard → **Cancel** → told Ctrl+Z removes the cover heading,
+which came with the template. The sentence was only ever true on the insert path, and M71 multiplied
+the routes to re-edit. Gate 24 stops at "the action is available" and cannot see the next line. The
+grid branch (`:5720-5726`) has no `else` at all — asymmetric silence in the same `if`.
+
+**(d) The offer/caret shape, once, everywhere.** A dialog reached from a *menu* offering something
+that needs a *caret*; `IsActive` is set only by clicking into text (`TextEditorController.cs:58`) or
+`SelectRange` (`:172`). Three instances: the memorial, "Copy this into this month"
+(`LastYearWindow.cs:132`), and "Put them all back".
+
+**(e) Discarded returns that reach an announcement.** Mechanically findable, and it is the single
+highest-yield sweep in the milestone. `SelectAll`/`ClearFontOverride` (`:4184-4185`), `SelectRange` in
+`TakeMeToTheWord` (`:3074`), `UseFontJustHere` (`TextEditorController.cs:872`, literally `_ =
+RetargetSpans(...)`), `NeverAskAgain` (`SpellingWindow.cs:268`, whose `PersonalDictionary.Save`
+swallows `IOException` into a `CouldNotBeSaved` flag nobody reads), `AppSettings.Save` (`void`, empty
+catch, announced as *"Saved."* at `:5470` — raise UI scale to 150%, be told it saved, find 100% next
+launch), and eight `PhotoController`/`FrameEditorController` siblings of the `Restack` fix M70 made
+but did not generalise: `DeleteSelectedFrame`, `ToggleWrap`, `BeginFrameLink`, `UnlinkFrames`,
+`AlignSelection`, `DistributeSelection`, `FixPhoto`, `DismissCropNotice`, plus **`AutoFlow`** — M71's
+own command, silent on failure because `PageFlowController:153` also nulls its own `StatusMessage`.
+
+**(f) `RunAsync`'s null is a success claim the runner cannot make.** `ActionRunner.cs:224-251` returns
+`null` for "ran and nothing threw", which covers every silent early return, every cancelled picker,
+every cancelled wizard, and (`:225`) an action id with **no handler at all**. Two windows read it as
+"it happened": `HelpWindow.cs:336` (Help → "Do it for me" → picker → **Cancel** → *"Done: Put a
+picture here…"*) and `ReviewWindow.cs:293`, every remedy button. These are the two windows where a
+nervous user is likeliest to cancel. Needs a three-way outcome: refused / did nothing / did something.
+
+**(g) Staleness from document *mutation*.** M70 (g) closed only the document-*switch* case.
+`FindController.cs:32` is the **only** `session.Changed` subscriber in the app and is the reference
+implementation the other five did not copy. Worst instance: `ReadAloudSession.cs:30` captures offsets
+**and a copy of the text** once, so editing a paragraph mid-walk has a proofreading tool reading the
+pre-fix wording back to a committee member while the canvas bands the wrong characters —
+`StoryTextGeometry` clamps, so there is no exception and no clue. Also `HelpWindow.cs:263`
+(`IsVisible` computed once in `ShowAnswer`; M71 (b) recorded this surface clean, which was true at
+render time and false a second later — its press-time re-check at `:314` is correct and is a different
+moment), and `ReviewWindow.cs:310` narrating *"You are on page 4"* after a clamped `GoToPage` landed
+elsewhere.
+
+**(h) The two gates, which fall out of the invariant and are both enumerable.**
+
+- **Gate 26 (G-a).** For every control with a handler, the predicate gating its rendering, visibility
+  or enablement must **be** the handler's precondition — obtained from it, not restated beside it.
+  Catches the cover date, the memorial, `HelpWindow.cs:263`, and `FontsAndStyles`-with-no-caret.
+- **Gate 27 (G-b).** No method may announce an outcome that is not a function of a value returned by
+  the operation it is announcing. Checkable as "no discarded `bool`/`int` on a path reaching
+  `Announce`/`Tell`/`_status.Text` in the same method". Catches (b2), (e) and (f) in one sweep.
+
+Both must pass a control that is *sometimes* unavailable and explains itself — that is M11 working
+correctly, and a gate that fails it will be switched off within a month.
+
+**(i) Two records of ours that overclaim, corrected in the same pass.** PLAN.md M70 says roughly
+thirty "can never fire" guards "are listed in the audit" — **there is no audit**. No
+`docs/M69-spec.md`, `M70-spec.md` or `M71-spec.md` exist; the spec-doc convention held for M6–M68 was
+dropped on precisely the three milestones whose value was their exclusion list, so nobody can now
+distinguish a defensive guard from a live one. And
+`SilentNoOpTests.AnAvailableCommandAlwaysLeavesSomethingToRead` calls itself *"the rule behind (c),
+asserted once rather than command by command"* while iterating a hardcoded two-element array — every
+finding in (e) is invisible to it. Write the missing exclusion lists; make the rule a rule or stop
+calling it one.
+
+**Acceptance.** Chrome, catalog and editing only; nothing in `Core`/`Layout`/`Rendering`/`Export.Pdf`,
+and no snapshot baseline moves. Each gate fails against the current tree before its fix, demonstrated
+rather than assumed. Findings deliberately **not** fixed are listed here with the reason, in the M70
+tradition. The clean results from all three sweeps are recorded in the spec doc — roughly forty
+verified-correct offers, the non-modal window enumeration (exactly six), the document-switch handling,
+`FindWindow` clean in every dimension, `HelpWindow`'s press-time behaviour as the strongest in the
+app, and the unreachable-guard list — because a clean result nobody wrote down is why this milestone
+exists.
+
+**What this milestone cannot do.** Every gate here is static: it reads source or evaluates pure
+functions. Gate 24 was only possible because `ActionCatalog.Evaluate` is a pure function of context,
+which is luck the dialog and canvas surfaces do not share, so checks there are weaker by nature. All
+five bugs were found by the owner using the app, and gate 23's screen-reader pass
+(`docs/accessibility-test-script.md` §21, sixteen steps, rows 21.1–21.16 still blank) remains unwalked.
+**A hands-on pass is worth more than another audit round**, and the milestone is not a substitute for it.
+
 ---
 
 ## 12. Verification (end-to-end)
@@ -3642,6 +3802,17 @@ macOS baseline is implicitly an arm64 artifact, and it must be baked on arm64.
     release workflow verifies on all three operating systems as of 2026-08-09; before that it ran
     `dotnet test` on ubuntu-latest alone while packing `osx-x64` and `osx-arm64`, so a macOS-only
     failure could not block a release by construction.
+
+26. **Offer-integrity gate (M73):** a control's gating predicate is obtained from its handler's
+    precondition rather than restated beside it, so nothing can be offered in a state where it will be
+    refused. Must stay quiet about a control that is sometimes unavailable and says why — that is M11
+    working, and gate 24 already carries the same guard against its own breadth.
+
+27. **Outcome-honesty gate (M73):** no method announces an outcome that is not a function of a value
+    returned by the operation it announces. Enumerated as discarded `bool`/`int` returns on a path
+    reaching an announcement in the same method. This is the gate that would have caught the app
+    saying "3 pieces of text were put back" having put nothing back, and telling the user to press
+    Ctrl+Z — which would then have undone something else.
 
 ## 13. Remaining open items (status as at 2026-07-27)
 
