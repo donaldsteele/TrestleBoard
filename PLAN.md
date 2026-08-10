@@ -3349,6 +3349,61 @@ the accessibility script gains a section walking each window's answers by ear. *
 `WidgetGridWindow` findings are the highest priority in the milestone**: it is the only dialog that
 is silent to a screen reader in both audits.
 
+### M71 — A button that can never do anything (M)
+
+**Goal.** M70 asked whether the app's answer reaches the user. This asks a different question about
+the same surfaces: **can this control ever do anything at all?** The owner reported that "Fill in the
+meeting date on the cover" does nothing on a fresh template, and it turned out not to be a broken
+handler. The suggestion is drawn **only** in the state where its action is structurally unavailable,
+so pressing it could never have worked — on any build, since M11.
+
+**The two confirmed dead controls.** The panel's "What's next" list renders only when
+`!context.HasFrameSelection && !context.IsEditingText` (`ActionPanel.cs:199`). Two of its seven
+suggestions point at actions that require a selection:
+
+- *"Fill in the meeting date on the cover"* → `ActionId.EditWidget`, whose rule is
+  `EvaluateWidget(context, …)` and needs `Selection == Widget`.
+- *"Make the rest fit"* → `ActionId.AutoFlow`, which needs `SelectionIsTextFrame`.
+
+**The correct pattern is already in the repository, which is what makes this bounded.** Three of the
+other five suggestions carry an explicit second branch for exactly this state — `ReplacePicture` has
+`HasPicturePlaceholder && !HasFrameSelection && !IsEditingText`, commented *"reachable the same two
+ways and for the same reason"*, and both roster syncs have their own stale-list branch. The
+discipline was understood and applied to three of five. This milestone applies it to the rest and
+then makes it impossible to miss again.
+
+**Deliverables.**
+
+**(a) Fix the two.** For the cover date, the honest fix is probably not a second availability branch
+but a suggestion that *selects the cover heading and opens its editor* — the user's intent is "take
+me to the thing", which is what M51's review remedies already do. Decide per control; a suggestion
+that silently selects something on the user's behalf must say so, per M70.
+
+**(b) Audit every control surface against the states it is rendered in.** Not only "What's next":
+the action panel's offers, the toolbar, the menu bar, the review remedies, the help window's "Take me
+there", and every button in a dialog that runs a catalog action. For each, establish the set of
+contexts in which it is drawn, and whether any of them makes its action available.
+
+**(c) Make it machine-checkable, because it is.** `ActionCatalog.Evaluate` is a pure function of
+`ActionContext` and the render conditions are explicit, so a test can enumerate the states a control
+appears in and assert at least one makes its action available. A control that is drawn only in states
+where it is refused is a build failure, not a review finding. This is the M11 discipline extended one
+step: M11 made every command explain a refusal, and this makes a command that can *only* refuse
+impossible to ship.
+
+**(d) Distinguish the three cases, and do not flatten them.** A control that is *sometimes*
+unavailable and explains itself is correct and must stay (M11). A control that is *never* available
+where it is drawn is this milestone's bug. A control that is available but whose handler does nothing
+is M70 (c), already fixed. The test in (c) must not fail the first case, or it will be suppressed
+within a month.
+
+**Acceptance.** Chrome and catalog only; nothing in `Core`/`Layout`/`Rendering`/`Export.Pdf`, and no
+snapshot baseline moves. The two named controls work from a fresh template — the owner's exact
+sequence is the acceptance test. The (c) test fails against the current tree before the (a) fix, and
+that must be demonstrated rather than assumed. Any control the audit finds dead and *does not* fix is
+listed here with its reason, in the M70 tradition of recording the clean results and the deliberate
+omissions rather than only the changes.
+
 ---
 
 ## 12. Verification (end-to-end)
@@ -3453,6 +3508,11 @@ is silent to a screen reader in both audits.
     focused, a refusal triggered from that window is visible **in that window**; a screen-reader pass
     over `WidgetGridWindow` and `WizardWindow` hears every validation refusal; and closing a document
     closes or re-points every non-modal window still holding its snapshot.
+
+24. **Reachability gate (M71):** no control is drawn only in states where its action is refused.
+    Enumerated from `ActionCatalog.Evaluate` against the contexts each surface renders in, so it is a
+    build failure rather than a review finding — and it must pass a control that is sometimes
+    unavailable and explains itself, which is M11 working correctly.
 
 ## 13. Remaining open items (status as at 2026-07-27)
 
