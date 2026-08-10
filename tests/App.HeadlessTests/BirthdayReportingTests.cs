@@ -304,15 +304,14 @@ public sealed class BirthdayReportingTests
             // The subject line on an email to sixty people. It reads "July 2026", which is the whole
             // point of (g): before M75 this said "January 2000".
             //
-            // The lodge NAME is absent, and that is a separate write-back gap of exactly M75 (d)'s
-            // shape, recorded here rather than quietly asserted away: the wizard's lodge-name answer
-            // reaches the cover banner's own data and never reaches Metadata.LodgeName, so a
-            // newsletter not descended from a sample has none. It is not in M75's deliverables and
-            // is not fixed here; the sentence stays true and plain either way, which is why it can
-            // wait. If somebody closes that gap, this line is where it will be noticed.
-            Assert.Equal(string.Empty, meta.LodgeName);
+            // The lodge NAME was absent when this test was written, and the gap was recorded here
+            // rather than quietly asserted away — a separate write-back hole of exactly M75 (d)'s
+            // shape, with the note that whoever closed it would be told by this line. The census pass
+            // closed it: the wizard's lodge-name answer now reaches Metadata.LodgeName as well as the
+            // banner, so the subject names the lodge. See MetadataCensusTests.
+            Assert.Equal(Lodge, meta.LodgeName);
             Assert.Equal(
-                "Trestle Board — July 2026",
+                $"{Lodge} Trestle Board — July 2026",
                 MailHandoff.Subject(meta.LodgeName, meta.Title, meta.IssueYear, meta.IssueMonth));
 
             window.Close();

@@ -3810,6 +3810,13 @@ public partial class MainWindow : Window
     /// <summary>
     /// "TrestleBoard — September 2026" while saved, and the same with a plain-language marker while
     /// not. An asterisk is the convention and means nothing to somebody who has not been taught it.
+    ///
+    /// <para>M75, the census pass: the name comes through <see cref="Integration.IssueNaming.Title"/>
+    /// like every other place a newsletter is named. Nobody is ever asked for a title — that was
+    /// settled in M75 (g), because every one of these files is a trestle board and a second question
+    /// on the way in is a second question to get wrong. This line was the one place still reading the
+    /// raw field, so a template-started newsletter sat all day under the words
+    /// <c>"TrestleBoard —  — not saved yet"</c>, with a hole where its name should be.</para>
     /// </summary>
     private void UpdateTitle()
     {
@@ -3819,7 +3826,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        string name = package.Document.Metadata.Title;
+        string name = Integration.IssueNaming.Title(package.Document.Metadata);
         Title = _unsavedChanges
             ? $"TrestleBoard — {name} — not saved yet"
             : $"TrestleBoard — {name}";
@@ -6561,6 +6568,12 @@ public partial class MainWindow : Window
     /// real user who started next month's issue. The rule the user typed into the banner is written
     /// to the metadata here. A blank one never overwrites a rule the document already had: leaving
     /// a field empty is not the same as asking for something to be forgotten.</para>
+    ///
+    /// <para><b>And the third one, found by the census pass.</b> <c>Metadata.LodgeName</c> had the
+    /// hole in exactly the shape above: asked for on the banner, kept on the banner, and set on the
+    /// newsletter itself only by the two samples. So a newsletter started from a template emailed the
+    /// whole lodge under a subject with no lodge in it and produced a PDF with a blank Author. The
+    /// same write-through, under the same blank-never-erases rule.</para>
     /// </summary>
     private Core.Commands.SetMetadataCommand? IssueDateCommandFrom(WizardSession wizard)
     {
@@ -6576,6 +6589,11 @@ public partial class MainWindow : Window
         if (TypedMeetingRule(wizard) is { } rule)
         {
             updated.MeetingRule = rule;
+        }
+
+        if (TypedLodgeName(wizard) is { } lodge)
+        {
+            updated.LodgeName = lodge;
         }
 
         return new Core.Commands.SetMetadataCommand(updated);
@@ -6599,6 +6617,20 @@ public partial class MainWindow : Window
 
         return (month, year);
     }
+
+    /// <summary>
+    /// The lodge name the wizard holds, or null when it is blank.
+    ///
+    /// <para>Null rather than "" for the reason the meeting rule is: a blank answer never overwrites
+    /// a name the newsletter already has. The wizard requires this field, so a blank one cannot in
+    /// fact arrive through it today — the guard is here because the rule is the rule, and the next
+    /// field to be written back through this method may well be optional.</para>
+    /// </summary>
+    private static string? TypedLodgeName(WizardSession wizard) =>
+        wizard.TryGetAnswer(CoverBannerDefinition.LodgeNameFieldKey, out string lodge)
+            && !string.IsNullOrWhiteSpace(lodge)
+                ? lodge.Trim()
+                : null;
 
     private static string? TypedMeetingRule(WizardSession wizard) =>
         wizard.TryGetAnswer(CoverBannerDefinition.MeetingRuleFieldKey, out string rule)
@@ -6671,7 +6703,7 @@ public partial class MainWindow : Window
         // it, and the wizard refuses to finish without one exactly as it would for a user.
         if (answer.LodgeName is { } lodge)
         {
-            wizard.TrySetAnswer("lodgeName", lodge);
+            wizard.TrySetAnswer(CoverBannerDefinition.LodgeNameFieldKey, lodge);
         }
 
         return wizard.TryCommit(out data, out dataVersion, out _);
@@ -6753,6 +6785,11 @@ public partial class MainWindow : Window
         if (TypedMeetingRule(wizard) is { } rule)
         {
             package.Document.Metadata.MeetingRule = rule;
+        }
+
+        if (TypedLodgeName(wizard) is { } lodge)
+        {
+            package.Document.Metadata.LodgeName = lodge;
         }
 
         return true;

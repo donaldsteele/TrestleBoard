@@ -23,6 +23,13 @@ public sealed class CoverBannerDefinition : WidgetDefinition<CoverBannerData>
     /// <summary>M75 (d): the field whose answer belongs in <c>DocumentMetadata.MeetingRule</c> too.</summary>
     public const string MeetingRuleFieldKey = "meetingRule";
 
+    /// <summary>
+    /// M75, the census pass: the third field with the same write-back hole. The lodge's own name is
+    /// asked for here and belongs in <c>DocumentMetadata.LodgeName</c> as well, which is what the
+    /// email subject and the PDF's Author are built from.
+    /// </summary>
+    public const string LodgeNameFieldKey = "lodgeName";
+
     /// <summary>M75 (d): the printed date, which the answer above can fill in when it is blank.</summary>
     public const string MeetingDateFieldKey = "meetingDateText";
 
@@ -172,11 +179,11 @@ public sealed class CoverBannerDefinition : WidgetDefinition<CoverBannerData>
                 "This prints at the very top of the newsletter, above everything else.",
                 [
                     (new WizardField(
-                            "lodgeName",
+                            LodgeNameFieldKey,
                             "Lodge name",
                             ExampleText: "Placeholder Lodge No. 000"),
                         new WizardFieldBinding<CoverBannerData>(
-                            "lodgeName", d => d.LodgeName, (d, v) => d.LodgeName = v)),
+                            LodgeNameFieldKey, d => d.LodgeName, (d, v) => d.LodgeName = v)),
                     (new WizardField(
                             "headingText",
                             "Heading",
