@@ -98,6 +98,22 @@ jobs:
             -p:Version=${{ steps.version.outputs.value }} \
             -o publish/${{ matrix.rid }}
 
+      # Without this, vpk has nothing to diff against and every release is full-download only —
+      # about 57MB per machine per release, on a lodge's connection. The Publish step's comment
+      # above has claimed since M10 that the folder layout exists so Velopack can "build the delta
+      # updates", and until M74 that machinery never engaged: v1.3.0's assets are four
+      # `-full.nupkg` files and no deltas. `|| true` because the FIRST release on a channel has no
+      # previous version to fetch and vpk exits non-zero saying so — that is the expected state,
+      # not a failure, and it must not take the release down.
+      - name: Fetch the previous release so deltas can be built
+        run: |
+          mkdir -p Releases
+          vpk download github \
+            --repoUrl "https://github.com/${{ github.repository }}" \
+            --channel ${{ matrix.rid }} \
+            --outputDir Releases \
+            --token "${{ secrets.GITHUB_TOKEN }}" || true
+
       - name: Build the .app bundle (macOS only)
         if: startsWith(matrix.rid, 'osx')
         run: |
