@@ -21,9 +21,37 @@ public interface IDocumentMigration
 public sealed class UnsupportedFormatException(string message, Exception? inner = null)
     : Exception(message, inner);
 
+/// <summary>
+/// 1.0.0 → 1.1.0 (M72): nothing to do, and that is the point of writing it down.
+///
+/// <para>1.1.0 adds one thing — a <c>"type": "vector"</c> block — and adds it <b>additively</b>. A
+/// newsletter written before M72 contains no such block, every other part of the file means exactly
+/// what it always meant, and there is nothing to rewrite. In particular a baked emblem stays the
+/// ordinary <c>ImageFrame</c> it has always been: the emblem's id was deliberately not stored with
+/// the frame (docs/M65-spec.md §9), so recognising one would take pixel matching, and this step
+/// would then be silently rewriting the user's document on open. It does not.</para>
+///
+/// <para>The step exists because <see cref="MigrationRunner"/> refuses to open a file it has no
+/// route from — bumping <see cref="TboardManifest.CurrentFormatVersion"/> without registering this
+/// would throw <see cref="UnsupportedFormatException"/> on every newsletter in existence. This is
+/// the chain's first live step since it was scaffolded in M2.</para>
+/// </summary>
+public sealed class VectorBlocksMigration : IDocumentMigration
+{
+    public string FromVersion => TboardManifest.BaseFormatVersion;
+
+    public string ToVersion => TboardManifest.VectorFormatVersion;
+
+    public void Apply(JsonObject manifest, JsonObject documentBody, JsonObject styles)
+    {
+        // Deliberately empty. See the type's doc comment: the change is additive, so a 1.0.0
+        // document IS a valid 1.1.0 document, and touching it would be the bug.
+    }
+}
+
 public static class MigrationRunner
 {
-    private static readonly List<IDocumentMigration> Chain = [];
+    private static readonly List<IDocumentMigration> Chain = [new VectorBlocksMigration()];
 
     /// <summary>
     /// Brings raw file JSON up to <see cref="TboardManifest.CurrentFormatVersion"/>.

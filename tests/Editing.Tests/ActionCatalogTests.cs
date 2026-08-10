@@ -25,6 +25,7 @@ public sealed class ActionCatalogTests
         yield return TextFrame();
         yield return TextFrame() with { SelectionIsLinked = true, CanAutoFlow = true };
         yield return Document() with { Selection = SelectionKind.Shape, SelectedBlockId = "s1" };
+        yield return Drawing();
         yield return Document() with { PageIndex = 2, PageCount = 3 };
         yield return Document() with { PageCount = 1 };
         yield return Document() with { CanUndo = true, CanRedo = true };
@@ -64,6 +65,18 @@ public sealed class ActionCatalogTests
     {
         Selection = SelectionKind.Photo,
         SelectedBlockId = "p1",
+    };
+
+    /// <summary>
+    /// An emblem, which from M72 is a drawing rather than a picture. It is in the list above
+    /// because the whole risk of adding a block type is the silent fall-through: anything the
+    /// factory does not recognise is called a <c>Shape</c>, and every rule in the catalog would then
+    /// answer for a drawing without anybody having decided what it should say.
+    /// </summary>
+    private static ActionContext Drawing() => Document() with
+    {
+        Selection = SelectionKind.Drawing,
+        SelectedBlockId = "d1",
     };
 
     /// <summary>A picture frame with nothing in it — how the photo template ships (M18).</summary>
@@ -704,4 +717,61 @@ public sealed class ActionCatalogTests
         Assert.Contains("address book", pointed.Reason, StringComparison.Ordinal);
         Assert.Equal(ActionId.UndoPeopleChange, pointed.RemedyId);
     }
+
+    // ---- a drawing on the page (M72) -------------------------------------------------------------
+
+    /// <summary>
+    /// The four picture commands that are about pixels are refused on a drawing, each by name and
+    /// each with a reason of its own — not the "this needs a picture" sentence, which would be
+    /// untrue of the thing the user just chose. <c>ActionAvailability</c> refuses an empty reason at
+    /// construction, so what this really checks is that somebody decided.
+    /// </summary>
+    [Theory]
+    [InlineData(ActionId.FixPhoto)]
+    [InlineData(ActionId.AdjustPhoto)]
+    [InlineData(ActionId.PositionPicture)]
+    [InlineData(ActionId.ReplacePicture)]
+    public void ADrawingIsNotOfferedThePhotoToolkitAndIsToldWhy(string actionId)
+    {
+        ActionAvailability availability = ActionCatalog.Evaluate(actionId, Drawing());
+
+        Assert.False(availability.IsAvailable);
+        Assert.False(string.IsNullOrWhiteSpace(availability.Reason));
+        Assert.DoesNotContain(
+            "Choose one on the page first",
+            availability.Reason,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The two that are about words are granted. An emblem arrives already described, and the
+    /// description is the one thing a screen-reader user depends on — putting it out of reach would
+    /// have been the accessibility cost of the milestone.
+    /// </summary>
+    [Theory]
+    [InlineData(ActionId.DescribePicture)]
+    [InlineData(ActionId.CaptionPicture)]
+    public void ADrawingCanStillBeDescribedAndCaptioned(string actionId) =>
+        Assert.True(ActionCatalog.Evaluate(actionId, Drawing()).IsAvailable);
+
+    /// <summary>
+    /// It is called a drawing, out loud. Left to the factory's fall-through the panel would have
+    /// announced "A shape is selected" about a square and compasses — working, and wrong.
+    /// </summary>
+    [Fact]
+    public void ThePanelCallsADrawingADrawing()
+    {
+        Assert.Equal("A drawing is selected", ActionCatalog.DescribeSelection(Drawing()));
+        Assert.NotEqual(
+            ActionCatalog.DescribeSelection(Document() with { Selection = SelectionKind.Shape }),
+            ActionCatalog.DescribeSelection(Drawing()));
+    }
+
+    /// <summary>Moving, wrapping and lining it up are ordinary — a drawing is a thing on a page.</summary>
+    [Theory]
+    [InlineData(ActionId.ToggleWrap)]
+    [InlineData(ActionId.BringToFront)]
+    [InlineData(ActionId.DeleteFrame)]
+    public void ADrawingIsAnOrdinaryThingOnThePage(string actionId) =>
+        Assert.True(ActionCatalog.Evaluate(actionId, Drawing()).IsAvailable);
 }

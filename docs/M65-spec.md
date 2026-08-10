@@ -15,7 +15,8 @@ keyboard, each placed as an ordinary picture frame.
 ## 2. The artwork is geometry in the source
 
 There is no `emblems/` folder of SVG or PNG files. Each emblem is a handful of SVG **path data**
-strings in `EmblemLibrary`, drawn by `EmblemRenderer` through SkiaSharp. `SKPath.ParseSvgPathData`
+strings in `EmblemLibrary`, drawn through SkiaSharp (by `EmblemRenderer` until M72 moved the one
+drawing routine into `Rendering/VectorArtRenderer`). `SKPath.ParseSvgPathData`
 is the only piece of SVG this app understands, and it is parsed by the graphics library rather than
 by a document reader — no new dependency, no XML, no parser to keep safe.
 
@@ -33,6 +34,40 @@ rule *is* a line and a weight — and stroking with round caps is what makes the
 geometry a person can read.
 
 ## 3. Rendered once, at insert time, into an ordinary picture
+
+> **Reversed on 2026-08-10 by M72. The original text is kept below the line because it is the
+> reasoning that was overturned, and because the reversal only makes sense beside it.**
+>
+> The decision below rests on one sentence: *"The app has exactly one thing proven byte-identical on
+> Windows, Linux and macOS: its own SkiaSharp pipeline."* That was not true of a raster. See §6: the
+> committed PNG hash failed on macos-latest for fifteen consecutive builds, and the variable was the
+> **processor architecture**, not the operating system. Antialiased coverage is computed in floating
+> point and arm64 contracts multiply-adds where x64 cannot.
+>
+> The cost was not a red build. The PNG is what a `.tboard` stored, so **a macOS member's newsletter
+> genuinely carried different bytes from a Windows member's** — the exact property this section
+> claimed to be buying. **M72 keeps the emblem vector all the way into the document and the PDF.**
+> The path data goes on the page as a `VectorBlock`, the renderer draws it at whatever resolution
+> the surface needs, and `SKDocument` receives `DrawPath` — which emits vector operators, so
+> `Export.Pdf` needed no change whatever.
+>
+> The second worry below — *"a vector emblem carried all the way to the page would have been a
+> second renderer"* — was the right thing to worry about and did not come true, because the second
+> renderer was never necessary. `DocumentRenderSource` already drew antialiased vector shapes onto
+> both surfaces (`RenderShape`, and every table rule in the app). M72 added `RenderVector` beside it
+> and moved the drawing primitive into `Rendering/VectorArtRenderer`, which the **picker's
+> thumbnails also draw through**. There is one routine, which is what WYSIWYG is a promise about;
+> `EmblemRenderer` is gone, and `TrestleBoard.Emblems` is a BCL-only data leaf that no longer
+> references SkiaSharp at all.
+>
+> What the paragraph below gets right, and what M72 kept rather than inherited: an emblem can still
+> be moved, resized, wrapped and captioned, and one `Ctrl+Z` still removes it, because
+> `PhotoController.InsertVector` deliberately reuses the same default rectangle, z-order rule and
+> single composite command that `InsertPhoto` uses. What it loses is the photo toolkit it never
+> wanted — crop, rotation, brightness, auto-levels and `FixPhoto`'s auto-crop are refused on a
+> drawing now, each with a plain-language reason. See docs/M72-spec.md.
+>
+> ---
 
 The plan left the choice open: "SVG source rendered through the existing pipeline or pre-rasterized
 at bundle time — decided in the spec by what keeps layout deterministic".
@@ -174,12 +209,19 @@ and where it came from is not a difference a glyph should try to draw.
   is printed, usually in black and white.
 - **No user-supplied emblems.** "Insert a picture" already does that, and a second import path
   pretending to be a shelf would be two ways to do one thing.
-- **No emblem stays a vector on the page.** §3 is the reason, and it is a deliberate closing of the
-  door: an emblem is a picture from the moment it lands.
-- **No re-render at a larger size later.** The stored PNG is 2048px on its longest side, which is
+- ~~**No emblem stays a vector on the page.** §3 is the reason, and it is a deliberate closing of
+  the door: an emblem is a picture from the moment it lands.~~ **Reopened by M72 on 2026-08-10**, on
+  evidence this spec did not have: the determinism §3 traded the vector away for was never true of a
+  raster across processor architectures, so the trade bought nothing and cost cross-platform
+  identity. An emblem is a drawing from the moment it lands, and stays one into the PDF.
+- ~~**No re-render at a larger size later.** The stored PNG is 2048px on its longest side, which is
   past what any printer here resolves. Should that ever prove wrong, the emblem's id is not stored
   with the frame, so re-rendering would need a format change — recorded here as the known cost of
-  the simpler design.
+  the simpler design.~~ **The known cost came due.** M72 made the format change (1.0.0 → 1.1.0, the
+  migration chain's first live step) and resolution ceased to be a ceiling: there is no stored
+  raster to be too small. The sentence about the id was also the reason M72 refused to upgrade
+  existing documents — a baked emblem cannot be recognised without pixel matching, so old newsletters
+  keep their PNG as an ordinary picture and are not silently rewritten.
 - **The seasonal set is thin.** Sun, moon and stars, and that is all. Wreaths, flags and the like
   are what the next pass would add; nothing about the shelf makes that harder than writing more
   path data and re-running the manifest.

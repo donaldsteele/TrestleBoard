@@ -92,8 +92,12 @@ public static class ActionContextFactory
         }
         else if (blockId is not null && source is not null)
         {
+            // The last arm is a FALL-THROUGH, not a classification: anything unrecognised is called
+            // a shape. M72's drawing is asked about by name for that reason — left to the default it
+            // would have looked like it worked while telling the user "A shape is selected".
             selection = widgets?.IsWidget(blockId) == true ? SelectionKind.Widget
                 : photos?.IsPhoto(blockId) == true ? SelectionKind.Photo
+                : photos?.IsVector(blockId) == true ? SelectionKind.Drawing
                 : source.IsTextBlock(blockId) ? SelectionKind.TextFrame
                 : SelectionKind.Shape;
         }

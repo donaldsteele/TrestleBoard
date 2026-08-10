@@ -2350,12 +2350,18 @@ public partial class MainWindow : Window
     /// <summary>
     /// Opens the shelf and puts the chosen emblem on the page.
     ///
-    /// <para><b>It becomes an ordinary picture.</b> The emblem is drawn once, here, into PNG bytes,
-    /// and handed to the same <c>PhotoController.InsertPhoto</c> that a photograph from the user's
-    /// camera goes through — so it can be moved, resized, wrapped, captioned and re-described with
-    /// the commands that already exist, it lands in the container as an ordinary asset, and the
-    /// layout engine and the PDF export never learn that emblems are a thing. A second kind of
-    /// frame would have been a second thing to keep working for ever.</para>
+    /// <para><b>It stays a drawing (M72).</b> Until M72 the emblem was rasterised here at 2048px and
+    /// handed to <c>InsertPhoto</c>, so what a <c>.tboard</c> stored was a PNG. Antialiased coverage
+    /// is floating-point arithmetic and processor architectures disagree about the last bit, so a
+    /// macOS member's newsletter genuinely carried different bytes from a Windows member's. The path
+    /// data goes into the document instead: no asset, nothing to differ, and the PDF receives the
+    /// curve rather than a ~680dpi picture of it. docs/M65-spec.md §3 and §9 argued the other way
+    /// and are corrected in place.</para>
+    ///
+    /// <para>Everything the ingest path gave it for free is kept deliberately rather than by
+    /// accident: <c>InsertVector</c> reuses the same default rectangle, z-order and single composite
+    /// command, so one Ctrl+Z still takes it back off, and M69's corner aspect-lock still holds it
+    /// in shape.</para>
     ///
     /// <para>No description dialog, unlike a photograph: the app knows what this picture is, and
     /// asking somebody to describe the square and compasses to the app that just drew it would be
@@ -2386,12 +2392,14 @@ public partial class MainWindow : Window
         }
 
         _editor?.End();
-        string? blockId = _photos.InsertPhoto(
+        string? blockId = _photos.InsertVector(
             _pageIndex,
-            EmblemRenderer.ToPng(chosen),
+            Emblems.EmblemGeometry.PartsOf(chosen),
+            chosen.Width,
+            chosen.Height,
             chosen.Description,
-            caption: "",
-            fit: Core.Model.ImageFit.Contain);
+            caption: null,
+            emblem: (chosen.Id, EmblemFingerprint.Of(chosen)));
 
         if (blockId is null)
         {
@@ -4784,6 +4792,27 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// The block the caption and description commands act on (M72).
+    ///
+    /// <para>A chosen DRAWING is the answer before <see cref="PictureTarget"/> is consulted, and
+    /// that ordering is the whole of it. <c>PictureTarget</c> falls through to "the first empty
+    /// picture frame in the newsletter" when what is chosen is not a photograph — which is right
+    /// for "Put a picture here…" and would have been badly wrong here: the catalog offers "Describe
+    /// this picture" with a drawing chosen, and the shell would have gone off and described
+    /// something else on another page. That is precisely the offer-time / do-time disagreement
+    /// gate 26 exists for.</para>
+    /// </summary>
+    private string? WordsTarget()
+    {
+        if (_photos is not null && _frames?.SelectedBlockId is { } selected && _photos.IsVector(selected))
+        {
+            return selected;
+        }
+
+        return PictureTarget();
+    }
+
+    /// <summary>
     /// "Put a picture here…" / "Swap this picture…". The bytes land in the package verbatim, exactly
     /// as on the insert path — a swap never re-encodes — and the whole change is one undo step.
     /// </summary>
@@ -4842,12 +4871,12 @@ public partial class MainWindow : Window
 
     internal async Task DescribePictureAsync()
     {
-        if (_photos is null || PictureTarget() is not { } blockId)
+        if (_photos is null || WordsTarget() is not { } blockId)
         {
             return;
         }
 
-        PictureWordsDialog dialog = PictureWordsDialog.ForAltText(_photos.GetPhoto(blockId)?.AltText);
+        PictureWordsDialog dialog = PictureWordsDialog.ForAltText(_photos.GetWorded(blockId)?.AltText);
         await dialog.ShowDialog(this);
         if (dialog.Confirmed && dialog.Text is { } description)
         {
@@ -4858,12 +4887,12 @@ public partial class MainWindow : Window
 
     internal async Task CaptionPictureAsync()
     {
-        if (_photos is null || PictureTarget() is not { } blockId)
+        if (_photos is null || WordsTarget() is not { } blockId)
         {
             return;
         }
 
-        PictureWordsDialog dialog = PictureWordsDialog.ForCaption(_photos.GetPhoto(blockId)?.Caption);
+        PictureWordsDialog dialog = PictureWordsDialog.ForCaption(_photos.GetWorded(blockId)?.Caption);
         await dialog.ShowDialog(this);
         if (dialog.Confirmed)
         {

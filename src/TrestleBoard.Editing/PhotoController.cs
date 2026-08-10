@@ -212,6 +212,106 @@ public sealed class PhotoController
     }
 
     /// <summary>
+    /// Puts a DRAWING on the page — path data, not pixels (PLAN.md §11 M72).
+    ///
+    /// <para>It lands through the same machinery as a photograph on purpose: <c>DefaultRect</c> at
+    /// the drawing's own shape, the same centre-on-a-point clamp, the same top-of-the-stack z-order
+    /// and the same single composite command, so one Ctrl+Z takes it back off. What it does NOT do
+    /// is register an asset — there is nothing to register, which is the whole point: a newsletter
+    /// with a drawing on it carries no raster, so two committee members on two processor
+    /// architectures produce byte-identical documents (§12 gate 25).</para>
+    ///
+    /// <para>The parameters are Core types rather than emblems. <c>Editing</c> must not reference
+    /// <c>Emblems</c> — the same rule that keeps it away from <c>Roster</c> — so the shell turns a
+    /// shelf emblem into geometry and hands the geometry over.</para>
+    /// </summary>
+    /// <param name="emblem">
+    /// Provenance for a drawing that came off the shelf: the emblem's id and the SHA-256 of its
+    /// geometry. Recorded, never read — see <see cref="VectorBlock.EmblemId"/>.
+    /// </param>
+    public string? InsertVector(
+        int pageIndex,
+        IReadOnlyList<VectorPart> parts,
+        double viewBoxWidth,
+        double viewBoxHeight,
+        string altText,
+        string? caption = null,
+        (float X, float Y)? centre = null,
+        (string Id, string Fingerprint)? emblem = null)
+    {
+        ArgumentNullException.ThrowIfNull(parts);
+        ClearStatus();
+
+        if (pageIndex < 0 || pageIndex >= _session.Document.Pages.Count)
+        {
+            return null;
+        }
+
+        if (parts.Count == 0 || viewBoxWidth <= 0 || viewBoxHeight <= 0)
+        {
+            StatusMessage = "That drawing has nothing in it, so there was nothing to put on the page.";
+            Raise();
+            return null;
+        }
+
+        Document document = _session.Document;
+        Page page = document.Pages[pageIndex];
+        PageMaster master = document.GetMaster(page.MasterRef);
+
+        string blockId = NextId("drawing", id => document.Pages.Any(p => p.Blocks.Any(b => b.Id == id)));
+
+        RectPt rect = DefaultRect(master, (float)(viewBoxWidth / viewBoxHeight));
+        if (centre is { } point)
+        {
+            rect = CentreOn(rect, point.X, point.Y, master.Size);
+        }
+
+        var block = new VectorBlock
+        {
+            Id = blockId,
+            FrameRect = rect,
+            ZOrder = page.Blocks.Count == 0 ? 0 : page.Blocks.Max(b => b.ZOrder) + 1,
+            WrapMode = WrapMode.Rectangle,
+            WrapMarginPt = 6f,
+            ViewBoxWidth = viewBoxWidth,
+            ViewBoxHeight = viewBoxHeight,
+            Parts = [.. parts],
+            AltText = altText ?? "",
+            Caption = string.IsNullOrWhiteSpace(caption) ? null : caption,
+            EmblemId = emblem?.Id,
+            EmblemFingerprint = emblem?.Fingerprint,
+        };
+
+        _session.Execute(new CompositeCommand(
+            "Insert emblem",
+            new ChangeScope(ChangeKind.PageStructure, PageId: page.Id, BlockId: blockId),
+            [new AddBlockCommand(page.Id, block)]));
+
+        Raise();
+        return blockId;
+    }
+
+    /// <summary>M72: is this block a drawing? The shell asks before offering the photo toolkit.</summary>
+    public bool IsVector(string? blockId) => GetVector(blockId) is not null;
+
+    /// <summary>M72: the selected drawing, or null.</summary>
+    public VectorBlock? GetVector(string? blockId) =>
+        blockId is null
+            ? null
+            : _session.Document.Pages.SelectMany(p => p.Blocks).OfType<VectorBlock>()
+                .FirstOrDefault(b => b.Id == blockId);
+
+    /// <summary>
+    /// M72: the block whose words this controller may change — a picture or a drawing. Both carry
+    /// their alt text and caption on the block; nothing else about them is shared.
+    /// </summary>
+    public ICaptionedBlock? GetWorded(string? blockId) =>
+        blockId is null
+            ? null
+            : _session.Document.Pages.SelectMany(p => p.Blocks).OfType<ICaptionedBlock>()
+                .FirstOrDefault(b => ((Block)b).Id == blockId);
+
+    /// <summary>
     /// Puts a picture into a frame that is already on the page, or swaps the one that is there
     /// (PLAN.md §11 M18). Returns false when the frame is not a picture or the bytes are unreadable.
     ///
@@ -533,7 +633,10 @@ public sealed class PhotoController
     {
         ClearStatus();
 
-        if (GetPhoto(blockId) is null)
+        // M72: a drawing is described too. It arrives already described — the app drew it, so it
+        // knows what it is — but "Describe this picture" must still be able to change that, or the
+        // one thing a screen-reader user depends on would be the one thing they could not correct.
+        if (GetWorded(blockId) is null)
         {
             return false;
         }
@@ -549,7 +652,7 @@ public sealed class PhotoController
     {
         ClearStatus();
 
-        if (GetPhoto(blockId) is null)
+        if (GetWorded(blockId) is null)
         {
             return false;
         }

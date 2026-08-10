@@ -3069,12 +3069,19 @@ extension) gitignored, fictional fixtures only, privacy gate re-runs.
 > centuries old and unowned, and the manifest records a SHA-256 of each drawing so gate 22 refuses
 > an emblem that has changed since somebody wrote down where it came from.
 >
-> **The open question in the deliverable is settled: rasterized once, at insert time, into an
+> ~~**The open question in the deliverable is settled: rasterized once, at insert time, into an
 > ordinary picture.** The app has exactly one thing proven byte-identical across three operating
 > systems — its own Skia pipeline — so the emblem goes through M18's single picture ingest path and
 > the layout engine, the PDF export and the snapshot suite never learn that emblems exist. Moving,
 > wrapping, captioning and one-step undo all come for free; a vector carried to the page would have
-> been a second renderer, and WYSIWYG is a promise about there being one.
+> been a second renderer, and WYSIWYG is a promise about there being one.~~
+>
+> **Reversed by M72 on 2026-08-10.** The premise in the first sentence was false — the Skia pipeline
+> is byte-identical across operating systems but not across architectures — and the "second
+> renderer" the last sentence feared did not have to be built: there is exactly one drawing routine,
+> `Rendering/VectorArtRenderer`, and the picker's thumbnails go through it too. What survived the
+> reversal is everything the ingest path gave the emblem for free; M72 kept moving, wrapping,
+> captioning and one-step undo deliberately rather than inheriting them.
 >
 > Three findings from drawing them: the crescent moon had to be stated as one outline rather than a
 > circle minus a circle, because an arc bulges where its radius says it must and what came out was a
@@ -3099,8 +3106,15 @@ as a Mason, holds full authority to use the craft's symbols, and that statement 
 but every shipped artwork *file* still carries written provenance beside it (public domain, CC0,
 or commissioned for this app) in a manifest with hashes, exactly as `fonts.json` does, because the
 symbol and a particular rendering of it are different rights. No asset ships without its entry.
-Emblems carry default descriptions for the screen reader ("Square and compasses"). Rendering is
-deterministic across OSes; snapshot-tested.
+Emblems carry default descriptions for the screen reader ("Square and compasses"). ~~Rendering is
+deterministic across OSes; snapshot-tested.~~ **Struck through by M72 (e), 2026-08-10: this line was
+false as written and shipped a real defect.** The emblem was rasterised at insert time and the
+committed PNG hash held on windows-latest and ubuntu-latest but failed on macos-latest for fifteen
+consecutive builds — the variable was not the OS but the architecture, macos-latest being arm64
+where the others are x64, and antialiased coverage being floating-point arithmetic. So a macOS
+member's newsletter genuinely carried different bytes. The claim is now kept by construction rather
+than by assertion: M72 keeps the emblem vector into the document and the PDF, so there is no raster
+in the container to differ. See §12 gate 25 and docs/M72-spec.md.
 
 ### M66 — Bring in writing from a file (M) — **delivered 2026-08-09, `docs/M66-spec.md`**
 
@@ -3436,7 +3450,41 @@ that must be demonstrated rather than assumed. Any control the audit finds dead 
 listed here with its reason, in the M70 tradition of recording the clean results and the deliberate
 omissions rather than only the changes.
 
-### M72 — the emblem stays a drawing all the way to the page (M)
+### M72 — the emblem stays a drawing all the way to the page (M) — **delivered 2026-08-10, `docs/M72-spec.md`**
+
+> **The emblem is geometry in the document and path operators in the PDF, and `Export.Pdf` was not
+> touched.** `VectorBlock` carries the path data; `DocumentRenderSource.RenderVector` is the sibling
+> of `RenderShape` the scoping pass predicted; `DrawPath` on an `SKDocument` canvas emits vector
+> operators, which was the whole bet. Measured: the square and compasses cost **73,140 bytes of PNG**
+> in a `.tboard` and now cost **170 characters of path data**, and the sample issue with the
+> nineteen-part corner ornament on all five of its pages grows by **3,609 bytes** — the plan's
+> warning that repeated ornaments are "not free as content-stream operators" is right in principle
+> and immaterial at this scale.
+>
+> **The risk was where the plan said it was.** The migration chain executed its first step since it
+> was scaffolded in M2, and `VectorBlocksMigration` is deliberately a **no-op** — 1.1.0 is purely
+> additive. The design decision is that the version is a function of the **document**:
+> `TboardContainer.Save` writes 1.1.0 only when a page holds a drawing, so an existing newsletter
+> keeps saying 1.0.0, round-trips byte-unchanged (M61) and still opens in older builds, while one
+> that does hold a drawing tells an older build to update rather than dropping the emblem. Nine
+> tests in `Core.Tests/VectorBlockFormatTests` hold it — more than the renderer got, because this is
+> where the milestone could have destroyed data.
+>
+> **One draw routine, and `Emblems` lost SkiaSharp.** `EmblemRenderer` is deleted;
+> `Rendering/VectorArtRenderer` paints the page, the PDF and the picker's thumbnails alike, so the
+> second renderer M65 feared was not built and not relocated either. `TrestleBoard.Emblems` is now a
+> BCL-only data leaf like `Roster`, with SkiaSharp remaining a test-only reference.
+>
+> **A shell trap was found while wiring (d).** `PictureTarget()` falls through to "the first empty
+> picture frame in the newsletter", so with a drawing chosen the granted "Describe this picture"
+> would have gone off and described something else on another page — an offer-time / do-time
+> disagreement of exactly the kind gate 26 exists for. `WordsTarget()` answers with the chosen
+> drawing first.
+>
+> **What is not done, and is a real hole.** Of the three snapshot baselines the acceptance asks for,
+> **only the Windows one is baked** — the other two can only be made on those machines, and the test
+> skips with the missing path named rather than failing. Old baked emblems are deliberately left as
+> ordinary pictures, per (b). Both are recorded in `docs/M72-spec.md` §8 and §10.
 
 **Goal.** An emblem is vector at rest and raster in the document. `EmblemLibrary.cs:40-52` holds SVG
 path data in C# source, `EmblemRenderer.Draw` parses it with `SKPath.ParseSvgPathData` — and then
@@ -3871,6 +3919,19 @@ five bugs were found by the owner using the app, and gate 23's screen-reader pas
     release workflow verifies on all three operating systems as of 2026-08-09; before that it ran
     `dotnet test` on ubuntu-latest alone while packing `osx-x64` and `osx-arm64`, so a macOS-only
     failure could not block a release by construction.
+    **Satisfied by construction as of M72**, which is the only way it can be satisfied: no single
+    machine can run both halves of it, so it is not a test that could ever have been written. What
+    is tested instead is the property that makes the claim true —
+    `EmblemTests.ANewsletterWithAnEmblemCarriesNoRaster` asserts that putting an emblem on a page
+    adds no asset at all and that the container saves to identical bytes, and
+    `Core.Tests/VectorBlockFormatTests.ADrawingSavesToTheSameBytesEveryTime` says the same at the
+    format level. A container whose every byte is JSON written by invariant serialisation has nothing
+    in it for a floating-point unit to disagree about.
+    **The one place architecture still shows** is the snapshot baselines, which are selected by OS
+    and *not* by architecture (`SnapshotInfra.cs`). From M72 a fixture of antialiased curves exists,
+    so the macOS baseline is implicitly an arm64 artifact and must be baked on arm64 — see
+    docs/M72-spec.md §8. That is a fact about the test suite, not about anything a committee member
+    would ever receive.
 
 26. **Offer-integrity gate (M73):** a control's gating predicate is obtained from its handler's
     precondition rather than restated beside it, so nothing can be offered in a state where it will be

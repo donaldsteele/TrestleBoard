@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Text.Json;
 using SkiaSharp;
 using TrestleBoard.Emblems;
@@ -155,108 +154,36 @@ public sealed class EmblemLibraryTests
     }
 
     // ---- drawing -----------------------------------------------------------------------------------
-
-    [Fact]
-    public void EveryEmblemRendersToAPngWithSomethingInIt()
-    {
-        foreach (Emblem emblem in EmblemLibrary.All)
-        {
-            byte[] png = EmblemRenderer.ToPng(emblem, 256);
-
-            Assert.True(png.Length > 200, $"{emblem.Id} rendered to {png.Length} bytes");
-            Assert.Equal([0x89, 0x50, 0x4E, 0x47], png[..4]);
-
-            using SKBitmap bitmap = SKBitmap.Decode(png);
-            Assert.NotNull(bitmap);
-
-            // Transparent everywhere would be an emblem that drew nothing at all — the failure a
-            // bad path or an off-viewbox drawing produces, and the one a PNG length check misses.
-            Assert.True(HasInk(bitmap), $"{emblem.Id} rendered to an empty picture");
-        }
-    }
-
-    /// <summary>An emblem's rendered shape follows its viewbox, so a rule does not come out square.</summary>
-    [Fact]
-    public void ARuleComesOutWideAndAnEmblemComesOutSquare()
-    {
-        (int wide, int short_) = EmblemRenderer.PixelSize(EmblemLibrary.Find("rule-plain")!, 1000);
-        Assert.Equal(1000, wide);
-        Assert.True(short_ < 200, $"the rule rendered {wide}x{short_}");
-
-        (int w, int h) = EmblemRenderer.PixelSize(EmblemLibrary.Find("gavel")!, 1000);
-        Assert.Equal(w, h);
-    }
+    //
+    // M72 moved the drawing itself out of this project. TrestleBoard.Emblems is BCL-only now: an
+    // emblem is geometry and a name, and the one routine that turns path data into marks lives in
+    // TrestleBoard.Rendering, where it paints the picker's tiles, the page and the PDF alike. What
+    // stays here is the part that is about the ARTWORK rather than about pixels — whether Skia can
+    // read every path, whether anything reaches outside its viewbox, and whether an emblem comes out
+    // the shape its viewbox says. Those need SkiaSharp to answer and it is a test-only reference.
+    //
+    // Four tests were removed rather than moved, and it is worth saying why rather than leaving a
+    // gap. `EveryEmblemRendersToAPngWithSomethingInIt`, `ThePngIsTheSizeAskedForAndHasSomethingDrawnOnIt`
+    // and `AnEmblemRendersTheSameWayTwiceOnTheSameMachine` were about an emblem PNG, and no emblem
+    // PNG goes into a document any more; the ink check they were really making is now
+    // `Rendering.SnapshotTests/VectorArtTests`, against the routine that actually draws. And
+    // `AnEmblemPngCarriesNoTextChunks` guarded a PNG that got sent to the lodge inside a .tboard —
+    // there is no longer such a PNG. The only rasters left are thumbnails thrown away with the
+    // picker window.
 
     /// <summary>
-    /// **What determinism an emblem actually has, and what it does not.**
-    ///
-    /// <para>The artwork is vector, and <i>that</i> is identical everywhere: <see
-    /// cref="EmblemFingerprint"/> hashes the path data as a string and never invokes Skia, which is
-    /// what the provenance gate below rests on. The <b>raster</b> is a different matter. Skia
-    /// computes antialiased coverage in floating point, and CPU architectures do not agree to the
-    /// last bit — arm64 contracts multiply-adds where the x64 baseline cannot — so the same emblem
-    /// encodes to different PNG bytes on an Apple-silicon Mac than on x64.</para>
-    ///
-    /// <para>This test used to pin one SHA-256 for all three operating systems. It was the only
-    /// hard-coded PNG hash anywhere in the repository, and the claim was false: macOS CI runs on
-    /// arm64 and failed on it for fifteen consecutive builds while Windows and Linux — two operating
-    /// systems, two native Skia binaries, both x64 — agreed byte for byte. Nothing else here makes
-    /// that claim; the snapshot suite keeps per-OS baselines and compares decoded pixels, "never PNG
-    /// bytes" in its own words (<c>SnapshotInfra.cs</c>).</para>
-    ///
-    /// <para><b>The product claim the old hash guarded is still worth keeping — M72 is how.</b> An
-    /// emblem is rasterised at insert time and the PNG is what a <c>.tboard</c> stores, so two
-    /// committee members on two architectures really do produce different documents today. Keeping
-    /// the emblem vector all the way into the document and the PDF removes the raster from the
-    /// container altogether, and makes cross-platform identity true by construction rather than by
-    /// hoping Skia is bit-stable. Until that lands, this asserts what is true.</para>
+    /// An emblem's shape follows its viewbox, so a rule is wide and a gavel is square. It is the
+    /// aspect the inserted frame is given and the aspect M69's corner drag holds it at, and it is
+    /// arithmetic on two numbers — no drawing required to check it.
     /// </summary>
     [Fact]
-    public void AnEmblemRendersTheSameWayTwiceOnTheSameMachine()
+    public void ARuleIsWideAndAnEmblemIsSquare()
     {
-        Emblem emblem = EmblemLibrary.Find("square-and-compasses")!;
+        Assert.True(
+            EmblemLibrary.Find("rule-plain")!.AspectRatio > 5,
+            "the plain rule should be much wider than it is tall");
 
-        byte[] once = EmblemRenderer.ToPng(emblem, 256);
-        byte[] twice = EmblemRenderer.ToPng(emblem, 256);
-
-        Assert.Equal(
-            Convert.ToHexStringLower(SHA256.HashData(once)),
-            Convert.ToHexStringLower(SHA256.HashData(twice)));
-    }
-
-    /// <summary>
-    /// The part of the old byte-hash that was genuinely catching something: a path that fails to
-    /// parse, or a drawing that lands off its viewbox, produces a blank picture at the right size,
-    /// and no other test in this file would notice.
-    /// </summary>
-    [Fact]
-    public void ThePngIsTheSizeAskedForAndHasSomethingDrawnOnIt()
-    {
-        using SKBitmap bitmap = SKBitmap.Decode(
-            EmblemRenderer.ToPng(EmblemLibrary.Find("square-and-compasses")!, 256));
-
-        Assert.NotNull(bitmap);
-        Assert.Equal(256, bitmap.Width);
-        Assert.Equal(256, bitmap.Height);
-        Assert.True(HasInk(bitmap), "the emblem rendered to an empty picture");
-    }
-
-    /// <summary>
-    /// CLAUDE.md's rule for committed images, applied where the images are made: encoders stamp file
-    /// paths into text chunks. An emblem PNG is not merely a build artifact — it goes into a
-    /// <c>.tboard</c> that gets sent to the lodge, so it must carry no metadata at all. Unlike the
-    /// byte hash this replaces, the absence of a chunk is architecture-independent.
-    /// </summary>
-    [Fact]
-    public void AnEmblemPngCarriesNoTextChunks()
-    {
-        byte[] png = EmblemRenderer.ToPng(EmblemLibrary.Find("square-and-compasses")!, 256);
-        string ascii = System.Text.Encoding.ASCII.GetString(png);
-
-        foreach (string chunk in new[] { "tEXt", "iTXt", "zTXt" })
-        {
-            Assert.DoesNotContain(chunk, ascii, StringComparison.Ordinal);
-        }
+        Assert.Equal(1.0, EmblemLibrary.Find("gavel")!.AspectRatio, 3);
     }
 
     // ---- the provenance gate (PLAN.md gate 22) ------------------------------------------------------
@@ -344,21 +271,5 @@ public sealed class EmblemLibraryTests
             e => e.GetProperty("id").GetString()!,
             e => e.GetProperty("sha256").GetString()!,
             StringComparer.Ordinal);
-    }
-
-    private static bool HasInk(SKBitmap bitmap)
-    {
-        for (int y = 0; y < bitmap.Height; y++)
-        {
-            for (int x = 0; x < bitmap.Width; x++)
-            {
-                if (bitmap.GetPixel(x, y).Alpha > 0)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 }

@@ -7,6 +7,13 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <!-- M72: TrestleBoard.Emblems is BCL-only now — it holds the artwork, it no longer draws it.
+         SkiaSharp stays here as a TEST-ONLY reference, because the questions worth asking about the
+         artwork are ones only a path parser can answer: can Skia read every path, and does anything
+         reach outside its own viewbox. Both are about refusing bad geometry before it ever reaches
+         the shelf, which is not something a BCL-only library can check for itself. -->
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\TrestleBoard.Emblems\TrestleBoard.Emblems.csproj" />

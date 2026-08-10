@@ -59,7 +59,7 @@ public static class TboardContainer
         };
 
         using var zip = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true);
-        WriteJson(zip, ManifestEntry, JsonSerializer.SerializeToUtf8Bytes(package.Manifest, TboardJsonContext.Default.TboardManifest));
+        WriteJson(zip, ManifestEntry, JsonSerializer.SerializeToUtf8Bytes(StampVersion(package), TboardJsonContext.Default.TboardManifest));
         WriteJson(zip, DocumentEntry, JsonSerializer.SerializeToUtf8Bytes(body, TboardJsonContext.Default.DocumentBodyFile));
         WriteJson(zip, StylesEntry, JsonSerializer.SerializeToUtf8Bytes(styles, TboardJsonContext.Default.StylesFile));
         foreach ((string name, byte[] bytes) in package.Assets.OrderBy(kv => kv.Key, StringComparer.Ordinal))
@@ -71,6 +71,34 @@ public static class TboardContainer
         {
             WriteBinary(zip, ThumbnailsPrefix + name, bytes);
         }
+    }
+
+    /// <summary>
+    /// The manifest as written, with the format version set from what the document actually
+    /// contains rather than from what this build is capable of writing (M72).
+    ///
+    /// <para>Both fields move together and both are computed, never carried over from the manifest
+    /// that was loaded. A newsletter that has never held a drawing keeps saying 1.0.0, so it
+    /// round-trips byte-unchanged through this build (M61) and older TrestleBoards keep opening it.
+    /// A newsletter with a drawing on a page says 1.1.0 in <c>minReaderVersion</c> too, so an older
+    /// build says "saved by a newer version of TrestleBoard. Please update" in plain language
+    /// instead of quietly binding an unknown block discriminator to nothing.</para>
+    ///
+    /// <para>The package's own manifest object is left alone — this returns a copy. A caller holding
+    /// a package must not find its metadata edited by the act of writing a file.</para>
+    /// </summary>
+    private static TboardManifest StampVersion(TboardPackage package)
+    {
+        string version = TboardManifest.RequiredVersionFor(package.Document);
+        return new TboardManifest
+        {
+            FormatName = package.Manifest.FormatName,
+            FormatVersion = version,
+            MinReaderVersion = version,
+            GeneratorVersion = package.Manifest.GeneratorVersion,
+            IsTemplate = package.Manifest.IsTemplate,
+            ExtraProperties = package.Manifest.ExtraProperties,
+        };
     }
 
     /// <summary>

@@ -22,6 +22,17 @@ public static class ActionCatalog
     private const string NeedsPicture =
         "This needs a picture. Choose one on the page first.";
 
+    /// <summary>
+    /// M72. Four of the picture commands are refused on a drawing, and each refusal has to say
+    /// something true rather than "this needs a picture" — a drawing plainly IS a picture to the
+    /// person looking at the page, and being told otherwise about the thing they just chose reads
+    /// as the app being confused. What is actually true is that these commands work on
+    /// <i>photographs</i>: they crop, brighten and reposition pixels, and there are none here.
+    /// </summary>
+    private const string DrawingIsNotAPhotograph =
+        "This is a drawing rather than a photograph, so there is nothing to crop or brighten. "
+        + "It always shows all of itself, and it stays sharp at any size.";
+
     private const string EmptyPictureFrame =
         "There is no picture in this frame yet, so there is nothing to change. "
         + "Put one in first — double-clicking the frame on the page does the same thing.";
@@ -693,19 +704,48 @@ public static class ActionCatalog
             ActionId.ReplacePicture =>
                 context.Selection == SelectionKind.Photo
                     ? ActionAvailability.Available
-                    : context.HasPicturePlaceholder && !context.HasFrameSelection && !context.IsEditingText
-                        ? ActionAvailability.Available
-                        : ActionAvailability.NotApplicable(NeedsPicture),
+
+                    // M72: a drawing is not a frame with something in it — it IS the thing, so there
+                    // is nothing to put a picture into. Said by name rather than left to the
+                    // "choose a picture first" sentence, which would be untrue of what is chosen.
+                    : context.Selection == SelectionKind.Drawing
+                        ? ActionAvailability.NotApplicable(
+                            "This is a drawing, not a frame with a picture in it. To put a photograph "
+                            + "here instead, take the drawing off the page and use \"A picture\".")
+                        : context.HasPicturePlaceholder && !context.HasFrameSelection && !context.IsEditingText
+                            ? ActionAvailability.Available
+                            : ActionAvailability.NotApplicable(NeedsPicture),
+            // M72: a drawing is described. It arrives already described, and this is how that
+            // sentence is corrected — withholding it would put the one thing a screen-reader user
+            // depends on out of their reach.
             ActionId.DescribePicture =>
-                context.Selection == SelectionKind.Photo
+                context.Selection is SelectionKind.Photo or SelectionKind.Drawing
                     ? ActionAvailability.Available
                     : ActionAvailability.NotApplicable(NeedsPicture),
-            ActionId.FixPhoto or ActionId.AdjustPhoto
-                or ActionId.PositionPicture or ActionId.CaptionPicture => context.Selection != SelectionKind.Photo
-                ? ActionAvailability.NotApplicable(NeedsPicture)
-                : context.SelectedPictureIsEmpty
-                    ? ActionAvailability.Blocked(EmptyPictureFrame, ActionId.ReplacePicture)
-                    : ActionAvailability.Available,
+
+            // M72: and captioned. A caption is words printed under a frame — it is about the page,
+            // not about pixels, and an emblem on a cover is exactly the kind of thing a committee
+            // writes a line under.
+            ActionId.CaptionPicture => context.Selection == SelectionKind.Drawing
+                ? ActionAvailability.Available
+                : context.Selection != SelectionKind.Photo
+                    ? ActionAvailability.NotApplicable(NeedsPicture)
+                    : context.SelectedPictureIsEmpty
+                        ? ActionAvailability.Blocked(EmptyPictureFrame, ActionId.ReplacePicture)
+                        : ActionAvailability.Available,
+
+            // M72: the four that are about pixels are withheld from a drawing, by name and with a
+            // reason of its own. FixPhoto's Sobel-and-skin-tone auto-crop, the brightness and
+            // auto-levels recipe, and the crop-positioning window all act on an ImageRecipe that a
+            // drawing does not have — offering them would be offering something that cannot work.
+            ActionId.FixPhoto or ActionId.AdjustPhoto or ActionId.PositionPicture =>
+                context.Selection == SelectionKind.Drawing
+                    ? ActionAvailability.NotApplicable(DrawingIsNotAPhotograph)
+                    : context.Selection != SelectionKind.Photo
+                        ? ActionAvailability.NotApplicable(NeedsPicture)
+                        : context.SelectedPictureIsEmpty
+                            ? ActionAvailability.Blocked(EmptyPictureFrame, ActionId.ReplacePicture)
+                            : ActionAvailability.Available,
 
             // M23: absent unless the picture actually has something stale to dismiss — never greyed,
             // since there is no reason to give for a notice that is not showing.
@@ -838,6 +878,10 @@ public static class ActionCatalog
             SelectionKind.TextFrame => "A box of writing is chosen",
             SelectionKind.Photo => "A photo is selected",
             SelectionKind.Widget => $"{context.WidgetDisplayName ?? "An item"} is selected",
+
+            // M72. "A shape is selected" is what the fall-through would have said, and it is the
+            // wrong word for the square and compasses somebody just put on their cover.
+            SelectionKind.Drawing => "A drawing is selected",
             SelectionKind.Shape => "A shape is selected",
             _ => context.HasDocument ? "Nothing is selected" : "No newsletter is open",
         };
@@ -919,6 +963,13 @@ public static class ActionCatalog
         SelectionKind.Photo =>
             [ActionGroup.Picture, ActionGroup.Item, ActionGroup.TextFlow, ActionGroup.Arrange],
         SelectionKind.Widget => [ActionGroup.Item, ActionGroup.TextFlow, ActionGroup.Arrange],
+
+        // M72: the same groups a photo gets, in the same order. "This picture" earns its place
+        // because two of its commands — the caption and the description — are granted to a drawing;
+        // the four that are about pixels appear in it saying why they do not apply, which is M11
+        // working rather than a group that should have been hidden.
+        SelectionKind.Drawing =>
+            [ActionGroup.Picture, ActionGroup.Item, ActionGroup.TextFlow, ActionGroup.Arrange],
         SelectionKind.Shape => [ActionGroup.Item, ActionGroup.TextFlow, ActionGroup.Arrange],
         _ => context.HasDocument ? [ActionGroup.Insert] : [],
     };

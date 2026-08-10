@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using TrestleBoard.Core.Model;
+using TrestleBoard.Editing.Actions;
 using TrestleBoard.Emblems;
 using Xunit;
 
@@ -15,15 +16,30 @@ namespace TrestleBoard.App.HeadlessTests;
 /// changed the frame's <b>aspect</b>, and <c>ImageFit.Cover</c> answers a changed aspect by cropping
 /// the source. The geometry is held by <c>Layout.Tests/ResizeKeepingAspectTests</c>; this is the
 /// half that goes through the real controller and the real insert path.</para>
+///
+/// <para><b>Rewritten for M72, and only half of it survives as written.</b> The three emblem tests
+/// here were about a picture frame, because an emblem was one; it is a <c>VectorBlock</c> now. One
+/// of the two mechanisms behind M69's bug has therefore gone away entirely — a drawing is scaled to
+/// fit its frame and cannot be cropped by it, so <c>AnEmblemIsNeverCroppedToItsFrame</c> is no
+/// longer a claim about <c>ImageFit</c> but about geometry, and it is asserted by rendering rather
+/// than by reading a property that no longer exists.</para>
+///
+/// <para>The other mechanism is <b>deliberately kept</b>: the corner aspect-lock still applies to a
+/// drawing. It no longer has to — nothing gets cropped either way — but the gesture is the point.
+/// A square and compasses squashed out of shape by a stray corner drag is a mutilated symbol, and
+/// M72 grants the lock to drawings on purpose rather than letting it lapse with the mechanism that
+/// first motivated it. A photograph keeps everything it had.</para>
 /// </summary>
 public sealed class PictureResizeTests
 {
     /// <summary>
-    /// The reported case: drag a corner of an emblem and the frame keeps its shape, so `Cover` has
-    /// no changed aspect to crop against.
+    /// The reported case, still driven by the emblem it was reported with: drag a corner and the
+    /// frame keeps its shape. M72 grants the aspect-lock to a drawing deliberately (see the class
+    /// comment), so this is the test that would notice if the new block type had quietly been left
+    /// out of the rule.
     /// </summary>
     [Fact]
-    public async Task DraggingAPictureCornerKeepsItsShape()
+    public async Task DraggingADrawingCornerKeepsItsShape()
     {
         await HeadlessSession.DispatchAsync(
             async () =>
@@ -34,7 +50,7 @@ public sealed class PictureResizeTests
                 window.EmblemAnswerForTest = "square-and-compasses";
                 await window.InsertEmblemAsync();
 
-                ImageFrame picture = Pictures(window).Last();
+                VectorBlock picture = Drawings(window).Last();
                 RectPt before = picture.FrameRect;
                 float aspectBefore = before.Width / before.Height;
 
@@ -46,7 +62,7 @@ public sealed class PictureResizeTests
                 window.FramesForTest.DragTo(before.Right + 120f, before.Bottom + 8f, snap: false);
                 window.FramesForTest.EndDrag(commit: true);
 
-                RectPt after = Pictures(window).Last().FrameRect;
+                RectPt after = Drawings(window).Last().FrameRect;
                 Assert.Equal(aspectBefore, after.Width / after.Height, 2);
                 Assert.True(after.Width > before.Width, "the drag did not resize anything");
 
@@ -57,10 +73,18 @@ public sealed class PictureResizeTests
 
     /// <summary>
     /// An emblem is a whole thing. Even reshaped by a side handle — which still reshapes, on
-    /// purpose — it must show all of itself rather than being cropped to the frame.
+    /// purpose — it shows all of itself rather than being cropped to the frame.
+    ///
+    /// <para>M65 answered this with <c>ImageFit.Contain</c> and this test read that property back.
+    /// A drawing has no fit mode and no crop: it is scaled to fit and centred, and there is no
+    /// property by which it could be cropped, so reading one back would be asserting nothing. The
+    /// claim is made in the two places it can now be made honestly — here, that widening the frame
+    /// leaves the drawing's own shape untouched and that the app refuses to offer cropping it at
+    /// all with a reason; and in <c>Rendering.SnapshotTests/VectorArtTests</c>, which looks at the
+    /// pixels of a drawing in a frame far wider than itself.</para>
     /// </summary>
     [Fact]
-    public async Task AnEmblemIsNeverCroppedToItsFrame()
+    public async Task ADrawingKeepsItsOwnShapeAndIsNeverOfferedACrop()
     {
         await HeadlessSession.DispatchAsync(
             async () =>
@@ -71,7 +95,33 @@ public sealed class PictureResizeTests
                 window.EmblemAnswerForTest = "square-and-compasses-g";
                 await window.InsertEmblemAsync();
 
-                Assert.Equal(ImageFit.Contain, Pictures(window).Last().Fit);
+                VectorBlock drawing = Drawings(window).Last();
+                RectPt frame = drawing.FrameRect;
+                double shape = drawing.AspectRatio;
+
+                window.FramesForTest!.Select(drawing.Id);
+                window.FramesForTest.TryBeginDrag(frame.Right - 1f, frame.Y + (frame.Height / 2f), 1f);
+                window.FramesForTest.DragTo(
+                    frame.Right + frame.Width, frame.Y + (frame.Height / 2f), snap: false);
+                window.FramesForTest.EndDrag(commit: true);
+
+                VectorBlock after = Drawings(window).Last();
+                Assert.True(after.FrameRect.Width > frame.Width * 1.5f, "the frame was not widened");
+                Assert.Equal(shape, after.AspectRatio, 6);
+
+                // And the commands that would crop or reframe it are refused by name, each with a
+                // sentence — M11 refuses an empty reason at construction, so this is checking that
+                // somebody decided, not that something happened to be off.
+                ActionContext context = window.CurrentActionContext;
+                Assert.Equal(SelectionKind.Drawing, context.Selection);
+                foreach (string id in new[]
+                    { ActionId.FixPhoto, ActionId.AdjustPhoto, ActionId.PositionPicture, ActionId.ReplacePicture })
+                {
+                    ActionAvailability refusal = ActionCatalog.Evaluate(id, context);
+                    Assert.False(refusal.IsAvailable, $"{id} should not be offered on a drawing");
+                    Assert.False(string.IsNullOrWhiteSpace(refusal.Reason));
+                }
+
                 window.Close();
             },
             TestContext.Current.CancellationToken);
@@ -100,8 +150,9 @@ public sealed class PictureResizeTests
     }
 
     /// <summary>
-    /// A side handle still reshapes a picture frame. Losing that would remove the only direct way
-    /// to crop a photograph by hand.
+    /// A side handle still reshapes a frame — shown here on a drawing, where it is the only handle
+    /// that changes the frame's shape at all. On a photograph it is the only direct way to crop by
+    /// hand, and losing it there would be the worse loss; that is held by the fit-mode test above.
     /// </summary>
     [Fact]
     public async Task ASideHandleStillReshapesAPicture()
@@ -115,7 +166,7 @@ public sealed class PictureResizeTests
                 window.EmblemAnswerForTest = "gavel";
                 await window.InsertEmblemAsync();
 
-                ImageFrame picture = Pictures(window).Last();
+                VectorBlock picture = Drawings(window).Last();
                 RectPt before = picture.FrameRect;
 
                 window.FramesForTest!.Select(picture.Id);
@@ -123,7 +174,7 @@ public sealed class PictureResizeTests
                 window.FramesForTest.DragTo(before.Right + 100f, before.Y + (before.Height / 2f), snap: false);
                 window.FramesForTest.EndDrag(commit: true);
 
-                RectPt after = Pictures(window).Last().FrameRect;
+                RectPt after = Drawings(window).Last().FrameRect;
                 Assert.True(after.Width > before.Width);
                 Assert.Equal(before.Height, after.Height, 2);
 
@@ -160,4 +211,7 @@ public sealed class PictureResizeTests
 
     private static System.Collections.Generic.List<ImageFrame> Pictures(MainWindow window) =>
         [.. window.PackageForTest!.Document.Pages.SelectMany(p => p.Blocks).OfType<ImageFrame>()];
+
+    private static System.Collections.Generic.List<VectorBlock> Drawings(MainWindow window) =>
+        [.. window.PackageForTest!.Document.Pages.SelectMany(p => p.Blocks).OfType<VectorBlock>()];
 }

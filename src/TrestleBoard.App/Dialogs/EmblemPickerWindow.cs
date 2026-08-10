@@ -9,8 +9,11 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using SkiaSharp;
+using TrestleBoard.App.Emblems;
 using TrestleBoard.App.Theme;
 using TrestleBoard.Emblems;
+using TrestleBoard.Rendering;
 
 namespace TrestleBoard.App.Dialogs;
 
@@ -23,9 +26,10 @@ namespace TrestleBoard.App.Dialogs;
 /// because "the one that looks like a hammer" is how somebody will describe what they are after.
 /// </para>
 ///
-/// <para>Thumbnails are drawn at a modest size and thrown away with the window. The full-size
-/// rendering happens once, when an emblem is actually chosen — a shelf of nineteen 2048-pixel
-/// pictures would be tens of megabytes to open a menu.</para>
+/// <para>Thumbnails are drawn at a modest size and thrown away with the window, and from M72 they
+/// are the <b>only</b> pixels in the emblem story: choosing one puts path data on the page, not a
+/// picture of it. They are drawn by <see cref="VectorArtRenderer"/>, the same routine that paints
+/// the page and the PDF, so a tile cannot come to disagree with what it puts there.</para>
 /// </summary>
 internal sealed class EmblemPickerWindow : Window
 {
@@ -230,9 +234,31 @@ internal sealed class EmblemPickerWindow : Window
         return button.Action();
     }
 
+    /// <summary>
+    /// A tile's picture, drawn through <see cref="VectorArtRenderer"/> — the SAME routine that paints
+    /// the emblem onto the page and into the PDF (M72 (c)).
+    ///
+    /// <para>That is deliberate and it is the deliverable. An <c>EmblemRenderer.Draw</c> kept alive
+    /// here for thumbnails, beside the renderer's own path drawing, would be the "second renderer"
+    /// M65 rasterised the emblem to avoid — two routines drawing the same artwork, free to drift, so
+    /// that one day the tile stops looking like what lands on the page. There is one, and this is a
+    /// caller of it.</para>
+    ///
+    /// <para>These pixels are the only ones left in the emblem story, and they never leave the
+    /// window: they are a picture OF the drawing, thrown away when the picker closes.</para>
+    /// </summary>
     private Bitmap Thumbnail(Emblem emblem)
     {
-        var bitmap = new Bitmap(new MemoryStream(EmblemRenderer.ToPng(emblem, ThumbnailPixels)));
+        byte[] png = VectorArtRenderer.ToPng(
+            EmblemGeometry.SpecsOf(emblem),
+            emblem.Width,
+            emblem.Height,
+            ThumbnailPixels,
+
+            // The ink the inserted block will use, taken from the block rather than restated — a
+            // tile that did not match what lands on the page would be the drift M72 (c) is about.
+            new SKColor(Core.Model.VectorBlock.DefaultInkArgb));
+        var bitmap = new Bitmap(new MemoryStream(png));
         _thumbnails.Add(bitmap);
         return bitmap;
     }

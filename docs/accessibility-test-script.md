@@ -874,19 +874,31 @@ Not silence, and not a bare zero.
 
 **18.5** Empty the box, find the square and compasses and press Space on it.
 **What you should confirm:** the window closes, the app says the emblem is on the page and that it
-can be moved and captioned like any other picture, and the newly added picture is what is selected.
+can be moved and captioned like any other picture, and the newly added item is what is selected.
 
-**18.6** Now use **Format → Describe this picture** on it.
+**18.6** Listen to what the panel calls it (M72).
+**What you should hear:** "A drawing is selected" — not "A shape is selected", and not "A photo is
+selected". From M72 an emblem is geometry rather than a picture, and the panel has to say which of
+the app's kinds of thing it is, because that is what tells the listener which commands are about it.
+
+**18.7** Now use **Format → Describe this picture** on it.
 **What you should hear:** the description box **already filled in** — the app drew this picture, so
 it knows what it is. An empty box here would mean an emblem could reach a reader with nothing said
-about it.
+about it. Change the words, confirm, and hear that the description was saved.
 
-**18.7** Press `Ctrl+Z`.
+**18.8** Walk the picture commands with the emblem still selected (M72).
+**What you should hear:** "Write a caption…" and "Describe this picture…" available as usual, and
+"Fix this picture", "Change how it looks…", "Choose which part shows…" and "Put a picture here…"
+each **saying why they do not apply** — a sentence about this being a drawing rather than a
+photograph. A silent grey control here is the M11 defect, and an emblem must not reintroduce it.
+
+**18.9** Press `Ctrl+Z`.
 **What you should confirm:** the emblem is gone in a single undo, and the page is as it was.
 
-**18.8** Add an emblem again and print or export the PDF.
-**What you should confirm:** the emblem appears in the PDF exactly as it does on screen, at full
-sharpness — it is an ordinary picture from here on, and nothing about it is special.
+**18.10** Add an emblem again and print or export the PDF.
+**What you should confirm:** the emblem appears in the PDF exactly as it does on screen. From M72 it
+is a **drawing** in the PDF rather than a picture of one, so zooming in on the page in a PDF reader
+should show a clean curve at any magnification rather than softening into pixels.
 
 ---
 

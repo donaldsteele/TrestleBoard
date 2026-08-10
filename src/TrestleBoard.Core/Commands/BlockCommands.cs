@@ -307,11 +307,24 @@ public sealed class ReplaceImageCommand(string blockId, string assetRef, string 
         return block as ImageFrame
             ?? throw new InvalidOperationException($"Block {blockId} is not an image frame.");
     }
+
+    /// <summary>
+    /// M72: the block whose WORDS are being changed, which from M72 is a picture or a drawing. The
+    /// alt text and the caption are the two things a drawing shares with a photograph — everything
+    /// else on <see cref="ImageFrame"/> is about pixels, and a drawing has none.
+    /// </summary>
+    internal static ICaptionedBlock FindCaptionedBlock(Document document, string blockId)
+    {
+        (_, Block block) = document.FindBlock(blockId);
+        return block as ICaptionedBlock
+            ?? throw new InvalidOperationException($"Block {blockId} has no caption or description.");
+    }
 }
 
 /// <summary>
 /// The words that belong to a picture: what a screen reader says about it, and what prints under it
-/// (PLAN.md §11 M18).
+/// (PLAN.md §11 M18). From M72 it acts on any <see cref="ICaptionedBlock"/>, so a drawing is
+/// described and captioned by the same command and lands on the same undo stack.
 ///
 /// <para>Both live on the block rather than in a story, so before M18 the only code that set them
 /// wrote straight to the model and never reached the undo stack. That is the defect this type
@@ -359,7 +372,7 @@ public sealed class SetPictureWordsCommand : IDocumentCommand
     public void Apply(Document document)
     {
         ArgumentNullException.ThrowIfNull(document);
-        ImageFrame frame = ReplaceImageCommand.FindImageFrame(document, BlockId);
+        ICaptionedBlock frame = ReplaceImageCommand.FindCaptionedBlock(document, BlockId);
         _oldAltText = frame.AltText;
         _oldCaption = frame.Caption;
         _applied = true;
@@ -383,7 +396,7 @@ public sealed class SetPictureWordsCommand : IDocumentCommand
             throw new InvalidOperationException("Revert before Apply.");
         }
 
-        ImageFrame frame = ReplaceImageCommand.FindImageFrame(document, BlockId);
+        ICaptionedBlock frame = ReplaceImageCommand.FindCaptionedBlock(document, BlockId);
         frame.AltText = _oldAltText ?? "";
         frame.Caption = _oldCaption;
     }

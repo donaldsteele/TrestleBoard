@@ -1,14 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- The craft's emblems (PLAN.md §11 M65). A leaf, like Imaging and Roster: SkiaSharp and the
-       BCL, never Core. An emblem is geometry and a name — it knows nothing about documents, and the
-       App turns one into an ordinary picture through M18's single ingest path. -->
-  <ItemGroup>
-    <PackageReference Include="SkiaSharp" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
-  </ItemGroup>
+  <!-- The craft's emblems (PLAN.md §11 M65). A leaf, like Roster: the BCL and nothing else.
 
-  <!-- Gate 22, the fonts precedent: the provenance travels with the build, not only with the repo. -->
+       M72 took the SkiaSharp reference out. Until then this project also DREW the emblems, into
+       PNG bytes that went into the document — and that raster was the whole reason a macOS
+       member's newsletter carried different bytes from a Windows member's. Drawing now happens
+       once, in TrestleBoard.Rendering's VectorArtRenderer, which is the same routine that paints
+       the page and the PDF; an emblem here is geometry and a name, and it knows nothing about
+       documents, pixels or graphics libraries. Emblems.Tests still references SkiaSharp directly,
+       to refuse a path Skia cannot read before it ever reaches the shelf. -->
   <ItemGroup>
+    <!-- Gate 22, the fonts precedent: the provenance travels with the build, not only with the repo. -->
     <EmbeddedResource Include="$(MSBuildThisFileDirectory)../../assets-src/emblems/EMBLEMS-PROVENANCE.txt"
                       LogicalName="TrestleBoard.Emblems.EMBLEMS-PROVENANCE.txt" />
   </ItemGroup>

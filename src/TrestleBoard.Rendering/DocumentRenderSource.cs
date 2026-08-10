@@ -569,6 +569,13 @@ public sealed class DocumentRenderSource : IDisposable
             // file predates that or was written by another tool. Say so rather than saying nothing.
             : "Photo with no description",
         WidgetBlock widget => WidgetName(widget),
+
+        // M72. An emblem arrives from the shelf already described, so this is nearly always the
+        // sentence the app itself wrote about its own drawing; the fallback is for a drawing that
+        // reached the document some other way.
+        VectorBlock drawing => drawing.AltText.Length > 0
+            ? "Drawing: " + drawing.AltText
+            : "Drawing with no description",
         ShapeBlock => "Decoration",
         _ => "Item",
     };
@@ -952,6 +959,17 @@ public sealed class DocumentRenderSource : IDisposable
             case ShapeBlock shape:
                 RenderShape(canvas, shape, rect);
                 break;
+            case VectorBlock vector:
+                RenderVector(canvas, vector, rect);
+
+                // A drawing is captioned like a picture, by the same frame renderer — M72 grants
+                // captions deliberately, so the words have to be drawn as well as offered.
+                if (_captionLayouts.TryGetValue(vector.Id, out FrameLayout? vectorCaption))
+                {
+                    PageRenderer.RenderFrame(canvas, vectorCaption);
+                }
+
+                break;
             case WidgetBlock widget:
                 RenderWidget(canvas, widget, rect);
                 break;
@@ -1042,6 +1060,28 @@ public sealed class DocumentRenderSource : IDisposable
             };
             canvas.DrawRect(rect, strokePaint);
         }
+    }
+
+    /// <summary>
+    /// Paints a drawing (PLAN.md §11 M72) — the sibling of <see cref="RenderShape"/>, and the whole
+    /// of the renderer's side of the milestone.
+    ///
+    /// <para>It goes onto whatever canvas is being painted, which on an export is an
+    /// <c>SKDocument</c> page: <c>DrawPath</c> there emits vector operators, so the emblem in the
+    /// PDF is a path rather than a ~680dpi raster, and <c>Export.Pdf</c> needed no change at all to
+    /// make that true. On screen it is drawn at the surface's own resolution, so zooming in shows
+    /// more of the curve instead of more of the pixels.</para>
+    /// </summary>
+    private static void RenderVector(SKCanvas canvas, VectorBlock vector, RectPt frameRect)
+    {
+        if (vector.Parts.Count == 0)
+        {
+            return;
+        }
+
+        VectorPathSpec[] parts = [.. vector.Parts.Select(p => new VectorPathSpec(p.PathData, p.StrokeWidth))];
+        VectorArtRenderer.Draw(
+            canvas, parts, vector.ViewBoxWidth, vector.ViewBoxHeight, ToRect(frameRect), new SKColor(vector.InkArgb));
     }
 
     /// <summary>

@@ -20,6 +20,18 @@ public enum SelectionKind
 
     /// <summary>A rule, box or ornament.</summary>
     Shape,
+
+    /// <summary>
+    /// A drawing carried as geometry — an emblem from the shelf (M72).
+    ///
+    /// <para>It is its own kind rather than <see cref="Shape"/> because
+    /// <c>ActionContextFactory</c> falls through to <c>Shape</c> for any block it does not
+    /// recognise. A new block type nobody wires up therefore <b>appears to work</b> while
+    /// announcing "A shape is selected" and offering the shape group — a silent wrong answer, which
+    /// is exactly the family of defect M73 was written about. Naming it forces every rule to say
+    /// what it does about a drawing.</para>
+    /// </summary>
+    Drawing,
 }
 
 /// <summary>
@@ -247,5 +259,5 @@ public sealed record ActionContext
     /// <summary>True when a block of some kind is selected as an object.</summary>
     public bool HasFrameSelection =>
         Selection is SelectionKind.TextFrame or SelectionKind.Photo
-            or SelectionKind.Widget or SelectionKind.Shape;
+            or SelectionKind.Widget or SelectionKind.Shape or SelectionKind.Drawing;
 }

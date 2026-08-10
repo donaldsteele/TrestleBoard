@@ -432,12 +432,18 @@ public sealed class FrameEditorController
     /// reshapes as it always has. The reason is that reshaping a picture frame does not reshape the
     /// picture — <c>ImageFit.Cover</c> crops the source to the frame's new aspect — so a corner
     /// drag used to cut the bottom off an emblem with no way back short of undo.</para>
+    ///
+    /// <para>M72 keeps the emblem in this rule, deliberately, now that it is a
+    /// <see cref="VectorBlock"/> rather than a picture. The mechanism no longer applies — a drawing
+    /// is scaled to fit and cannot be cropped by its frame — but the gesture is the point: the
+    /// square and compasses is a symbol, and stretching it out of shape by dragging a corner is not
+    /// something a corner drag should be able to do by accident.</para>
     /// </summary>
     private RectPt ResizeForBlock(string blockId, RectPt start, FrameHandle handle, float dxPt, float dyPt)
     {
         if (FrameGeometry.IsCorner(handle)
             && _session.Document.TryFindBlock(blockId, out _, out Block? block)
-            && block is ImageFrame
+            && block is ImageFrame or VectorBlock
             && start.Height > 0f)
         {
             return FrameGeometry.ResizeKeepingAspect(start, handle, dxPt, dyPt, start.Width / start.Height);

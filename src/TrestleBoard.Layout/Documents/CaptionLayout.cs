@@ -33,8 +33,13 @@ public static class CaptionLayout
     public const int MaxLines = 3;
 
     /// <summary>The caption text of a block, or null when there is nothing to print.</summary>
+    /// <summary>
+    /// M72: asked of <see cref="ICaptionedBlock"/> rather than of <c>ImageFrame</c>, so a drawing
+    /// gets the caption the milestone deliberately grants it — laid out by the same engine, and
+    /// therefore printed in the PDF exactly as it appears on screen.
+    /// </summary>
     public static string? TextOf(Block block) =>
-        block is ImageFrame { Caption: { } caption } && caption.Trim().Length > 0
+        block is ICaptionedBlock { Caption: { } caption } && caption.Trim().Length > 0
             ? caption.Trim()
             : null;
 
