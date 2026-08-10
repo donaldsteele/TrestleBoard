@@ -28,15 +28,24 @@ defaults:
 jobs:
   # A tag push does not run ci.yml, and shipping something that does not pass its own tests to
   # people who cannot easily roll back is not a risk worth taking.
+  # Every operating system we pack for, because verifying on one of them is not verifying. This job
+  # ran on ubuntu-latest alone until v1.2.0, and a test that had failed on macOS for fifteen
+  # consecutive CI builds could not block either release that shipped in that window — the pack
+  # matrix below builds osx-x64 and osx-arm64, neither of which anything here had run.
   verify:
-    name: Build and test
-    runs-on: ubuntu-latest
+    name: Build and test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
       - name: Install poppler-utils (PDF parity test)
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y poppler-utils
       - run: dotnet test TrestleBoard.slnx -c Release
 

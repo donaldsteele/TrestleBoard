@@ -188,24 +188,75 @@ public sealed class EmblemLibraryTests
     }
 
     /// <summary>
-    /// **The determinism claim.** The same emblem renders to the same bytes every time — and, since
-    /// this test runs on Windows, Linux and macOS in CI against a hash committed here, the same
-    /// bytes on every operating system. That is what lets an emblem be an ordinary picture asset in
-    /// a <c>.tboard</c>: two committee members on two platforms produce identical documents.
+    /// **What determinism an emblem actually has, and what it does not.**
     ///
-    /// <para>If this fails after a deliberate change to an emblem, the fix is to re-record the hash
-    /// <b>and</b> the manifest entry, in the same commit, having looked at the picture.</para>
+    /// <para>The artwork is vector, and <i>that</i> is identical everywhere: <see
+    /// cref="EmblemFingerprint"/> hashes the path data as a string and never invokes Skia, which is
+    /// what the provenance gate below rests on. The <b>raster</b> is a different matter. Skia
+    /// computes antialiased coverage in floating point, and CPU architectures do not agree to the
+    /// last bit — arm64 contracts multiply-adds where the x64 baseline cannot — so the same emblem
+    /// encodes to different PNG bytes on an Apple-silicon Mac than on x64.</para>
+    ///
+    /// <para>This test used to pin one SHA-256 for all three operating systems. It was the only
+    /// hard-coded PNG hash anywhere in the repository, and the claim was false: macOS CI runs on
+    /// arm64 and failed on it for fifteen consecutive builds while Windows and Linux — two operating
+    /// systems, two native Skia binaries, both x64 — agreed byte for byte. Nothing else here makes
+    /// that claim; the snapshot suite keeps per-OS baselines and compares decoded pixels, "never PNG
+    /// bytes" in its own words (<c>SnapshotInfra.cs</c>).</para>
+    ///
+    /// <para><b>The product claim the old hash guarded is still worth keeping — M72 is how.</b> An
+    /// emblem is rasterised at insert time and the PNG is what a <c>.tboard</c> stores, so two
+    /// committee members on two architectures really do produce different documents today. Keeping
+    /// the emblem vector all the way into the document and the PDF removes the raster from the
+    /// container altogether, and makes cross-platform identity true by construction rather than by
+    /// hoping Skia is bit-stable. Until that lands, this asserts what is true.</para>
     /// </summary>
     [Fact]
-    public void TheSameEmblemRendersToTheSameBytesEveryTimeAndEverywhere()
+    public void AnEmblemRendersTheSameWayTwiceOnTheSameMachine()
     {
-        byte[] once = EmblemRenderer.ToPng(EmblemLibrary.Find("square-and-compasses")!, 256);
-        byte[] twice = EmblemRenderer.ToPng(EmblemLibrary.Find("square-and-compasses")!, 256);
+        Emblem emblem = EmblemLibrary.Find("square-and-compasses")!;
 
-        Assert.Equal(once, twice);
+        byte[] once = EmblemRenderer.ToPng(emblem, 256);
+        byte[] twice = EmblemRenderer.ToPng(emblem, 256);
+
         Assert.Equal(
-            "2cb65e68af0e47216346ffd09393f222b47704197cad55d47ee5454a2507382f",
-            Convert.ToHexStringLower(SHA256.HashData(once)));
+            Convert.ToHexStringLower(SHA256.HashData(once)),
+            Convert.ToHexStringLower(SHA256.HashData(twice)));
+    }
+
+    /// <summary>
+    /// The part of the old byte-hash that was genuinely catching something: a path that fails to
+    /// parse, or a drawing that lands off its viewbox, produces a blank picture at the right size,
+    /// and no other test in this file would notice.
+    /// </summary>
+    [Fact]
+    public void ThePngIsTheSizeAskedForAndHasSomethingDrawnOnIt()
+    {
+        using SKBitmap bitmap = SKBitmap.Decode(
+            EmblemRenderer.ToPng(EmblemLibrary.Find("square-and-compasses")!, 256));
+
+        Assert.NotNull(bitmap);
+        Assert.Equal(256, bitmap.Width);
+        Assert.Equal(256, bitmap.Height);
+        Assert.True(HasInk(bitmap), "the emblem rendered to an empty picture");
+    }
+
+    /// <summary>
+    /// CLAUDE.md's rule for committed images, applied where the images are made: encoders stamp file
+    /// paths into text chunks. An emblem PNG is not merely a build artifact — it goes into a
+    /// <c>.tboard</c> that gets sent to the lodge, so it must carry no metadata at all. Unlike the
+    /// byte hash this replaces, the absence of a chunk is architecture-independent.
+    /// </summary>
+    [Fact]
+    public void AnEmblemPngCarriesNoTextChunks()
+    {
+        byte[] png = EmblemRenderer.ToPng(EmblemLibrary.Find("square-and-compasses")!, 256);
+        string ascii = System.Text.Encoding.ASCII.GetString(png);
+
+        foreach (string chunk in new[] { "tEXt", "iTXt", "zTXt" })
+        {
+            Assert.DoesNotContain(chunk, ascii, StringComparison.Ordinal);
+        }
     }
 
     // ---- the provenance gate (PLAN.md gate 22) ------------------------------------------------------
