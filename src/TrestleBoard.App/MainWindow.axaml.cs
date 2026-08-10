@@ -2969,29 +2969,67 @@ public partial class MainWindow : Window
     /// </summary>
     internal Task OfferTheMemorialForTest(string name) => OfferTheMemorialAsync(name);
 
+    /// <summary>
+    /// Which phrase the memorial is written from. Only a test changes it, and only to point it at a
+    /// name that is not on the shelf — which is the one branch of this method that cannot be reached
+    /// any other way, and the one that used to return in silence (M73(a)).
+    /// </summary>
+    internal string MemorialPhraseIdForTest { get; set; } = "memorial";
+
+    /// <summary>
+    /// Whether there is anywhere at all for a memorial notice to go. M73(a), gate 26: the People
+    /// window is handed this same property, so the card cannot offer what this method would refuse.
+    /// A caret is NOT part of it — People is reached from a menu, so there is hardly ever one.
+    /// </summary>
+    internal bool CanWriteAMemorial => _package is not null && _session is not null && _frames is not null;
+
     private async Task OfferTheMemorialAsync(string name)
     {
-        if (_editor is not { IsActive: true })
+        if (!CanWriteAMemorial)
         {
-            // Nowhere for the words to go. Saying where to start beats opening a wizard whose last
-            // button cannot do anything.
+            // The one state where a refusal is honest — and it has to be followable from an empty
+            // desk, which "click into some writing" was not.
             Announce(
-                $"When you are ready to write about {name}, click into some writing and choose "
-                + "\"Words for hard news\" from the Insert menu.");
+                $"There is no newsletter open, so there is nowhere to write about {name} yet. "
+                + "Open this month's newsletter, or start a new one, and TrestleBoard will put a "
+                + "memorial notice in for you.");
             return;
         }
 
-        Core.Phrases.Phrase? memorial = Core.Phrases.PhraseLibrary.Find("memorial");
+        Core.Phrases.Phrase? memorial = Core.Phrases.PhraseLibrary.Find(MemorialPhraseIdForTest);
         if (memorial is null)
         {
+            // M73(a), gate 27: this used to return without a word, so an accepted offer simply
+            // produced nothing and the user was left looking for it.
+            Announce(
+                "TrestleBoard could not find the words it keeps for hard news, so it has not "
+                + $"written anything. You can still write about {name} yourself — click into some "
+                + "writing and type.");
             return;
         }
 
         var answers = new Dictionary<string, string>(StringComparer.Ordinal) { ["{name}"] = name };
-        _editor.InsertBlock(memorial.Fill(answers), "Add a memorial notice");
-        Announce(
-            $"A memorial notice for {name} is in your newsletter. It is ordinary writing now — "
-            + "change any of it you like.");
+        string words = memorial.Fill(answers);
+
+        if (_editor is { IsActive: true })
+        {
+            _editor.InsertBlock(words, "Add a memorial notice");
+            Announce(
+                $"A memorial notice for {name} is in your newsletter, where the cursor was. It is "
+                + "ordinary writing now — change any of it you like.");
+        }
+        else
+        {
+            // M66's AddTextFrameWith precedent: the frame and its writing arrive as ONE composite,
+            // so one Ctrl+Z takes the whole thing back out.
+            string blockId = _frames!.AddTextFrameWith(_pageIndex, words, "Add a memorial notice");
+            _frames.Select(blockId);
+            Announce(
+                $"A memorial notice for {name} is in a new box of writing on page {_pageIndex + 1}. "
+                + "It is ordinary writing now — change any of it you like, drag it where you want "
+                + "it, and one Ctrl+Z takes the whole thing back out.");
+        }
+
         RefreshSpellingMarks();
         RefreshActions();
     }
@@ -4893,13 +4931,15 @@ public partial class MainWindow : Window
 
     internal async Task ShowPeopleAsync()
     {
-        var window = new PeopleWindow(Roster);
+        // M73(a), gate 26: the card's offer to write a memorial is gated on the shell's own
+        // precondition for writing one, handed in rather than guessed at over there.
+        var window = new PeopleWindow(Roster, () => CanWriteAMemorial);
         await window.ShowDialog(this);
         RefreshActions();
 
         // M55: the People window can record that a brother has passed, but it has no newsletter to
         // write a memorial in. It records the request; this opens M54's shelf with his name ready.
-        if (window.MemorialRequestedFor is { } brother)
+        foreach (string brother in window.MemorialsRequestedFor)
         {
             await OfferTheMemorialAsync(brother);
         }
@@ -5683,7 +5723,7 @@ public partial class MainWindow : Window
             _ => null,
         };
 
-        await RunWizardAsync(blockId, grid: false, seeded);
+        await RunWizardAsync(blockId, grid: false, seeded, justInserted: true);
     }
 
     internal async Task EditWidgetAsync(bool grid)
@@ -5742,7 +5782,28 @@ public partial class MainWindow : Window
     /// Both editors run the SAME session and commit through the SAME controller call, so "one
     /// wizard run = one undo step" holds however the user got there (docs/M7-spec.md §7.3).
     /// </summary>
-    private async Task RunWizardAsync(string blockId, bool grid, System.Text.Json.JsonElement? seeded = null)
+    /// <summary>
+    /// Presses the wizard's Cancel for a test. Neither wizard window can be answered headlessly, and
+    /// cancel is the path M73(c) is about.
+    /// </summary>
+    internal bool CancelTheWizardForTest { get; set; }
+
+    /// <summary>
+    /// What to say when a wizard is cancelled. M73(c): the sentence is a function of which path
+    /// actually ran, not of the insert path's assumption. Only insert put a box on the page, so
+    /// only insert may tell the user that Ctrl+Z will take one off it — on the re-edit path Ctrl+Z
+    /// would take back whatever they last did instead, which M71 turned into a common ending by
+    /// multiplying the routes to re-edit.
+    /// </summary>
+    private void SayTheWizardWasCancelled(bool justInserted) => Announce(justInserted
+        ? "Nothing was filled in yet. Press Ctrl+Z to take it back off the page."
+        : "Nothing was changed. This box is exactly as it was.");
+
+    private async Task RunWizardAsync(
+        string blockId,
+        bool grid,
+        System.Text.Json.JsonElement? seeded = null,
+        bool justInserted = false)
     {
         if (_widgets is null || _session is null || !_widgets.CanEdit(blockId))
         {
@@ -5764,27 +5825,43 @@ public partial class MainWindow : Window
 
         if (grid)
         {
+            if (CancelTheWizardForTest)
+            {
+                SayTheWizardWasCancelled(justInserted);
+                return;
+            }
+
             var window = new WidgetGridWindow(wizard, people, banner);
             await window.ShowDialog(this);
-            if (window.Confirmed)
+            if (!window.Confirmed)
             {
-                _widgets.ApplyWidgetData(blockId, window.Data, window.DataVersion, window.UndoLabel);
+                // M73(c): this branch used to say nothing at all where its twin below spoke —
+                // asymmetric silence in the same `if`, which reads like a window that did
+                // something and did not mention it.
+                SayTheWizardWasCancelled(justInserted);
+                return;
             }
+
+            _widgets.ApplyWidgetData(blockId, window.Data, window.DataVersion, window.UndoLabel);
         }
         else
         {
-            var window = new WizardWindow(wizard, people, banner);
-            await window.ShowDialog(this);
-            if (window.Confirmed)
+            if (CancelTheWizardForTest)
             {
-                _widgets.ApplyWidgetData(blockId, window.Data, window.DataVersion, window.UndoLabel);
-                WritePhoneNumbersBack(window.PhoneWriteBacks);
-            }
-            else
-            {
-                Announce("Nothing was filled in yet. Press Ctrl+Z to take it back off the page.");
+                SayTheWizardWasCancelled(justInserted);
                 return;
             }
+
+            var window = new WizardWindow(wizard, people, banner);
+            await window.ShowDialog(this);
+            if (!window.Confirmed)
+            {
+                SayTheWizardWasCancelled(justInserted);
+                return;
+            }
+
+            _widgets.ApplyWidgetData(blockId, window.Data, window.DataVersion, window.UndoLabel);
+            WritePhoneNumbersBack(window.PhoneWriteBacks);
         }
 
         RefreshActions();

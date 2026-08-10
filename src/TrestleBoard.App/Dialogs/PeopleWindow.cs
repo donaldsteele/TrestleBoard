@@ -42,6 +42,27 @@ public sealed class PeopleWindow : Window
     private readonly TextBlock _status;
     private readonly Button _delete;
 
+    /// <summary>
+    /// Whether the shell has a newsletter a memorial could be written in. M73(a), gate 26: the
+    /// predicate that decides whether the card <i>offers</i> to write one is the shell's own
+    /// precondition for writing one, handed in — not a second opinion restated here.
+    /// </summary>
+    private readonly Func<bool> _canWriteAMemorial;
+
+    /// <summary>
+    /// Brothers saved as passed during this visit whose card has not been put on screen yet.
+    ///
+    /// <para>M73(a): <see cref="Save"/> is synchronous and is called from close handlers, so it
+    /// cannot put a modal card up itself — it used to try, with <c>_ = OfferAMemorialAsync(name)</c>,
+    /// and on the close path the window went away while its own child was being raised and the
+    /// request was lost without a word. It queues here instead, and every path out of the window
+    /// drains the queue before it goes.</para>
+    /// </summary>
+    private readonly List<string> _memorialsToOffer = [];
+
+    /// <summary>Brothers the user has said yes to, in the order they said yes.</summary>
+    private readonly List<string> _memorialsRequested = [];
+
     private IReadOnlyList<Member> _shown = [];
     private string? _selectedId;
     private bool _adding;
@@ -63,10 +84,11 @@ public sealed class PeopleWindow : Window
         (DegreeKind.Initiated, "Initiated"),
     ];
 
-    public PeopleWindow(RosterService roster)
+    public PeopleWindow(RosterService roster, Func<bool>? canWriteAMemorial = null)
     {
         ArgumentNullException.ThrowIfNull(roster);
         _roster = roster;
+        _canWriteAMemorial = canWriteAMemorial ?? (static () => true);
 
         Title = "People";
         Width = 1080;
@@ -157,7 +179,11 @@ public sealed class PeopleWindow : Window
         add.Click += (_, _) => BeginAdd();
 
         var save = Action("Save this person", "Save the details on this form");
-        save.Click += (_, _) => Save();
+        save.Click += async (_, _) =>
+        {
+            Save();
+            await OfferAnyMemorialsAsync();
+        };
 
         // M40: the one button in this window that takes something away, and it used to look
         // exactly like "Save this person" beside it (review §14.4).
@@ -205,19 +231,30 @@ public sealed class PeopleWindow : Window
 
     private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
     {
-        if (_closeAgreed || !FormHasUnsavedEdits())
+        if (_closeAgreed)
         {
             return;
         }
 
-        if (AnswerWithoutAsking is { } answer)
+        if (!FormHasUnsavedEdits() && _memorialsToOffer.Count == 0)
+        {
+            return;
+        }
+
+        if (FormHasUnsavedEdits() && AnswerWithoutAsking is { } answer)
         {
             if (answer == PendingEdit.Stay || (answer == PendingEdit.Save && !Save()))
             {
                 e.Cancel = true;
+                return;
             }
 
-            return;
+            // The save may have queued a memorial card. M73(a): it is asked BEFORE this window
+            // goes, never as a child of a window that is already closing.
+            if (_memorialsToOffer.Count == 0)
+            {
+                return;
+            }
         }
 
         e.Cancel = true;
@@ -228,11 +265,16 @@ public sealed class PeopleWindow : Window
     {
         try
         {
-            PendingEdit answer = await AskAboutPendingEditAsync();
-            if (answer == PendingEdit.Stay || (answer == PendingEdit.Save && !Save()))
+            if (FormHasUnsavedEdits())
             {
-                return;
+                PendingEdit answer = AnswerWithoutAsking ?? await AskAboutPendingEditAsync();
+                if (answer == PendingEdit.Stay || (answer == PendingEdit.Save && !Save()))
+                {
+                    return;
+                }
             }
+
+            await OfferAnyMemorialsAsync();
 
             _closeAgreed = true;
             Close();
@@ -310,6 +352,20 @@ public sealed class PeopleWindow : Window
         _list.SelectedIndex = IndexOf(memberId);
 
     internal void DeleteSelectedForTest() => DeleteSelected();
+
+    /// <summary>Ticks "he has passed" on the form, leaving the edit unsaved as a person's would.</summary>
+    internal void TickPassedForTest()
+    {
+        _passed.IsChecked = true;
+        UpdatePassedRow();
+    }
+
+    /// <summary>Presses "Save this person", then answers any memorial card the save raises.</summary>
+    internal async Task SaveAndOfferForTest()
+    {
+        Save();
+        await OfferAnyMemorialsAsync();
+    }
 
     private static TextBox Field(string label) => new()
     {
@@ -531,6 +587,7 @@ public sealed class PeopleWindow : Window
         try
         {
             Resolve(await AskAboutPendingEditAsync(), goingTo);
+            await OfferAnyMemorialsAsync();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
@@ -659,14 +716,39 @@ public sealed class PeopleWindow : Window
     }
 
     /// <summary>
-    /// The name of a brother the user asked to write a memorial for, or null (M55). The People
-    /// window cannot write one — it has no newsletter — so it records the request and the shell
-    /// picks it up.
+    /// The brothers the user asked to write a memorial for, in the order they were asked about
+    /// (M55, made a list by M73(a)). The People window cannot write one — it has no newsletter —
+    /// so it records the requests and the shell picks them up.
+    ///
+    /// <para>M73(a): this was a single slot, so two brothers recorded as passed in one visit meant
+    /// "Not now" on the second wrote <c>null</c> over the first accepted yes. A list cannot lose an
+    /// answer that way.</para>
     /// </summary>
-    internal string? MemorialRequestedFor { get; private set; }
+    internal IReadOnlyList<string> MemorialsRequestedFor => _memorialsRequested;
 
-    /// <summary>Set by tests in place of the card, which cannot be answered headlessly.</summary>
-    internal bool? MemorialAnswerForTest { get; set; }
+    /// <summary>
+    /// Answers the card in place of a person, which a headless run cannot do.
+    ///
+    /// <para>It is a function of the name rather than one bool, because one visit can raise the
+    /// card more than once and each brother gets his own answer.</para>
+    /// </summary>
+    internal Func<string, bool>? MemorialAnswerForTest { get; set; }
+
+    /// <summary>
+    /// Puts every card this visit has queued on screen, one at a time, and waits for each answer.
+    ///
+    /// <para>M73(a): every way out of this window goes through here first, so no request can be
+    /// left behind in a task nobody is waiting on.</para>
+    /// </summary>
+    private async Task OfferAnyMemorialsAsync()
+    {
+        while (_memorialsToOffer.Count > 0)
+        {
+            string name = _memorialsToOffer[0];
+            _memorialsToOffer.RemoveAt(0);
+            await OfferAMemorialAsync(name);
+        }
+    }
 
     /// <summary>
     /// Offered once, on the transition, and never inserted (PLAN.md §11 M55).
@@ -678,9 +760,22 @@ public sealed class PeopleWindow : Window
     /// </summary>
     private async Task OfferAMemorialAsync(string name)
     {
+        // M73(a), gate 26: the offer is made only where the shell could actually keep it. With no
+        // newsletter open the card still says what has happened to his record — that is the half
+        // that matters — and says plainly why it is not offering to write anything.
+        bool canWrite = _canWriteAMemorial();
+
         if (MemorialAnswerForTest is { } answered)
         {
-            MemorialRequestedFor = answered ? name : null;
+            // The yield is not decoration: the real card is a modal window and the answer NEVER
+            // comes back in the same turn of the dispatcher. A seam that answered synchronously
+            // would have hidden the close-path defect M73(a) names, which is a lost continuation.
+            await Task.Yield();
+            if (canWrite && answered(name))
+            {
+                _memorialsRequested.Add(name);
+            }
+
             return;
         }
 
@@ -716,6 +811,35 @@ public sealed class PeopleWindow : Window
         yes.Click += (_, _) => { write = true; dialog.Close(); };
         no.Click += (_, _) => dialog.Close();
 
+        var close = new Button
+        {
+            Content = "Close",
+            FontSize = 18,
+            MinHeight = 44,
+            MinWidth = 200,
+            IsDefault = true,
+            IsCancel = true,
+        };
+        close.Action();
+        AutomationProperties.SetName(close, "Close");
+        close.Click += (_, _) => dialog.Close();
+
+        var buttons = new StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Vertical,
+            Spacing = 12,
+            HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        if (canWrite)
+        {
+            buttons.Children.Add(yes);
+            buttons.Children.Add(no);
+        }
+        else
+        {
+            buttons.Children.Add(close);
+        }
+
         dialog.Content = new StackPanel
         {
             Margin = new Avalonia.Thickness(24),
@@ -741,24 +865,25 @@ public sealed class PeopleWindow : Window
                 },
                 new TextBlock
                 {
-                    Text = "Would you like to write a memorial notice for him?",
+                    Text = canWrite
+                        ? "Would you like to write a memorial notice for him?"
+                        : "No newsletter is open, so TrestleBoard cannot write a memorial notice "
+                            + "just now. Open this month's newsletter, then look under Insert for "
+                            + "\"Words for hard news\".",
                     FontSize = 18,
                     MaxWidth = 460,
                     TextWrapping = TextWrapping.Wrap,
                 },
-                new StackPanel
-                {
-                    Orientation = Avalonia.Layout.Orientation.Vertical,
-                    Spacing = 12,
-                    HorizontalAlignment = HorizontalAlignment.Left,
-                    Children = { yes, no },
-                },
+                buttons,
             },
         };
 
         AutomationProperties.SetName(dialog, "His record has been kept");
         await dialog.ShowDialog(this);
-        MemorialRequestedFor = write ? name : null;
+        if (write)
+        {
+            _memorialsRequested.Add(name);
+        }
     }
 
     /// <summary>
@@ -952,7 +1077,11 @@ public sealed class PeopleWindow : Window
         _roster.Save(member, adding ? $"Add {name}" : $"Change {name}");
         if (newlyPassed)
         {
-            _ = OfferAMemorialAsync(name);
+            // M73(a): queued, not fired. This method is synchronous and is called from the close
+            // handlers, and `_ = OfferAMemorialAsync(name)` there raised a modal card as the child
+            // of a window that was already going — the answer arrived after the shell had stopped
+            // listening and the request was lost in silence.
+            _memorialsToOffer.Add(name);
         }
         _adding = false;
         _selectedId = member.Id;

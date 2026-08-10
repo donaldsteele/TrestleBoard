@@ -3590,6 +3590,14 @@ true }`, and People is reached from a menu, so a caret is rare. Also —
   (`MainWindow.axaml.cs:2958`).
 - `ActionId.ShowPeople` is unconditionally available, so People opens with **no newsletter at all**,
   and the refusal's instruction to "click into some writing" is then impossible to follow.
+  **Fixed at the offer, not at the door (2026-08-10), and deliberately so.** `ActionCatalog.cs:451`
+  records an M64 decision that People and Import *"do not need a newsletter open, and both are most
+  likely to be reached on a computer that has never had one — the successor's, on their first
+  afternoon"*; gating the action would reverse that and would leave `ShowPeople` a `RemedyId`
+  pointing at a blocked action. Instead the card is handed the handler's own precondition
+  (`new PeopleWindow(Roster, () => CanWriteAMemorial)`), which is what gate 26 asks for: with no
+  newsletter the card still appears — his record has been kept is the half that matters — but it
+  explains and offers Close rather than "Write a memorial". The refusal that remains is followable.
 
 The fix follows M66's `AddTextFrameWith` precedent — a new text frame, one undo step, and say where it
 went — and `LastYearWindow` is the shape to copy: `CopyLastYearsArticle` **returns** its refusal

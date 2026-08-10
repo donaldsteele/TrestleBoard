@@ -562,6 +562,34 @@ public sealed class FrameEditorController
         return AddFrame(pageIndex, paragraphs, "Bring in writing");
     }
 
+    /// <summary>
+    /// The same one-undo-step frame, from plain writing rather than paragraphs somebody else has
+    /// already styled (M73(a), for the memorial notice).
+    ///
+    /// <para>The paragraphs take the document's own body style, so the words look like the rest of
+    /// the newsletter the moment they land.</para>
+    /// </summary>
+    public string AddTextFrameWith(int pageIndex, string text, string undoLabel)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
+        ArgumentException.ThrowIfNullOrWhiteSpace(undoLabel);
+
+        string styleRef = DefaultParagraphStyleRef(_session.Document);
+        StoryParagraph[] paragraphs =
+        [
+            .. text.Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Replace('\r', '\n')
+                .Split('\n')
+                .Select(line => new StoryParagraph
+                {
+                    ParagraphStyleRef = styleRef,
+                    Runs = [new StoryRun { Text = line }],
+                }),
+        ];
+
+        return AddFrame(pageIndex, paragraphs, undoLabel);
+    }
+
     private string AddFrame(int pageIndex, IReadOnlyList<StoryParagraph>? paragraphs, string label)
     {
         Document document = _session.Document;
