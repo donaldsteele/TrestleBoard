@@ -108,6 +108,45 @@ public sealed class PageFlowController
         && _layout.GetOversetTailBlockIds().Contains(TailOf(blockId), StringComparer.Ordinal);
 
     /// <summary>
+    /// M71: the first story in the newsletter that has run out of room, given as the FIRST frame of
+    /// its chain and the page that frame is on. This is what "Make the writing fit" acts on when the
+    /// user pressed it from the "what's next" card with nothing chosen — the card is only drawn in
+    /// that state, so without this the command could never have run. The head is returned rather
+    /// than the overflowing tail because that is the frame auto-flow measures from, and it is the
+    /// one the user thinks of as "the writing".
+    /// </summary>
+    public (string BlockId, int PageIndex)? FirstOversetChainHead
+    {
+        get
+        {
+            Document document = _session.Document;
+            for (int i = 0; i < document.Pages.Count; i++)
+            {
+                foreach (TextBlock frame in document.Pages[i].Blocks.OfType<TextBlock>())
+                {
+                    if (!CanAutoFlow(frame.Id))
+                    {
+                        continue;
+                    }
+
+                    string head = HeadOf(frame.Id);
+                    for (int page = 0; page < document.Pages.Count; page++)
+                    {
+                        if (document.Pages[page].Blocks.Any(b => string.Equals(b.Id, head, StringComparison.Ordinal)))
+                        {
+                            return (head, page);
+                        }
+                    }
+
+                    return (head, i);
+                }
+            }
+
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Pours the rest of an overset story into new frames, adding pages as needed. The WHOLE run is
     /// one undo step: "make the rest fit" is one thing the user did, however many pages it took.
     /// </summary>

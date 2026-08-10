@@ -3349,7 +3349,28 @@ the accessibility script gains a section walking each window's answers by ear. *
 `WidgetGridWindow` findings are the highest priority in the milestone**: it is the only dialog that
 is silent to a screen reader in both audits.
 
-### M71 — A button that can never do anything (M)
+### M71 — A button that can never do anything (M) — **delivered 2026-08-09, all four items**
+
+> **The gate caught its author first.** Written before any fix, as the acceptance demanded, its first
+> run flagged **four** dead suggestions rather than the two the manual audit found. Two were false:
+> the test paired "the birthday list has gone stale" with an *empty* address book, a state the app
+> never produces, because an empty book offers "Fill in your address book" instead. A reachability
+> gate fed impossible contexts reports impossible bugs — exactly the noise (d) predicts will get a
+> gate switched off — so the reasoning is recorded in the test rather than the fixture quietly
+> corrected. With realistic states it flagged precisely the two real ones.
+>
+> **(b) found nothing else, and that is the result.** Every other surface is clean, most of them by
+> construction: `ForSelection` drops `NotApplicable` entirely, so a panel offer that is drawn only
+> where it is refused is unrepresentable; the help window's "Take me there" is only visible when its
+> action is available; the toolbar and menu bar draw everything always and grey with a reason, which
+> is M11 working. Review remedies select their finding's block before running. Nothing was fixed in
+> (b) and nothing needed to be.
+>
+> **A consequence inherited from the precedent, not added on top:** with nothing selected and a
+> dateless cover, Edit ▸ "Change what this says…" and its shortcut now enable and pick the cover
+> heading, and the same for "Make the rest fit" when something is overset. `ReplacePicture` has
+> behaved this way since M18; the two-branch pattern makes the command reachable everywhere, not
+> only from the suggestion.
 
 **Goal.** M70 asked whether the app's answer reaches the user. This asks a different question about
 the same surfaces: **can this control ever do anything at all?** The owner reported that "Fill in the
@@ -3363,7 +3384,7 @@ suggestions point at actions that require a selection:
 
 - *"Fill in the meeting date on the cover"* → `ActionId.EditWidget`, whose rule is
   `EvaluateWidget(context, …)` and needs `Selection == Widget`.
-- *"Make the rest fit"* → `ActionId.AutoFlow`, which needs `SelectionIsTextFrame`.
+- *"Make the writing fit"* → `ActionId.AutoFlow`, which needs `SelectionIsTextFrame`.
 
 **The correct pattern is already in the repository, which is what makes this bounded.** Three of the
 other five suggestions carry an explicit second branch for exactly this state — `ReplacePicture` has

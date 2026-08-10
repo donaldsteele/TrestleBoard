@@ -647,7 +647,15 @@ public static class ActionCatalog
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(ChooseSomething),
 
-            ActionId.EditWidget => EvaluateWidget(context, ActionAvailability.Available),
+            // M71, reachable the same two ways and for the same reason as ReplacePicture below. The
+            // "what's next" card offers this as "Fill in the meeting date on the cover", and that
+            // card is drawn ONLY with nothing chosen and nothing being typed — so in that state the
+            // command had no way to work at all. With nothing chosen, the shell finds the cover
+            // heading, turns to it, chooses it and says so out loud.
+            ActionId.EditWidget =>
+                context.CoverDateMissing && !context.HasFrameSelection && !context.IsEditingText
+                    ? ActionAvailability.Available
+                    : EvaluateWidget(context, ActionAvailability.Available),
             ActionId.EditWidgetList => EvaluateWidget(
                 context,
                 context.WidgetHasListEditor
@@ -718,8 +726,15 @@ public static class ActionCatalog
                     ? ActionAvailability.Available
                     : ActionAvailability.Blocked(
                         "This frame does not continue into another one yet.", ActionId.LinkFrames),
+            // M71, reachable the same two ways and for the same reason as ReplacePicture below. The
+            // "what's next" card offers this as "Make the writing fit" when something in the
+            // newsletter has more writing than fits, and that card is drawn ONLY with nothing chosen
+            // and nothing being typed. With nothing chosen, the shell finds the first story that has
+            // run out of room, turns to it, chooses it and says so out loud.
             ActionId.AutoFlow => !context.SelectionIsTextFrame
-                ? ActionAvailability.NotApplicable(NeedsTextFrame)
+                ? context.HasOversetText && !context.HasFrameSelection && !context.IsEditingText
+                    ? ActionAvailability.Available
+                    : ActionAvailability.NotApplicable(NeedsTextFrame)
                 : context.CanAutoFlow
                     ? ActionAvailability.Available
                     : ActionAvailability.Blocked("All of this writing already fits, so there is nothing to move."),

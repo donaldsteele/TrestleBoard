@@ -495,16 +495,23 @@ public partial class MainWindow : Window
     /// no meeting date typed into it. Read here rather than in Editing, which knows nothing about
     /// what is inside a widget's payload.
     /// </summary>
-    private bool CoverHeadingNeedsADate()
+    private bool CoverHeadingNeedsADate() => DatelessCoverHeading() is not null;
+
+    /// <summary>
+    /// The cover heading with no meeting date in it, and the page it is on. M71: the fact and the
+    /// thing the fact is about come from one walk of the document, so "Fill in the meeting date on
+    /// the cover" opens the very heading that caused the card to say so.
+    /// </summary>
+    private (string BlockId, int PageIndex)? DatelessCoverHeading()
     {
         if (_session is null)
         {
-            return false;
+            return null;
         }
 
-        foreach (Core.Model.Page page in _session.Document.Pages)
+        for (int i = 0; i < _session.Document.Pages.Count; i++)
         {
-            foreach (Core.Model.Block block in page.Blocks)
+            foreach (Core.Model.Block block in _session.Document.Pages[i].Blocks)
             {
                 if (block is not Core.Model.WidgetBlock { WidgetType: "coverBanner" } cover)
                 {
@@ -515,12 +522,12 @@ public partial class MainWindow : Window
                     || !data.TryGetProperty("meetingDateText", out System.Text.Json.JsonElement date)
                     || string.IsNullOrWhiteSpace(date.GetString()))
                 {
-                    return true;
+                    return (cover.Id, i);
                 }
             }
         }
 
-        return false;
+        return null;
     }
 
     /// <summary>
@@ -4389,10 +4396,48 @@ public partial class MainWindow : Window
 
     internal void AutoFlow()
     {
-        if (_pages is not null && SelectedTextBlockId is { } blockId)
+        if (_pages is null || FlowTarget(out string? chose) is not { } blockId)
         {
-            _pages.AutoFlow(blockId);
+            return;
         }
+
+        _pages.AutoFlow(blockId);
+
+        // The controller's own sentence — "the text still does not all fit" — must survive being
+        // told what was chosen, so the two are said together rather than one over the other (M70).
+        if (chose is not null)
+        {
+            Announce(_pages.StatusMessage is { Length: > 0 } note ? chose + " " + note : chose);
+        }
+    }
+
+    /// <summary>
+    /// The frame "Make the rest fit" acts on: the chosen one, or — when nothing is chosen and the
+    /// "what's next" card has just said there is more writing than fits — the start of the first
+    /// story that has run out of room, which is turned to and chosen first so the user can see what
+    /// is being changed. Written in the spirit of <see cref="PictureTarget"/>, and, per M70, it hands
+    /// back a sentence saying what it picked rather than quietly acting on something the user never
+    /// chose.
+    /// </summary>
+    private string? FlowTarget(out string? chose)
+    {
+        chose = null;
+        if (SelectedTextBlockId is { } selected)
+        {
+            return selected;
+        }
+
+        if (_pages?.FirstOversetChainHead is not { } overset)
+        {
+            return null;
+        }
+
+        GoToPage(overset.PageIndex);
+        _editor?.End();
+        _frames?.Select(overset.BlockId);
+        chose = $"Nothing was chosen, so TrestleBoard chose the writing on page "
+            + $"{overset.PageIndex + 1} that does not all fit.";
+        return overset.BlockId;
     }
 
     /// <summary>The frame the flow actions act on: the selected one, or the one being typed into.</summary>
@@ -5596,10 +5641,38 @@ public partial class MainWindow : Window
 
     internal async Task EditWidgetAsync(bool grid)
     {
-        if (_frames?.SelectedBlockId is { } blockId)
+        if (WidgetTarget() is { } blockId)
         {
             await RunWizardAsync(blockId, grid);
         }
+    }
+
+    /// <summary>
+    /// The item "Change what this says" acts on: the chosen one, or — when nothing is chosen and the
+    /// "what's next" card has just said the cover has no meeting date — the cover heading itself,
+    /// which is turned to and chosen first so the user can see what they are filling in. Written in
+    /// the spirit of <see cref="PictureTarget"/>, and, per M70, it says what it picked rather than
+    /// quietly opening an editor on something the user never chose.
+    /// </summary>
+    private string? WidgetTarget()
+    {
+        if (_frames?.SelectedBlockId is { } selected)
+        {
+            return selected;
+        }
+
+        if (DatelessCoverHeading() is not { } cover)
+        {
+            return null;
+        }
+
+        GoToPage(cover.PageIndex);
+        _editor?.End();
+        _frames?.Select(cover.BlockId);
+        Announce(
+            $"Nothing was chosen, so TrestleBoard chose the cover heading on page "
+            + $"{cover.PageIndex + 1} and is opening it for you. The meeting date goes in it.");
+        return cover.BlockId;
     }
 
     /// <summary>
