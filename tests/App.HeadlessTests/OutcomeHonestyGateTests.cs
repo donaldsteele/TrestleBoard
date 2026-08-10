@@ -35,9 +35,16 @@ namespace TrestleBoard.App.HeadlessTests;
 /// a compilation: it resolves the receiver of a call only through field declarations, so a call on a
 /// local, a parameter or a property is invisible; it matches methods by declared name within the
 /// resolved type, so an overload that returns <c>void</c> and one that returns <c>bool</c> are the
-/// same name to it; and "in the same method" is the whole body, not a real control-flow path, so it
+/// same name to it; "in the same method" is the whole body, not a real control-flow path, so it
 /// can neither see a discard hidden behind a lambda nor prove that the announcement is downstream of
-/// the discard.</para>
+/// the discard; and <see cref="EnclosingType"/> is "the last type declared above this point", which
+/// is right only while the repository keeps to one type per file. One limit this list used to need
+/// is closed: until M74 (b) the type scanner matched the words <c>class</c>/<c>record</c>/
+/// <c>struct</c> anywhere — including inside comments — so a doc comment reading "the record that it
+/// has now been offered" declared a phantom type and made every discard below it invisible (~75% of
+/// the shell). <see cref="ProseInADocCommentCannotDeclareAType"/> holds that door shut, and the
+/// census floors in <see cref="TheMethodsBeingCheckedAreRealOnes"/> are set high enough that a
+/// collapse of that size can never again pass as green.</para>
 ///
 /// <para><b>What it must NOT flag.</b> A method that announces a refusal it was handed — the M11
 /// shape — discards nothing and must sail through, and
@@ -50,17 +57,15 @@ public sealed class OutcomeHonestyGateTests
     /// Discards the gate has looked at and accepted, each with the reason. This is an allow-list of
     /// **two entries at most** by intent: a long one would mean the rule is wrong, not that the code
     /// is fine.
+    ///
+    /// <para>It is empty. Its one entry — <c>ToggleActionPanel</c>'s discarded
+    /// <c>AppSettings.Save</c>, accepted in M73 as "a second, unannounced operation" with the
+    /// silent-save question left open in docs/M73-spec.md — was closed by M74 (b) instead: the
+    /// toggle now appends "the choice could not be written down" when the save returns false, the
+    /// same one-line pattern <c>ShowSettingsAsync</c> established. An allow-list that grows is a
+    /// gate dying; one that shrinks to nothing is the gate winning the argument.</para>
     /// </summary>
-    public static readonly (string Method, string Operation, string Why)[] Accepted =
-    [
-        ("ToggleActionPanel", "AppSettings.Save",
-            "A false positive of the proxy rather than a violation of the rule. The sentence this "
-            + "method says is about the panel — whether it is showing — and it IS a function of the "
-            + "operation it announces (M70 (d) fixed that). The discarded bool belongs to a second, "
-            + "unannounced operation: remembering the choice for next time. That silence is a real "
-            + "question and it is recorded in docs/M73-spec.md as a follow-up, but it is not this "
-            + "sentence lying about that operation."),
-    ];
+    public static readonly (string Method, string Operation, string Why)[] Accepted = [];
 
     // ---- the gate ---------------------------------------------------------------------------------
 
@@ -131,6 +136,51 @@ public sealed class OutcomeHonestyGateTests
     }
 
     /// <summary>
+    /// **M74 (b): prose cannot declare a type.** The scanner used to match
+    /// <c>\b(?:class|record|struct)\s+(\w+)</c> anywhere in the source, so a doc comment reading
+    /// "the record that it has now been offered" declared a phantom type named <c>that</c>. Every
+    /// method below it was attributed to the phantom, no field lookup could succeed, and no discard
+    /// in ~75% of the shell could ever be reported — the gate was green over the very
+    /// <c>AppSettings.Save</c> returns M73 (e) created. This is that comment, verbatim, with a real
+    /// discard below it.
+    /// </summary>
+    [Fact]
+    public void ProseInADocCommentCannotDeclareAType()
+    {
+        const string ProseAboveARealDiscard = """
+            internal sealed class AppSettings
+            {
+                public bool Save() => false;
+            }
+
+            internal sealed class Shell
+            {
+                private readonly AppSettings _settings = new();
+
+                /// <summary>
+                /// Whether to open the tour, and — as one step — the record that it has now been offered.
+                /// </summary>
+                private bool ClaimTheTour() => true;
+
+                // Everything below the comment used to belong to the phantom type "that": this
+                // discard was invisible, exactly as ToggleShowSpelling's was in the shell.
+                private void ToggleSomething()
+                {
+                    _settings.Save();
+                    Announce("The choice is remembered.");
+                }
+
+                private void Announce(string message) { }
+            }
+            """;
+
+        ScanResult result = Scan([("Prose.cs", ProseAboveARealDiscard)]);
+
+        Assert.Contains(result.Discards,
+            d => d.Method == "ToggleSomething" && d.Operation == "AppSettings.Save");
+    }
+
+    /// <summary>
     /// The guard M71 (d) demands and gate 24 carries: **a control or a command that is refused, and
     /// says why, is M11 working correctly**. This gate is about announcements resting on nothing, and
     /// it must have no opinion at all about a refusal — nor about a method that does read what its
@@ -197,32 +247,42 @@ public sealed class OutcomeHonestyGateTests
     /// Anti-vacuity, as gate 24 has. Every part of this scan can silently empty: a renamed folder, a
     /// changed announcement helper, a field convention the resolver stops recognising. An empty scan
     /// passes the gate above without checking anything, which is how a test dies quietly.
+    ///
+    /// <para>M74 (b) is why the floors sit just under the measured numbers rather than comfortably
+    /// low. The phantom-type defect took the scan from 257 resolved calls to 234 — a loss of every
+    /// field-receiver call in three quarters of the shell — and the old floor of 100 never
+    /// twitched, because calls on <c>this</c> still "resolved" (to the phantom). A floor with room
+    /// to absorb a collapse is a floor that absorbs a collapse. If honest code churn brings a
+    /// number below its floor, lower the floor deliberately, in a change that says so — that
+    /// sentence being written down is the whole protection.</para>
     /// </summary>
     [Fact]
     public void TheMethodsBeingCheckedAreRealOnes()
     {
         ScanResult result = Scan(RepoSources());
 
+        // Measured on the M74 (b) tree: 91 / 150 / 128 / 257.
         Assert.True(
-            result.FilesRead >= 60,
+            result.FilesRead >= 80,
             $"only {result.FilesRead} source files were read — the sweep has lost the source tree");
 
         Assert.True(
-            result.ValueReturningMethods >= 100,
+            result.ValueReturningMethods >= 130,
             $"only {result.ValueReturningMethods} value-returning methods were found, so there is "
             + "almost nothing the gate could ever object to");
 
         Assert.True(
-            result.MethodsThatAnnounce >= 40,
+            result.MethodsThatAnnounce >= 110,
             $"only {result.MethodsThatAnnounce} methods that announce were found — either the app has "
             + "stopped telling people what happened, or the announcement helpers have been renamed "
             + "and this gate is now watching an empty room");
 
         Assert.True(
-            result.StatementCallsResolved >= 100,
+            result.StatementCallsResolved >= 240,
             $"only {result.StatementCallsResolved} statement-level calls could be resolved to a "
-            + "declared type; the receiver resolver has stopped working and every discard is "
-            + "invisible to it");
+            + "declared type; the receiver resolver has stopped working and discards are invisible "
+            + "to it — the phantom-type defect scored 234 here, so 240 is the line it must not "
+            + "repass");
     }
 
     // ---- the analyser ------------------------------------------------------------------------------
@@ -239,8 +299,18 @@ public sealed class OutcomeHonestyGateTests
         int MethodsThatAnnounce,
         int StatementCallsResolved);
 
-    private static readonly Regex TypeDeclaration =
-        new(@"\b(?:class|record|struct)\s+([A-Za-z_]\w*)");
+    /// <summary>
+    /// A real type declaration, not the word "record" wherever it appears. M74 (b): the unanchored
+    /// version matched a doc comment reading "the record that it has now been offered" as a type
+    /// named <c>that</c>, and every method below it in the shell belonged to the phantom. Anchored
+    /// to declaration shape — line start, then nothing but modifiers before the keyword — a comment
+    /// line can never match, because <c>//</c>, <c>///</c> and a block comment's <c>*</c> are none
+    /// of the modifiers.
+    /// </summary>
+    private static readonly Regex TypeDeclaration = new(
+        @"^[ \t]*(?:(?:public|internal|private|protected|sealed|static|partial|abstract|readonly|file|new)\s+)*"
+        + @"(?:class|record(?:\s+(?:class|struct))?|struct)\s+([A-Za-z_]\w*)",
+        RegexOptions.Multiline);
 
     private static readonly Regex ValueReturning = new(
         @"\b(?:public|internal|private|protected)\s+"

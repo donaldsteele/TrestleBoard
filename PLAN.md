@@ -3762,7 +3762,9 @@ correctly, and a gate that fails it will be switched off within a month.
 `tests/App.HeadlessTests/OutcomeHonestyGateTests.cs`, each carrying gate 24's two guards: a
 `TheGateDoesNotObjectToAnHonestRefusal` and an anti-vacuity test. Gate 26 is honest about being three
 different strengths of check — 492 catalog comparisons and all 113 help answers are *proved* by
-running the app; the eighteen dialog controls gated in code are *enumerated and classified*, which
+running the app; the seventeen dialog controls gated in code are *enumerated and classified* (M74
+corrected this line: it said eighteen, and `OfferIntegrityTests.Classified` — which the gate holds
+equal to what the sweep finds — has seventeen), which
 holds the question open rather than answering it. Gate 27 is a ratchet: see the note on the heading
 and `docs/M73-spec.md` §9.
 

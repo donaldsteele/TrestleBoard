@@ -285,4 +285,160 @@ public sealed class OutcomeHonestyTests
         Directory.CreateDirectory(blocked);
         Assert.False(settings.Save(blocked));
     }
+
+    // ---- M74 (b): the settings-save discards gate 27 could not see ----------------------------
+
+    /// <summary>
+    /// Makes every default-path <see cref="AppSettings.Save"/> fail for the length of a test, by
+    /// putting a directory where the file should be — the same trick
+    /// <see cref="HowThingsLookSaysWhetherItReachedTheDisk"/> uses, but on the harness's redirected
+    /// <see cref="AppPaths.SettingsFile"/>, so it reaches saves the window makes for itself.
+    /// Whatever was there is parked and put back, because the settings file is state shared by
+    /// every test in the session.
+    /// </summary>
+    private sealed class BlockedSettingsFile : IDisposable
+    {
+        private readonly string _path = AppPaths.SettingsFile;
+        private readonly string? _parked;
+
+        public BlockedSettingsFile()
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
+            if (File.Exists(_path))
+            {
+                _parked = _path + ".m74b-parked";
+                File.Move(_path, _parked, overwrite: true);
+            }
+
+            Directory.CreateDirectory(_path);
+        }
+
+        public void Dispose()
+        {
+            Directory.Delete(_path);
+            if (_parked is not null)
+            {
+                File.Move(_parked, _path, overwrite: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// M74 (b): the exact discard PLAN.md proved the gate was blind to. Toggling the dotted lines
+    /// threw away <see cref="AppSettings.Save"/>'s bool, so a choice that never reached the disk
+    /// was announced no differently from one that did.
+    /// </summary>
+    [Fact]
+    public async Task TogglingTheDottedLinesSaysWhenTheChoiceCouldNotBeRemembered()
+    {
+        await HeadlessSession.DispatchAsync(() =>
+        {
+            using var blocked = new BlockedSettingsFile();
+            var window = new MainWindow();
+            window.Show();
+            try
+            {
+                window.ToggleShowSpelling();
+
+                Assert.Contains(
+                    "could not be written down",
+                    window.StatusLabelTextForTest ?? "",
+                    StringComparison.Ordinal);
+            }
+            finally
+            {
+                window.Close();
+            }
+
+            return Task.CompletedTask;
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M74 (b): this was gate 27's one allow-list entry — "a second, unannounced operation", with
+    /// the silent settings-save left as an open question in docs/M73-spec.md. Closed the other way:
+    /// the toggle now says so, and the allow-list is empty.
+    /// </summary>
+    [Fact]
+    public async Task TogglingThePanelSaysWhenTheChoiceCouldNotBeRemembered()
+    {
+        await HeadlessSession.DispatchAsync(() =>
+        {
+            using var blocked = new BlockedSettingsFile();
+            var window = new MainWindow();
+            window.Show();
+            try
+            {
+                window.ToggleActionPanel();
+
+                string said = window.StatusLabelTextForTest ?? "";
+                Assert.Contains("panel", said, StringComparison.OrdinalIgnoreCase);
+                Assert.Contains("could not be written down", said, StringComparison.Ordinal);
+            }
+            finally
+            {
+                window.Close();
+            }
+
+            return Task.CompletedTask;
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M74 (b): "Show it the folder once and it will remember" is a promise, and the save that
+    /// keeps it was discarded. When it fails, the sentence now warns that the question may be
+    /// asked again — instead of the folder quietly evaporating between sessions.
+    /// </summary>
+    [Fact]
+    public async Task ShowMeLastYearsSaysWhenTheFolderCouldNotBeRemembered()
+    {
+        string folder = Path.Combine(
+            Path.GetTempPath(), "trestleboard-m74b-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            Core.Container.TboardPackage lastYear = Core.Samples.SampleIssue.CreatePackage();
+            lastYear.Document.Metadata.IssueMonth = 9;
+            lastYear.Document.Metadata.IssueYear = 2025;
+            Core.Container.TboardContainer.SaveToFile(
+                lastYear, Path.Combine(folder, "2025-09.tboard"));
+
+            await HeadlessSession.DispatchAsync(async () =>
+            {
+                // Blocked BEFORE the window loads its settings, so no folder is on record yet and
+                // the "show it the folder once" path is the one taken.
+                using var blocked = new BlockedSettingsFile();
+                var window = new MainWindow();
+                window.Show();
+                window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+                window.OpenIssueSample();
+                window.Measure(new Avalonia.Size(1280, 860));
+                window.Arrange(new Avalonia.Rect(0, 0, 1280, 860));
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                try
+                {
+                    window.PackageForTest!.Document.Metadata.IssueMonth = 9;
+                    window.PackageForTest.Document.Metadata.IssueYear = 2026;
+                    window.OldIssuesFolderAnswerForTest = folder;
+
+                    await window.ShowLastYearAsync();
+
+                    Assert.NotNull(window.LastYearWindowForTest);
+                    string said = window.StatusLabelTextForTest ?? "";
+                    Assert.Contains("open beside this one", said, StringComparison.Ordinal);
+                    Assert.Contains("could not be written down", said, StringComparison.Ordinal);
+
+                    window.LastYearWindowForTest!.Close();
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }, TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
 }

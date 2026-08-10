@@ -667,6 +667,17 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// M74 (b): the sentence a toggle appends when the choice did not reach the disk. Toggling a
+    /// preference is two operations — changing it now, and remembering it for next time — and the
+    /// second used to fail in silence (docs/M73-spec.md recorded it as an open question). The M73
+    /// (e) rule settles it: the announcement branches on what <see cref="AppSettings.Save"/>
+    /// returned, exactly as <see cref="ShowSettingsAsync"/> does.
+    /// </summary>
+    private const string ButTheChoiceCouldNotBeRemembered =
+        " But the choice could not be written down, so it will be back to how it was the next "
+        + "time you open TrestleBoard.";
+
+    /// <summary>
     /// M70(d): this said the panel was showing whether it was or not. On a narrow window
     /// <see cref="ApplyPanelVisibility"/> keeps the panel folded away however the setting is set,
     /// so the user was told a thing had happened that had not — a false report, which is worse than
@@ -675,14 +686,15 @@ public partial class MainWindow : Window
     internal void ToggleActionPanel()
     {
         _settings = _settings with { ShowActionPanel = !_settings.ShowActionPanel };
-        _settings.Save();
+        bool remembered = _settings.Save();
         bool showing = ApplyPanelVisibility();
-        Announce(showing
+        Announce((showing
             ? "The panel of things you can do is showing."
             : _settings.ShowActionPanel
                 ? "This window is too narrow for the panel, so it stays folded away. "
                     + "Make the window wider and it will come back."
-                : "The panel is hidden. Bring it back from View, Show what I can do.");
+                : "The panel is hidden. Bring it back from View, Show what I can do.")
+            + (remembered ? "" : ButTheChoiceCouldNotBeRemembered));
     }
 
     /// <summary>
@@ -1676,6 +1688,7 @@ public partial class MainWindow : Window
         Core.Model.DocumentMetadata meta = _package.Document.Metadata;
         PastIssue issue = PastIssues.Find(_settings.OldIssuesFolder, meta.IssueMonth, meta.IssueYear);
 
+        bool folderRemembered = true;
         if (issue.Problem == PastIssueProblem.NoFolderYet)
         {
             string? folder = OldIssuesFolderAnswerForTest ?? await AskForTheOldIssuesFolderAsync();
@@ -1685,7 +1698,9 @@ public partial class MainWindow : Window
             }
 
             _settings = _settings with { OldIssuesFolder = folder };
-            _settings.Save();
+            // M74 (b): "it will remember" is the promise the NoFolderYet sentence makes, so the
+            // announcement below has to read whether remembering actually worked.
+            folderRemembered = _settings.Save();
             issue = PastIssues.Find(folder, meta.IssueMonth, meta.IssueYear);
         }
 
@@ -1705,7 +1720,11 @@ public partial class MainWindow : Window
         _lastYearWindow.Closed += (_, _) => _lastYearWindow = null;
         _lastYearWindow.Show(this);
         _lastYearWindow.Activate();
-        Announce($"Last year's issue is open beside this one, to look at. It cannot be changed.");
+        Announce("Last year's issue is open beside this one, to look at. It cannot be changed."
+            + (folderRemembered
+                ? ""
+                : " But the folder could not be written down, so you may be asked where the old "
+                    + "newsletters are again next time."));
     }
 
     /// <summary>
@@ -3283,12 +3302,15 @@ public partial class MainWindow : Window
     internal void ToggleShowSpelling()
     {
         _settings = _settings with { ShowSpelling = !_settings.ShowSpelling };
-        _settings.Save();
+        // M74 (b): the announcement reads the save, so a preference that could not be written down
+        // is not passed off in silence as remembered.
+        bool remembered = _settings.Save();
         PageCanvas.ShowSpelling = _settings.ShowSpelling;
         RefreshSpellingMarks();
-        Announce(_settings.ShowSpelling
+        Announce((_settings.ShowSpelling
             ? "Words TrestleBoard does not know now have a dotted line under them. This never prints."
-            : "The dotted lines are hidden again.");
+            : "The dotted lines are hidden again.")
+            + (remembered ? "" : ButTheChoiceCouldNotBeRemembered));
         RefreshActions();
     }
 
@@ -4502,7 +4524,13 @@ public partial class MainWindow : Window
             return;
         }
 
-        _frames.SelectAll(ids);
+        // M74 (b): false means nothing is chosen now. It cannot happen with the non-empty list
+        // built above, but if it ever could, "chosen" must not be said over a cleared selection.
+        if (!_frames.SelectAll(ids))
+        {
+            return;
+        }
+
         Announce(ids.Length == 1
             ? "One thing on this page is chosen."
             : $"All {ids.Length} things on this page are chosen. Use Arrange to line them up.");
