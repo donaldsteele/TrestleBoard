@@ -151,4 +151,12 @@ public sealed class SpellChecker
 
     /// <summary>"It's a name — never ask again."</summary>
     public bool NeverAskAgain(string word) => _personal.Add(word);
+
+    /// <summary>
+    /// True when the last word added did not reach the disk (PLAN.md §11 M73(e)). The flag has
+    /// existed on <see cref="PersonalDictionary"/> since M52 and nobody read it, so teaching the
+    /// checker eleven surnames on a folder it cannot write to was answered eleven times with
+    /// "added to your own list of words" — and every one of them was asked about again next month.
+    /// </summary>
+    public bool CouldNotBeSaved => _personal.CouldNotBeSaved;
 }

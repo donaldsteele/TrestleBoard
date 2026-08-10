@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using TrestleBoard.App;
+using TrestleBoard.App.Actions;
 using TrestleBoard.App.Dialogs;
 using TrestleBoard.App.Help;
 using TrestleBoard.App.Integration;
@@ -155,7 +156,7 @@ internal static class ShotList
                             [ActionId.InsertPhoto] = "Insert " + MenuPaths.Arrow.Trim() + " Insert a picture",
                         },
                         _ => ActionAvailability.Available,
-                        _ => Task.FromResult<string?>(null),
+                        _ => Task.FromResult(ActionOutcome.Did),
                         _ => { }),
                     height: 720);
                 window.TypeForTest("picture");

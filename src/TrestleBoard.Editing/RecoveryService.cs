@@ -23,8 +23,15 @@ public interface IRecoveryStore
     /// </summary>
     void Write(RecoverySnapshot snapshot);
 
-    /// <summary>Removes the snapshot; called on a clean close, when there is nothing to recover.</summary>
-    void Delete(string id);
+    /// <summary>
+    /// Removes the snapshot; called on a clean close, when there is nothing to recover.
+    /// </summary>
+    /// <returns>
+    /// False when the snapshot is still on the disk — the store swallows IO errors by design, and
+    /// M73(e) is that a caller announcing "the work TrestleBoard had kept was thrown away" must be
+    /// able to find out whether it was.
+    /// </returns>
+    bool Delete(string id);
 
     /// <summary>Snapshots that survived a previous run — i.e. the app did not close cleanly.</summary>
     IReadOnlyList<RecoverySnapshot> FindRecoverable();

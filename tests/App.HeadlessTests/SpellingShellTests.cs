@@ -198,7 +198,7 @@ public sealed class SpellingShellTests
                     new("story-1", 0, 0, "chruch", "The chruch supper is on Tuesday."),
                 };
                 var spelling = new SpellingWindow(
-                    words, window.Spelling.Checker, _ => { }, (_, _) => true, _ => { });
+                    words, window.Spelling.Checker, _ => 1, (_, _) => true, _ => { });
 
                 spelling.GoToForTest(1);
 
@@ -239,7 +239,7 @@ public sealed class SpellingShellTests
             try
             {
                 var spelling = new SpellingWindow(
-                    [], window.Spelling.Checker, _ => { }, (_, _) => true, _ => { });
+                    [], window.Spelling.Checker, _ => 1, (_, _) => true, _ => { });
 
                 // "Nothing is misspelled" is true; "everything is right" would not be, and the
                 // difference matters to somebody about to send six pages to sixty people.

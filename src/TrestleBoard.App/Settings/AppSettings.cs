@@ -139,8 +139,13 @@ public sealed record AppSettings
         }
     }
 
-    /// <summary>Best-effort. A preference that cannot be written is not worth an error dialog.</summary>
-    public void Save(string? path = null)
+    /// <summary>
+    /// Best-effort. A preference that cannot be written is not worth an error dialog — but it is
+    /// worth saying, which is why this is no longer <c>void</c> (PLAN.md §11 M73(e)).
+    /// </summary>
+    /// <returns>False when the change did not reach the disk, so the caller can stop saying
+    /// "Saved." over a setting that will be back to how it was next time.</returns>
+    public bool Save(string? path = null)
     {
         path = path ?? DefaultPath();
         try
@@ -148,9 +153,11 @@ public sealed record AppSettings
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllBytes(path, JsonSerializer.SerializeToUtf8Bytes(
                 Normalised(), SettingsJsonContext.Default.AppSettings));
+            return true;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
+            return false;
         }
     }
 }

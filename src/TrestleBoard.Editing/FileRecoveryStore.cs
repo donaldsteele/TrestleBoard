@@ -54,11 +54,15 @@ public sealed class FileRecoveryStore : IRecoveryStore
             new Sidecar(snapshot.OriginalPath, snapshot.SavedAt)));
     }
 
-    public void Delete(string id)
+    public bool Delete(string id)
     {
         ArgumentNullException.ThrowIfNull(id);
-        Remove(Path.Combine(_directory, id + DocumentExtension));
-        Remove(Path.Combine(_directory, id + SidecarExtension));
+
+        // Both halves, always — a sidecar left behind without its document is not recoverable, but
+        // it is still litter. The AND is after the calls for that reason and not before.
+        bool document = Remove(Path.Combine(_directory, id + DocumentExtension));
+        bool sidecar = Remove(Path.Combine(_directory, id + SidecarExtension));
+        return document && sidecar;
     }
 
     public IReadOnlyList<RecoverySnapshot> FindRecoverable()
@@ -191,15 +195,18 @@ public sealed class FileRecoveryStore : IRecoveryStore
         File.Move(temp, path, overwrite: true);
     }
 
-    private static void Remove(string path)
+    private static bool Remove(string path)
     {
         try
         {
             File.Delete(path);
+            return true;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            // A file we cannot delete is not worth failing a save over.
+            // A file we cannot delete is not worth failing a save over — but M73(e): it is worth
+            // telling the caller, so nothing announces that work was thrown away when it was not.
+            return false;
         }
     }
 

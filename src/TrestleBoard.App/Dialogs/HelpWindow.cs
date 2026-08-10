@@ -7,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using TrestleBoard.App.Actions;
 using TrestleBoard.App.Theme;
 using TrestleBoard.Editing.Actions;
 using TrestleBoard.Editing.Help;
@@ -30,7 +31,7 @@ public sealed class HelpWindow : Window
 {
     private readonly IReadOnlyDictionary<string, string> _menuPaths;
     private readonly Func<string, ActionAvailability> _ask;
-    private readonly Func<string, Task<string?>> _run;
+    private readonly Func<string, Task<ActionOutcome>> _run;
     private readonly Action<string> _say;
 
     private readonly TextBox _search;
@@ -47,7 +48,7 @@ public sealed class HelpWindow : Window
     public HelpWindow(
         IReadOnlyDictionary<string, string> menuPaths,
         Func<string, ActionAvailability> ask,
-        Func<string, Task<string?>> run,
+        Func<string, Task<ActionOutcome>> run,
         Action<string> say)
     {
         _menuPaths = menuPaths ?? throw new ArgumentNullException(nameof(menuPaths));
@@ -327,13 +328,25 @@ public sealed class HelpWindow : Window
         // about to ask how to do the next thing, and making them find this window again each time
         // is the small cruelty that stops people using help at all. Which is exactly why it has to
         // say something: an open window that looks unchanged reads as a button that did nothing.
-        if (await _run(topic.ActionId) is { } trouble)
+        // M73(f). "Done: …" used to be said whenever the runner did not hand back a sentence, and
+        // that covered the picker the user had just pressed Cancel on. Help is where somebody
+        // uncertain goes, so it is exactly where being told a thing happened that did not happen
+        // does the most damage: they go looking on the page for a picture nobody inserted.
+        ActionOutcome outcome = await _run(topic.ActionId);
+        switch (outcome.Result)
         {
-            Echo(trouble);
-        }
-        else
-        {
-            Tell($"Done: {_answerTitle.Text}. This window is still here for the next thing.");
+            case ActionResult.Refused:
+                Echo(outcome.Message!);
+                break;
+
+            case ActionResult.NothingHappened:
+                Tell("Nothing has changed — you stopped part way, or there was nothing to do. "
+                    + "This window is still here if you would like to try again.");
+                break;
+
+            default:
+                Tell($"Done: {_answerTitle.Text}. This window is still here for the next thing.");
+                break;
         }
     }
 

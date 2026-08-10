@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using TrestleBoard.App.Actions;
 using TrestleBoard.App.Dialogs;
 using TrestleBoard.App.Help;
 using TrestleBoard.Editing.Actions;
@@ -235,7 +236,7 @@ public sealed class HelpTests
             using HelpFixture help = HelpFixture.Open(run: id =>
             {
                 ran.Add(id);
-                return Task.FromResult<string?>(null);
+                return Task.FromResult(ActionOutcome.Did);
             });
 
             help.Window.TypeForTest("bold");
@@ -410,7 +411,7 @@ public sealed class HelpTests
 
         internal static HelpFixture Open(
             Func<string, ActionAvailability>? ask = null,
-            Func<string, Task<string?>>? run = null,
+            Func<string, Task<ActionOutcome>>? run = null,
             Action<string>? say = null)
         {
             var window = new HelpWindow(
@@ -420,7 +421,7 @@ public sealed class HelpTests
                     [ActionId.FixPhoto] = "Format " + MenuPaths.Arrow.Trim() + " Picture",
                 },
                 ask ?? (_ => ActionAvailability.Available),
-                run ?? (_ => Task.FromResult<string?>(null)),
+                run ?? (_ => Task.FromResult(ActionOutcome.Did)),
                 say ?? (_ => { }));
             window.Show();
             return new HelpFixture(window);

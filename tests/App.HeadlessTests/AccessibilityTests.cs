@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Avalonia.Headless;
+using TrestleBoard.App.Actions;
 using TrestleBoard.App.Dialogs;
 using TrestleBoard.App.Settings;
 using TrestleBoard.Core.Model;
@@ -384,7 +385,7 @@ public sealed class AccessibilityTests
                     [ActionId.Bold] = "Format ▸ Bold",
                 },
                 _ => ActionAvailability.Available,
-                _ => Task.FromResult<string?>(null),
+                _ => Task.FromResult(ActionOutcome.Did),
                 _ => { }));
     }
 

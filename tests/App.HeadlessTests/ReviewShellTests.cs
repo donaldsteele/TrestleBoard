@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using TrestleBoard.App.Actions;
 using TrestleBoard.App.Dialogs;
 using TrestleBoard.Editing.Review;
 using Xunit;
@@ -174,7 +175,7 @@ public sealed class ReviewShellTests
                 var review = new ReviewWindow(
                     [onALaterPage],
                     window.TakeMeToTheFindingForTest,
-                    _ => Task.FromResult<string?>(null),
+                    _ => Task.FromResult(ActionOutcome.Did),
                     _ => { });
 
                 // The buttons are rebuilt for each screen, so ask for them on the screen that has
@@ -210,7 +211,7 @@ public sealed class ReviewShellTests
                     "Anything out of place?"),
             };
             var review = new ReviewWindow(
-                findings, _ => true, _ => Task.FromResult<string?>(null), _ => { });
+                findings, _ => true, _ => Task.FromResult(ActionOutcome.Did), _ => { });
             bool closed = false;
             review.Closed += (_, _) => closed = true;
 
@@ -238,7 +239,7 @@ public sealed class ReviewShellTests
             var review = new ReviewWindow(
                 [new ReviewFinding(ReviewFindingKind.LookAtThePage, 1, null, "Page 1 — have a look", "Well?")],
                 _ => true,
-                _ => Task.FromResult<string?>(null),
+                _ => Task.FromResult(ActionOutcome.Did),
                 _ => { });
 
             Assert.Contains("nothing jumped out", review.BodyForTest, StringComparison.OrdinalIgnoreCase);
@@ -260,7 +261,7 @@ public sealed class ReviewShellTests
                         Editing.Actions.ActionId.AutoFlow),
                 ],
                 _ => true,
-                _ => Task.FromResult<string?>(null),
+                _ => Task.FromResult(ActionOutcome.Did),
                 _ => { });
 
             review.GoToForTest(1);

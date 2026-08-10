@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using TrestleBoard.App.Actions;
 using TrestleBoard.App.Theme;
 using TrestleBoard.Editing.Actions;
 using TrestleBoard.Editing.Review;
@@ -39,7 +40,7 @@ public sealed class ReviewWindow : Window
     /// able to say so.
     /// </summary>
     private readonly Func<ReviewFinding, bool> _takeMeThere;
-    private readonly Func<string, Task<string?>> _run;
+    private readonly Func<string, Task<ActionOutcome>> _run;
     private readonly Action<string> _say;
     private readonly TextBlock _heading;
     private readonly TextBlock _progress;
@@ -56,7 +57,7 @@ public sealed class ReviewWindow : Window
     public ReviewWindow(
         IReadOnlyList<ReviewFinding> findings,
         Func<ReviewFinding, bool> takeMeThere,
-        Func<string, Task<string?>> run,
+        Func<string, Task<ActionOutcome>> run,
         Action<string> say)
     {
         _findings = findings ?? throw new ArgumentNullException(nameof(findings));
@@ -284,13 +285,26 @@ public sealed class ReviewWindow : Window
                     return;
                 }
 
-                if (await _run(remedy) is { } trouble)
+                // M73(f). Every remedy button here said "Done: …" on anything that did not hand
+                // back a sentence — including the picker or wizard the user had just cancelled.
+                // The whole point of this window is that it is walking somebody through their
+                // newsletter one worry at a time, so a false "Done" gets a real defect ticked off.
+                ActionOutcome outcome = await _run(remedy);
+                switch (outcome.Result)
                 {
-                    Echo(trouble);
-                }
-                else
-                {
-                    Tell($"Done: {action.Title}.");
+                    case ActionResult.Refused:
+                        Echo(outcome.Message!);
+                        break;
+
+                    case ActionResult.NothingHappened:
+                        Tell($"Nothing has changed — you stopped part way, or there was nothing to "
+                            + $"do. “{action.Title}” is still here to try again, or press "
+                            + "“That's fine, next” to carry on.");
+                        break;
+
+                    default:
+                        Tell($"Done: {action.Title}.");
+                        break;
                 }
             };
             _buttons.Children.Add(fix);

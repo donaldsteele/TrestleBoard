@@ -33,6 +33,25 @@ public sealed class FontOverrideTests
         Assert.All(h.Story.Paragraphs[0].Runs, run => Assert.Equal("body~lora", run.CharacterStyleRef));
     }
 
+    /// <summary>
+    /// PLAN.md §11 M73(e). This was <c>_ = RetargetSpans(...)</c> — a discarded bool — and the shell
+    /// announced "Those words now use their own font. Press Ctrl+Z to put them back." over a font
+    /// that was already in force, where nothing changed and Ctrl+Z would take back an earlier edit.
+    /// </summary>
+    [Fact]
+    public void AskingForAFontTheWritingAlreadyUsesChangesNothingAndSaysSo()
+    {
+        using var h = new EditorTestHarness(Prose);
+        Assert.True(h.ClickIntoFrame());
+        h.Controller.SelectAll();
+
+        Assert.True(h.Controller.UseFontJustHere("Lora", null));
+
+        int depth = h.Session.UndoDepth;
+        Assert.False(h.Controller.UseFontJustHere("Lora", null));
+        Assert.Equal(depth, h.Session.UndoDepth);
+    }
+
     [Fact]
     public void AnOverrideWithADifferentSizeCarriesTheSizeInItsName()
     {

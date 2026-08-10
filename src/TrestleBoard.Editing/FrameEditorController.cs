@@ -693,11 +693,20 @@ public sealed class FrameEditorController
         return true;
     }
 
-    /// <summary>Turns text wrap on or off for the selected block (docs/M5-spec.md §6).</summary>
+    /// <summary>
+    /// Turns text wrap on or off for the selected block (docs/M5-spec.md §6).
+    ///
+    /// <para>M73(e): the shell discarded the bool and said nothing either way, so the one command
+    /// in the app whose whole effect is a reflow a few lines further down the page was invisible —
+    /// and there was no way to tell which of the two things it had just done. The sentence is set
+    /// here because only this method knows which way it went.</para>
+    /// </summary>
     public bool ToggleWrap()
     {
         if (_selectedBlockId is not { } blockId)
         {
+            StatusMessage = "Nothing is chosen, so there is nothing for the writing to flow around.";
+            Raise();
             return false;
         }
 
@@ -707,6 +716,10 @@ public sealed class FrameEditorController
             blockId,
             turningOn ? WrapMode.Rectangle : WrapMode.None,
             turningOn ? (block.WrapMarginPt > 0f ? block.WrapMarginPt : DefaultWrapMarginPt) : block.WrapMarginPt));
+        StatusMessage = turningOn
+            ? "The writing on the page now flows around this. Press Ctrl+Z to undo."
+            : "The writing on the page no longer flows around this. Press Ctrl+Z to undo.";
+        Raise();
         return true;
     }
 

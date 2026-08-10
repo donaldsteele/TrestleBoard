@@ -856,8 +856,14 @@ public partial class MainWindow : Window
         switch (dialog.Choice)
         {
             case RestoreChoice.StartFresh:
-                _recoveryStore.Delete(snapshot.Id);
-                Announce("You chose to start fresh, so the work TrestleBoard had kept was thrown away.");
+                // M73(e): Delete was `void` over a swallowed IOException, so this sentence was said
+                // whether or not the snapshot went. Being offered work back that you asked to be
+                // rid of is harmless; being told it is gone when it is not is a promise about a
+                // file that is still on the disk.
+                Announce(_recoveryStore.Delete(snapshot.Id)
+                    ? "You chose to start fresh, so the work TrestleBoard had kept was thrown away."
+                    : "You chose to start fresh. TrestleBoard could not throw the work it had kept "
+                      + "away, so it may offer it to you again next time it starts.");
                 return false;
 
             case RestoreChoice.Closed:
@@ -3124,12 +3130,22 @@ public partial class MainWindow : Window
             : $"There {(words.Count == 1 ? "is 1 word" : $"are {words.Count} words")} I do not know.");
     }
 
-    /// <summary>Page first, then the words — the M21 ordering lesson, same as M51's.</summary>
-    private void TakeMeToTheWord(Misspelling word)
+    /// <summary>
+    /// Page first, then the words — the M21 ordering lesson, same as M51's.
+    ///
+    /// <para>M73(e): <c>SelectRange</c>'s false was discarded and "Show me where it is" said
+    /// nothing either way, which is the same defect M70 fixed in <see cref="Dialogs.ReviewWindow"/>
+    /// and did not generalise. The page is editable behind the spelling window, so a word that has
+    /// been moved or deleted since the scan leaves the caret wherever it was and the user staring
+    /// at a page with nothing picked out on it.</para>
+    /// </summary>
+    /// <returns>The page number the word was found and picked out on, or null when it is not where
+    /// the scan said it was any more.</returns>
+    private int? TakeMeToTheWord(Misspelling word)
     {
         if (_package is null || _editor is null)
         {
-            return;
+            return null;
         }
 
         if (PageOfStory(word.StoryId) is { } page)
@@ -3137,8 +3153,13 @@ public partial class MainWindow : Window
             GoToPage(page);
         }
 
-        _editor.SelectRange(word.StoryId, word.ParagraphIndex, word.Offset, word.Word.Length);
+        if (!_editor.SelectRange(word.StoryId, word.ParagraphIndex, word.Offset, word.Word.Length))
+        {
+            return null;
+        }
+
         RefreshActions();
+        return _pageIndex + 1;
     }
 
     /// <summary>
@@ -4183,11 +4204,17 @@ public partial class MainWindow : Window
     /// selected words as the preview, and a warning that is true.
     /// </para>
     /// </summary>
-    internal async Task UseFontJustHereAsync()
+    /// <returns>
+    /// False when nothing changed: the window was cancelled, or the writing already used the font
+    /// that was chosen. M73(e) — this was <c>_ = RetargetSpans(...)</c> underneath, and announced
+    /// "Those words now use their own font" over a caret with no words highlighted, and over a font
+    /// that was already in force.
+    /// </returns>
+    internal async Task<bool> UseFontJustHereAsync()
     {
         if (_session is null || _editor is null)
         {
-            return;
+            return false;
         }
 
         _textStylesForTest = BuildJustHereWindowForTest();
@@ -4195,10 +4222,23 @@ public partial class MainWindow : Window
 
         if (_textStylesForTest.Result is { } choice)
         {
-            _editor.UseFontJustHere(choice.FontFamily ?? CurrentFamily(), choice.SizePt);
-            Announce("Those words now use their own font. Press Ctrl+Z to put them back.");
+            bool caretOnly = _editor.SelectedText is null;
+            if (!_editor.UseFontJustHere(choice.FontFamily ?? CurrentFamily(), choice.SizePt))
+            {
+                Announce("That is already the font this writing uses, so nothing changed.");
+                return false;
+            }
+
+            Announce(caretOnly
+                ? "The next words you type will use that font."
+                : "Those words now use their own font. Press Ctrl+Z to put them back.");
             RefreshActions();
+            return true;
         }
+
+        // The window was cancelled. Nothing to say — the user knows what they just pressed — but
+        // "nothing happened" is what the runner has to be told (M73(f)).
+        return false;
     }
 
     /// <summary>Builds the "just here" picker without showing it, for the M20 headless tests.</summary>
@@ -4425,8 +4465,24 @@ public partial class MainWindow : Window
         RefreshActions();
     }
 
-    internal void DeleteSelectedFrame() => _frames?.DeleteSelected();
+    /// <summary>
+    /// M73(e): the bool was discarded and nothing was said either way. A frame vanishing is plain
+    /// enough to see, but somebody following the status bar with a screen reader had no way to know
+    /// the key had done anything at all.
+    /// </summary>
+    internal void DeleteSelectedFrame()
+    {
+        if (_frames is null)
+        {
+            return;
+        }
 
+        Announce(_frames.DeleteSelected()
+            ? "Taken off the page. Press Ctrl+Z to put it back."
+            : "Nothing is chosen, so there is nothing to take off the page.");
+    }
+
+    /// <summary>The controller says which way the wrap went, because only it knows (M73(e)).</summary>
     internal void ToggleWrap() => _frames?.ToggleWrap();
 
     /// <summary>
@@ -4473,21 +4529,37 @@ public partial class MainWindow : Window
         RefreshActions();
     }
 
+    /// <summary>
+    /// M73(e): M71's own command, and the one that was silent in the most ways. It said nothing at
+    /// all unless it had chosen the frame for the user, and <c>PageFlowController.AutoFlow</c> nulls
+    /// its own <c>StatusMessage</c> when it refuses — so "Make the rest fit" on writing it could not
+    /// move looked exactly like a dead button. What is said is now a function of what it returned.
+    /// </summary>
     internal void AutoFlow()
     {
-        if (_pages is null || FlowTarget(out string? chose) is not { } blockId)
+        if (_pages is null)
         {
             return;
         }
 
-        _pages.AutoFlow(blockId);
+        if (FlowTarget(out string? chose) is not { } blockId)
+        {
+            Announce(
+                "Nothing in this newsletter has more writing than fits, so there is nothing to move.");
+            return;
+        }
+
+        bool moved = _pages.AutoFlow(blockId);
+        string said = moved
+            ? _pages.StatusMessage is { Length: > 0 } note
+                ? note
+                : "The rest of the writing now fits. Press Ctrl+Z to undo."
+            : "TrestleBoard could not move any of the writing. The frame may be too narrow for the "
+              + "words in it, or there may be nowhere left to put them.";
 
         // The controller's own sentence — "the text still does not all fit" — must survive being
         // told what was chosen, so the two are said together rather than one over the other (M70).
-        if (chose is not null)
-        {
-            Announce(_pages.StatusMessage is { Length: > 0 } note ? chose + " " + note : chose);
-        }
+        Announce(chose is not null ? chose + " " + said : said);
     }
 
     /// <summary>
@@ -4525,11 +4597,16 @@ public partial class MainWindow : Window
 
     // ---- Photos (docs/M6-spec.md §7) ----------------------------------------------------------
 
-    internal async Task InsertPhotoAsync()
+    /// <summary>
+    /// M73(f): returns whether a picture actually reached the page. Pressing Cancel on the picker
+    /// is the commonest way this ends, and the help window used to answer it with
+    /// "Done: Put a picture here".
+    /// </summary>
+    internal async Task<bool> InsertPhotoAsync()
     {
         if (_photos is null || _source is null)
         {
-            return;
+            return false;
         }
 
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -4540,10 +4617,10 @@ public partial class MainWindow : Window
         });
         if (files.Count == 0)
         {
-            return;
+            return false;
         }
 
-        await InsertPhotoFromFileAsync(files[0]);
+        return await InsertPhotoFromFileAsync(files[0]);
     }
 
     /// <summary>The file's bytes, or null once the failure has been explained to the user.</summary>
@@ -4563,18 +4640,18 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task InsertPhotoFromFileAsync(IStorageFile file)
+    private async Task<bool> InsertPhotoFromFileAsync(IStorageFile file)
     {
         if (await ReadPictureBytesAsync(file) is not { } bytes)
         {
-            return;
+            return false;
         }
 
         var dialog = new PhotoInsertDialog(file.Name);
         await dialog.ShowDialog(this);
         if (!dialog.Confirmed)
         {
-            return;
+            return false;
         }
 
         _editor?.End();
@@ -4584,11 +4661,12 @@ public partial class MainWindow : Window
             await ShowErrorAsync(
                 "That file is not a picture",
                 "TrestleBoard could not read that file as a picture. JPEG and PNG files work best.");
-            return;
+            return false;
         }
 
         _frames?.Select(blockId);
         RefreshActions();
+        return true;
     }
 
     internal void FixPhoto()
@@ -4634,10 +4712,16 @@ public partial class MainWindow : Window
     /// frame changes shape again. <c>_photos.Changed</c> refreshes the panel.</summary>
     internal void DismissCropNotice()
     {
-        if (_photos is not null && _frames?.SelectedBlockId is { } blockId)
+        if (_photos is null || _frames?.SelectedBlockId is not { } blockId)
         {
-            _photos.DismissStaleCropNotice(blockId);
+            return;
         }
+
+        // M73(e): the bool was discarded. On the path where it is false the note stays on screen
+        // and the button meant to hide it looks broken.
+        Announce(_photos.DismissStaleCropNotice(blockId)
+            ? "That note is hidden. It will come back if you change the shape of the frame again."
+            : "There is no note to hide on this picture.");
     }
 
     // ---- Filling, swapping and labelling a picture (PLAN.md §11 M18) --------------------------
@@ -5552,9 +5636,17 @@ public partial class MainWindow : Window
         }
 
         _settings = dialog.Result with { ShowActionPanel = _settings.ShowActionPanel };
-        _settings.Save();
+
+        // M73(e): Save was `void` with an empty catch, and this said "Saved." whatever happened.
+        // Raise the text to 150%, be told it saved, find it back at 100% next time — and the one
+        // setting somebody most needs to keep is the one they cannot read the screen without.
+        bool saved = _settings.Save();
         ApplySettings(_settings);
-        Announce("Saved. You can change this again from View, How things look.");
+        Announce(saved
+            ? "Saved. You can change this again from View, How things look."
+            : "TrestleBoard has changed how it looks for now, but it could not write the change "
+              + "down, so it will be back to how it was the next time you open it. Your newsletter "
+              + "is not affected.");
     }
 
     /// <summary>

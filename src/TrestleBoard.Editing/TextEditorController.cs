@@ -866,10 +866,15 @@ public sealed class TextEditorController
     /// that — it is the same machinery bold and italic already use, so no new command type is
     /// needed, just EnsureCharacterStyle + ApplyCharacterStyle.
     /// </summary>
-    public void UseFontJustHere(string fontFamily, float? sizePt)
+    /// <returns>
+    /// False when nothing changed — the words already used that font, or there was no text session
+    /// at all. M73(e): this was literally <c>_ = RetargetSpans(...)</c>, and the shell announced
+    /// "Those words now use their own font" over both of those.
+    /// </returns>
+    public bool UseFontJustHere(string fontFamily, float? sizePt)
     {
         ArgumentException.ThrowIfNullOrEmpty(fontFamily);
-        _ = RetargetSpans(
+        return RetargetSpans(
             "Use a different font here",
             (sheet, effectiveRef) =>
             {

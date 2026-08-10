@@ -34,7 +34,11 @@ public sealed class SpellingWindow : Window
     /// </summary>
     private IReadOnlyList<Misspelling> _words;
     private readonly SpellChecker _checker;
-    private readonly Action<Misspelling> _takeMeThere;
+    /// <summary>
+    /// Picks the word out on the page and answers with the page number it was found on, or null
+    /// when it is not where the scan said it was any more (PLAN.md §11 M73(e)).
+    /// </summary>
+    private readonly Func<Misspelling, int?> _takeMeThere;
     private readonly Func<Misspelling, string, bool> _changeItTo;
     private readonly Func<IReadOnlyList<Misspelling>> _lookAgain;
     private readonly Action<string> _say;
@@ -53,7 +57,7 @@ public sealed class SpellingWindow : Window
     public SpellingWindow(
         IReadOnlyList<Misspelling> words,
         SpellChecker checker,
-        Action<Misspelling> takeMeThere,
+        Func<Misspelling, int?> takeMeThere,
         Func<Misspelling, string, bool> changeItTo,
         Action<string> say,
         Func<IReadOnlyList<Misspelling>>? lookAgain = null)
@@ -136,6 +140,9 @@ public sealed class SpellingWindow : Window
     internal string SentenceForTest => _sentence.Text ?? "";
 
     internal string ProgressForTest => _progress.Text ?? "";
+
+    /// <summary>What this window last said out loud, for M73(e)'s tests.</summary>
+    internal string StatusForTest => _status.Text ?? "";
 
     internal IReadOnlyList<Button> ButtonsForTest
     {
@@ -225,7 +232,14 @@ public sealed class SpellingWindow : Window
         _sentence.Text = word.Sentence;
 
         Button there = Wide("Show me where it is");
-        there.Click += (_, _) => _takeMeThere(word);
+
+        // M73(e): the page turned, the word was picked out — or was not, because the page is
+        // editable behind this window and it had been moved or deleted since the scan — and either
+        // way this said nothing. The sibling of the same defect M70 fixed in ReviewWindow.
+        there.Click += (_, _) => Tell(_takeMeThere(word) is { } page
+            ? $"That is it, picked out on page {page}."
+            : $"“{word.Word}” is not where it was any more, so there is nothing to point "
+              + "at. Press Next and come back to it, or close this and check again.");
         _buttons.Children.Add(there);
 
         foreach (string suggestion in _checker.Suggest(word.Word))
@@ -265,8 +279,16 @@ public sealed class SpellingWindow : Window
         Button name = Wide("It's a name — never ask again");
         name.Click += (_, _) =>
         {
+            // M73(e): PersonalDictionary has recorded a failed write in CouldNotBeSaved since
+            // M52 and nobody read it. Teach it eleven surnames on a folder it cannot write to and
+            // it said "added to your own list of words" eleven times — then asked about all eleven
+            // again next month, which is the sort of small betrayal that stops people trusting a
+            // program.
             _checker.NeverAskAgain(word.Word);
-            _say($"“{word.Word}” has been added to your own list of words.");
+            _say(_checker.CouldNotBeSaved
+                ? $"TrestleBoard will leave “{word.Word}” alone for now, but it could not "
+                  + "add it to your own list of words, so it will ask about it again next time."
+                : $"“{word.Word}” has been added to your own list of words.");
             GoTo(_screen + 1);
         };
         _buttons.Children.Add(name);

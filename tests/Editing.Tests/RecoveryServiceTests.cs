@@ -18,7 +18,11 @@ public sealed class RecoveryServiceTests
 
         public void Write(RecoverySnapshot snapshot) => Written.Add(snapshot);
 
-        public void Delete(string id) => Deleted.Add(id);
+        public bool Delete(string id)
+        {
+            Deleted.Add(id);
+            return true;
+        }
 
         public IReadOnlyList<RecoverySnapshot> FindRecoverable() => Written;
     }

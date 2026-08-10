@@ -56,10 +56,11 @@ public sealed class SaveShellTests : IDisposable
             Writes++;
         }
 
-        public void Delete(string id)
+        public bool Delete(string id)
         {
             _held.Remove(id);
             Deletes++;
+            return true;
         }
 
         public IReadOnlyList<RecoverySnapshot> FindRecoverable() => _held.Values.ToList();
