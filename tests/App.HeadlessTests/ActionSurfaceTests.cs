@@ -209,7 +209,10 @@ public sealed class ActionSurfaceTests
             window.Show();
             window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
             window.OpenIssueSample();
-            Assert.True(window.StartFromLastMonth());
+
+            // M75: carry-forward asks which issue it is now. The harness answers as a user would.
+            window.AnswerTheIssueWizardForTest = new MainWindow.IssueAnswerForTest(8, 2026);
+            Assert.True(window.CarryForwardToNextIssueAsync().Result);
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
             IReadOnlyList<NextStep> steps = WhatsNext.Suggestions(window.CurrentActionContext);

@@ -31,6 +31,25 @@ public sealed class CoverBannerData
     /// <summary>"7:30". Null (not just blank) when the issue carries no lodge-opening time.</summary>
     public string? WorkTimeText { get; set; }
 
+    /// <summary>
+    /// M75 (a): "July" — which issue this newsletter is, as the cover wizard asks it.
+    ///
+    /// <para><b>Never saved.</b> This is not banner content; it is an answer the banner's wizard
+    /// collects on the document's behalf, and its home is
+    /// <c>DocumentMetadata.IssueMonth</c> — the single source of truth that drives the file name,
+    /// the archive lookup and the birthday projection. It is carried on this POCO so that the ask
+    /// lives in the wizard the user already meets (the owner's second ruling) and inherits, free,
+    /// every bit of the wizard's validation, review read-back, big-row grid view, keyboard path and
+    /// screen-reader labelling. The shell reads it off the session at commit and writes it through
+    /// <c>SetMetadataCommand</c>, composed with the widget edit so one Ctrl+Z takes back both.</para>
+    /// </summary>
+    [JsonIgnore]
+    public string IssueMonthName { get; set; } = "";
+
+    /// <summary>M75 (a): "2026". Never saved, for the reason on <see cref="IssueMonthName"/>.</summary>
+    [JsonIgnore]
+    public string IssueYearText { get; set; } = "";
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtraProperties { get; set; }
 }

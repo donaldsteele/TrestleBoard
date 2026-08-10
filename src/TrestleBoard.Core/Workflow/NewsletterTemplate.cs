@@ -69,11 +69,20 @@ public static class NewsletterTemplate
     /// nullable would be a format change reaching every widget, every projection and every
     /// snapshot for the sake of a state only a template is ever in — and the template is about to
     /// ask the user for a date the moment they start an issue from it.</para>
+    ///
+    /// <para><b>M75.</b> That last clause was a promise about code that did not exist, and it was
+    /// load-bearing for sixty milestones: nothing in the app ever set
+    /// <see cref="DocumentMetadata.IssueMonth"/>, so every newsletter started from a template was
+    /// permanently January 2000 and the birthday projection filtered the address book to January.
+    /// The ask is built now, and <see cref="DocumentMetadata.IssueDateChosen"/> is what it answers —
+    /// written <c>false</c> here so a template says out loud that it has no issue date rather than
+    /// leaving that to be inferred from two magic numbers.</para>
     /// </summary>
     private static void ClearIssueDate(DocumentMetadata metadata)
     {
         var fresh = new DocumentMetadata();
         metadata.IssueMonth = fresh.IssueMonth;
         metadata.IssueYear = fresh.IssueYear;
+        metadata.IssueDateChosen = false;
     }
 }

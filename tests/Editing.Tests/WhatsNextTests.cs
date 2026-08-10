@@ -14,6 +14,11 @@ public sealed class WhatsNextTests
         HasDocument = true,
         PageCount = 4,
         CanStartFromLastMonth = true,
+
+        // M75: a newsletter that has been told which issue it is. Unanswered, the card leads with
+        // that question and nothing else on it is worth reading — see IssueDateGateTests.
+        IssueDateChosen = true,
+        HasCoverHeading = true,
         ExportedPdfThisSession = true,
     };
 

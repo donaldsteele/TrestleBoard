@@ -70,6 +70,24 @@ public sealed record ActionContext
     /// <summary>True once anything has been carried forward or opened that could become next month's.</summary>
     public bool CanStartFromLastMonth { get; init; }
 
+    /// <summary>
+    /// M75: somebody has said which month and year this newsletter is for.
+    ///
+    /// <para><b>Default false</b>, like <see cref="CanReadPdfs"/> and for the same reason: a context
+    /// built without thinking about it withholds the commands that need a real issue date, which is
+    /// the safe direction. The failure it guards against is a PDF called " 2000-01.pdf" going to
+    /// sixty people and a birthday list drawn from the wrong month.</para>
+    /// </summary>
+    public bool IssueDateChosen { get; init; }
+
+    /// <summary>
+    /// M75: there is a cover heading on the page to ask the question through.
+    ///
+    /// <para>The ask lives in the cover wizard, so a newsletter with no cover heading has nowhere to
+    /// put it — and that is a refusal with a door out (add one), not a crash.</para>
+    /// </summary>
+    public bool HasCoverHeading { get; init; }
+
     /// <summary>Somewhere in the newsletter, text does not fit its frame.</summary>
     public bool HasOversetText { get; init; }
 

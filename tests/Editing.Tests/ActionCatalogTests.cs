@@ -44,6 +44,11 @@ public sealed class ActionCatalogTests
         PageCount = 3,
         PageIndex = 0,
         CanStartFromLastMonth = true,
+
+        // M75: this newsletter knows which issue it is. The eight commands that need one are
+        // refused without it, and IssueDateGateTests is where that is asserted.
+        IssueDateChosen = true,
+        HasCoverHeading = true,
     };
 
     private static ActionContext Typing() => Document() with

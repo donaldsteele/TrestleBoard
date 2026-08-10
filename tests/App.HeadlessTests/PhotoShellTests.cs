@@ -103,7 +103,9 @@ public sealed class PhotoShellTests
         {
             var window = new MainWindow();
             window.Show();
-            window.OpenTemplate("six-page-photos");
+            // M75: starting from a template asks which issue it is.
+            window.AnswerTheIssueWizardForTest = new MainWindow.IssueAnswerForTest(7, 2026, LodgeName: "Placeholder Lodge No. 000");
+            Assert.True(window.OpenTemplateAsync("six-page-photos").Result);
 
             (string BlockId, int PageIndex) first = Assert.IsType<(string, int)>(
                 window.PhotosForTest!.FirstPlaceholder);
@@ -143,7 +145,9 @@ public sealed class PhotoShellTests
         await Session.Dispatch(() =>
         {
             var window = new MainWindow();
-            window.OpenTemplate("six-page-photos");
+            // M75: starting from a template asks which issue it is.
+            window.AnswerTheIssueWizardForTest = new MainWindow.IssueAnswerForTest(7, 2026, LodgeName: "Placeholder Lodge No. 000");
+            Assert.True(window.OpenTemplateAsync("six-page-photos").Result);
             window.GoToPage(3);
 
             (string blockId, _) = Assert.IsType<(string, int)>(window.PhotosForTest!.FirstPlaceholder);
@@ -175,7 +179,9 @@ public sealed class PhotoShellTests
         {
             var window = new MainWindow();
             window.Show();
-            window.OpenTemplate("six-page-photos");
+            // M75: starting from a template asks which issue it is.
+            window.AnswerTheIssueWizardForTest = new MainWindow.IssueAnswerForTest(7, 2026, LodgeName: "Placeholder Lodge No. 000");
+            Assert.True(window.OpenTemplateAsync("six-page-photos").Result);
             window.CanvasForTest.Focus();
 
             (string blockId, int pageIndex) = Assert.IsType<(string, int)>(
@@ -209,7 +215,9 @@ public sealed class PhotoShellTests
         {
             var window = new MainWindow();
             window.Show();
-            window.OpenTemplate("six-page-photos");
+            // M75: starting from a template asks which issue it is.
+            window.AnswerTheIssueWizardForTest = new MainWindow.IssueAnswerForTest(7, 2026, LodgeName: "Placeholder Lodge No. 000");
+            Assert.True(window.OpenTemplateAsync("six-page-photos").Result);
 
             (string blockId, int pageIndex) = Assert.IsType<(string, int)>(
                 window.PhotosForTest!.FirstPlaceholder);

@@ -85,6 +85,16 @@ public static class ActionId
 
     /// <summary>M57: rename, remove, or hand one of your templates to a successor.</summary>
     public const string ManageTemplates = "newsletter.myTemplates";
+
+    /// <summary>
+    /// M75: which month and year this newsletter is for.
+    ///
+    /// <para>It opens the cover heading's own wizard on its first screen — the owner's ruling, and
+    /// the right one: a second place to set the date is a second place to forget. This id exists so
+    /// the question has a name every start path can call, every command that needs an issue date can
+    /// point a <c>RemedyId</c> at, and the user can find again when they answer it wrongly.</para>
+    /// </summary>
+    public const string SetIssueDate = "newsletter.issueDate";
     public const string Exit = "newsletter.exit";
 
     // ---- Edit ---------------------------------------------------------------------------------

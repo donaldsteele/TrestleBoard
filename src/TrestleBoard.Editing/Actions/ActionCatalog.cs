@@ -121,6 +121,14 @@ public static class ActionCatalog
             ActionGroup.Newsletter),
         new(ActionId.ManageTemplates, "My templates…",
             "Renames, removes, or hands on the templates you have saved.", ActionGroup.Newsletter),
+        // M75. No chord. Every letter that reads as "issue", "month" or "date" is already spoken
+        // for, and PLAN.md §6 asks that every command be reachable from the keyboard, not that
+        // every command have a gesture — Alt+F then C reaches this one, like the twenty others
+        // that carry none. It is a primary panel action instead, because until it is answered it
+        // is the only thing worth doing to this newsletter.
+        new(ActionId.SetIssueDate, "Which issue is this?…",
+            "Asks which month and year this newsletter is for, on the cover heading.",
+            ActionGroup.Newsletter, IsPrimary: true),
         new(ActionId.SendIt, "Now send it…",
             "Opens your email with the brethren who get it by email already filled in.",
             ActionGroup.Newsletter),
@@ -488,11 +496,23 @@ public static class ActionCatalog
                     "There are no earlier versions of your address book yet. TrestleBoard keeps one "
                     + "every time you change it."),
 
-            ActionId.StartFromLastMonth => context.CanStartFromLastMonth
-                ? ActionAvailability.Available
-                : ActionAvailability.Blocked(
+            ActionId.StartFromLastMonth => !context.CanStartFromLastMonth
+                ? ActionAvailability.Blocked(
                     "There is no newsletter open to carry forward. Open last month's newsletter first.",
-                    ActionId.Open),
+                    ActionId.Open)
+                : RequiresIssueDate(context, "next month is worked out from it"),
+
+            // M75 (a). Available whenever there is a cover heading to ask it on — including after
+            // it has been answered, because the ask is also the correction. A wrong month typed
+            // once and unfixable would be worse than no ask at all.
+            ActionId.SetIssueDate => !context.HasDocument
+                ? ActionAvailability.Blocked(NoNewsletter, ActionId.NewFromTemplate)
+                : context.HasCoverHeading
+                    ? ActionAvailability.Available
+                    : ActionAvailability.Blocked(
+                        "This newsletter has no cover heading on it, and that is where TrestleBoard "
+                        + "asks which issue you are making. Add one to the front page first.",
+                        ActionId.InsertCoverBanner),
 
             // M24. Saving an unchanged newsletter would rewrite the file for nothing, so it is
             // refused — but the refusal is the sentence that answers the question the user was
@@ -506,7 +526,7 @@ public static class ActionCatalog
                             ? $"Everything is saved already. Your work is in {saved}."
                             : "There is nothing new to save.",
                         ActionId.SaveAs),
-            ActionId.SaveAs => RequiresDocument(context),
+            ActionId.SaveAs => RequiresIssueDate(context, "the file is named after it"),
 
             // M39. Two different "no" here, because they send the user somewhere different: a
             // newsletter with no file of its own has never been saved over, and one with a file but
@@ -521,18 +541,28 @@ public static class ActionCatalog
                         "You have saved this newsletter once, so there is nothing earlier to go back "
                         + "to yet. TrestleBoard keeps a copy every time you save over it."),
 
-            ActionId.ReviewNewsletter or ActionId.CheckSpelling or ActionId.ReadAloud
-                or ActionId.ShowLastYear
-                or ActionId.ExportPdf
-                or ActionId.ExportDraftPdf =>
-                RequiresDocument(context),
+            // M75 (c): spelling and reading aloud are about the words on the page and do not care
+            // which issue it is; the other four all put the issue's month somewhere a reader will
+            // see it, or go looking for it in the archive.
+            ActionId.CheckSpelling or ActionId.ReadAloud => RequiresDocument(context),
+            ActionId.ReviewNewsletter =>
+                RequiresIssueDate(context, "the check goes through the issue's own month with you"),
+            ActionId.ShowLastYear =>
+                RequiresIssueDate(context, "last year's issue is found by it"),
+            ActionId.ExportPdf or ActionId.ExportDraftPdf =>
+                RequiresIssueDate(context, "the PDF is named after it"),
 
             // M53: there has to BE a PDF before it can go to a printer, and the reason names the
             // command that makes one rather than leaving the user to work it out.
             // M56 needs a newsletter to talk about but NOT a PDF: somebody may want to warn the
             // lodge that this month's issue is coming, and refusing until they have exported would
             // be the app deciding the order of their evening.
-            ActionId.SendIt or ActionId.SaveAsTemplate => RequiresDocument(context),
+            ActionId.SendIt => RequiresIssueDate(context, "the email says so in its subject line"),
+
+            // M75: NOT gated on the issue date. A template is a layout with the date deliberately
+            // taken out of it — refusing to make one until a date is filled in would be refusing
+            // the one thing that is meant to have none.
+            ActionId.SaveAsTemplate => RequiresDocument(context),
 
             ActionId.PrintPdf => context.ExportedPdfThisSession
                 ? ActionAvailability.Available
@@ -1005,6 +1035,17 @@ public static class ActionCatalog
     /// </summary>
     private static ActionAvailability EvaluateBirthdaySync(ActionContext context)
     {
+        // M75 (c), and it goes FIRST. With no issue date the projection filters the address book to
+        // January, so the next branch down would report "nobody in your address book has a birthday
+        // in this issue's month" — a confident falsehood about a book full of birthdays, and the
+        // sentence the owner was actually looking at when he reported this.
+        if (!context.IssueDateChosen)
+        {
+            return ActionAvailability.Blocked(
+                NoIssueDate("the birthday list is worked out from it"),
+                ActionId.SetIssueDate);
+        }
+
         if (context.RosterCount == 0)
         {
             return ActionAvailability.Blocked(
@@ -1050,6 +1091,34 @@ public static class ActionCatalog
 
         return ActionAvailability.Available;
     }
+
+    /// <summary>
+    /// M75 (c): a newsletter, and a newsletter that knows which issue it is.
+    ///
+    /// <para>The eight commands that route through here are the ones that put the issue's month in
+    /// front of a reader or go looking for it in the archive. Before M75 every one of them ran
+    /// happily against the model's default and produced <c>" 2000-01.pdf"</c>, a mail subject
+    /// reading "Trestle Board — January 2000", and an archive search for January 1999 that told the
+    /// user their folder was empty <i>after</i> making them choose it.</para>
+    ///
+    /// <para>The refusal names the consequence rather than the field, because "issue metadata is
+    /// unset" is not a sentence this audience should ever have to read — and it carries a
+    /// <c>RemedyId</c> to the one command that fixes it, which is the M11 shape
+    /// <c>EvaluateBirthdaySync</c>'s <c>ImportPeople</c> remedy established.</para>
+    /// </summary>
+    /// <param name="because">A clause completing "…yet, and {because}."</param>
+    private static ActionAvailability RequiresIssueDate(ActionContext context, string because) =>
+        !context.HasDocument
+            ? ActionAvailability.Blocked(NoNewsletter, ActionId.NewFromTemplate)
+            : context.IssueDateChosen
+                ? ActionAvailability.Available
+                : ActionAvailability.Blocked(NoIssueDate(because), ActionId.SetIssueDate);
+
+    /// <summary>The one sentence, so eight commands cannot drift into eight ways of saying it.</summary>
+    private static string NoIssueDate(string because) =>
+        "TrestleBoard does not know which month and year this newsletter is for yet, and "
+        + because
+        + ". Use “Which issue is this?…” to say — it opens the cover heading and asks.";
 
     private static ActionAvailability RequiresDocument(ActionContext context) =>
         context.HasDocument

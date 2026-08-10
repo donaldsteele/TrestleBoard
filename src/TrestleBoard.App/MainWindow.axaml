@@ -28,6 +28,11 @@
         <MenuItem Header="Start from _last month" Tag="newsletter.startFromLastMonth"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Start this month from last month's newsletter" />
+        <!-- M75: with the two commands that start an issue, because it is the question both of
+             them ask, and the way back to it when the answer was wrong. -->
+        <MenuItem Header="Whi_ch issue is this?…" Tag="newsletter.issueDate"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Say which month and year this newsletter is for" />
         <Separator />
         <!-- M24: the two commands the app shipped without. Save sits above Export because saving
              the newsletter and making the PDF are different jobs, and the user reaches for this

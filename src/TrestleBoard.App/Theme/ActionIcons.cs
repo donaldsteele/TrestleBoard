@@ -108,6 +108,12 @@ internal static class ActionIcons
         [ActionId.StartFromLastMonth] = "a sentence, not a symbol",
         [ActionId.Exit] = "a menu command, and the panel never offers it",
 
+        // M75. A calendar glyph is the obvious choice and is exactly wrong: it is the universal
+        // symbol for a date picker, and this question deliberately is NOT one — it asks for a month
+        // and a year, and the issue has no day. The picture would promise the control the design
+        // rejected.
+        [ActionId.SetIssueDate] = "a calendar glyph promises the date picker this deliberately is not",
+
         // M39. A clock-with-arrow would be the obvious choice and is exactly wrong: it is the
         // undo glyph in every other program, and this is not undo — it replaces what is on screen.
         [ActionId.RestoreDocument] = "the obvious clock-arrow reads as undo, which this is not",

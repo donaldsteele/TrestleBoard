@@ -39,6 +39,12 @@ public sealed class WizardSession
         object data = definition.TryReadData(existingData, dataVersion, out object typed)
             ? typed
             : definition.CreateEmptyData(seed);
+
+        // M75: the answers that belong to the DOCUMENT rather than to the widget are seeded on both
+        // paths. CreateEmptyData already sees the seed; the re-edit path above reads the payload
+        // back from the block, where those answers were never stored, so without this a user
+        // re-opening a cover heading would be asked which issue it is as though nobody ever had.
+        definition.SeedAnswersFromDocument(data, seed);
         return new WizardSession(definition, data);
     }
 
@@ -394,6 +400,48 @@ public sealed class WizardSession
 
         IsDirty = true;
         return true;
+    }
+
+    /// <summary>
+    /// One field's answer by key, wherever in the wizard it lives (M75).
+    ///
+    /// <para>The shell needs this to read back the two answers that belong to the document rather
+    /// than to the widget. It walks the active steps rather than taking a step index, so moving the
+    /// question to another screen cannot quietly stop the metadata being written.</para>
+    /// </summary>
+    public bool TryGetAnswer(string fieldKey, out string value)
+    {
+        ArgumentNullException.ThrowIfNull(fieldKey);
+
+        foreach (IWizardStep step in ActiveSteps)
+        {
+            if (step.Fields.Any(f => string.Equals(f.Key, fieldKey, StringComparison.Ordinal)))
+            {
+                value = step.GetValue(_data, fieldKey, -1);
+                return true;
+            }
+        }
+
+        value = "";
+        return false;
+    }
+
+    /// <summary>The counterpart of <see cref="TryGetAnswer"/>: writes one field by key (M75).</summary>
+    public bool TrySetAnswer(string fieldKey, string value)
+    {
+        ArgumentNullException.ThrowIfNull(fieldKey);
+        ArgumentNullException.ThrowIfNull(value);
+
+        foreach (IWizardStep step in ActiveSteps)
+        {
+            if (step.Fields.Any(f => string.Equals(f.Key, fieldKey, StringComparison.Ordinal)))
+            {
+                SetValue(step, fieldKey, -1, value);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>True when at least one step is a list — the condition for offering "Edit list…".</summary>

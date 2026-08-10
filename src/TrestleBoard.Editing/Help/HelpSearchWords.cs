@@ -48,6 +48,11 @@ public static class HelpSearchWords
         // The monthly cycle, in the words the committee uses for it.
         [ActionId.StartFromLastMonth] = ["new", "next month", "begin", "start", "carry forward"],
         [ActionId.NewFromTemplate] = ["new", "blank", "start", "layout"],
+
+        // M75. Somebody hunting for this has typed a month name into the search box, or is looking
+        // for the word "date" — which is also what they call the meeting date on the cover, so both
+        // spellings of the confusion lead here.
+        [ActionId.SetIssueDate] = ["date", "month", "year", "issue", "wrong month", "change the date"],
         [ActionId.RestoreDocument] = ["lost", "crash", "gone", "recover", "backup", "power cut"],
         [ActionId.ReviewNewsletter] = ["check", "mistakes", "before i send", "look it over"],
         [ActionId.CheckSpelling] = ["spelling", "spell check", "misspelled", "typo"],

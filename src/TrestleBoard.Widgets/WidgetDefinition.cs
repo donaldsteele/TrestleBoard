@@ -47,6 +47,17 @@ public abstract class WidgetDefinition<TData> : IWidgetDefinition
 
     object IWidgetDefinition.CreateEmptyData(WidgetSeed seed) => CreateEmpty(seed);
 
+    /// <summary>
+    /// M75: nothing, unless a widget's wizard asks a question whose answer belongs to the document.
+    /// Only <c>CoverBannerDefinition</c> overrides it.
+    /// </summary>
+    public virtual void SeedFromDocument(TData data, WidgetSeed seed)
+    {
+    }
+
+    void IWidgetDefinition.SeedAnswersFromDocument(object typedData, WidgetSeed seed) =>
+        SeedFromDocument((TData)typedData, seed);
+
     public bool TryReadData(JsonElement? data, int dataVersion, out object typedData)
     {
         typedData = null!;

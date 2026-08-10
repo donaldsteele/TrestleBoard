@@ -44,6 +44,24 @@ public static class CarryForward
     }
 
     /// <summary>
+    /// The printed form of a meeting date — "July 7th" — or null when the rule cannot be read.
+    ///
+    /// <para>M75 (d): the same computation <see cref="RecomputeMeetingDates"/> performs, made
+    /// reachable so the cover wizard can fill the printed date in the moment the user says which
+    /// issue this is. One implementation, so the date the wizard shows and the date next month's
+    /// carry-forward computes cannot disagree.</para>
+    /// </summary>
+    public static string? MeetingDateTextFor(string? meetingRule, int year, int month)
+    {
+        if (month is < 1 or > 12 || !MeetingRule.TryParse(meetingRule, out MeetingRule rule))
+        {
+            return null;
+        }
+
+        return FormatMeetingDate(rule.ResolveDate(year, month));
+    }
+
+    /// <summary>
     /// A true deep copy, built by round-tripping through <see cref="TboardContainer"/> in memory
     /// rather than hand-written Clone() methods. The model has Clone() helpers on a few leaf types
     /// (<see cref="ImageRecipe"/>, <see cref="StoryParagraph"/>, <see cref="StoryRun"/>) but none on
@@ -61,6 +79,17 @@ public static class CarryForward
         return TboardContainer.Load(stream);
     }
 
+    /// <summary>
+    /// Next month, as a <b>suggestion</b>.
+    ///
+    /// <para>M75 (b): the bump itself is unchanged — the copy carries next month's numbers, and
+    /// <see cref="RecomputeMeetingDates"/> below needs them to compute the printed date. What
+    /// changed is that it no longer counts as the user having said which issue this is.
+    /// <see cref="DocumentMetadata.IssueDateChosen"/> is cleared, so the carried-forward issue is
+    /// pre-filled and still asks. "The month after the last one" is a good guess and this app does
+    /// not print guesses under a lodge's name — a committee skipping a month, or building December
+    /// early, was silently overruled.</para>
+    /// </summary>
     private static void BumpIssueDate(DocumentMetadata metadata)
     {
         int month = metadata.IssueMonth + 1;
@@ -73,6 +102,7 @@ public static class CarryForward
 
         metadata.IssueMonth = month;
         metadata.IssueYear = year;
+        metadata.IssueDateChosen = false;
     }
 
     /// <summary>Rewrites every CoverBanner widget's <c>meetingDateText</c> from the document's own

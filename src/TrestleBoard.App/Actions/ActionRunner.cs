@@ -52,6 +52,7 @@ internal sealed class ActionRunner
             [ActionId.SendIt] = Async(() => window.SendItAsync()),
             [ActionId.SaveAsTemplate] = Async(() => window.SaveAsTemplateAsync()),
             [ActionId.ManageTemplates] = Async(() => window.ShowMyTemplatesAsync()),
+            [ActionId.SetIssueDate] = Async(() => window.AskWhichIssueThisIsAsync()),
             [ActionId.Exit] = Sync(window.Close),
 
             // ---- Edit -----------------------------------------------------------------------------

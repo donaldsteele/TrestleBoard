@@ -83,7 +83,12 @@ internal static class ShotList
             stage =>
             {
                 MainWindow window = stage.OpenEditor();
-                window.StartFromLastMonth();
+
+                // M75: every start-an-issue path asks which issue it is. The harness answers with
+                // the fictional issue the rest of these shots use, so no dialog stands in front of
+                // the panel being photographed.
+                window.AnswerTheIssueWizardForTest = new MainWindow.IssueAnswerForTest(8, 2026);
+                _ = window.CarryForwardToNextIssueAsync();
                 window.RefreshActions();
                 return Task.FromResult(Stage.Shoot(window));
             }),
@@ -361,7 +366,8 @@ internal static class ShotList
             stage =>
             {
                 MainWindow window = stage.OpenEditor();
-                window.OpenTemplate("six-page-photos");
+                window.AnswerTheIssueWizardForTest = new MainWindow.IssueAnswerForTest(7, 2026, LodgeName: "Placeholder Lodge No. 000");
+                _ = window.OpenTemplateAsync("six-page-photos");
                 if (window.PhotosForTest?.FirstPlaceholder is { } placeholder)
                 {
                     window.GoToPage(placeholder.PageIndex);

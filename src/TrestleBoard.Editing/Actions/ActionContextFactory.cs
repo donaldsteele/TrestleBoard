@@ -120,6 +120,12 @@ public static class ActionContextFactory
             PageCount = source?.PageCount ?? 0,
             PageIndex = pageIndex,
             CanStartFromLastMonth = hasDocument,
+
+            // M75. Read straight off the document rather than passed in as a shell fact: this is a
+            // property of the newsletter, and the one thing the whole milestone is about is that
+            // nothing was reading it. A document with no session at all counts as unanswered.
+            IssueDateChosen = session?.Document.Metadata.HasIssueDate == true,
+            HasCoverHeading = session is not null && HasACoverHeading(session.Document),
             HasOversetText = source is { IsOverset: true },
             HasUnsavedChanges = hasDocument && shell.HasUnsavedChanges,
             DocumentHasFile = shell.DocumentFileName is not null,
@@ -181,6 +187,22 @@ public static class ActionContextFactory
             RosterHasEarlierVersions = shell.RosterHasEarlierVersions,
         };
     }
+
+    /// <summary>
+    /// M75: is there a cover heading anywhere in this newsletter, on a page or on a master?
+    ///
+    /// <para>Recognised by its stable type id — the same string the document itself stores — for the
+    /// same reason <c>ActionCatalog</c> knows the birthday list by name: <c>TrestleBoard.Widgets</c>
+    /// sits above this project and a type reference would invert the dependency.</para>
+    /// </summary>
+    private static bool HasACoverHeading(Document document) =>
+        document.Pages.Any(p => p.Blocks.Any(IsCoverHeading))
+        || document.PageMasters.Any(m => m.Blocks.Any(IsCoverHeading));
+
+    private static bool IsCoverHeading(Block block) =>
+        block is WidgetBlock { WidgetType: CoverBannerTypeId };
+
+    private const string CoverBannerTypeId = "coverBanner";
 
     /// <summary>
     /// Non-throwing on purpose: a selection can outlive its block for one change notification, and a

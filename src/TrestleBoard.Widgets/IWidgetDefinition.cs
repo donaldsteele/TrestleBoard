@@ -45,6 +45,18 @@ public interface IWidgetDefinition
     object CreateEmptyData(WidgetSeed seed);
 
     /// <summary>
+    /// M75: fills in the answers a wizard collects that do NOT live in the widget's saved payload.
+    ///
+    /// <para>Only the cover banner has any: the issue's month and year belong to
+    /// <c>DocumentMetadata</c>, not to the banner, but the owner's ruling is that the ask lives in
+    /// the wizard the user already meets rather than in a second properties dialog nobody finds.
+    /// <see cref="CreateEmptyData"/> covers a brand-new widget; this covers the re-edit path, where
+    /// the payload is read back from the block and the seed would otherwise be dropped on the
+    /// floor. A no-op for every other widget.</para>
+    /// </summary>
+    void SeedAnswersFromDocument(object typedData, WidgetSeed seed);
+
+    /// <summary>
     /// Raw JSON to typed POCO, migrating first (§3). False for malformed data or a dataVersion this
     /// build does not understand — a damaged widget degrades to a placeholder, never to a crash.
     /// </summary>

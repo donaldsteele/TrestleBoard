@@ -111,7 +111,19 @@ public sealed class WidgetController
     /// composite exists so the Edit menu can name what the user did, and so a height change lands in
     /// the same undo step as the data change.
     /// </summary>
-    public bool ApplyWidgetData(string blockId, JsonElement data, int dataVersion, string undoLabel)
+    /// <param name="alsoDo">
+    /// M75: one more command to land in the SAME undo step. The cover heading's wizard asks which
+    /// issue this newsletter is, and that answer belongs in <c>DocumentMetadata</c> rather than in
+    /// the banner's payload — so it arrives here as a <c>SetMetadataCommand</c> riding the composite,
+    /// for the same reason the height change does: one wizard run must cost the user exactly one
+    /// Ctrl+Z, whatever it touched.
+    /// </param>
+    public bool ApplyWidgetData(
+        string blockId,
+        JsonElement data,
+        int dataVersion,
+        string undoLabel,
+        IDocumentCommand? alsoDo = null)
     {
         ArgumentNullException.ThrowIfNull(blockId);
         ArgumentException.ThrowIfNullOrWhiteSpace(undoLabel);
@@ -134,6 +146,11 @@ public sealed class WidgetController
             && Math.Abs(height - widget.FrameRect.Height) > 0.5f)
         {
             children.Add(new ResizeBlockCommand(blockId, widget.FrameRect with { Height = height }));
+        }
+
+        if (alsoDo is not null)
+        {
+            children.Add(alsoDo);
         }
 
         _session.Execute(new CompositeCommand(

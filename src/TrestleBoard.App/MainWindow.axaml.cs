@@ -36,6 +36,7 @@ using TrestleBoard.Rendering;
 using TrestleBoard.Roster;
 using TrestleBoard.Widgets;
 using TrestleBoard.Widgets.Builtins.BirthdayList;
+using TrestleBoard.Widgets.Builtins.CoverBanner;
 using TrestleBoard.Widgets.Builtins.OfficersTable;
 using TrestleBoard.Widgets.Roster;
 using TrestleBoard.Widgets.Wizards;
@@ -825,10 +826,10 @@ public partial class MainWindow : Window
         switch (start.Choice)
         {
             case StartChoice.MyTemplate when start.SelectedUserTemplateId is { } mine:
-                OpenUserTemplate(mine);
+                await OpenUserTemplateAsync(mine);
                 break;
             case StartChoice.Template:
-                OpenTemplate(start.SelectedTemplateId);
+                await OpenTemplateAsync(start.SelectedTemplateId);
                 break;
             case StartChoice.OpenFile:
                 await OpenNewsletterAsync();
@@ -1022,9 +1023,10 @@ public partial class MainWindow : Window
 
         return start.Choice switch
         {
-            StartChoice.MyTemplate when start.SelectedUserTemplateId is { } mine => OpenUserTemplate(mine),
-            StartChoice.Template => OpenTemplate(start.SelectedTemplateId),
-            StartChoice.LastMonth => StartFromLastMonth(),
+            StartChoice.MyTemplate when start.SelectedUserTemplateId is { } mine =>
+                await OpenUserTemplateAsync(mine),
+            StartChoice.Template => await OpenTemplateAsync(start.SelectedTemplateId),
+            StartChoice.LastMonth => await CarryForwardToNextIssueAsync(),
             StartChoice.OpenFile => await OpenNewsletterAsync(),
 
             // Closed without an answer, or "MyTemplate" with nothing selected — which the window
@@ -1985,11 +1987,19 @@ public partial class MainWindow : Window
     /// <summary>Opens one of the user's own templates as a new, unsaved newsletter.</summary>
     /// <returns>M74 (f): false when the template file has gone since it was listed, so the caller
     /// does not report a newsletter that never came up.</returns>
-    internal bool OpenUserTemplate(string id)
+    internal async Task<bool> OpenUserTemplateAsync(string id)
     {
         if (Templates.Open(id) is not { } package)
         {
             Announce("That template could not be opened. It may have been moved or removed.");
+            return false;
+        }
+
+        // M75 (b): a template of the user's own is a start-an-issue path like any other, and
+        // NewsletterTemplate.From strips the issue date out of it in so many words.
+        if (!await AskWhichIssueBeforeStartingAsync(package))
+        {
+            SayNoIssueWasStarted();
             return false;
         }
 
@@ -3927,13 +3937,22 @@ public partial class MainWindow : Window
     internal void UseRecoveryStoreForTest(IRecoveryStore store) => _recoveryStore = store;
 
     /// <summary>Opens one of the shipped templates (PLAN.md §7).</summary>
-    /// <returns>Always true: the shipped templates are built in code, not read from disk, so there
-    /// is no failure to report. It returns a value at all so that
-    /// <see cref="NewFromTemplateAsync"/> can answer one branch per route.</returns>
-    internal bool OpenTemplate(string templateId)
+    /// <returns>
+    /// M75 (b): false when the issue question went unanswered, and true otherwise. It used to be
+    /// "always true — the shipped templates are built in code, so there is no failure to report",
+    /// which was accurate about loading and silent about the thing every template is missing.
+    /// </returns>
+    internal async Task<bool> OpenTemplateAsync(string templateId)
     {
+        TboardPackage package = TemplateLibrary.Create(templateId);
+        if (!await AskWhichIssueBeforeStartingAsync(package))
+        {
+            SayNoIssueWasStarted();
+            return false;
+        }
+
         DocumentPath = null;
-        ShowPackage(TemplateLibrary.Create(templateId));
+        ShowPackage(package);
         SayWhatTheSwitchClosed();
         return true;
     }
@@ -3952,7 +3971,7 @@ public partial class MainWindow : Window
             return false;
         }
 
-        return StartFromLastMonth();
+        return await CarryForwardToNextIssueAsync();
     }
 
     /// <summary>
@@ -3960,8 +3979,15 @@ public partial class MainWindow : Window
     /// (docs/M9-spec.md §3). The result is a NEW unsaved newsletter, so the path is cleared — and
     /// from M24 it is marked unsaved from the outset, because a carried-forward issue exists in no
     /// file anywhere until somebody saves it.
+    ///
+    /// <para><b>M75 (b).</b> The bump is a suggestion now, not a decision: the issue question is put
+    /// with next month's numbers already filled in, and the user presses past it or corrects it. It
+    /// used to increment silently, which is the same assumption the owner's first ruling forbids,
+    /// wearing quieter clothes — a committee that skips August, or builds December early, was
+    /// overruled without being asked. Cancelling means no new issue, and last month's newsletter is
+    /// still on the screen exactly as it was.</para>
     /// </summary>
-    internal bool StartFromLastMonth()
+    internal async Task<bool> CarryForwardToNextIssueAsync()
     {
         if (_package is null)
         {
@@ -3969,6 +3995,14 @@ public partial class MainWindow : Window
         }
 
         TboardPackage next = CarryForward.NextIssue(_package);
+        if (!await AskWhichIssueBeforeStartingAsync(next))
+        {
+            Announce(
+                "Nothing was carried forward, because TrestleBoard was not told which issue it "
+                + "would be. This newsletter is exactly as it was.");
+            return false;
+        }
+
         DocumentPath = null;
         ShowPackage(next, startsDirty: true);
         Announce(
@@ -6254,6 +6288,32 @@ public partial class MainWindow : Window
             ? ActionCatalog.DescribeFilledIn(filledIn)
             : null;
 
+        // M75 (a): the cover heading's wizard now asks which issue this is, and that answer belongs
+        // to the document. Reading it here — off the same session both windows edited — is what
+        // makes "one wizard run, one undo step" survive the answer landing in two places.
+        void Commit(System.Text.Json.JsonElement data, int dataVersion, string undoLabel) =>
+            _widgets.ApplyWidgetData(
+                blockId,
+                WithTheMeetingDateFilledIn(wizard, data),
+                dataVersion,
+                undoLabel,
+                IssueDateCommandFrom(wizard));
+
+        // M75: the one way a test can answer the issue question. Neither wizard window can be
+        // answered headlessly, and this fills the real session's real fields and commits through
+        // the real path — only the Avalonia window is skipped.
+        if (AnswerTheIssueWizardForTest is { } canned && IsCoverHeading(blockId))
+        {
+            if (!TryAnswerTheIssueWizard(wizard, canned, out System.Text.Json.JsonElement answered, out int version))
+            {
+                return false;
+            }
+
+            Commit(answered, version, wizard.UndoLabel);
+            RefreshActions();
+            return true;
+        }
+
         if (grid)
         {
             if (CancelTheWizardForTest)
@@ -6273,7 +6333,7 @@ public partial class MainWindow : Window
                 return false;
             }
 
-            _widgets.ApplyWidgetData(blockId, window.Data, window.DataVersion, window.UndoLabel);
+            Commit(window.Data, window.DataVersion, window.UndoLabel);
         }
         else
         {
@@ -6291,13 +6351,312 @@ public partial class MainWindow : Window
                 return false;
             }
 
-            _widgets.ApplyWidgetData(blockId, window.Data, window.DataVersion, window.UndoLabel);
+            Commit(window.Data, window.DataVersion, window.UndoLabel);
             WritePhoneNumbersBack(window.PhoneWriteBacks);
         }
 
         RefreshActions();
         return true;
     }
+
+    // ---- Which issue is this? (PLAN.md §11 M75) -----------------------------------------------
+
+    private const string CoverBannerTypeId = "coverBanner";
+
+    /// <summary>
+    /// M75: what a test types into the cover heading's issue question, in place of the window.
+    ///
+    /// <para>The session, the bindings, the validators, the commit and the metadata write-back are
+    /// all the real ones — the wizard's own <c>TryCommit</c> refuses these answers if they do not
+    /// pass, exactly as pressing "Save it" would. A null field is left at whatever the wizard
+    /// pre-filled, which is how the carry-forward pre-fill can be tested by not correcting it.</para>
+    /// </summary>
+    internal sealed record IssueAnswerForTest(
+        int? Month = null,
+        int? Year = null,
+        string? MeetingRule = null,
+        string? LodgeName = null);
+
+    /// <summary>Set by tests in place of the cover wizard. See <see cref="IssueAnswerForTest"/>.</summary>
+    internal IssueAnswerForTest? AnswerTheIssueWizardForTest { get; set; }
+
+    /// <summary>
+    /// "Which issue is this?…" — M75 (a), and the owner's second ruling in code: the ask lives in
+    /// the cover heading's own wizard, not in a properties dialog of its own.
+    ///
+    /// <para>It turns to the cover heading, chooses it so the user can see what they are answering
+    /// about, and opens the wizard on its first screen — the same window "Change what this says…"
+    /// opens, because a second place to set the date is a second place to forget.</para>
+    /// </summary>
+    /// <returns>False when the user backed out, per M74's contract.</returns>
+    internal async Task<bool> AskWhichIssueThisIsAsync()
+    {
+        if (CoverHeading() is not { } cover)
+        {
+            return false;
+        }
+
+        GoToPage(cover.PageIndex);
+        _editor?.End();
+        _frames?.Select(cover.BlockId);
+        return await RunWizardAsync(cover.BlockId, grid: false);
+    }
+
+    /// <summary>The first cover heading in the newsletter, and the page it stands on.</summary>
+    private (string BlockId, int PageIndex)? CoverHeading()
+    {
+        if (_session is null)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < _session.Document.Pages.Count; i++)
+        {
+            foreach (Core.Model.Block block in _session.Document.Pages[i].Blocks)
+            {
+                if (block is Core.Model.WidgetBlock { WidgetType: CoverBannerTypeId } cover)
+                {
+                    return (cover.Id, i);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private bool IsCoverHeading(string blockId) =>
+        string.Equals(_widgets?.GetWidgetType(blockId), CoverBannerTypeId, StringComparison.Ordinal);
+
+    /// <summary>
+    /// The <see cref="Core.Commands.SetMetadataCommand"/> a finished cover wizard produces, or null
+    /// when this wizard was not the cover heading's (M75 (a) — the command's first production use in
+    /// the sixty-odd milestones since M2 put it in Core).
+    ///
+    /// <para><b>(d) rides along.</b> <c>Metadata.MeetingRule</c> had the same write-back hole: it
+    /// was set only by the two sample documents, while the cover banner carried its own editable
+    /// copy that never flowed back — so <c>CarryForward.RecomputeMeetingDates</c> always failed to
+    /// parse and took the <c>ClearMeetingDates</c> branch, <b>blanking the cover date</b> for every
+    /// real user who started next month's issue. The rule the user typed into the banner is written
+    /// to the metadata here. A blank one never overwrites a rule the document already had: leaving
+    /// a field empty is not the same as asking for something to be forgotten.</para>
+    /// </summary>
+    private Core.Commands.SetMetadataCommand? IssueDateCommandFrom(WizardSession wizard)
+    {
+        if (_session is null || IssueAnswers(wizard) is not { } answers)
+        {
+            return null;
+        }
+
+        Core.Model.DocumentMetadata updated = _session.Document.Metadata.Clone();
+        updated.IssueMonth = answers.Month;
+        updated.IssueYear = answers.Year;
+        updated.IssueDateChosen = true;
+        if (TypedMeetingRule(wizard) is { } rule)
+        {
+            updated.MeetingRule = rule;
+        }
+
+        return new Core.Commands.SetMetadataCommand(updated);
+    }
+
+    /// <summary>The month and year the wizard holds, or null when it is not a cover wizard or the
+    /// two questions have not been answered readably.</summary>
+    private static (int Month, int Year)? IssueAnswers(WizardSession wizard)
+    {
+        if (!wizard.TryGetAnswer(CoverBannerDefinition.IssueMonthFieldKey, out string monthName)
+            || !CoverBannerDefinition.TryReadMonth(monthName, out int month)
+            || !wizard.TryGetAnswer(CoverBannerDefinition.IssueYearFieldKey, out string yearText)
+            || !int.TryParse(
+                yearText.Trim(),
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out int year))
+        {
+            return null;
+        }
+
+        return (month, year);
+    }
+
+    private static string? TypedMeetingRule(WizardSession wizard) =>
+        wizard.TryGetAnswer(CoverBannerDefinition.MeetingRuleFieldKey, out string rule)
+            && !string.IsNullOrWhiteSpace(rule)
+                ? rule.Trim()
+                : null;
+
+    /// <summary>
+    /// M75 (d), the other half: with the issue month now known and the meeting rule now written
+    /// down, the printed date on the cover can be worked out — <b>if the user has not written one
+    /// themselves</b>.
+    ///
+    /// <para>Only a blank one is filled in. <c>meetingDateText</c> is printed prose the committee
+    /// owns ("July 7th", no year), and the metadata being the authority for <i>which issue this is</i>
+    /// does not make it the author of what the cover says. Overwriting a date somebody typed in the
+    /// very same wizard would be the mirror image of the defect this milestone is about.</para>
+    /// </summary>
+    private static System.Text.Json.JsonElement WithTheMeetingDateFilledIn(
+        WizardSession wizard,
+        System.Text.Json.JsonElement data)
+    {
+        if (IssueAnswers(wizard) is not { } answers
+            || TypedMeetingRule(wizard) is not { } rule
+            || System.Text.Json.Nodes.JsonNode.Parse(data.GetRawText())
+                is not System.Text.Json.Nodes.JsonObject payload)
+        {
+            return data;
+        }
+
+        if (payload[CoverBannerDefinition.MeetingDateFieldKey]?.GetValue<string>() is { } already
+            && !string.IsNullOrWhiteSpace(already))
+        {
+            return data;
+        }
+
+        if (CarryForward.MeetingDateTextFor(rule, answers.Year, answers.Month) is not { } text)
+        {
+            return data;
+        }
+
+        payload[CoverBannerDefinition.MeetingDateFieldKey] = System.Text.Json.Nodes.JsonValue.Create(text);
+        return System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(payload.ToJsonString());
+    }
+
+    /// <summary>Fills the issue fields in and commits, the way pressing "Save it" would.</summary>
+    private static bool TryAnswerTheIssueWizard(
+        WizardSession wizard,
+        IssueAnswerForTest answer,
+        out System.Text.Json.JsonElement data,
+        out int dataVersion)
+    {
+        if (answer.Month is { } month)
+        {
+            wizard.TrySetAnswer(CoverBannerDefinition.IssueMonthFieldKey, CoverBannerDefinition.MonthName(month));
+        }
+
+        if (answer.Year is { } year)
+        {
+            wizard.TrySetAnswer(
+                CoverBannerDefinition.IssueYearFieldKey,
+                year.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        if (answer.MeetingRule is { } rule)
+        {
+            wizard.TrySetAnswer(CoverBannerDefinition.MeetingRuleFieldKey, rule);
+        }
+
+        // The banner's own questions are still the banner's: a template ships with no lodge name on
+        // it, and the wizard refuses to finish without one exactly as it would for a user.
+        if (answer.LodgeName is { } lodge)
+        {
+            wizard.TrySetAnswer("lodgeName", lodge);
+        }
+
+        return wizard.TryCommit(out data, out dataVersion, out _);
+    }
+
+    /// <summary>
+    /// M75 (b): every route that starts an issue asks which issue it is, <b>before</b> the newsletter
+    /// comes up on screen.
+    ///
+    /// <para>Asking first is what makes "cancel means no new issue" true rather than nearly true:
+    /// there is nothing to undo, nothing half-open, and the route simply answers false the way M74's
+    /// contract says a backed-out command must. The wizard needs no open document — it works from
+    /// the package's own cover heading and its own metadata.</para>
+    ///
+    /// <para>It asks only when the newsletter does not already know. A shipped template, a saved
+    /// template and a carried-forward issue all arrive not knowing: the first two are reset by
+    /// <c>NewsletterTemplate.ClearIssueDate</c>, and the third by <c>CarryForward.BumpIssueDate</c>,
+    /// which pre-fills next month as a suggestion and no longer counts it as an answer.</para>
+    /// </summary>
+    private async Task<bool> AskWhichIssueBeforeStartingAsync(TboardPackage package)
+    {
+        if (package.Document.Metadata.HasIssueDate)
+        {
+            return true;
+        }
+
+        // No cover heading means nowhere to ask — a user template somebody stripped one out of. The
+        // newsletter still opens: the "what's next" card leads with the question and every command
+        // that needs the date refuses with a reason, which is a better answer than a dead end.
+        if (FindCoverHeading(package.Document) is not { } cover
+            || !_widgetProvider.Registry.TryGet(CoverBannerTypeId, out IWidgetDefinition? definition))
+        {
+            return true;
+        }
+
+        WizardSession wizard = WizardSession.Create(
+            definition,
+            cover.Data,
+            cover.DataVersion,
+            WidgetController.SeedFrom(package.Document));
+
+        System.Text.Json.JsonElement data;
+        int dataVersion;
+        if (AnswerTheIssueWizardForTest is { } canned)
+        {
+            if (!TryAnswerTheIssueWizard(wizard, canned, out data, out dataVersion))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if (CancelTheWizardForTest)
+            {
+                return false;
+            }
+
+            var window = new WizardWindow(wizard, PeopleForWizards(), null);
+            await window.ShowDialog(this);
+            if (!window.Confirmed)
+            {
+                return false;
+            }
+
+            data = window.Data;
+            dataVersion = window.DataVersion;
+        }
+
+        if (IssueAnswers(wizard) is not { } answers)
+        {
+            return false;
+        }
+
+        cover.Data = WithTheMeetingDateFilledIn(wizard, data);
+        cover.DataVersion = dataVersion;
+        package.Document.Metadata.IssueMonth = answers.Month;
+        package.Document.Metadata.IssueYear = answers.Year;
+        package.Document.Metadata.IssueDateChosen = true;
+        if (TypedMeetingRule(wizard) is { } rule)
+        {
+            package.Document.Metadata.MeetingRule = rule;
+        }
+
+        return true;
+    }
+
+    /// <summary>The cover heading block of a package that is not open yet.</summary>
+    private static Core.Model.WidgetBlock? FindCoverHeading(Core.Model.Document document)
+    {
+        foreach (Core.Model.Page page in document.Pages)
+        {
+            foreach (Core.Model.Block block in page.Blocks)
+            {
+                if (block is Core.Model.WidgetBlock { WidgetType: CoverBannerTypeId } cover)
+                {
+                    return cover;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>What is said when the question goes unanswered and so no newsletter is started.</summary>
+    private void SayNoIssueWasStarted() => Announce(
+        "No newsletter was started, because TrestleBoard was not told which issue it would be. "
+        + "Nothing has changed. Try again whenever you are ready.");
 
     /// <summary>
     /// The names a wizard may offer (M13). Handed to the window rather than reached for by it, which

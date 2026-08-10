@@ -41,6 +41,10 @@ public sealed class ReachabilityTests
         { "the PDF has not been made", Fresh() with { ExportedPdfThisSession = false } },
         { "an article is still unwritten", Fresh() with { HasUnwrittenArticle = true } },
         { "the address book is empty", Fresh() with { RosterEmptyButNeeded = true } },
+
+        // M75: the state a newsletter started from a template is in. The card leads with "Say which
+        // issue this is", and gate 24's whole point is that the button it offers can actually run.
+        { "nobody has said which issue this is", Fresh() with { IssueDateChosen = false } },
     };
 
     /// <summary>
@@ -118,6 +122,7 @@ public sealed class ReachabilityTests
             Fresh() with { HasOversetText = true },
             Fresh() with { HasUnwrittenArticle = true },
             Fresh() with { RosterEmptyButNeeded = true },
+            Fresh() with { IssueDateChosen = false },
         ];
 
         int actionable = states
@@ -152,5 +157,10 @@ public sealed class ReachabilityTests
         PageCount = 1,
         Selection = SelectionKind.None,
         IsEditingText = false,
+
+        // M75: told which issue it is, and with a cover heading to be asked on. The unanswered
+        // state is a situation of its own in the table above, not the baseline for eight others.
+        IssueDateChosen = true,
+        HasCoverHeading = true,
     };
 }

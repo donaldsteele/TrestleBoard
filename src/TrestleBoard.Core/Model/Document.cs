@@ -11,6 +11,35 @@ public sealed class DocumentMetadata
 
     public int IssueYear { get; set; } = 2000;
 
+    /// <summary>
+    /// M75: has a person actually said which issue this is?
+    ///
+    /// <para><b>Why a nullable bool and not a nullable month.</b> The obvious fix for "January 2000
+    /// means nobody has said" is to make <see cref="IssueMonth"/> an <c>int?</c>. That was rejected
+    /// at <c>NewsletterTemplate.cs</c>: it is a format change reaching every widget seed, every
+    /// projection and every snapshot, for the sake of a state only a template is ever in. This flag
+    /// is additive and nothing but the catalog, the start paths and the cover wizard ever reads
+    /// it.</para>
+    ///
+    /// <para><b>Three states, on purpose.</b> <c>true</c> and <c>false</c> are answers this build
+    /// wrote down. <c>null</c> is a file written before M75, which has no flag in it at all — and
+    /// those are read through <see cref="HasIssueDate"/>'s fallback rather than being assumed
+    /// unanswered, because a real July 2026 issue saved in July 2026 has a perfectly good issue date
+    /// and must not be interrogated about it on open.</para>
+    /// </summary>
+    public bool? IssueDateChosen { get; set; }
+
+    /// <summary>
+    /// M75: whether this newsletter knows which issue it is.
+    ///
+    /// <para>For a file with no flag the answer falls back to the model's own defaults: month 1 of
+    /// year 2000 is what <c>new DocumentMetadata()</c> produces and what
+    /// <c>NewsletterTemplate.ClearIssueDate</c> writes, and the first release of TrestleBoard was
+    /// 2026 — so no real newsletter is a genuine January 2000 issue.</para>
+    /// </summary>
+    [JsonIgnore]
+    public bool HasIssueDate => IssueDateChosen ?? !(IssueMonth == 1 && IssueYear == 2000);
+
     public string Title { get; set; } = "";
 
     /// <summary>Recurrence rule for the stated communication, e.g. "1st Tuesday" (drives M9 date bumping).</summary>
@@ -18,6 +47,25 @@ public sealed class DocumentMetadata
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtraProperties { get; set; }
+
+    /// <summary>
+    /// A field-for-field copy (M75).
+    ///
+    /// <para><c>SetMetadataCommand</c> replaces the whole object, so a caller changing one thing has
+    /// to carry the rest across — and a hand-written copy at the call site is a property waiting to
+    /// be dropped the next time one is added. It lives here, beside the properties, so it fails to
+    /// compile rather than failing quietly.</para>
+    /// </summary>
+    public DocumentMetadata Clone() => new()
+    {
+        LodgeName = LodgeName,
+        IssueMonth = IssueMonth,
+        IssueYear = IssueYear,
+        IssueDateChosen = IssueDateChosen,
+        Title = Title,
+        MeetingRule = MeetingRule,
+        ExtraProperties = ExtraProperties is null ? null : new Dictionary<string, JsonElement>(ExtraProperties),
+    };
 }
 
 /// <summary>

@@ -32,7 +32,27 @@ public static class WhatsNext
             return steps;
         }
 
-        if (context.BirthdayListIsStale)
+        // M75 (c) — FIRST, and it leads the card while it is unanswered. A newsletter that does not
+        // know which issue it is names its PDF " 2000-01.pdf", puts "January 2000" in the mail
+        // subject to the whole lodge, and draws its birthday list from January. Nothing else on
+        // this card is worth doing before this.
+        //
+        // This is also why there is no modal on open: the answer is asked for where the user is
+        // already looking, not in a window standing between them and a newsletter they opened only
+        // to read.
+        if (!context.IssueDateChosen)
+        {
+            steps.Add(new NextStep(
+                "Say which issue this is",
+                "TrestleBoard does not know which month and year this newsletter is for. It names "
+                + "the PDF, it names the email, and the birthday list is worked out from it.",
+                Actions.ActionId.SetIssueDate));
+        }
+
+        // M75: not while the issue date is unanswered. The staleness flag is computed against
+        // January in that state, so it is not a fact yet — and gate 24 forbids the card offering a
+        // button that can only refuse, which this one would.
+        if (context.BirthdayListIsStale && context.IssueDateChosen)
         {
             steps.Add(new NextStep(
                 "Update the birthday list",
@@ -95,7 +115,9 @@ public static class WhatsNext
                 Actions.ActionId.AutoFlow));
         }
 
-        if (!context.ExportedPdfThisSession)
+        // M75: same rule. "Make the PDF" is refused until the issue is named — the PDF is named
+        // after it — so suggesting it here would be the app declining its own advice.
+        if (!context.ExportedPdfThisSession && context.IssueDateChosen)
         {
             steps.Add(new NextStep(
                 "Make the PDF",

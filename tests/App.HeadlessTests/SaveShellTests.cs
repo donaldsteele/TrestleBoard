@@ -431,7 +431,9 @@ public sealed class SaveShellTests : IDisposable
             window.OpenIssueSample();
             Assert.False(window.HasUnsavedChangesForTest);
 
-            Assert.True(window.StartFromLastMonth());
+            // M75: carry-forward asks which issue it is now.
+            window.AnswerTheIssueWizardForTest = new MainWindow.IssueAnswerForTest(8, 2026);
+            Assert.True(window.CarryForwardToNextIssueAsync().Result);
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
             Assert.True(window.HasUnsavedChangesForTest);
