@@ -211,7 +211,10 @@ public sealed class ReviewShellTests
                     "Anything out of place?"),
             };
             var review = new ReviewWindow(
-                findings, _ => true, _ => Task.FromResult(ActionOutcome.Did), _ => { });
+                findings,
+                f => new ReviewLanding(true, f.PageNumber),
+                _ => Task.FromResult(ActionOutcome.Did),
+                _ => { });
             bool closed = false;
             review.Closed += (_, _) => closed = true;
 
@@ -238,7 +241,7 @@ public sealed class ReviewShellTests
         {
             var review = new ReviewWindow(
                 [new ReviewFinding(ReviewFindingKind.LookAtThePage, 1, null, "Page 1 — have a look", "Well?")],
-                _ => true,
+                f => new ReviewLanding(true, f.PageNumber),
                 _ => Task.FromResult(ActionOutcome.Did),
                 _ => { });
 
@@ -260,7 +263,7 @@ public sealed class ReviewShellTests
                         "Page 2 has more writing than fits", "Shall I flow the rest?",
                         Editing.Actions.ActionId.AutoFlow),
                 ],
-                _ => true,
+                f => new ReviewLanding(true, f.PageNumber),
                 _ => Task.FromResult(ActionOutcome.Did),
                 _ => { });
 
@@ -277,6 +280,75 @@ public sealed class ReviewShellTests
 
             // The remedy is offered by its own name from the catalog, never as "fix it".
             Assert.Contains(review.ButtonsForTest, b => (b.Content as string) == "Make the rest fit");
+
+            return Task.CompletedTask;
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// M73 (g): the review is a snapshot and the newsletter behind it stays editable, so the last
+    /// page can be deleted between the scan and the button. <c>GoToPage(Math.Clamp(…))</c> then
+    /// lands somewhere else and the window narrated the page number it had asked for — "You are on
+    /// page 4" with page 3 on screen. The clamp is what made the lie confident, and the next thing
+    /// this user does is look at that page and decide whether the thing described is really there.
+    /// </summary>
+    [Fact]
+    public async Task DeletingAPageDoesNotLeaveTheReviewNarratingTheOneItAskedFor()
+    {
+        await HeadlessSession.DispatchAsync(() =>
+        {
+            MainWindow window = OpenLaidOut();
+            try
+            {
+                int pages = window.PackageForTest!.Document.Pages.Count;
+                Assert.True(pages > 1, "the sample needs more than one page for this to mean anything");
+
+                // The last page of the newsletter, and a question about it — the plain
+                // "have a look at this page" screen every review ends with.
+                var lastPage = new ReviewFinding(
+                    ReviewFindingKind.LookAtThePage,
+                    PageNumber: pages,
+                    BlockId: null,
+                    $"Page {pages} — have a look",
+                    "Anything out of place?");
+
+                var review = new ReviewWindow(
+                    [lastPage],
+                    window.TakeMeToTheFindingForTest,
+                    _ => Task.FromResult(ActionOutcome.Did),
+                    _ => { });
+                try
+                {
+                    // …and then the user deletes it, on the page behind the window.
+                    window.GoToPage(pages - 1);
+                    window.RemovePage();
+                    Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                    Assert.Equal(pages - 1, window.PackageForTest.Document.Pages.Count);
+
+                    review.GoToForTest(1);
+                    InvokeClick(review.ButtonsForTest.First(
+                        b => (b.Content as string) == $"Show me page {pages}"));
+
+                    Assert.DoesNotContain(
+                        $"You are on page {pages}.",
+                        review.StatusForTest,
+                        StringComparison.Ordinal);
+                    Assert.Contains(
+                        $"page {pages - 1}", review.StatusForTest, StringComparison.Ordinal);
+                    Assert.Contains(
+                        "is not in the newsletter any more",
+                        review.StatusForTest,
+                        StringComparison.Ordinal);
+                }
+                finally
+                {
+                    review.Close();
+                }
+            }
+            finally
+            {
+                window.Close();
+            }
 
             return Task.CompletedTask;
         }, TestContext.Current.CancellationToken);

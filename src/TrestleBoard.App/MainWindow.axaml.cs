@@ -415,6 +415,11 @@ public partial class MainWindow : Window
             }
         }
 
+        // M73(g): "How do I…?" is not modal, so the answer it is showing was drawn against a caret,
+        // a selection and a newsletter that have all moved on since. This is where every other
+        // surface in the app is re-asked whether a command can run; the help answer is one of them.
+        _helpWindow?.Recheck();
+
         UpdatePageChrome();
         UpdateStatus();
     }
@@ -1236,7 +1241,7 @@ public partial class MainWindow : Window
     internal ReviewWindow? ReviewWindowForTest => _reviewWindow;
 
     /// <summary>"Take me there", so a test can press it without building the whole window.</summary>
-    internal Func<ReviewFinding, bool> TakeMeToTheFindingForTest => TakeMeToTheFinding;
+    internal Func<ReviewFinding, ReviewLanding> TakeMeToTheFindingForTest => TakeMeToTheFinding;
 
     /// <summary>
     /// Puts the offer back after a test has turned it off. The setting is shared app state — the
@@ -1575,7 +1580,7 @@ public partial class MainWindow : Window
     /// was said. <c>FrameEditorController.Select</c> takes any id it is handed, so the document has
     /// to be asked rather than the selection read back afterwards.</para>
     /// </summary>
-    private bool TakeMeToTheFinding(ReviewFinding finding)
+    private ReviewLanding TakeMeToTheFinding(ReviewFinding finding)
     {
         GoToPage(Math.Clamp(finding.PageNumber - 1, 0, Math.Max(0, (_source?.PageCount ?? 1) - 1)));
 
@@ -1597,7 +1602,10 @@ public partial class MainWindow : Window
         }
 
         RefreshActions();
-        return found;
+
+        // M73(g): the page actually landed on, read back after the clamp rather than repeated from
+        // the finding. A page can be deleted between the scan and the button.
+        return new ReviewLanding(found, _pageIndex + 1);
     }
 
     // ---- Show me last year's (PLAN.md §11 M59) -------------------------------------------------
@@ -1726,7 +1734,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        var session = ReadAloudSession.For(_package.Document);
+        // M73(g): the live session, not a copy of the document. The page stays editable behind this
+        // window — that is the whole point of it not being modal — so the walk has to be able to
+        // re-read what it is about to read out. The window disposes it when it closes.
+        ReadAloudSession session = _session is { } live
+            ? ReadAloudSession.For(live)
+            : ReadAloudSession.For(_package.Document);
         _readAloudWindow = new ReadAloudWindow(session, Speaker, ShowTheSentence, Announce);
         _readAloudWindow.Closed += (_, _) =>
         {
@@ -3143,7 +3156,7 @@ public partial class MainWindow : Window
     /// the scan said it was any more.</returns>
     private int? TakeMeToTheWord(Misspelling word)
     {
-        if (_package is null || _editor is null)
+        if (_package is null || _editor is null || _session is null)
         {
             return null;
         }
@@ -3151,6 +3164,18 @@ public partial class MainWindow : Window
         if (PageOfStory(word.StoryId) is { } page)
         {
             GoToPage(page);
+        }
+
+        // M73(g): the same occurrence question the correction asks. Picking out an identical word
+        // somewhere else in the paragraph and saying "that is it" would send the user to look at
+        // the wrong copy — and the whole point of this button is to be believed.
+        if (!_session.Document.TryGetStory(word.StoryId, out Core.Model.Story? story)
+            || word.ParagraphIndex >= story.Paragraphs.Count
+            || !SpellCheckScan.IsStillWhereItWas(
+                Core.Text.StoryNavigator.GetParagraphText(story.Paragraphs[word.ParagraphIndex]),
+                word))
+        {
+            return null;
         }
 
         if (!_editor.SelectRange(word.StoryId, word.ParagraphIndex, word.Offset, word.Word.Length))
@@ -3177,9 +3202,13 @@ public partial class MainWindow : Window
             return false;
         }
 
+        // M73(g): "the same characters at the same offset" is not the same question as "the same
+        // word". An edit that shifts the paragraph by exactly the gap between two copies of a word
+        // puts an identical token at the recorded offset, and the old guard waved it through and
+        // corrected the wrong copy. SpellCheckScan owns the answer, because the scan is what
+        // decided which copy this is.
         string text = Core.Text.StoryNavigator.GetParagraphText(story.Paragraphs[word.ParagraphIndex]);
-        if (word.Offset + word.Length > text.Length
-            || !text.AsSpan(word.Offset, word.Length).SequenceEqual(word.Word))
+        if (!SpellCheckScan.IsStillWhereItWas(text, word))
         {
             return false;
         }

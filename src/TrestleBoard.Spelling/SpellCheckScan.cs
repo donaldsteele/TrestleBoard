@@ -17,7 +17,17 @@ namespace TrestleBoard.Spelling;
 /// The sentence around it. The wizard shows this, because "chruch" means nothing on its own and
 /// everything in "the chruch on Main Street".
 /// </param>
-public sealed record Misspelling(string StoryId, int ParagraphIndex, int Offset, string Word, string Sentence)
+/// <param name="Occurrence">
+/// Which time this exact word appears in this paragraph, counting from 1 (PLAN.md §11 M73 (g)).
+///
+/// <para>Without it a word is only ever "these characters, at this offset", and the page is
+/// editable behind the spelling window. An edit that shifts a paragraph by exactly the distance
+/// between two copies of the same word leaves an identical token sitting at the recorded offset,
+/// the guard passes, and the WRONG copy is corrected and reported as a success. It is rare, and it
+/// is the only silent corruption the M73 audit found.</para>
+/// </param>
+public sealed record Misspelling(
+    string StoryId, int ParagraphIndex, int Offset, string Word, string Sentence, int Occurrence = 1)
 {
     public int Length => Word.Length;
 }
@@ -55,17 +65,58 @@ public static class SpellCheckScan
             for (int p = 0; p < story.Paragraphs.Count; p++)
             {
                 string text = StoryNavigator.GetParagraphText(story.Paragraphs[p]);
+
+                // Counted over every word in the paragraph, not only the misspelled ones, so the
+                // number means the same thing here and in IsStillWhereItWas.
+                var seen = new Dictionary<string, int>(StringComparer.Ordinal);
                 foreach ((int start, string word) in WordsIn(text))
                 {
+                    seen[word] = seen.TryGetValue(word, out int before) ? before + 1 : 1;
                     if (!checker.IsSpelledRight(word))
                     {
-                        found.Add(new Misspelling(storyId, p, start, word, SentenceAround(text, start)));
+                        found.Add(new Misspelling(
+                            storyId, p, start, word, SentenceAround(text, start), seen[word]));
                     }
                 }
             }
         }
 
         return found;
+    }
+
+    /// <summary>
+    /// Is this word still the word the scan found — the same characters, in the same place, and
+    /// <b>the same one of them</b> (PLAN.md §11 M73 (g))?
+    ///
+    /// <para>The offset alone is not an identity. "Bro. Smyth spoke, and Bro. Smyth read the
+    /// minutes" has two "Smyth"s; insert or delete exactly the distance between them earlier in the
+    /// paragraph and the second one's recorded offset now holds the first one. Characters match,
+    /// length matches, and the correction lands on the copy the user was not looking at — and is
+    /// reported as done. Asking which occurrence it is costs one walk of the paragraph and cannot
+    /// be fooled by realignment.</para>
+    /// </summary>
+    /// <param name="paragraphText">The paragraph as it reads right now.</param>
+    /// <param name="word">What the scan recorded.</param>
+    public static bool IsStillWhereItWas(string paragraphText, Misspelling word)
+    {
+        ArgumentNullException.ThrowIfNull(paragraphText);
+        ArgumentNullException.ThrowIfNull(word);
+
+        int seen = 0;
+        foreach ((int start, string found) in WordsIn(paragraphText))
+        {
+            if (!string.Equals(found, word.Word, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (++seen == word.Occurrence)
+            {
+                return start == word.Offset;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

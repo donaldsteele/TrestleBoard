@@ -257,6 +257,34 @@ public sealed class SpellCheckerTests : IDisposable
         Assert.Empty(SpellCheckScan.Run(document, NewChecker(out _)));
     }
 
+    /// <summary>
+    /// M73 (g). A word is not identified by its offset alone — the page is editable behind the
+    /// spelling window, and offsets move. The scan numbers each word within its paragraph, and the
+    /// guard the correction uses asks for that number, so an identical token that has slid into the
+    /// recorded place cannot be mistaken for the word the user was asked about.
+    ///
+    /// <para>Companion to the shell regression test, not a before-and-after of its own: this is new
+    /// API, so there was nothing here to fail beforehand.</para>
+    /// </summary>
+    [Fact]
+    public void TheWalkNumbersRepeatedWordsSoOneCannotBeMistakenForAnother()
+    {
+        Document document = OneStory("The chruch and the chruch again.");
+
+        IReadOnlyList<Misspelling> found = SpellCheckScan.Run(document, NewChecker(out _));
+
+        Assert.Equal([1, 2], found.Select(m => m.Occurrence));
+        Assert.Equal([4, 19], found.Select(m => m.Offset));
+
+        Assert.True(SpellCheckScan.IsStillWhereItWas("The chruch and the chruch again.", found[1]));
+
+        // Fifteen characters in front of it — exactly the gap between the two — brings the FIRST
+        // "chruch" to rest on the second one's recorded offset. Same characters, wrong word.
+        const string Shifted = "Brethren, all, The chruch and the chruch again.";
+        Assert.Equal("chruch", Shifted.Substring(found[1].Offset, 6));
+        Assert.False(SpellCheckScan.IsStillWhereItWas(Shifted, found[1]));
+    }
+
     [Fact]
     public void NothingTheWalkDoesTouchesTheNewsletter()
     {

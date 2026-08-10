@@ -289,6 +289,73 @@ public sealed class HelpTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>
+    /// M73 (g), the display half of a question the window was already asking correctly at press
+    /// time. "Take me there" was settled once, in <c>ShowAnswer</c> — so the user who did exactly
+    /// what the answer told them to do ("click into some writing") watched the button stay hidden
+    /// under a reason that had stopped being true the moment they followed it.
+    ///
+    /// <para>Driven through the real shell rather than <c>HelpFixture</c>, because the whole point
+    /// is that the answer is re-asked of the live catalog when the caret moves.</para>
+    /// </summary>
+    [Fact]
+    public async Task AnAnswerCatchesUpWhenTheUserDoesWhatItToldThemToDo()
+    {
+        await HeadlessSession.DispatchAsync(async () =>
+        {
+            var window = new MainWindow();
+            window.Show();
+            window.SaveFirstAnswerForTest = MainWindow.SaveFirst.Discard;
+            window.OpenIssueSample();
+            window.Measure(new Avalonia.Size(1280, 860));
+            window.Arrange(new Avalonia.Rect(0, 0, 1280, 860));
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            try
+            {
+                window.ShowHowDoI();
+                HelpWindow help = window.HelpWindowForTest!;
+                help.TypeForTest("bold");
+                Assert.Equal(ActionId.Bold, help.ShowingForTest[0].ActionId);
+
+                // No caret yet, so the answer says why and offers nothing — M11 working correctly.
+                Assert.False(help.TakeMeThereForTest.IsVisible);
+
+                // The user does what the answer told them to: they click into some writing.
+                Assert.True(window.EditorForTest!.TryBeginAt(0, 100f, 200f));
+                window.RefreshActions();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                Assert.True(
+                    help.TakeMeThereForTest.IsVisible,
+                    "the answer went on hiding “Take me there” after the caret it asked for arrived");
+                Assert.DoesNotContain(
+                    "Click into some writing",
+                    help.WhereItIsTextForTest,
+                    StringComparison.OrdinalIgnoreCase);
+
+                // Gate 27: the button appearing is a user-visible outcome, so it is said.
+                Assert.Contains("You can do this now", help.StatusTextForTest, StringComparison.Ordinal);
+
+                // …and it goes away again, saying why, when the caret does.
+                window.EditorForTest.End();
+                window.RefreshActions();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                Assert.False(help.TakeMeThereForTest.IsVisible);
+                Assert.Contains("has gone", help.StatusTextForTest, StringComparison.Ordinal);
+
+                help.Close();
+            }
+            finally
+            {
+                window.Close();
+            }
+
+            await Task.CompletedTask;
+        }, TestContext.Current.CancellationToken);
+    }
+
     [Fact]
     public async Task EscapeClosesTheHelpWindow()
     {

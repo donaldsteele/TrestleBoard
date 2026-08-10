@@ -83,7 +83,7 @@ public sealed class ActionOutcomeTests
                         "Page 2 has more writing than fits", "Shall I flow the rest?",
                         ActionId.AutoFlow),
                 ],
-                _ => true,
+                f => new ReviewLanding(true, f.PageNumber),
                 _ => Task.FromResult(ActionOutcome.Nothing),
                 _ => { });
             review.Show();

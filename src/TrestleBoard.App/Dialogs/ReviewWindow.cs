@@ -14,6 +14,20 @@ using TrestleBoard.Editing.Review;
 namespace TrestleBoard.App.Dialogs;
 
 /// <summary>
+/// Where "Take me there" actually landed (PLAN.md §11 M73 (g)).
+/// </summary>
+/// <param name="FoundIt">
+/// False when the thing the finding is about is not in the newsletter any more.
+/// </param>
+/// <param name="PageNumber">
+/// The page the user is now looking at, counting from 1 — which is NOT always the page the finding
+/// names. The review is a snapshot and the newsletter behind it stays editable, so a page can be
+/// deleted between the scan and the button; the turn is clamped to the last page that exists, and
+/// before this the window went on to narrate the page number it had asked for.
+/// </param>
+public readonly record struct ReviewLanding(bool FoundIt, int PageNumber);
+
+/// <summary>
 /// "Look it over with me" (PLAN.md §11 M51): the review checklist, one question per screen.
 ///
 /// <para><b>Not modal</b>, for the same reason <see cref="FindWindow"/> is not: every screen here is
@@ -35,11 +49,11 @@ public sealed class ReviewWindow : Window
     private readonly IReadOnlyList<ReviewFinding> _findings;
 
     /// <summary>
-    /// Returns false when the thing the finding is about is not in the newsletter any more. The page
-    /// still turns; there is simply nothing left to point at, and M70 is that the window has to be
-    /// able to say so.
+    /// Turns to the finding and answers with what actually happened: whether the thing it is about
+    /// is still in the newsletter (M70), and which page the user is now on, which is the page asked
+    /// for only if that page still exists (M73 (g)).
     /// </summary>
-    private readonly Func<ReviewFinding, bool> _takeMeThere;
+    private readonly Func<ReviewFinding, ReviewLanding> _takeMeThere;
     private readonly Func<string, Task<ActionOutcome>> _run;
     private readonly Action<string> _say;
     private readonly TextBlock _heading;
@@ -56,7 +70,7 @@ public sealed class ReviewWindow : Window
 
     public ReviewWindow(
         IReadOnlyList<ReviewFinding> findings,
-        Func<ReviewFinding, bool> takeMeThere,
+        Func<ReviewFinding, ReviewLanding> takeMeThere,
         Func<string, Task<ActionOutcome>> run,
         Action<string> say)
     {
@@ -315,21 +329,39 @@ public sealed class ReviewWindow : Window
     /// Turns to the finding and says where the user has ended up — including, and this is the M70
     /// finding, when the thing it was going to point at has been taken out of the newsletter since
     /// the review was run. Before this the page turned, nothing was selected and nothing was said.
+    ///
+    /// <para>M73 (g): every page number in these sentences is now the page the user is actually
+    /// looking at, read back from the turn, rather than the one the finding asked for. Delete a page
+    /// with the review open and the turn is clamped to the last page that exists — so the window
+    /// said "You are on page 4" while page 3 was on screen, and the clamp is exactly what made that
+    /// confident. A wrong page number here is worse than most: the user's next move is to look at
+    /// the page and decide whether the thing being described is really there.</para>
     /// </summary>
     private bool GoAndSayWhereWeAre(ReviewFinding finding)
     {
-        if (_takeMeThere(finding))
+        ReviewLanding landing = _takeMeThere(finding);
+        bool pageMoved = landing.PageNumber != finding.PageNumber;
+
+        if (!landing.FoundIt)
         {
-            Tell(finding.BlockId is null
-                ? $"You are on page {finding.PageNumber}."
-                : $"That is it, picked out on page {finding.PageNumber}.");
-            return true;
+            Tell("That part has been taken out of the newsletter since I looked it over, so there "
+                + $"is nothing left for me to point at. You are on page {landing.PageNumber}. Press "
+                + "“That's fine, next” to carry on.");
+            return false;
         }
 
-        Tell($"That part has been taken out of the newsletter since I looked it over, so there is "
-            + $"nothing left for me to point at. You are on page {finding.PageNumber}. Press "
-            + "“That's fine, next” to carry on.");
-        return false;
+        if (pageMoved)
+        {
+            Tell($"Page {finding.PageNumber} is not in the newsletter any more — it is shorter than "
+                + $"when I looked it over. You are on page {landing.PageNumber} instead, which is as "
+                + "far as it goes. Press “That's fine, next” to carry on.");
+            return false;
+        }
+
+        Tell(finding.BlockId is null
+            ? $"You are on page {landing.PageNumber}."
+            : $"That is it, picked out on page {landing.PageNumber}.");
+        return true;
     }
 
     /// <summary>

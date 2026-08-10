@@ -45,6 +45,13 @@ public sealed class HelpWindow : Window
 
     private IReadOnlyList<HelpTopic> _showing = [];
 
+    /// <summary>
+    /// What the answer on screen is currently claiming about the command, so <see cref="Recheck"/>
+    /// can tell a real change from the hundreds of keystrokes that change nothing (M73 (g)).
+    /// </summary>
+    private bool _shownAsAvailable;
+    private string _shownReason = "";
+
     public HelpWindow(
         IReadOnlyDictionary<string, string> menuPaths,
         Func<string, ActionAvailability> ask,
@@ -204,6 +211,51 @@ public sealed class HelpWindow : Window
         Echo("A different newsletter is open now, so this answer has been checked again against it.");
     }
 
+    /// <summary>
+    /// M73(g): the newsletter, the caret or the selection has moved, so the answer on screen is
+    /// asked again whether its command can run.
+    ///
+    /// <para>M71 (b) recorded this surface clean and it was — at render time. A second later it was
+    /// not: <c>ShowAnswer</c> settled "Take me there" once, so the user who did exactly what the
+    /// answer told them to do ("click into some writing") watched the button stay hidden, under a
+    /// reason that had stopped being true the moment they followed it. The press-time re-check is a
+    /// different moment and is still there and still right; this is the display half of the same
+    /// question.</para>
+    ///
+    /// <para>It answers into this window's own live region rather than the main status bar. This
+    /// runs on every keystroke in the newsletter, and a sentence pushed into the status bar each
+    /// time the caret enters or leaves writing would drown the answer the user actually asked
+    /// for.</para>
+    /// </summary>
+    internal void Recheck()
+    {
+        if (Chosen() is not { } topic)
+        {
+            return;
+        }
+
+        ActionAvailability can = _ask(topic.ActionId);
+        if (can.IsAvailable == _shownAsAvailable
+            && string.Equals(can.Reason, _shownReason, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        bool wasAvailable = _shownAsAvailable;
+        PaintAvailability(topic, can);
+
+        if (can.IsAvailable)
+        {
+            Echo($"You can do this now, so “Take me there” is here.");
+        }
+        else
+        {
+            Echo(wasAvailable
+                ? $"“Take me there” has gone, because things have changed on the page. {can.Reason}"
+                : can.Reason);
+        }
+    }
+
     /// <summary>Runs the search and rebuilds the list. Called on every keystroke.</summary>
     private void Look()
     {
@@ -242,6 +294,8 @@ public sealed class HelpWindow : Window
             _whereItIs.Text = "";
             AutomationProperties.SetName(_whereItIs, "");
             _takeMeThere.IsVisible = false;
+            _shownAsAvailable = false;
+            _shownReason = "";
             return;
         }
 
@@ -260,8 +314,19 @@ public sealed class HelpWindow : Window
         // reader was told about — the user heard the whole answer and never learnt the command was
         // blocked. It is in the window's name now, and "where it is" is a live region in its own
         // right for the reader who is standing further down the window.
-        ActionAvailability can = _ask(topic.ActionId);
+        PaintAvailability(topic, _ask(topic.ActionId));
+    }
+
+    /// <summary>
+    /// Draws the "can I do this?" half of the answer. Split out for M73 (g) so that the one place
+    /// that decides whether "Take me there" is on screen can be run again when the answer to that
+    /// question changes, rather than only when a different answer is opened.
+    /// </summary>
+    private void PaintAvailability(HelpTopic topic, ActionAvailability can)
+    {
         _takeMeThere.IsVisible = can.IsAvailable;
+        _shownAsAvailable = can.IsAvailable;
+        _shownReason = can.Reason;
 
         _whereItIs.Text = can.IsAvailable
             ? WhereToFindIt(topic)

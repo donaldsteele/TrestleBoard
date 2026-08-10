@@ -109,8 +109,17 @@ internal sealed class ReadAloudWindow : Window
         };
 
         KeyDown += OnKeyDown;
+
+        // M73(g): the walk follows the newsletter now instead of a copy of it taken when the window
+        // opened. Editing while proofreading is what this window is FOR, so the answer could not be
+        // "throw the read-through away on the first keystroke" the way the find window throws its
+        // hit away — it had to be to re-read and to say what moved.
+        _session.Changed += OnTheNewsletterChanged;
+
         Closed += (_, _) =>
         {
+            _session.Changed -= OnTheNewsletterChanged;
+            _session.Dispose();
             _speaker.Hush();
             _show(null);
         };
@@ -157,6 +166,31 @@ internal sealed class ReadAloudWindow : Window
     internal void BackForTest() => Step(_session.Back());
 
     private void Advance() => Step(_session.Next());
+
+    /// <summary>
+    /// Somebody typed on the page behind this window. The walk has already caught up; what is left
+    /// is to draw the sentence as it now reads, move the highlight to where those characters
+    /// actually are, and say what happened to them — but NOT to speak. A voice starting up
+    /// unasked in the middle of a correction would be alarming, and the user is looking at the
+    /// words they just typed rather than waiting to be read to. "Say that again" speaks the new
+    /// wording the moment they ask for it.
+    /// </summary>
+    private void OnTheNewsletterChanged(object? sender, EventArgs e)
+    {
+        string? notice = _session.TakeChangeNotice();
+
+        // Render redraws the highlight from the sentence's new offsets and rewrites the status line,
+        // so the notice goes on afterwards — beside, not instead of, anything Render put there
+        // (the "this computer has no voice for that sentence" message is still true).
+        Render();
+        if (notice is null)
+        {
+            return;
+        }
+
+        string standing = _status.Text ?? "";
+        Tell(standing.Length > 0 ? standing + " " + notice : notice);
+    }
 
     private void Step(Sentence? sentence)
     {

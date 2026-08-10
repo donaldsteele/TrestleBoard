@@ -122,6 +122,58 @@ public sealed class SpellingShellTests
         }, TestContext.Current.CancellationToken);
     }
 
+    /// <summary>
+    /// M73 (g), and the only silent corruption the audit found. The guard asked "are the same
+    /// characters still at the recorded offset?", which is not the same question as "is this the
+    /// same word". An edit that shifts a paragraph by exactly the gap between two copies of the
+    /// same word leaves an identical token sitting at the recorded offset: the guard passed, the
+    /// wrong copy was corrected, and the window reported a success.
+    ///
+    /// <para>Rare — it needs the shift to be exactly right — and quiet, which is why it is treated
+    /// as corruption rather than as a nuisance.</para>
+    /// </summary>
+    [Fact]
+    public async Task AnIdenticalWordThatSlidIntoThePlaceIsNotCorrectedInstead()
+    {
+        await HeadlessSession.DispatchAsync(() =>
+        {
+            MainWindow window = OpenLaidOut();
+            try
+            {
+                var story = window.PackageForTest!.Document.Stories[0];
+
+                // Two copies of the same unknown word, seven characters apart.
+                window.SessionForTest!.Execute(Editing.TextReplacement.Build(
+                    story.Id, 0, 0, 0, "Chruch Chruch ", "Type"));
+
+                // The scan's own answer for the SECOND of them, offset 7, occurrence 2.
+                Misspelling second = SpellCheckScan
+                    .Run(window.PackageForTest.Document, window.Spelling.Checker)
+                    .First(m => m.Word == "Chruch" && m.Occurrence == 2);
+                Assert.Equal(7, second.Offset);
+
+                // Now exactly seven characters go in ahead of both, so the FIRST "Chruch" comes to
+                // rest on offset 7 — the recorded place, the recorded characters, the wrong word.
+                window.SessionForTest.Execute(Editing.TextReplacement.Build(
+                    story.Id, 0, 0, 0, "Brother", "Type"));
+                string before = Core.Text.StoryNavigator.GetParagraphText(story.Paragraphs[0]);
+                Assert.Equal("Chruch", before.Substring(7, 6));
+
+                Assert.False(
+                    window.ChangeTheWordForTest(second, "Church"),
+                    "the correction landed on an identical word that had slid into the recorded "
+                    + "place, and reported it as done");
+                Assert.Equal(before, Core.Text.StoryNavigator.GetParagraphText(story.Paragraphs[0]));
+            }
+            finally
+            {
+                window.Close();
+            }
+
+            return Task.CompletedTask;
+        }, TestContext.Current.CancellationToken);
+    }
+
     [Fact]
     public async Task TheUnderlinesCanBeTurnedOffAndTheAppSaysTheyNeverPrint()
     {
