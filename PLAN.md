@@ -3934,6 +3934,113 @@ recorded in `docs/M74-spec.md` — they are the current verified map of what is 
 clean result nobody wrote down is how this project got a milestone called M73. v1.3.1 is tagged only
 after CI is green on all three operating systems.
 
+### M75 — the newsletter knows which issue it is (M)
+
+**The report.** The owner set a cover date of 7 July, had a member with a 3 July birthday, and the
+birthday list would not fill in. It is not the projection: `BirthdayRosterProjection.Plan` is a pure
+function and correct. **It is that no code path in the app has ever set
+`DocumentMetadata.IssueMonth`**, so every newsletter started from a template is permanently January
+2000 and the projection filters the address book to January.
+
+`SetMetadataCommand` has existed in `Core` since M2 with **zero production callers**. There is no
+`ActionId` for newsletter details. `NewsletterTemplate.ClearIssueDate` resets the issue to the model
+default and justifies it in a comment — *"the template is about to ask the user for a date the moment
+they start an issue from it"* — and `docs/M57-spec.md:43-45` repeats the promise. **That ask was never
+built.** The comment is a promise about code that does not exist, and it has been load-bearing for
+sixty milestones.
+
+**The owner's two rulings, which fix the design:**
+
+1. *"I should be able to create a document for any month or year — it should not assume."* The app
+   asks. It never infers the issue from the system clock, and never leaves the model default standing.
+2. *"When you create a new document from template it should pop the header wizard and ask you to set
+   the date there. That should then set the metadata. When opening a document, if this is not set it
+   should ask you for that information."*
+
+Ruling 2 settles where the ask lives: **the cover/header widget wizard the user already meets**, not a
+new properties dialog. The scoping pass proposed a separate dialog; the owner's design is better,
+because a second place to set the date is a second place to forget. The wizard must also remain
+reachable afterwards so a wrong answer is fixable.
+
+**The single source of truth, and the direction.** `Metadata.IssueMonth`/`IssueYear` is *which issue
+this is* — machine-readable, driving filenames, archive lookup and projections. The cover banner's
+`meetingDateText` is *printed prose the user owns* ("July 7th", no year). **Metadata is the authority
+and the cover derives from it, one way** — the direction the codebase already chose, since
+`CarryForward.RecomputeMeetingDates` computes the banner text from `MeetingRule` + the issue date, and
+`CoverBannerDefinition` seeds the widget from metadata. Making the cover the authority would mean
+parsing English prose to learn the month, which `CoverBannerData` exists to avoid. Editing the cover
+date therefore does **not** silently redefine the issue: when the typed date names a month that
+disagrees, the app asks rather than assuming, and the review checklist already has the
+`DateFromAnotherMonth` shape to carry it.
+
+#### Deliverables
+
+**(a) The header wizard asks, and writes metadata.** Issue month and year become part of the cover
+wizard, written through `SetMetadataCommand` — its first production use — composed with the widget
+edit so **one Ctrl+Z takes back the whole thing**. Month as a dropdown of full month names, year as a
+plain box; **not a date picker**, which asks for a day the issue does not have, defaults to today (the
+assumption ruling 1 forbids), and is the hardest control in the toolkit for a keyboard or a screen
+reader. Pre-fill is allowed; silent acceptance is not. Per M11 this needs a new `ActionId`, a catalog
+entry with an availability rule, a runner handler, an icon decision and a `KeyboardMap` row if it
+takes a shortcut — the tests fail otherwise.
+
+**(b) Every start-an-issue path pops it.** Shipped template and user template, from both the start
+screen and `NewFromTemplateAsync`. **Start from last month pre-fills the bumped month as the answer
+and still asks** — today `CarryForward.BumpIssueDate` increments silently, which is the same
+assumption in a quieter form. Cancel means no new issue, matching M74's `false` contract.
+
+**(c) Opening a document with no issue date asks — once, and not on open.** Add
+`DocumentMetadata.IssueDateChosen`: additive, JSON-optional, and no widget, projection or snapshot has
+to learn about it, which is what killed the `int?` idea recorded at `NewsletterTemplate.cs:67-71`.
+Files written before this fix are read as unchosen when `IssueYear == 2000 && IssueMonth == 1`; the
+first release was 2026, so no real newsletter is a genuine January 2000 issue. **Do not modal on
+open.** Ask at the point of need, through the M11 surface: the commands that need a real issue date
+(Export PDF, draft copy, Save as, Email it, What we said last year, Look it over, Bring in birthdays,
+Start next month's) are `Blocked` with a plain-English reason and a `RemedyId` pointing at the new
+action, and a "what's next" row leads the card while it is unanswered.
+
+**(d) The identical hole in `MeetingRule`, found by the scoping pass.** `Metadata.MeetingRule` is also
+only ever set by the two samples, while the cover banner has its own editable `meetingRule` that never
+flows back. So `CarryForward.RecomputeMeetingDates` always fails to parse and takes the
+`ClearMeetingDates` branch: **for any newsletter not descended from a sample, starting next month's
+issue blanks the cover date instead of recomputing it.** Same write-back gap, same fix, same change.
+
+**(e) The reporting defects — five, and each is the family M70–M74 has been closing.** With a July
+roster and a January document the app today: greys the sync with *"Nobody in your address book has a
+birthday in this issue's month"*, a confident falsehood that never names the month; cannot notice
+staleness, because `IsStale` reads the same wrong month **and** returns false immediately for a
+freshly inserted list whose `Source` is `Manual`; announces *"There is no birthday list on this
+newsletter yet"* with a birthday list on page three; reports *"The birthday list already matches your
+address book"* having matched nobody, **and stamps `SourceMonth = 1` so the list is recorded as a
+January list and stays quiet forever**; and says nothing at all on the Insert path, where
+`OfferBirthdaysFromRosterAsync` returns null and the plain wizard opens. **Every refusal must name the
+month.** Naming it would have made this self-diagnosing on first contact instead of a two-agent trace.
+
+**(f) An unreadable address book must stop reading as an empty one.** `RosterStore.Load` already
+separates `NoFileYet` / `Loaded` / `CouldNotBeRead` and it is tested — but that state never reaches
+`ActionContext`, so `EvaluateBirthdaySync` cannot tell "nobody has a July birthday" from "your address
+book did not load". Carry `RosterLoadState` through and give it a third branch. This is M24's shape on
+the M11 surface, and fixing the month alone leaves it.
+
+**(g) The blast radius, since `IssueMonth` has eleven other readers.** At 1/2000 with a template's
+empty `Title`: the suggested PDF name is `" 2000-01.pdf"` with a leading space; the PDF's own metadata
+carries `"Trestle board 2000-01"` into every distributed copy; Save-as offers `" 2000-01.tboard"`; the
+mail subject to the whole lodge is `"Trestle Board — January 2000"`; "what we said last year" searches
+January 1999 and tells the user their archive folder has nothing, *after* making them choose it; and
+the review checklist flags any mention of December while never checking the issue's real month. Fixing
+(a)–(c) fixes all of these, but they belong in the acceptance so they are actually looked at.
+
+**Acceptance.** The owner's exact sequence is the test: start from a shipped template, answer July
+2026, have a member with a 3 July birthday, and the list fills in. **The test gap that let this ship is
+closed explicitly** — every `BirthdayRosterProjectionTests` case passes the month in as a literal
+`int` and never mentions `Document`, and every headless birthday test loads `OpenIssueSample()`, which
+is hard-coded to July. **No test has ever started from a template**, which is the one path a real user
+takes. Add: the end-to-end template test above; an **invariant over every start path** that a route
+producing an editable newsletter leaves `IssueDateChosen` true — the test whose absence let this ship;
+the blocked-with-a-remedy cases; carry-forward pre-filling and cancelling cleanly; a
+`SetMetadataCommand` undo round-trip; and `CouldNotBeRead` producing a different reason than empty.
+Chrome, catalog, Core metadata and the cover widget only; no snapshot baseline moves.
+
 ---
 
 ## 12. Verification (end-to-end)
@@ -4083,6 +4190,11 @@ after CI is green on all three operating systems.
     returned `void`. It is a ratchet on the return values M73 (e) and (f) created, it says so in its
     own doc comment, and its ability to fail is demonstrated against the defect written out as
     source.
+
+28. **Issue-date gate (M75):** no route that produces an editable newsletter can leave the issue
+    date unchosen, and every command that depends on it refuses with a reason naming the month rather
+    than blaming the address book. Asserted over every start path, because the absence of exactly that
+    invariant is what let a newsletter be permanently January 2000 for sixty milestones.
 
 ## 13. Remaining open items (status as at 2026-07-27)
 
