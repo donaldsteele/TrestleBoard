@@ -335,6 +335,52 @@ public sealed class EmblemTests
             .IsAvailable);
     }
 
+    /// <summary>
+    /// M74 (f): the two picture flags the shell computes were computed for a photograph only, so a
+    /// drawing was invisible to both.
+    ///
+    /// <para>The visible half is the caption. Write a line under an emblem, choose it again, and the
+    /// menu offered "Write a caption…" over the caption already printed under it — the app not
+    /// knowing about words it had just put on the page itself. <c>SelectedPictureHasCaption</c> was
+    /// tested against <c>SelectionKind.Photo</c>, and M72 had made emblems a second kind of picture
+    /// without anyone revisiting the line.</para>
+    /// </summary>
+    [Fact]
+    public async Task ADrawingWithACaptionIsOfferedTheChange()
+    {
+        await HeadlessSession.DispatchAsync(
+            async () =>
+            {
+                var window = new MainWindow();
+                window.OpenSample();
+
+                window.EmblemAnswerForTest = "square-and-compasses";
+                await window.InsertEmblemAsync();
+
+                VectorBlock drawing = Drawings(window).Single();
+                window.FramesForTest!.Select(drawing.Id);
+
+                // With no caption yet, the offer is to write one.
+                Assert.False(window.CurrentActionContext.SelectedPictureHasCaption);
+                Assert.Equal(
+                    "Write a caption…",
+                    ActionCatalog.TitleFor(ActionId.CaptionPicture, window.CurrentActionContext));
+
+                Assert.True(window.PhotosForTest!.SetCaption(
+                    drawing.Id, "The square and compasses, as shown on the lodge banner."));
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                // And with one, the offer is to change it — the same sentence a photograph gets.
+                Assert.True(window.CurrentActionContext.SelectedPictureHasCaption);
+                Assert.Equal(
+                    "Change the caption…",
+                    ActionCatalog.TitleFor(ActionId.CaptionPicture, window.CurrentActionContext));
+
+                window.Close();
+            },
+            TestContext.Current.CancellationToken);
+    }
+
     // ---- plumbing --------------------------------------------------------------------------------------
 
     private static int PicturesOn(MainWindow window) =>

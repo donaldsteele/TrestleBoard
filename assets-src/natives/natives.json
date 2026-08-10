@@ -1,0 +1,89 @@
+{
+  "$comment": [
+    "Every native library that ships inside TrestleBoard and did not come from Microsoft, on the",
+    "assets-src/fonts/fonts.json precedent (PLAN.md §11 M14) and the assets-src/dictionaries one",
+    "after it. PLAN.md §12 gate 22 names 'the PDFium native library' by name, and until M74 (f) it",
+    "was the one asset in the app with no entry anywhere: no provenance, no hash, no licence a user",
+    "could read.",
+    "",
+    "What is checked, and where: PdfiumLicenceTests (tests/PdfPages.Tests) recomputes the SHA-256 of",
+    "the licence file out of this manifest, asserts the same text is embedded in the assembly, and",
+    "asserts that every native binary this manifest names is one Docnet.Core actually ships. The",
+    "binaries themselves are NOT in this repository — they arrive from the NuGet package named",
+    "below, which is why their hashes are recorded here rather than recomputed from the tree."
+  ],
+  "sources": {
+    "docnet-core": {
+      "package": "Docnet.Core",
+      "version": "2.6.0",
+      "repo": "https://github.com/GowenGit/docnet",
+      "commit": "03191d3a3eb27efa8b542bd637489b388d1ba316",
+      "packageLicence": "MIT",
+      "note": [
+        "The managed wrapper is MIT. The native library inside it is PDFium, which is not — that is",
+        "what this manifest is for. Version 2.6.0 is pinned in Directory.Packages.props."
+      ]
+    }
+  },
+  "natives": [
+    {
+      "id": "pdfium",
+      "name": "PDFium",
+      "upstream": "https://pdfium.googlesource.com/pdfium/",
+      "shippedBy": "docnet-core",
+      "usedFor": [
+        "Turning one page of somebody else's PDF into a picture, at import time only",
+        "(PLAN.md §11 M67, src/TrestleBoard.PdfPages/PdfPageRasterizer.cs). Nothing downstream of",
+        "the import ever sees a PDF, so PDFium is never on the path that draws a page or writes one."
+      ],
+      "licence": "BSD-3-Clause (PDFium itself) plus the terms of its bundled third-party code",
+      "licenceFile": "pdfium/LICENSE-pdfium.txt",
+      "licenceNote": [
+        "Not a single named licence, for the same reason the spelling dictionary is not: PDFium",
+        "statically links libpng, LibTIFF, agg23, FreeType, lcms, OpenJPEG, zlib, libjpeg-turbo, the",
+        "IJG notices and ICU, and each of those carries its own notice. Eleven notices in one file,",
+        "which is why the whole file ships rather than an SPDX id. BSD-3-Clause and Apache-2.0 both",
+        "require the notice to accompany a binary distribution, so this is a condition of shipping,",
+        "not documentation.",
+        "",
+        "Why it is vendored rather than taken from the package at build time. Docnet.Core does put",
+        "a file called LICENSE in runtimes/<rid>/native/, and NuGet does copy it: a",
+        "`dotnet publish -r win-x64 --self-contained` lands it in the publish root as a bare file",
+        "named `LICENSE`, beside TrestleBoard.App.exe, with nothing on it or near it saying which of",
+        "the twenty-odd packages it belongs to — and any other package shipping a native `LICENSE`",
+        "would overwrite it, last one wins. A notice nobody can attribute and nobody is shown does",
+        "not discharge an attribution clause. Embedded in the assembly and surfaced under",
+        "Help → \"Fonts and licences\", it does."
+      ],
+      "licenceFileProvenance": {
+        "takenFrom": "runtimes/win-x64/native/LICENSE in Docnet.Core 2.6.0",
+        "upstreamSha256": "9bc7065ccc88b58a798564d82942cba32875b7165a48ec348ea21d26735c2bf7",
+        "alsoIdenticalIn": ["linux", "linux-arm", "linux-arm64", "win-x86"],
+        "changesMade": [
+          "One byte. The upstream file is otherwise UTF-8 but carries a single Latin-1 0xA9 (a",
+          "copyright sign) at offset 18556, which makes the whole file invalid UTF-8 and turns that",
+          "one character into a replacement glyph on screen. It is written as U+00A9 in UTF-8 here.",
+          "Nothing else differs — no reflowing, no reordering, no omissions.",
+          "",
+          "The osx-x64 and osx-arm64 copies carry the same eleven notices with every line prefixed",
+          "'// '. Same terms, same text; the un-prefixed copy is the one a person can read."
+        ]
+      },
+      "files": [
+        {
+          "name": "pdfium/LICENSE-pdfium.txt",
+          "sha256": "3ff88eb75b5322437681f7bb02de1eff0e3314bf5930b566b96a0ae9f6b6f928"
+        }
+      ],
+      "binaries": [
+        { "rid": "win-x64", "name": "pdfium.dll", "sha256": "bca96944d731dd72877116d3472083c847fe307fc58ca39bce16cbe998c478f1" },
+        { "rid": "win-x86", "name": "pdfium.dll", "sha256": "b7851fd6581b8bfe40c485a7c7e2f08fca245a7c2d1d5dcf051807488d346f09" },
+        { "rid": "linux", "name": "pdfium.so", "sha256": "08f5604929b1517dd5b083c3db4ea3d58f9c26b98c0703e8e38bbd475079ea5e" },
+        { "rid": "linux-arm", "name": "pdfium.so", "sha256": "87f8d6c99f636b646e5347ff0c2352d5aef6dee0cec4ce0722dba251c6e9810e" },
+        { "rid": "linux-arm64", "name": "pdfium.so", "sha256": "c32113525d2144d0b5c33b398dfad4defa3aa9ea6f79bd7667eea1c4436133d6" },
+        { "rid": "osx-x64", "name": "pdfium.dylib", "sha256": "944dc06dc7d8e4c492d3fbeaad18d97c2452aaf5268b7d882d4f71a8bc95b030" },
+        { "rid": "osx-arm64", "name": "pdfium.dylib", "sha256": "750114aff75479fb960a9971969ea0439fcce3e54244c24bc9164d88ad36c4db" }
+      ]
+    }
+  ]
+}

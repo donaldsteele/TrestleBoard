@@ -285,7 +285,12 @@ public sealed class SpellingWindow : Window
             // again next month, which is the sort of small betrayal that stops people trusting a
             // program.
             _checker.NeverAskAgain(word.Word);
-            _say(_checker.CouldNotBeSaved
+
+            // M74 (f): Tell, not _say. The warning below is the whole point of M73 (e) and it was
+            // going only to the main window's status bar — which is behind this window, at the far
+            // bottom of the screen, and which this window's own M52 comment (see Tell) says users
+            // do not see. Its two siblings on this screen have said it in both places since M52.
+            Tell(_checker.CouldNotBeSaved
                 ? $"TrestleBoard will leave “{word.Word}” alone for now, but it could not "
                   + "add it to your own list of words, so it will ask about it again next time."
                 : $"“{word.Word}” has been added to your own list of words.");

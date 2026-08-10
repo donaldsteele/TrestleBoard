@@ -7,7 +7,11 @@ namespace TrestleBoard.Rendering;
 /// SVG path data — the one piece of SVG this app understands, parsed by Skia rather than by a
 /// document reader.
 /// </param>
-/// <param name="StrokeWidth">Zero to fill the path; otherwise the pen width, round caps and joins.</param>
+/// <param name="StrokeWidth">
+/// Zero to fill the path; a positive number is the pen width, with round caps and joins. A negative
+/// number is neither, so the part is not drawn at all (M74 (f)) — the same file tolerance an
+/// unreadable path gets, and for the same reason.
+/// </param>
 public readonly record struct VectorPathSpec(string PathData, double StrokeWidth);
 
 /// <summary>
@@ -66,6 +70,17 @@ public static class VectorArtRenderer
         {
             using SKPath? path = SKPath.ParseSvgPathData(part.PathData);
             if (path is null)
+            {
+                continue;
+            }
+
+            // M74 (f): a negative pen width draws nothing, and that is the whole of this branch.
+            // The rule is "zero fills, a positive number is the pen"; a negative number is neither,
+            // and it used to fall through to Fill — so a damaged or hand-edited document turned a
+            // fine line into a solid blob covering everything the outline enclosed. On the same
+            // reasoning as the unreadable-path tolerance above: a part that does not appear is a
+            // far smaller failure than a part that appears as a black lump over somebody's page.
+            if (part.StrokeWidth < 0)
             {
                 continue;
             }

@@ -427,7 +427,13 @@ public static class ActionCatalog
 
         return actionId switch
         {
-            ActionId.ReplacePicture when !context.SelectedPictureIsEmpty => "Swap this picture…",
+            // M74 (f): "swap" is a photograph's word, and this said it about anything that was not
+            // an empty picture frame — a drawing, a box of writing, a blank selection. The greyed
+            // menu row over a selected emblem read "Swap this picture…" of something the very next
+            // method refuses to swap by name. It has to be a photograph before it can be swapped.
+            ActionId.ReplacePicture
+                when context.Selection == SelectionKind.Photo && !context.SelectedPictureIsEmpty =>
+                "Swap this picture…",
             ActionId.CaptionPicture when context.SelectedPictureHasCaption => "Change the caption…",
 
             // M24: a newsletter that has never been saved has no file to save INTO, so this one

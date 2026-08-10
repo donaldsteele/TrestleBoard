@@ -83,8 +83,14 @@ public static class ReviewChecklist
                     case TextBlock text:
                         AddTextFindings(findings, document, text, pageNumber, overset, storiesReported, previousMonth);
                         break;
-                    case ImageFrame picture:
-                        AddPictureFindings(findings, picture, pageNumber, emptyPictures);
+                    // M74 (f): reached through the interface, not through ImageFrame. This was
+                    // `case ImageFrame`, written when a photograph was the only kind of picture
+                    // there was — so from M72 a drawing whose description had been blanked was
+                    // never once flagged, on the one screen in the app whose whole job is to find
+                    // exactly that. Both frame types carry a caption and a description because both
+                    // implement ICaptionedBlock, and that is what the review asks about.
+                    case ICaptionedBlock picture:
+                        AddPictureFindings(findings, block, picture, pageNumber, emptyPictures);
                         break;
                 }
             }
@@ -162,18 +168,24 @@ public static class ReviewChecklist
         }
     }
 
+    /// <param name="block">
+    /// The frame itself, for its id. <see cref="ICaptionedBlock"/> carries the caption and the
+    /// description but not the identity — a photograph and a drawing are the same thing to this
+    /// method and different things to the rest of the document.
+    /// </param>
     private static void AddPictureFindings(
         List<ReviewFinding> findings,
-        ImageFrame picture,
+        Block block,
+        ICaptionedBlock picture,
         int pageNumber,
         HashSet<string> emptyPictures)
     {
-        if (emptyPictures.Contains(picture.Id))
+        if (emptyPictures.Contains(block.Id))
         {
             findings.Add(new ReviewFinding(
                 ReviewFindingKind.EmptyPictureFrame,
                 pageNumber,
-                picture.Id,
+                block.Id,
                 $"Page {pageNumber} has a picture box with no picture in it",
                 "This box will print as an empty space. Would you like to choose a picture for it?",
                 ActionId.ReplacePicture));
@@ -188,7 +200,7 @@ public static class ReviewChecklist
             findings.Add(new ReviewFinding(
                 ReviewFindingKind.PictureWithoutCaption,
                 pageNumber,
-                picture.Id,
+                block.Id,
                 $"The picture on page {pageNumber} has nothing printed under it",
                 "A caption is the line of words printed under a picture, telling the reader who or "
                 + "what it shows. This picture has none. Would you like to write one?",
@@ -200,7 +212,7 @@ public static class ReviewChecklist
             findings.Add(new ReviewFinding(
                 ReviewFindingKind.PictureWithoutDescription,
                 pageNumber,
-                picture.Id,
+                block.Id,
                 $"The picture on page {pageNumber} has no description",
                 "A description is not printed. It is what a reader who cannot see the picture is "
                 + "told instead — a brother reading the newsletter with a screen reader, for "

@@ -226,6 +226,37 @@ public sealed class ReviewChecklistTests
                 or ReviewFindingKind.PictureWithoutDescription);
     }
 
+    /// <summary>
+    /// M74 (f): a drawing is a picture as far as this list is concerned.
+    ///
+    /// <para>The walk reached picture findings through <c>case ImageFrame</c>, written when a
+    /// photograph was the only kind of picture there was. From M72 an emblem is a
+    /// <see cref="VectorBlock"/> — it carries a caption and a description like any other frame, and
+    /// the review never once looked at either. A committee member who blanked an emblem's
+    /// description, or never gave it one, was told the newsletter was ready; the one screen in the
+    /// app whose whole job is to find a picture nobody can see could not see this one.</para>
+    /// </summary>
+    [Fact]
+    public void ADrawingWithNoDescriptionIsAskedAboutJustAsAPhotographIs()
+    {
+        Document document = Clean();
+        document.Pages[0].Blocks.Add(new VectorBlock
+        {
+            Id = "drawing-1",
+            ViewBoxWidth = 100,
+            ViewBoxHeight = 100,
+            Parts = [new VectorPart { PathData = "M10,10 L90,90", StrokeWidth = 2 }],
+            Caption = "The square and compasses.",
+            AltText = "   ",
+        });
+
+        ReviewFinding finding = Assert.Single(
+            ReviewChecklist.Build(document),
+            f => f.Kind == ReviewFindingKind.PictureWithoutDescription);
+
+        Assert.Equal("drawing-1", finding.BlockId);
+    }
+
     // ---- shape of the whole list --------------------------------------------------------------
 
     [Fact]

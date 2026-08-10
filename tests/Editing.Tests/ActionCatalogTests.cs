@@ -774,4 +774,26 @@ public sealed class ActionCatalogTests
     [InlineData(ActionId.DeleteFrame)]
     public void ADrawingIsAnOrdinaryThingOnThePage(string actionId) =>
         Assert.True(ActionCatalog.Evaluate(actionId, Drawing()).IsAvailable);
+    /// <summary>
+    /// M74 (f): "Swap this picture…" is a photograph's sentence, and the menu said it about a
+    /// drawing.
+    ///
+    /// <para>The rule was "anything that is not an empty picture frame is a swap", which is true of
+    /// a photograph and of nothing else. A selected emblem got the greyed row "Swap this picture…"
+    /// — over a command that <see cref="ActionCatalog.Evaluate"/> refuses on a drawing, by name,
+    /// two hundred lines further down. So did a selected box of writing, and so did a page with
+    /// nothing selected at all.</para>
+    /// </summary>
+    [Fact]
+    public void OnlyAPhotographIsOfferedAsSomethingToSwap()
+    {
+        Assert.Equal("Swap this picture…", ActionCatalog.TitleFor(ActionId.ReplacePicture, Photo()));
+
+        foreach (ActionContext notAPhotograph in new[] { Drawing(), TextFrame(), Document() })
+        {
+            Assert.Equal(
+                "Put a picture here…",
+                ActionCatalog.TitleFor(ActionId.ReplacePicture, notAPhotograph));
+        }
+    }
 }

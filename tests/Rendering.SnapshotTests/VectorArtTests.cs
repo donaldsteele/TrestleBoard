@@ -67,6 +67,43 @@ public sealed class VectorArtTests
     }
 
     /// <summary>
+    /// M74 (f): a negative pen width draws nothing — and, in particular, does not fill.
+    ///
+    /// <para>The rule this renderer publishes is "zero fills, a positive number is the pen". A
+    /// negative number is neither, and it used to fall to the <c>else</c> and paint a solid shape:
+    /// a damaged or hand-edited document turned an outline into a black lump covering everything
+    /// the outline enclosed — the loudest possible failure on somebody's cover page, from the
+    /// quietest possible corruption. The same file tolerance the unreadable path gets above, for
+    /// the same reason: the parts either side of it still draw.</para>
+    /// </summary>
+    [Fact]
+    public void ANegativePenWidthDrawsNothingRatherThanASolidShape()
+    {
+        // The control: the same outline at width zero is a filled square, so the fixture is one
+        // that would very obviously put ink down if the negative width fell through to Fill.
+        using SKBitmap filled = DrawToBitmap(
+            [new("M10,10 L90,10 L90,90 L10,90 Z", 0)], 100, 100, 100, 100);
+        Assert.True(HasInk(filled), "the fixture does not draw anything even at width zero");
+
+        using SKBitmap drawn = DrawToBitmap(
+            [new("M10,10 L90,10 L90,90 L10,90 Z", -2)], 100, 100, 100, 100);
+
+        Assert.False(HasInk(drawn), "a negative pen width painted something");
+
+        // And it is the one part that is dropped, not the drawing: a good part beside it still draws.
+        using SKBitmap beside = DrawToBitmap(
+            [
+                new("M10,10 L90,10 L90,90 L10,90 Z", -2),
+                new("M20,20 L80,20 L80,80 L20,80 Z", 0),
+            ],
+            100,
+            100,
+            100,
+            100);
+        Assert.True(HasInk(beside), "the good part beside it should still have been drawn");
+    }
+
+    /// <summary>
     /// A drawing in a frame far wider than itself is scaled to fit and centred: it keeps its own
     /// shape, and the extra width is left empty. This is the claim M65 made with
     /// <c>ImageFit.Contain</c> and M72 has to make about geometry instead — an emblem is a whole

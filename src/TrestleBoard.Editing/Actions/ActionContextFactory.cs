@@ -104,6 +104,10 @@ public static class ActionContextFactory
 
         Block? block = blockId is not null && session is not null ? TryFindBlock(session, blockId) : null;
 
+        // "A picture is selected", in the sense the caption and swap commands mean it: a photograph
+        // or a drawing (M74 (f)).
+        bool isPicture = selection is SelectionKind.Photo or SelectionKind.Drawing;
+
         // "Is this about a frame of writing?" is true both when a text frame is selected as an
         // object and when the caret is inside one — the flow actions apply to both.
         string? textBlockId = editing ? editor!.BlockId : blockId;
@@ -135,10 +139,14 @@ public static class ActionContextFactory
             SelectionIsOverset = frames?.IsSelectionOverset == true,
             CanAutoFlow = pages?.CanAutoFlow(textBlockId) == true,
 
-            SelectedPictureIsEmpty = selection == SelectionKind.Photo && photos?.IsPlaceholder(blockId) == true,
+            // M74 (f): a drawing is a picture too. These two were written against Photo alone, so
+            // from M72 a captioned emblem was offered "Write a caption…" over the caption it
+            // already had, and the greyed swap item read "Swap this picture…" of something that is
+            // not swappable. The crop flags below stay on Photo on purpose — there is no crop on a
+            // drawing to be stale.
+            SelectedPictureIsEmpty = isPicture && photos?.IsPlaceholder(blockId) == true,
             SelectedPictureHasCaption =
-                selection == SelectionKind.Photo
-                && !string.IsNullOrWhiteSpace(photos?.GetPhoto(blockId)?.Caption),
+                isPicture && !string.IsNullOrWhiteSpace(photos?.GetWorded(blockId)?.Caption),
             HasPicturePlaceholder = photos?.HasPlaceholder == true,
             PictureCropIsStale = selection == SelectionKind.Photo && photos?.CropIsStale(blockId) == true,
             CropStaleNote = selection == SelectionKind.Photo ? photos?.CropStaleNote(blockId) : null,

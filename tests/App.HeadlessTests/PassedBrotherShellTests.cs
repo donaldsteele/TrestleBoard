@@ -381,4 +381,43 @@ public sealed class PassedBrotherShellTests
             withNone.Close();
         }, TestContext.Current.CancellationToken);
     }
+
+    /// <summary>
+    /// M74 (f): the add-new path drains the queue too.
+    ///
+    /// <para>Tick "he has passed on" for one brother, then press "Add a person" without saving. The
+    /// save that happens on the way out queues his memorial card — and until this fix nothing showed
+    /// it, so it waited for the next save or the close. By then the window is about somebody else,
+    /// and a card asking "would you like to write a few words about him?" over a form holding a
+    /// different brother's name is worse than no card at all. It was the last route out of a
+    /// filled-in form that did not ask before it moved on.</para>
+    /// </summary>
+    [Fact]
+    public async Task PressingAddAsksAboutTheMemorialBeforeTheFormBecomesSomebodyElses()
+    {
+        await HeadlessSession.DispatchAsync(async () =>
+        {
+            RosterService roster = NewRoster();
+            roster.Save(new Member { Id = "person-1", DisplayName = "A. Placeholder" }, "Add");
+
+            var people = new PeopleWindow(roster)
+            {
+                MemorialAnswerForTest = _ => true,
+                PendingEditAnswerForTest = PeopleWindow.PendingEdit.Save,
+            };
+            people.Show();
+            people.SelectForTest("person-1");
+            people.TickPassedForTest();
+
+            await people.PressAddForTest();
+
+            // Asked, about the right brother, while he was still the one on the form.
+            Assert.Equal<string[]>(["A. Placeholder"], [.. people.MemorialsRequestedFor]);
+
+            // And the form really did move on, so the card was not simply the add being refused.
+            Assert.Null(people.SelectedIdForTest);
+
+            people.Close();
+        }, TestContext.Current.CancellationToken);
+    }
 }

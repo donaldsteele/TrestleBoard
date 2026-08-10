@@ -902,11 +902,16 @@ public partial class MainWindow : Window
 
     // ---- The newsletter -----------------------------------------------------------------------
 
-    internal async Task OpenNewsletterAsync()
+    /// <returns>
+    /// M74 (f): false where nothing on screen was replaced — "Go back" to the save question, an
+    /// empty picker (Cancel), or a file that would not load. Help's "Do it for me" says "Done."
+    /// off this value, and a cancelled Open is not a done thing.
+    /// </returns>
+    internal async Task<bool> OpenNewsletterAsync()
     {
         if (await ConfirmSaveFirstAsync("and open another newsletter") == SaveFirst.Stay)
         {
-            return;
+            return false;
         }
 
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -920,7 +925,7 @@ public partial class MainWindow : Window
         });
         if (files.Count == 0)
         {
-            return;
+            return false;
         }
 
         try
@@ -938,10 +943,12 @@ public partial class MainWindow : Window
             DocumentPath = files[0].TryGetLocalPath();
             ShowPackage(package);
             SayWhatTheSwitchClosed();
+            return true;
         }
         catch (Exception ex) when (ex is Core.Migrations.UnsupportedFormatException or System.IO.InvalidDataException)
         {
             await ShowErrorAsync("Could not open that file", ex.Message);
+            return false;
         }
     }
 
@@ -997,31 +1004,33 @@ public partial class MainWindow : Window
         }
     }
 
-    internal async Task NewFromTemplateAsync()
+    /// <returns>
+    /// M74 (f): false where no new newsletter came up — "Go back" to the save question, a start
+    /// window closed without a choice, or the chosen route itself coming to nothing. Each route
+    /// answers for itself rather than being assumed to have worked: a user template that has been
+    /// moved since it was listed does not open, and that is not a done thing either.
+    /// </returns>
+    internal async Task<bool> NewFromTemplateAsync()
     {
         if (await ConfirmSaveFirstAsync("and start another newsletter") == SaveFirst.Stay)
         {
-            return;
+            return false;
         }
 
         var start = new StartDialog(canStartFromLastMonth: _package is not null, Templates.All());
         await start.ShowDialog(this);
 
-        switch (start.Choice)
+        return start.Choice switch
         {
-            case StartChoice.MyTemplate when start.SelectedUserTemplateId is { } mine:
-                OpenUserTemplate(mine);
-                break;
-            case StartChoice.Template:
-                OpenTemplate(start.SelectedTemplateId);
-                break;
-            case StartChoice.LastMonth:
-                StartFromLastMonth();
-                break;
-            case StartChoice.OpenFile:
-                await OpenNewsletterAsync();
-                break;
-        }
+            StartChoice.MyTemplate when start.SelectedUserTemplateId is { } mine => OpenUserTemplate(mine),
+            StartChoice.Template => OpenTemplate(start.SelectedTemplateId),
+            StartChoice.LastMonth => StartFromLastMonth(),
+            StartChoice.OpenFile => await OpenNewsletterAsync(),
+
+            // Closed without an answer, or "MyTemplate" with nothing selected — which the window
+            // does not offer, but a switch has to say something about.
+            _ => false,
+        };
     }
 
     internal Task<bool> ExportPdfAsync() => ExportPdfAsync(draft: false);
@@ -1685,17 +1694,22 @@ public partial class MainWindow : Window
     /// <summary>
     /// M59: opens the same month of last year beside this one, to look at.
     /// </summary>
-    internal async Task ShowLastYearAsync()
+    /// <returns>
+    /// M74 (f): false where last year's issue did not come up — no newsletter open, the folder
+    /// question closed without a folder, or the issue itself refusing to open. Bringing the window
+    /// that is already open back to the front is true: that is what the press asked for.
+    /// </returns>
+    internal async Task<bool> ShowLastYearAsync()
     {
         if (_package is null)
         {
-            return;
+            return false;
         }
 
         if (_lastYearWindow is not null)
         {
             _lastYearWindow.Activate();
-            return;
+            return true;
         }
 
         Core.Model.DocumentMetadata meta = _package.Document.Metadata;
@@ -1707,7 +1721,7 @@ public partial class MainWindow : Window
             string? folder = OldIssuesFolderAnswerForTest ?? await AskForTheOldIssuesFolderAsync();
             if (string.IsNullOrWhiteSpace(folder))
             {
-                return;
+                return false;
             }
 
             _settings = _settings with { OldIssuesFolder = folder };
@@ -1720,7 +1734,7 @@ public partial class MainWindow : Window
         if (!issue.Opened)
         {
             await ShowErrorAsync("Last year's newsletter", issue.Message ?? "It could not be opened.");
-            return;
+            return false;
         }
 
         _lastYearWindow = new LastYearWindow(
@@ -1738,6 +1752,7 @@ public partial class MainWindow : Window
                 ? ""
                 : " But the folder could not be written down, so you may be asked where the old "
                     + "newsletters are again next time."));
+        return true;
     }
 
     /// <summary>
@@ -1968,17 +1983,20 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Opens one of the user's own templates as a new, unsaved newsletter.</summary>
-    internal void OpenUserTemplate(string id)
+    /// <returns>M74 (f): false when the template file has gone since it was listed, so the caller
+    /// does not report a newsletter that never came up.</returns>
+    internal bool OpenUserTemplate(string id)
     {
         if (Templates.Open(id) is not { } package)
         {
             Announce("That template could not be opened. It may have been moved or removed.");
-            return;
+            return false;
         }
 
         DocumentPath = null;
         ShowPackage(package, startsDirty: true);
         Announce("Started from one of your templates. It has no file yet, so Save it when you are ready.");
+        return true;
     }
 
     // ---- A page from a PDF (PLAN.md §11 M67) ---------------------------------------------------
@@ -2002,17 +2020,22 @@ public partial class MainWindow : Window
     /// re-rendered sharper by a later version without the committee having to find the file again,
     /// years after whoever emailed it has left the committee.</para>
     /// </summary>
-    internal async Task BringInPdfPageAsync()
+    /// <returns>
+    /// M74 (f): false wherever no page reached the newsletter — PDFs unreadable on this computer,
+    /// an empty picker, a file that would not open, a page picker closed without a page, a page
+    /// that would not draw, or no room on the page for the picture.
+    /// </returns>
+    internal async Task<bool> BringInPdfPageAsync()
     {
         if (_photos is null || _package is null)
         {
-            return;
+            return false;
         }
 
         if (!PdfPageRasterizer.IsAvailable)
         {
             await ShowErrorAsync("PDFs cannot be read on this computer", PdfPageRasterizer.NotAvailableReason);
-            return;
+            return false;
         }
 
         string? path = PdfPathForTest;
@@ -2030,7 +2053,7 @@ public partial class MainWindow : Window
 
         if (path is null)
         {
-            return;
+            return false;
         }
 
         byte[] pdf;
@@ -2043,14 +2066,14 @@ public partial class MainWindow : Window
         catch (PdfPageException e)
         {
             await ShowErrorAsync("That PDF could not be opened", e.Message);
-            return;
+            return false;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             await ShowErrorAsync(
                 "That file could not be opened",
                 $"TrestleBoard could not read that file. ({e.Message})");
-            return;
+            return false;
         }
 
         int? chosen = PdfPageAnswerForTest;
@@ -2065,7 +2088,7 @@ public partial class MainWindow : Window
         // than trusted, because "which page" arrives from a dialog and dialogs get cancelled.
         if (chosen is not { } pageNumber || pageNumber < 1)
         {
-            return;
+            return false;
         }
 
         byte[] png;
@@ -2076,7 +2099,7 @@ public partial class MainWindow : Window
         catch (PdfPageException e)
         {
             await ShowErrorAsync("That page could not be brought in", e.Message);
-            return;
+            return false;
         }
 
         // The name is settled before the command runs, because the frame records it — but the bytes
@@ -2101,7 +2124,7 @@ public partial class MainWindow : Window
                 "That page could not be brought in",
                 "TrestleBoard drew the page but could not put it on the newsletter. Your newsletter "
                 + "is unchanged.");
-            return;
+            return false;
         }
 
         _package.Assets[pdfAsset] = pdf;
@@ -2110,6 +2133,7 @@ public partial class MainWindow : Window
             + "picture\" to say what is on it — a screen reader cannot read a picture of writing, "
             + "and right now all it knows is which page this was.");
         RefreshActions();
+        return true;
     }
 
     /// <summary>
@@ -2157,11 +2181,16 @@ public partial class MainWindow : Window
     /// a single command. Each picture is its own step afterwards — they are separate decisions and
     /// undoing one should not undo the article.</para>
     /// </summary>
-    internal async Task BringInWritingAsync()
+    /// <returns>
+    /// M74 (f): false where nothing went into the newsletter — an empty picker, a file that would
+    /// not read, a file with nothing in it, or "no" to the "bring this in?" question. True once
+    /// paragraphs have gone in, or once a picture the user said yes to has been placed.
+    /// </returns>
+    internal async Task<bool> BringInWritingAsync()
     {
         if (_photos is null || _frames is null)
         {
-            return;
+            return false;
         }
 
         PicturesTakenForTest = 0;
@@ -2187,7 +2216,7 @@ public partial class MainWindow : Window
 
         if (path is null)
         {
-            return;
+            return false;
         }
 
         ImportedWriting writing;
@@ -2198,14 +2227,14 @@ public partial class MainWindow : Window
         catch (Core.Migrations.UnsupportedFormatException e)
         {
             await ShowErrorAsync("That file could not be brought in", e.Message);
-            return;
+            return false;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             await ShowErrorAsync(
                 "That file could not be opened",
                 $"TrestleBoard could not read that file. ({e.Message})");
-            return;
+            return false;
         }
 
         if (writing.IsEmpty)
@@ -2215,12 +2244,12 @@ public partial class MainWindow : Window
                 "TrestleBoard found no writing and no pictures in it. If the words are inside a "
                 + "table or a text box, they will not come through — copy them into an ordinary "
                 + "paragraph first.");
-            return;
+            return false;
         }
 
         if (!(BringItInAnswerForTest ?? await ConfirmTheWritingAsync(writing, Path.GetFileName(path))))
         {
-            return;
+            return false;
         }
 
         if (writing.Paragraphs.Count > 0)
@@ -2234,8 +2263,12 @@ public partial class MainWindow : Window
                 + "takes the whole lot back out.");
         }
 
-        await OfferThePicturesAsync(writing.Pictures);
+        bool aPictureWentIn = await OfferThePicturesAsync(writing.Pictures);
         RefreshActions();
+
+        // A file of pictures only, every one of them declined, has changed nothing — the same
+        // "no" as the confirm, arriving one question later.
+        return writing.Paragraphs.Count > 0 || aPictureWentIn;
     }
 
     /// <summary>
@@ -2244,8 +2277,11 @@ public partial class MainWindow : Window
     /// <para>Never all of them unasked: a Word document's media folder holds the author's
     /// letterhead and their signature scan as readily as the photograph they meant to send.</para>
     /// </summary>
-    private async Task OfferThePicturesAsync(IReadOnlyList<ImportedPicture> pictures)
+    /// <returns>M74 (f): whether the user said yes to at least one, so the caller can tell a file
+    /// whose pictures were all declined from one that put something on the page.</returns>
+    private async Task<bool> OfferThePicturesAsync(IReadOnlyList<ImportedPicture> pictures)
     {
+        bool any = false;
         foreach (ImportedPicture picture in pictures)
         {
             bool take = UseEachPictureForTest
@@ -2260,7 +2296,10 @@ public partial class MainWindow : Window
             // picture, with nothing about where it came from written anywhere.
             await PlacePictureAsync(picture.Bytes, picture.Name, centre: null);
             PicturesTakenForTest++;
+            any = true;
         }
+
+        return any;
     }
 
     private async Task<bool> AskAboutAPictureAsync(ImportedPicture picture, int outOf)
@@ -2524,7 +2563,11 @@ public partial class MainWindow : Window
     /// confirmation says in as many words what is about to be in the file, because somebody who
     /// emails this to the wrong person has emailed the lodge's membership to the wrong person.</para>
     /// </summary>
-    internal async Task PackUpForSuccessorAsync()
+    /// <returns>
+    /// M74 (f): false where no pack was written — nothing gathered to pack, the confirm declined,
+    /// an empty save picker, or a write that failed.
+    /// </returns>
+    internal async Task<bool> PackUpForSuccessorAsync()
     {
         SuccessorPackage pack = SuccessorPackService.Gather(DateTimeOffset.Now, AppVersion());
         if (pack.Manifest.Parts.Count == 0)
@@ -2534,12 +2577,12 @@ public partial class MainWindow : Window
                 "TrestleBoard has not gathered an address book, any templates or any saved wordings "
                 + "on this computer yet, so there is nothing a successor would need. Come back when "
                 + "there is.");
-            return;
+            return false;
         }
 
         if (!(PackConfirmForTest ?? await ConfirmThePackAsync(pack)))
         {
-            return;
+            return false;
         }
 
         string? path = PackPathForTest;
@@ -2564,7 +2607,7 @@ public partial class MainWindow : Window
 
         if (path is null)
         {
-            return;
+            return false;
         }
 
         try
@@ -2573,12 +2616,14 @@ public partial class MainWindow : Window
             Announce($"Everything is packed up in {Path.GetFileName(path)}. Give that one file to "
                 + "whoever takes over, and they can bring it in on their own computer. Keep it "
                 + "somewhere safe — it has the lodge's address book in it.");
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             await ShowErrorAsync(
                 "Could not write that file",
                 $"The pack could not be saved there. ({ex.Message})");
+            return false;
         }
     }
 
@@ -2589,7 +2634,12 @@ public partial class MainWindow : Window
     /// is on a new computer, on their first day of a job they did not ask for, holding a file they
     /// cannot look inside.</para>
     /// </summary>
-    internal async Task BringInAPackAsync()
+    /// <returns>
+    /// M74 (f): false where nothing on this computer changed — an empty picker, a pack that would
+    /// not read, a pack holding nothing this version understands, nothing ticked, or every ticked
+    /// part failing to be written.
+    /// </returns>
+    internal async Task<bool> BringInAPackAsync()
     {
         string? path = BringInPackPathForTest;
         if (path is null)
@@ -2612,7 +2662,7 @@ public partial class MainWindow : Window
 
         if (path is null)
         {
-            return;
+            return false;
         }
 
         SuccessorPackage pack;
@@ -2623,7 +2673,7 @@ public partial class MainWindow : Window
         catch (Core.Migrations.UnsupportedFormatException e)
         {
             await ShowErrorAsync("That pack could not be brought in", e.Message);
-            return;
+            return false;
         }
         catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException
             or System.Text.Json.JsonException or NotSupportedException)
@@ -2632,7 +2682,7 @@ public partial class MainWindow : Window
                 "That pack could not be brought in",
                 "TrestleBoard could not read that file. It may be damaged, or it may not be a "
                 + "TrestleBoard pack.");
-            return;
+            return false;
         }
 
         IReadOnlyList<PackPartChoice> choices = SuccessorPackService.Choices(pack);
@@ -2642,14 +2692,14 @@ public partial class MainWindow : Window
                 "There is nothing in that pack",
                 "That file is a TrestleBoard pack, but there is nothing inside it that this version "
                 + "of TrestleBoard knows what to do with.");
-            return;
+            return false;
         }
 
         IReadOnlyList<string> chosen = PackPartsAnswerForTest ?? await AskWhatToTakeAsync(pack, choices, path);
         if (chosen.Count == 0)
         {
             Announce("Nothing was brought in, so nothing on this computer has changed.");
-            return;
+            return false;
         }
 
         RestoreOutcome outcome = SuccessorPackService.Restore(pack, chosen);
@@ -2675,6 +2725,10 @@ public partial class MainWindow : Window
         }
 
         RefreshActions();
+
+        // Some parts written and some failed is still a change to this computer, so it is true —
+        // the failures are named in their own card above, which the outcome sentence cannot say.
+        return outcome.Restored.Count > 0;
     }
 
     private async Task<IReadOnlyList<string>> AskWhatToTakeAsync(
@@ -2791,11 +2845,17 @@ public partial class MainWindow : Window
     /// M56: hands the finished newsletter to the user's own mail program, with the email group in
     /// BCC and the subject already written.
     /// </summary>
-    internal async Task SendItAsync()
+    /// <returns>
+    /// M74 (f): false only where the hand-off never got started — no newsletter open, or nobody on
+    /// either list, which is a refusal with a card of its own. The clipboard fallback returns
+    /// <b>true</b>: the mail program not answering is not the user backing out, and the addresses
+    /// really are on the clipboard by then, with a card saying what to do with them.
+    /// </returns>
+    internal async Task<bool> SendItAsync()
     {
         if (_package is null)
         {
-            return;
+            return false;
         }
 
         Core.Model.DocumentMetadata meta = _package.Document.Metadata;
@@ -2810,7 +2870,7 @@ public partial class MainWindow : Window
                 "TrestleBoard does not know who gets the newsletter. Open People, choose a brother, "
                 + $"and tick “{MemberGroups.ByEmail}” or “{MemberGroups.Printed}”. You only have to "
                 + "do it once.");
-            return;
+            return false;
         }
 
         string subject = MailHandoff.Subject(meta.LodgeName, meta.Title, meta.IssueYear, meta.IssueMonth);
@@ -2824,13 +2884,14 @@ public partial class MainWindow : Window
                 $"Your mail program is open, with {Count(addresses.Count, "address", "addresses")} "
                 + $"in the blind copy line. Attach {fileName} before you send it."
                 + (printed > 0 ? $" {Count(printed, "brother", "brethren")} still need a printed copy." : ""));
-            return;
+            return true;
         }
 
         // Either the link was too long for a mail program to be trusted with, or nothing answered.
         // Both end the same way: the addresses go on the clipboard, and the card says what to do.
         LastMailOutcomeForTest = uri is null ? MailOutcome.TooManyForOneLink : MailOutcome.NothingAnswered;
         await CopyTheAddressesAsync(addresses, subject, fileName, printed, LastMailOutcomeForTest.Value);
+        return true;
     }
 
     private async Task CopyTheAddressesAsync(
@@ -3468,11 +3529,14 @@ public partial class MainWindow : Window
     /// <summary>Set by tests in place of the modal dialog: the generation the user would choose.</summary>
     internal DocumentBackup? RestoreChoiceForTest { get; set; }
 
-    internal async Task RestoreEarlierVersionAsync()
+    /// <returns>M74 (f): false wherever the newsletter on screen is the one that was already
+    /// there — no file of its own, no copies left in the ring, "Go back", a dialog closed without
+    /// a generation chosen, or a copy that would not read.</returns>
+    internal async Task<bool> RestoreEarlierVersionAsync()
     {
         if (DocumentPath is not { } path)
         {
-            return;
+            return false;
         }
 
         IReadOnlyList<DocumentBackup> backups = FileRecoveryStore.FindBackups(path);
@@ -3482,14 +3546,14 @@ public partial class MainWindow : Window
             // its answer can outlive the copies themselves — the ring is pruned, and the command is
             // still offered. Whoever presses it is owed the reason it can do nothing.
             Announce("The copies TrestleBoard kept are no longer there, so there is nothing to go back to.");
-            return;
+            return false;
         }
 
         // The version on screen is about to be replaced, so it gets the same question every other
         // path that replaces it asks (M24).
         if (await ConfirmSaveFirstAsync("and open an earlier version") == SaveFirst.Stay)
         {
-            return;
+            return false;
         }
 
         // A modal dialog cannot be answered headlessly, so the tests say which generation the user
@@ -3508,7 +3572,7 @@ public partial class MainWindow : Window
 
         if (choice is not { } backup)
         {
-            return;
+            return false;
         }
 
         TboardPackage package;
@@ -3526,7 +3590,7 @@ public partial class MainWindow : Window
                 "Could not open that earlier version",
                 "The copy TrestleBoard kept could not be read, so nothing has changed — the "
                 + $"newsletter on screen is still here. ({ex.Message})");
-            return;
+            return false;
         }
 
         // The path stays. This IS that newsletter, at an earlier moment; it is unsaved because the
@@ -3538,6 +3602,7 @@ public partial class MainWindow : Window
         Announce(
             $"This is the version from {DocumentRestoreDialog.Describe(backup)}. "
             + "Your file still holds the newer one until you save.");
+        return true;
     }
 
     /// <summary>
@@ -3862,11 +3927,15 @@ public partial class MainWindow : Window
     internal void UseRecoveryStoreForTest(IRecoveryStore store) => _recoveryStore = store;
 
     /// <summary>Opens one of the shipped templates (PLAN.md §7).</summary>
-    internal void OpenTemplate(string templateId)
+    /// <returns>Always true: the shipped templates are built in code, not read from disk, so there
+    /// is no failure to report. It returns a value at all so that
+    /// <see cref="NewFromTemplateAsync"/> can answer one branch per route.</returns>
+    internal bool OpenTemplate(string templateId)
     {
         DocumentPath = null;
         ShowPackage(TemplateLibrary.Create(templateId));
         SayWhatTheSwitchClosed();
+        return true;
     }
 
     /// <summary>
@@ -3874,14 +3943,16 @@ public partial class MainWindow : Window
     /// unsaved work first. The runner calls this one; the synchronous
     /// <see cref="StartFromLastMonth"/> under it is the carry-forward itself.
     /// </summary>
-    internal async Task StartFromLastMonthAsync()
+    /// <returns>M74 (f): false where "Go back" was the answer to the save question, or where there
+    /// was no newsletter to carry forward — the carry-forward's own answer otherwise.</returns>
+    internal async Task<bool> StartFromLastMonthAsync()
     {
         if (await ConfirmSaveFirstAsync("and start next month's newsletter") == SaveFirst.Stay)
         {
-            return;
+            return false;
         }
 
-        StartFromLastMonth();
+        return StartFromLastMonth();
     }
 
     /// <summary>
@@ -4244,11 +4315,17 @@ public partial class MainWindow : Window
     /// is why the reflow warning and the "nothing changes until Apply" line are both in the sheet
     /// rather than in a confirmation afterwards.
     /// </summary>
-    internal async Task ShowTextStylesAsync()
+    /// <returns>
+    /// M74 (f): whether anything about the newsletter's writing changed. The sheet stays open after
+    /// Apply and each Apply is its own undo step, so "did something" is not the dialog's result but
+    /// whether it applied at least once — or asked for the two font-override commands under it.
+    /// A sheet opened, looked at and closed changed nothing.
+    /// </returns>
+    internal async Task<bool> ShowTextStylesAsync()
     {
         if (_session is null)
         {
-            return;
+            return false;
         }
 
         var window = new TextStylesWindow(
@@ -4262,21 +4339,27 @@ public partial class MainWindow : Window
 
         // From M20 the sheet stays open after Apply, so one visit can change two kinds of writing.
         // Each Apply is its own command and its own undo step, applied as it happens.
-        window.Applied += (_, choice) => ApplyTextStyleChoice(choice);
+        bool appliedSomething = false;
+        window.Applied += (_, choice) =>
+        {
+            appliedSomething = true;
+            ApplyTextStyleChoice(choice);
+        };
         await window.ShowDialog(this);
 
         if (window.ShowOverridesRequested)
         {
             SetShowFontChanges(true);
-            return;
+            return true;
         }
 
         if (window.ClearOverridesRequested)
         {
             ClearEveryFontOverride();
-            return;
+            return true;
         }
 
+        return appliedSomething;
     }
 
     /// <summary>Applies the sheet's answer, and says afterwards if the page count moved.</summary>
@@ -4479,6 +4562,10 @@ public partial class MainWindow : Window
     /// own licence is NOT here: this window is "the things that came with TrestleBoard and whose
     /// terms are somebody else's", and a word list is one of those. The app's own grant is a
     /// different question and keeps its own command (M68).</para>
+    ///
+    /// <para>M74 (f) added the third: PDFium, the library that turns a page of somebody else's PDF
+    /// into a picture. It is a native binary rather than data, which is exactly why it was missed —
+    /// gate 22 named it and nothing here listed it. Its terms are somebody else's too.</para>
     /// </summary>
     internal Task ShowFontLicencesAsync() =>
         ShowScrollingTextAsync("Fonts and licences", BundledLicences());
@@ -4492,7 +4579,16 @@ public partial class MainWindow : Window
         + "TrestleBoard checks your spelling against the word list reproduced below, which came\n"
         + "from the SCOWL project by way of the LibreOffice dictionaries. It may be passed on only\n"
         + "with the notices that follow, which is why they are here.\n\n"
-        + BundledDictionary.ReadLicenceText();
+        + BundledDictionary.ReadLicenceText()
+        + "\n\n\n"
+        + "═══════════════════════════════════════════════════════════════════════\n"
+        + $"Reading PDFs — {BundledPdfium.Name}\n"
+        + "═══════════════════════════════════════════════════════════════════════\n\n"
+        + "\"Bring in a page from a PDF\" turns one page of somebody else's PDF into a picture. The\n"
+        + $"program that reads the PDF is {BundledPdfium.Name}, which came with TrestleBoard by way\n"
+        + $"of {BundledPdfium.ShippedBy}. It may be passed on only with the notices that follow —\n"
+        + "there are eleven of them, because it has other people's work inside it as well.\n\n"
+        + BundledPdfium.ReadLicenceText();
 
     /// <summary>
     /// Help → "Licence": TrestleBoard's own terms (M68). PolyForm Noncommercial's <i>Notices</i>

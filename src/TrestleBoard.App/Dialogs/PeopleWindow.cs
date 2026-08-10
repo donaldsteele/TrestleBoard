@@ -176,7 +176,7 @@ public sealed class PeopleWindow : Window
         AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
 
         var add = Action("Add a person", "Add a person to your address book");
-        add.Click += (_, _) => BeginAdd();
+        add.Click += async (_, _) => await BeginAddAsync();
 
         var save = Action("Save this person", "Save the details on this form");
         save.Click += async (_, _) =>
@@ -359,6 +359,12 @@ public sealed class PeopleWindow : Window
         _passed.IsChecked = true;
         UpdatePassedRow();
     }
+
+    /// <summary>
+    /// Presses "Add a person" — the button's own path, drain and all, which is what M74 (f) is
+    /// about. <see cref="AddForTest"/> below goes straight to <c>BeginAdd</c> and does not.
+    /// </summary>
+    internal Task PressAddForTest() => BeginAddAsync();
 
     /// <summary>Presses "Save this person", then answers any memorial card the save raises.</summary>
     internal async Task SaveAndOfferForTest()
@@ -995,6 +1001,23 @@ public sealed class PeopleWindow : Window
         _formAsLoaded = FormSignature();
     }
 
+    /// <summary>
+    /// "Add a person", and then any memorial card the save underneath it queued.
+    ///
+    /// <para>M74 (f): the add path was the one way out of a filled-in form that did not drain the
+    /// queue. Tick "he has passed on", then press "Add a person" without saving: the save that
+    /// happens on the way out queues his card, the form is cleared for somebody new, and the card
+    /// is not shown. It then appears at the next save or at the close — by which time the window is
+    /// about a different brother entirely, and the card asking whether to write a memorial for the
+    /// first one reads as being about the second. Deferred, not lost, is not good enough for this
+    /// card.</para>
+    /// </summary>
+    private async Task BeginAddAsync()
+    {
+        BeginAdd();
+        await OfferAnyMemorialsAsync();
+    }
+
     private void BeginAdd()
     {
         // M40: leaving the form for a blank one loses an edit exactly as switching people does.
@@ -1103,6 +1126,11 @@ public sealed class PeopleWindow : Window
             }
 
             BeginAdd();
+
+            // M74 (f): and the card the save above may have queued, before the form is somebody
+            // else's. The other route in — BeginAddAsync, when the answer needed no dialog —
+            // drains it the same way.
+            await OfferAnyMemorialsAsync();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {

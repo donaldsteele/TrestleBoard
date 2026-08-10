@@ -265,6 +265,55 @@ public sealed class OutcomeHonestyTests
     }
 
     /// <summary>
+    /// M74 (f): and the warning has to reach the window, not only the status bar behind it.
+    ///
+    /// <para>M73 (e) put the sentence above into <c>_say</c>, which is the main window's status
+    /// bar — at the far bottom of the screen, behind the spelling window, and the very channel this
+    /// window's own M52 comment says a user looking at it does not see. Its two siblings on the
+    /// same screen have gone through <c>Tell</c> — both places at once — since M52. The one warning
+    /// on the screen that says the app has failed at something went to the one place nobody looks.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task TheCouldNotBeRememberedWarningLandsOnTheWindowTheUserIsLookingAt()
+    {
+        await HeadlessSession.DispatchAsync(() =>
+        {
+            string path = Path.Combine(
+                Path.GetTempPath(), "trestleboard-m74f-" + Guid.NewGuid().ToString("N"), "not-a-file");
+            Directory.CreateDirectory(path);
+
+            var checker = new SpellChecker(new PersonalDictionary(path));
+            var said = new List<string>();
+
+            // Two words, so the walk moves to a second screen rather than closing the window out
+            // from under the assertion.
+            var spelling = new SpellingWindow(
+                [
+                    new Misspelling("story-1", 0, 0, "Fauntleroy", "Brother Fauntleroy is well."),
+                    new Misspelling("story-1", 1, 0, "Ollivander", "Brother Ollivander is well."),
+                ],
+                checker,
+                _ => 1,
+                (_, _) => true,
+                said.Add);
+
+            spelling.GoToForTest(1);
+            Click(spelling.ButtonsForTest.First(b =>
+                (b.Content as string) == "It's a name — never ask again"));
+
+            Assert.Contains("could not", spelling.StatusForTest, StringComparison.OrdinalIgnoreCase);
+
+            // And still in the status bar as well: Tell says it in both places, which is the whole
+            // point of Tell.
+            Assert.Contains(said, s => s.Contains("could not", StringComparison.OrdinalIgnoreCase));
+
+            spelling.Close();
+            return Task.CompletedTask;
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
     /// <see cref="AppSettings.Save"/> was <c>void</c> with an empty catch and was announced as
     /// "Saved." whatever happened. This is the return value that had to exist before the sentence
     /// could be a function of anything.

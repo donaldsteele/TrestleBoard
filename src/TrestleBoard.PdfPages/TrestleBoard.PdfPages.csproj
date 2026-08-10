@@ -7,4 +7,16 @@
     <PackageReference Include="SkiaSharp" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- PLAN.md §12 gate 22, M74 (f). PDFium is BSD-3-Clause over eleven bundled third-party
+         notices, and both BSD-3 and Apache-2.0 require the notice to accompany the binary. Docnet
+         puts a file called LICENSE in runtimes/<rid>/native/ and a self-contained publish drops it
+         in the publish root as an anonymous `LICENSE` that nothing attributes and nothing shows —
+         so it ships inside the assembly instead, the M14 font precedent, and Help reads it out.
+         assets-src/natives/natives.json carries its SHA-256; PdfiumLicenceTests fails on drift. -->
+    <EmbeddedResource Include="..\..\assets-src\natives\pdfium\LICENSE-pdfium.txt"
+                      Link="Assets\Natives\LICENSE-pdfium.txt"
+                      LogicalName="TrestleBoard.PdfPages.Natives.LICENSE-pdfium.txt" />
+  </ItemGroup>
 </Project>

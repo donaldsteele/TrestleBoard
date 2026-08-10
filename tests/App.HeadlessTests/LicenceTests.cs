@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Linq;
 using TrestleBoard.Editing.Actions;
+using TrestleBoard.PdfPages;
+using TrestleBoard.Spelling;
 using Xunit;
 
 namespace TrestleBoard.App.HeadlessTests;
@@ -114,6 +116,51 @@ public sealed class LicenceTests
         Assert.DoesNotContain(
             "no permission to\ncopy, modify or redistribute",
             Normalise(readme),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// M74 (f), gate 22. Help → "Fonts and licences" is the one place in the app where somebody can
+    /// read what came with TrestleBoard and whose terms are somebody else's. It listed the fonts and
+    /// the spelling dictionary; PDFium — a whole native library, named in gate 22 since gate 22 was
+    /// written — was not there, and neither was any other notice for it. BSD-3-Clause §2 requires
+    /// the notice to accompany the binary, and the binary goes out in every installer.
+    ///
+    /// <para>All three are asserted together on purpose: this is the list, and the way it fails is
+    /// by something joining the installer and not joining the list.</para>
+    /// </summary>
+    [Fact]
+    public void EverythingBundledWithSomebodyElsesTermsIsUnderFontsAndLicences()
+    {
+        string shown = MainWindow.BundledLicences();
+
+        // The fonts (M14) — the SIL Open Font Licence, by its own heading.
+        Assert.Contains("SIL OPEN FONT LICENSE", shown, StringComparison.OrdinalIgnoreCase);
+
+        // The spelling dictionary (M52).
+        Assert.Contains(BundledDictionary.Language, shown, StringComparison.Ordinal);
+
+        // PDFium (M67, listed here from M74) — named, attributed to where it came from, and
+        // carrying its own text rather than a reference to it.
+        Assert.Contains(BundledPdfium.Name, shown, StringComparison.Ordinal);
+        Assert.Contains(BundledPdfium.ShippedBy, shown, StringComparison.Ordinal);
+        Assert.Contains("Copyright 2014 The PDFium Authors", shown, StringComparison.Ordinal);
+        Assert.Contains("# BEGIN ICU (International Components for Unicode) license file", shown, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// And it is said in words a committee member can follow, not just reproduced. PLAN.md §6: this
+    /// window is read by somebody who wondered what all this is; the notice is the law, the sentence
+    /// above it is the explanation.
+    /// </summary>
+    [Fact]
+    public void ThePdfiumNoticeIsIntroducedInPlainLanguage()
+    {
+        string shown = MainWindow.BundledLicences();
+
+        Assert.Contains(
+            "turns one page of somebody else's PDF into a picture",
+            shown,
             StringComparison.Ordinal);
     }
 
