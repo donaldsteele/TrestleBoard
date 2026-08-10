@@ -39,11 +39,17 @@ public sealed class TboardManifest
     /// rule is that a document saved by an older build round-trips byte-unchanged. It would also
     /// tell every older TrestleBoard to refuse a file it can read perfectly well. So the version is
     /// a function of the content: 1.1.0 when a drawing is on a page, 1.0.0 otherwise.</para>
+    ///
+    /// <para>M74 (d): "on a page" includes the page masters. A master's blocks render through the
+    /// same block switch and carry-forward walks them, so a drawing on a master stamped 1.0.0 would
+    /// let a pre-M72 reader past the version gate and into the polymorphic-deserialization crash
+    /// the stamp exists to prevent.</para>
     /// </summary>
     public static string RequiredVersionFor(Document document)
     {
         ArgumentNullException.ThrowIfNull(document);
         return document.Pages.Any(page => page.Blocks.Any(block => block is VectorBlock))
+            || document.PageMasters.Any(master => master.Blocks.Any(block => block is VectorBlock))
             ? VectorFormatVersion
             : BaseFormatVersion;
     }

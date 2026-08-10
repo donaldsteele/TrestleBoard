@@ -170,16 +170,35 @@ public sealed class RosterStore
     /// Reads one kept copy. Restoring it is an ordinary <see cref="Save"/> by the caller, so the
     /// version being replaced goes into the ring too — restoring the wrong one is itself undoable.
     /// </summary>
-    public static RosterBook ReadBackup(string path)
+    public static RosterBook ReadBackup(string path) => ReadBackup(path, out _);
+
+    /// <summary>
+    /// Reads one kept copy and says whether it really was read (M74 (d)). This is
+    /// <see cref="Load(out RosterLoadState)"/>'s contract applied to the one reader that never had
+    /// it: <see cref="RosterLoadState.CouldNotBeRead"/> means the empty book handed back is a
+    /// placeholder, and a caller about to WRITE — a restore — must refuse rather than commit it
+    /// over the real address book.
+    /// </summary>
+    public static RosterBook ReadBackup(string path, out RosterLoadState state)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (!File.Exists(path))
+        {
+            state = RosterLoadState.NoFileYet;
+            return RosterBook.Empty;
+        }
+
         try
         {
-            return (JsonSerializer.Deserialize(File.ReadAllBytes(path), RosterJsonContext.Default.RosterBook)
-                ?? RosterBook.Empty).Normalised();
+            RosterBook book =
+                (JsonSerializer.Deserialize(File.ReadAllBytes(path), RosterJsonContext.Default.RosterBook)
+                    ?? RosterBook.Empty).Normalised();
+            state = RosterLoadState.Loaded;
+            return book;
         }
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)
         {
+            state = RosterLoadState.CouldNotBeRead;
             return RosterBook.Empty;
         }
     }

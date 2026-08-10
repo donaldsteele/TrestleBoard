@@ -918,9 +918,13 @@ public partial class MainWindow : Window
             await stream.CopyToAsync(buffer);
             buffer.Position = 0;
 
-            // Recovery offers to put the work back where it came from, so the path has to be known.
+            // Load before committing the path: if the chosen file is damaged, the newsletter that
+            // is already open must keep its own path — the same rule OpenDocumentFromPath follows,
+            // and the same defect (M74 (d)2) if the order flips. Recovery offers to put the work
+            // back where it came from, so the path is set once there is really something to put.
+            TboardPackage package = TboardContainer.Load(buffer);
             DocumentPath = files[0].TryGetLocalPath();
-            ShowPackage(TboardContainer.Load(buffer));
+            ShowPackage(package);
             SayWhatTheSwitchClosed();
         }
         catch (Exception ex) when (ex is Core.Migrations.UnsupportedFormatException or System.IO.InvalidDataException)
@@ -955,8 +959,15 @@ public partial class MainWindow : Window
         try
         {
             using var buffer = new MemoryStream(File.ReadAllBytes(path));
+            TboardPackage package = TboardContainer.Load(buffer);
+
+            // M74 (d): the path changes hands only once the file has proven readable. It used to be
+            // set before the load and nulled on failure, so a damaged file left the still-open
+            // newsletter with no path — Ctrl+S became a surprise Save-As, and the autosave
+            // sidecar's OriginalPath went null, so crash recovery would have offered real work as
+            // "never saved".
             DocumentPath = path;
-            ShowPackage(TboardContainer.Load(buffer));
+            ShowPackage(package);
             SayWhatTheSwitchClosed();
             return true;
         }
@@ -967,7 +978,8 @@ public partial class MainWindow : Window
             or InvalidDataException
             or Core.Migrations.UnsupportedFormatException)
         {
-            DocumentPath = null;
+            // Everything about the currently open document — its path included — is exactly as it
+            // was before this open was tried.
             Announce($"TrestleBoard could not open {Path.GetFileName(path)}. {ex.Message}");
             return false;
         }
@@ -1027,34 +1039,51 @@ public partial class MainWindow : Window
 
         Core.Model.DocumentMetadata meta = _package.Document.Metadata;
         string stem = $"{meta.Title} {meta.IssueYear}-{meta.IssueMonth:00}";
-        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        string? path = ExportPathForTest;
+        if (path is null && !ExportPickerHasNoLocalPathForTest)
         {
-            Title = draft ? "Save the draft copy" : "Export as PDF",
-            DefaultExtension = "pdf",
-            SuggestedFileName = draft ? $"{stem} DRAFT.pdf" : $"{stem}.pdf",
-            FileTypeChoices = [new FilePickerFileType("PDF document") { Patterns = ["*.pdf"] }],
-        });
-        if (file is null)
+            IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = draft ? "Save the draft copy" : "Export as PDF",
+                DefaultExtension = "pdf",
+                SuggestedFileName = draft ? $"{stem} DRAFT.pdf" : $"{stem}.pdf",
+                FileTypeChoices = [new FilePickerFileType("PDF document") { Patterns = ["*.pdf"] }],
+            });
+            if (file is null)
+            {
+                return;
+            }
+
+            path = file.TryGetLocalPath();
+        }
+
+        // M74 (a): the PDF is written by path, temp-then-rename, because that is the only way a
+        // failed export can leave last month's good PDF untouched. A picked place with no path on
+        // this computer's disk — a cloud location a storage provider will not name — cannot be
+        // written that way, so it is refused with the truth rather than written dangerously.
+        if (path is null)
         {
+            await ShowErrorAsync(
+                draft ? "Could not make the draft copy" : "Could not export the PDF",
+                "TrestleBoard cannot tell where that place is on this computer, so it cannot save "
+                + "the PDF there safely. Nothing was written. Choose a folder on this computer and "
+                + "try again.");
             return;
         }
 
         try
         {
-            await using (Stream stream = await file.OpenWriteAsync())
-            {
-                DocumentPdfExporter.Export(
-                    stream,
-                    _source,
-                    new PdfMetadata(meta.Title, meta.LodgeName, $"Trestle board {meta.IssueYear}-{meta.IssueMonth:00}"),
-                    draft ? WatermarkRenderer.DraftText : null);
-            }
+            AtomicFileWrite.Write(path, stream => DocumentPdfExporter.Export(
+                stream,
+                _source,
+                new PdfMetadata(meta.Title, meta.LodgeName, $"Trestle board {meta.IssueYear}-{meta.IssueMonth:00}"),
+                draft ? WatermarkRenderer.DraftText : null));
 
             _exportedThisSession = true;
 
-            // The stream is closed before anything is offered: handing a half-written file to a
-            // printer would be a worse bug than not offering to print at all.
-            LastExportedPdf = file.TryGetLocalPath();
+            // The file is complete and renamed into place before anything is offered: handing a
+            // half-written file to a printer would be a worse bug than not offering to print at all.
+            LastExportedPdf = path;
             RefreshActions();
             await OfferToPrintAsync(draft);
         }
@@ -1062,12 +1091,23 @@ public partial class MainWindow : Window
         {
             await ShowErrorAsync(
                 draft ? "Could not make the draft copy" : "Could not export the PDF",
-                "The PDF could not be saved. Make sure the file is not open in another program and try again. "
+                "The PDF could not be saved. If a PDF with this name was already there, it has not "
+                + "been touched. Make sure the file is not open in another program and try again. "
                 + $"({ex.Message})");
         }
     }
 
     // ---- Print it (PLAN.md §11 M53) ------------------------------------------------------------
+
+    /// <summary>Set by tests in place of the save dialog.</summary>
+    internal string? ExportPathForTest { get; set; }
+
+    /// <summary>
+    /// Set by tests to stand in for a picker that returned a place with no path on the local disk —
+    /// a cloud location. The real picker cannot be driven headlessly, so this is how the refusal
+    /// sentence for that case is kept honest.
+    /// </summary>
+    internal bool ExportPickerHasNoLocalPathForTest { get; set; }
 
     /// <summary>
     /// The PDF this session last wrote, or null. It is what "Print it" prints, and M56 will hand
@@ -5153,10 +5193,14 @@ public partial class MainWindow : Window
 
         if (dialog.Chosen is { } backup)
         {
-            Roster.Restore(backup);
-            Announce(
-                $"Your address book was put back as it was on {RosterRestoreDialog.Describe(backup)}. "
-                + "Undo the last change reverses this.");
+            // M74 (d): the sentence follows what Restore says happened. False means the kept copy
+            // could not be read and nothing was written — saying "put back" then would have the
+            // user trusting an address book that never changed.
+            Announce(Roster.Restore(backup)
+                ? $"Your address book was put back as it was on {RosterRestoreDialog.Describe(backup)}. "
+                    + "Undo the last change reverses this."
+                : "That earlier version could not be read, so your address book was not changed. "
+                    + "It is exactly as it was. Try a different earlier version.");
         }
     }
 

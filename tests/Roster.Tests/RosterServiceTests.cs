@@ -88,4 +88,32 @@ public sealed class RosterServiceTests : IDisposable
         Assert.True(service.Undo());
         Assert.Equal(3, service.Book.Count);
     }
+
+    /// <summary>
+    /// M74 (d): a restore whose kept copy cannot be read must refuse, not commit the empty
+    /// placeholder <see cref="RosterStore.ReadBackup(string)"/> hands back. This is the M24 item-4
+    /// bug shape on the one reader that never got the <see cref="RosterLoadState.CouldNotBeRead"/>
+    /// contract: the old code wrote <see cref="RosterBook.Empty"/> straight over roster.json.
+    /// </summary>
+    [Fact]
+    public void ARestoreThatCannotReadItsBackupRefusesInsteadOfWritingAnEmptyBook()
+    {
+        var store = new RosterStore(Path.Combine(_folder, "roster.json"));
+        var service = new RosterService(store);
+
+        service.Save(Placeholder("person-1", "A Placeholder"), "Add A. Placeholder");
+        service.Save(Placeholder("person-2", "B Placeholder"), "Add B. Placeholder");
+
+        RosterBackup kept = service.Backups()[0];
+        File.WriteAllText(kept.Path, "not json at all {{{");
+
+        // Verified failing before the fix by calling Restore without asserting its answer: the old
+        // void Restore committed Empty, and Book.Count below was 0.
+        Assert.False(service.Restore(kept));
+
+        // Nothing changed: not in memory, and not on disk.
+        Assert.Equal(2, service.Book.Count);
+        Assert.Equal(2, store.Load(out RosterLoadState state).Count);
+        Assert.Equal(RosterLoadState.Loaded, state);
+    }
 }

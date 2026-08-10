@@ -238,6 +238,24 @@ public sealed class VectorBlockFormatTests
         Assert.Equal(7, after["parts"]![0]!["futurePartKnob"]!.GetValue<int>());
     }
 
+    /// <summary>
+    /// M74 (d): the version stamp walks the page masters too. A master's blocks render through the
+    /// same block switch as a page's and carry-forward walks them, so a drawing on a master stamped
+    /// 1.0.0 would let a pre-M72 reader past the version gate and into the very crash the stamp
+    /// exists to prevent. This defect is latent — no UI path puts a drawing on a master today — so
+    /// this test, not a user, is the only thing standing in front of it.
+    /// </summary>
+    [Fact]
+    public void ADrawingOnAPageMasterStampsTheVersionToo()
+    {
+        TboardPackage package = Fixtures.BuildPackage();
+        package.Document.GetMaster("master-1").Blocks.Add(Drawing());
+
+        JsonObject manifest = ManifestOf(package);
+        Assert.Equal("1.1.0", manifest["formatVersion"]!.GetValue<string>());
+        Assert.Equal("1.1.0", manifest["minReaderVersion"]!.GetValue<string>());
+    }
+
     // ---- plumbing --------------------------------------------------------------------------------
 
     private static VectorBlock Drawing() => new()

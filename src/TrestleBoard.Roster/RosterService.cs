@@ -91,10 +91,23 @@ public sealed class RosterService
     /// <summary>The kept copies, newest first, for "Restore an earlier version…".</summary>
     public IReadOnlyList<RosterBackup> Backups() => _store.Backups();
 
-    public void Restore(RosterBackup backup)
+    /// <summary>
+    /// Puts a kept copy back, and says whether it did. False means the copy could not be read —
+    /// missing, locked, or damaged — and <b>nothing was changed</b>: committing the empty
+    /// placeholder <see cref="RosterStore.ReadBackup(string)"/> hands back would have written an
+    /// empty book over the real address book (M74 (d), the M24 item-4 bug shape).
+    /// </summary>
+    public bool Restore(RosterBackup backup)
     {
         ArgumentNullException.ThrowIfNull(backup);
-        Apply(RosterStore.ReadBackup(backup.Path), "Restore an earlier version of the address book");
+        RosterBook book = RosterStore.ReadBackup(backup.Path, out RosterLoadState state);
+        if (state != RosterLoadState.Loaded)
+        {
+            return false;
+        }
+
+        Apply(book, "Restore an earlier version of the address book");
+        return true;
     }
 
     /// <summary>Re-reads the file. Used after something outside this service wrote it.</summary>

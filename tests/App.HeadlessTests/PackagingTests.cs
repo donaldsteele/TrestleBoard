@@ -243,6 +243,50 @@ public sealed class PackagingTests
     }
 
     /// <summary>
+    /// M74 (d): a failed open must leave the newsletter that is already on screen exactly as it
+    /// was — path included. The old code set <c>DocumentPath</c> before the load and nulled it on
+    /// failure, so opening a damaged file left the still-open newsletter with no path: Ctrl+S
+    /// became a surprise Save-As, and the autosave sidecar's <c>OriginalPath</c> went null, so
+    /// crash recovery would have offered real work as "never saved".
+    /// </summary>
+    [Fact]
+    public async Task AFailedOpenLeavesTheOpenNewsletterAndItsPathAlone()
+    {
+        string good = Path.Combine(Path.GetTempPath(), $"trestleboard-good-{Guid.NewGuid():N}.tboard");
+        string junk = Path.Combine(Path.GetTempPath(), $"trestleboard-junk-{Guid.NewGuid():N}.tboard");
+        using (var file = File.Create(good))
+        {
+            TboardContainer.Save(TemplateLibrary.Create(TemplateLibrary.All[1].Id), file);
+        }
+
+        File.WriteAllText(junk, "this is not a zip container");
+
+        try
+        {
+            await Session.Dispatch(() =>
+            {
+                var window = new MainWindow();
+
+                Assert.True(window.OpenDocumentFromPath(good));
+                Assert.Equal(good, window.DocumentPathForTest);
+                TboardPackage open = window.PackageForTest!;
+
+                Assert.False(window.OpenDocumentFromPath(junk));
+
+                Assert.Equal(good, window.DocumentPathForTest);
+                Assert.Same(open, window.PackageForTest);
+
+                window.Close();
+            }, TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            File.Delete(good);
+            File.Delete(junk);
+        }
+    }
+
+    /// <summary>
     /// "Am I on the newest one?" must have an answer that does not involve a web browser — and like
     /// every other command in this app it has to be reachable from the keyboard (PLAN.md §6).
     /// </summary>
