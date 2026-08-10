@@ -55,8 +55,18 @@ public static class WidgetDrawListRenderer
                 case WidgetRuleItem rule:
                     // Antialiased: a 0.5pt hairline that lands between device pixels otherwise
                     // disappears on some rows and not others, and a table of half-drawn rules looks
-                    // broken. Fills and rules rasterise identically on every OS — only glyph
-                    // scalers differ (docs/M1-spec.md §5) — so this costs no determinism.
+                    // broken.
+                    //
+                    // This used to claim that fills and rules "rasterise identically on every OS —
+                    // only glyph scalers differ", and that antialiasing therefore costs no
+                    // determinism. That is not true, and it was the stated reason the widget-rule
+                    // baselines were trusted. Antialiased coverage is computed in floating point,
+                    // and CPU architectures do not agree to the last bit: an emblem's PNG hash
+                    // differs between arm64 and x64 for exactly this reason (see
+                    // EmblemLibraryTests). Rules are axis-aligned rectangles, so in practice they
+                    // land on far fewer partial-coverage pixels than a curve does — but "fewer" is
+                    // not "none", and the guarantee here rests on the per-OS snapshot baselines
+                    // (SnapshotInfra.cs), not on this being architecture-invariant.
                     using (var paint = new SKPaint { Color = new SKColor(rule.ColorArgb), IsAntialias = true })
                     {
                         SKRect band = rule.Orientation == WidgetRuleOrientation.Horizontal

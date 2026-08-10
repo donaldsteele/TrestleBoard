@@ -3425,6 +3425,106 @@ that must be demonstrated rather than assumed. Any control the audit finds dead 
 listed here with its reason, in the M70 tradition of recording the clean results and the deliberate
 omissions rather than only the changes.
 
+### M72 — the emblem stays a drawing all the way to the page (M)
+
+**Goal.** An emblem is vector at rest and raster in the document. `EmblemLibrary.cs:40-52` holds SVG
+path data in C# source, `EmblemRenderer.Draw` parses it with `SKPath.ParseSvgPathData` — and then
+`MainWindow.axaml.cs:2359` rasterises it at 2048px and hands the bytes to `InsertPhoto`, so what a
+`.tboard` actually stores is `assets/img-N.png`. This milestone removes that raster step: the
+document stores the path data, the renderer draws it at whatever resolution the surface needs, and
+`SKDocument` receives true vector content.
+
+**Why now — this reverses a written decision, on evidence M65 did not have.** `docs/M65-spec.md` §3
+and §9 argued the raster case deliberately: *"No emblem stays a vector on the page … a deliberate
+closing of the door"*, recording as a known cost that *"the emblem's id is not stored with the frame,
+so re-rendering would need a format change"*. Two things have changed since.
+
+*First, the determinism claim that justified it is false.* The committed PNG hash held on
+windows-latest and ubuntu-latest — two operating systems, two native Skia binaries — and failed on
+macos-latest for **fifteen consecutive CI builds**. The variable is not the OS: macos-latest is
+arm64, the other two are x64. Antialiased coverage is float arithmetic and arm64 contracts
+multiply-adds where the x64 baseline cannot; ~840 partially-covered pixels differ by ±1, which
+re-rolls the PNG filter choice and the whole deflate stream. It is not metadata — the chunks are
+`IHDR + sBIT + IDAT + IEND`, with no `tEXt`/`iTXt`/`zTXt`/`iCCP`. Gate 22 passes on arm64 because
+`EmblemFingerprint.Of` hashes the path data as a *string* and never invokes Skia. So a macOS member's
+newsletter genuinely carries different bytes, and no re-recorded hash can fix that: one committed
+hash cannot be true for two architectures.
+
+*Second, the "second renderer" M65 feared does not have to be built.* `DocumentRenderSource` already
+draws antialiased vector shapes that reach both the editor canvas and `SKDocument` — `RenderShape`
+(`:1025-1045`) for `ShapeBlock`, and `WidgetDrawListRenderer` (`:46-68`) for every table rule in the
+app. `RenderVector` is a ~40-line sibling of `RenderShape`, and `ParseSvgPathData` is the only new
+Skia API in the milestone — already in the repository at `EmblemRenderer.cs:86`.
+
+**What it buys beyond the red build.** Resolution ceases to be a ceiling: today the emblem is a
+2048px raster downsampled through Mitchell cubic to a ~200pt frame, and in the PDF it is a raster at
+~680dpi instead of a path. **Export.Pdf needs zero changes** — `canvas.DrawPath` on an `SKDocument`
+canvas emits vector operators, and that is the whole prize. The container shrinks (no asset at all).
+And an emblem stops inheriting the photo toolkit it never wanted: `ImageRecipe` crop, rotation,
+brightness, auto-levels, and `FixPhoto`'s Sobel/skin-tone auto-crop, all currently applicable to a
+two-colour line drawing. `ReviewChecklist` stops nagging that a decorative rule "has nothing printed
+under it".
+
+**Deliverables.**
+
+**(a) A vector block in `Core`, and no new dependency edge.** Path data is strings and doubles;
+`ShapeBlock` already stores `uint? StrokeArgb` / `float StrokeWidthPt` with no Skia type in sight, so
+**nothing forces `SKPath` into Core** and Core stays BCL-only. The parse happens once, in
+`Rendering`, where SkiaSharp already lives. `Emblems` stays a leaf referenced only by `App`, which is
+the sole place its types touch the document — mirroring the rule that `Editing` must not reference
+`Roster`. Carry `EmblemId` and `EmblemFingerprint` on the block as provenance only, nothing reading
+them, on the `SourcePdfAssetRef` precedent. *Rejected: storing only the id and resolving at render.*
+That needs `Rendering → Emblems` (forbidden by §9) or a resolver seam, and it breaks the rule that a
+document is self-describing — a shelf revision would silently change how an existing newsletter
+prints.
+
+**(b) The format bump, which is the risky part and not the renderer.** `CurrentFormatVersion` has
+been `1.0.0` since M2 and `MigrationRunner.Chain` is **empty and has never executed a step**. This is
+its first live use. Bumping the version without adding a 1.0.0→1.1.0 step throws
+`UnsupportedFormatException` on every existing newsletter. Old documents need no migration — a baked
+emblem is an ordinary `ImageFrame` and stays one, opening byte-for-byte. **Do not attempt to detect
+and upgrade old baked emblems**: the id was deliberately not stored, so it would require pixel
+matching and would silently rewrite user documents. Raise `MinReaderVersion` to 1.1.0 **only on
+documents that actually contain a vector block**, so an older build says "saved by a newer version"
+in plain language rather than failing a polymorphic bind. That conditional is new logic in
+`TboardContainer.Save` and is design, not typing.
+
+**(c) One draw routine, not two.** If `EmblemRenderer.Draw` survives for picker thumbnails alongside
+`RenderVector`, the milestone has built M65's feared second renderer and merely relocated it — they
+will drift. Expose the primitive from `Rendering` and have the picker draw through it. Then
+`TrestleBoard.Emblems` can drop its SkiaSharp package references and become a BCL-only data leaf like
+`Roster`, with SkiaSharp remaining a test-only reference for `EveryPathIsGeometrySkiaUnderstands`.
+
+**(d) Decide the selection kind explicitly, because the fall-through is silent.**
+`ActionContextFactory.cs:98` defaults an unrecognised block to `SelectionKind.Shape`, so a new block
+type nobody wires up **appears to work** while announcing "A shape is selected" and offering the
+shape action group. Each photo command must be deliberately granted or withheld — corner aspect-lock
+(M69) and captions granted; crop, adjust, position and `FixPhoto` withheld — and every refusal needs
+a plain-language reason, because `ActionAvailability` refuses an empty one at construction.
+
+**(e) Correct the three places that state the false claim.** `docs/M65-spec.md` §3/§6/§9, this plan's
+M65 acceptance line ("Rendering is deterministic across OSes"), and
+`WidgetDrawListRenderer.cs:56-59`, which claimed *"fills and rules rasterise identically on every OS
+— only glyph scalers differ"* and was the stated reason the widget-rule baselines are trusted. Rules
+are axis-aligned and so land on far fewer partial-coverage pixels than a curve, but "fewer" is not
+"none". *(The comment and §6 were corrected when the red build was fixed; the M65 acceptance line
+remains.)*
+
+**Acceptance.** A newsletter with an emblem exports a PDF whose emblem is vector, verified by
+inspecting the content stream rather than by eye. The same newsletter authored on arm64 and on x64
+produces byte-identical `.tboard` documents — the claim M65 made and could not keep. Every existing
+`.tboard` opens unchanged, and one saved by an older build still round-trips byte-unchanged (M61).
+`EmblemTests`' four `OfType<ImageFrame>()` assertions and `PictureResizeTests`' three emblem tests
+are rewritten, not deleted — and the doc-comment at `EmblemTests.cs:69-72`, which explicitly warns
+against "somebody later optimising the emblem into a frame type of its own", is the thing being
+overruled and must be rewritten to say why. Three new snapshot baselines, one per OS, baked fresh.
+Measure the PDF size against the 1.3–1.8 MB target: a 19-part ornament repeated on six pages is not
+free as content-stream operators.
+
+**Recorded so the next person does not lose a day to it.** Snapshot baselines are selected by OS
+(`SnapshotInfra.cs:117-138`) and **not by architecture**. Once antialiased paths reach a fixture, the
+macOS baseline is implicitly an arm64 artifact, and it must be baked on arm64.
+
 ---
 
 ## 12. Verification (end-to-end)
@@ -3534,6 +3634,14 @@ omissions rather than only the changes.
     Enumerated from `ActionCatalog.Evaluate` against the contexts each surface renders in, so it is a
     build failure rather than a review finding — and it must pass a control that is sometimes
     unavailable and explains itself, which is M11 working correctly.
+
+25. **Cross-architecture document gate (M72):** the same newsletter authored on arm64 and on x64
+    produces a byte-identical `.tboard`. This is the claim M65 made with a single committed PNG hash
+    and could not keep — antialiased coverage is float arithmetic and architectures disagree, so the
+    gate holds only because a vector emblem puts no raster in the container at all. Note that the
+    release workflow verifies on all three operating systems as of 2026-08-09; before that it ran
+    `dotnet test` on ubuntu-latest alone while packing `osx-x64` and `osx-arm64`, so a macOS-only
+    failure could not block a release by construction.
 
 ## 13. Remaining open items (status as at 2026-07-27)
 

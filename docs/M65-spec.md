@@ -111,11 +111,34 @@ and actually saying where the artwork came from.
 
 ## 6. Determinism
 
-`TheSameEmblemRendersToTheSameBytesEveryTimeAndEverywhere` renders one emblem and compares the
-PNG's SHA-256 against a hash committed in the test. Because CI runs the suite on
-windows/ubuntu/macos-latest, that single assertion is the cross-OS claim: **two committee members on
-two platforms produce byte-identical documents.** If it fails after a deliberate redraw, the fix is
-to re-record the hash *and* the manifest entry in one commit, having looked at the picture.
+> **Corrected on 2026-08-09. What this section claimed was false, and it failed in the field.**
+> The original text is kept below the line because it is the reasoning M72 overturns.
+>
+> The committed PNG hash held on windows-latest and ubuntu-latest — two operating systems, two
+> native Skia binaries — and failed on macos-latest for fifteen consecutive builds. The variable is
+> not the OS: **macos-latest is arm64 and the other two are x64.** Antialiased coverage is computed
+> in floating point and arm64 contracts multiply-adds where the x64 baseline cannot, so ~840
+> partially-covered pixels differ by ±1, which re-rolls the PNG filter choice and the whole deflate
+> stream. One committed hash cannot be true for two architectures.
+>
+> What *is* identical everywhere is the geometry: `EmblemFingerprint.Of` hashes the path data as a
+> string and never invokes Skia, which is why gate 22 passes on arm64. The determinism claim below
+> was attached to the wrong artifact.
+>
+> Consequence for the product, not just the build: an emblem is rasterised at insert time and the
+> PNG is what a `.tboard` stores, so a macOS member's newsletter really does carry different bytes
+> from a Windows member's. **M72 keeps the emblem vector into the document and the PDF**, which
+> removes the raster from the container and makes the sentence below true by construction instead of
+> by hoping Skia is bit-stable. See also §9, which closed this door deliberately and recorded the
+> cost we are now paying.
+>
+> ---
+>
+> ~~`TheSameEmblemRendersToTheSameBytesEveryTimeAndEverywhere` renders one emblem and compares the
+> PNG's SHA-256 against a hash committed in the test. Because CI runs the suite on
+> windows/ubuntu/macos-latest, that single assertion is the cross-OS claim: **two committee members
+> on two platforms produce byte-identical documents.** If it fails after a deliberate redraw, the fix
+> is to re-record the hash *and* the manifest entry in one commit, having looked at the picture.~~
 
 No snapshot baseline moved: no fixture uses an emblem.
 
