@@ -81,6 +81,43 @@ public sealed record ActionContext
     public bool IssueDateChosen { get; init; }
 
     /// <summary>
+    /// M75 (e): which month this issue is for, 1–12 — so a refusal can NAME it.
+    ///
+    /// <para>The whole of M75 began with a refusal reading "Nobody in your address book has a
+    /// birthday in this issue's month", which the user reads as the month he thinks he is working
+    /// in. It cost two agents a trace. A sentence naming January would have told him in one glance,
+    /// so every rule that talks about the issue's month now has the month to hand.</para>
+    ///
+    /// <para>Zero when no newsletter is open, which <c>ActionCatalog.MonthName</c> renders as
+    /// "this issue's month" — the old wording survives only where there is genuinely no month.</para>
+    /// </summary>
+    public int IssueMonth { get; init; }
+
+    /// <summary>
+    /// M75 (e): the birthday list on the page has nothing in it and the address book has somebody
+    /// for this issue's month, so filling it in is worth offering.
+    ///
+    /// <para>Separate from <see cref="BirthdayListIsStale"/> because the two want different
+    /// sentences: a stale list disagrees with the address book, an empty one has never been asked.
+    /// Before M75 neither was ever true on a new newsletter — a freshly inserted list is
+    /// <c>Manual</c>, and staleness returned false for a manual list at the first line — so the
+    /// feature only ever advertised itself to somebody who had already used it.</para>
+    /// </summary>
+    public bool BirthdayListIsEmpty { get; init; }
+
+    /// <summary>
+    /// M75 (f): the address book file is there but could not be read, so what the app is holding is
+    /// an empty placeholder rather than the user's people.
+    ///
+    /// <para><c>RosterStore.Load</c> has separated "no file yet" from "could not be read" since M24
+    /// and it is tested — but the answer stopped at <c>RosterService</c> and never reached here, so
+    /// a transient lock on <c>roster.json</c> was reported to the user as "your address book is
+    /// empty". That is M24's own bug class on the M11 surface: a confident wrong answer where the
+    /// truth was known one layer down.</para>
+    /// </summary>
+    public bool RosterCouldNotBeRead { get; init; }
+
+    /// <summary>
     /// M75: there is a cover heading on the page to ask the question through.
     ///
     /// <para>The ask lives in the cover wizard, so a newsletter with no cover heading has nowhere to

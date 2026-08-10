@@ -52,13 +52,27 @@ public static class WhatsNext
         // M75: not while the issue date is unanswered. The staleness flag is computed against
         // January in that state, so it is not a fact yet — and gate 24 forbids the card offering a
         // button that can only refuse, which this one would.
-        if (context.BirthdayListIsStale && context.IssueDateChosen)
+        // M75 (e) defect 2: an EMPTY list counts too, and it is the case a real user meets first.
+        // A freshly inserted or template birthday list is Manual, staleness answers false for a
+        // manual list at its first line, and so this row only ever appeared to somebody who had
+        // already brought birthdays in once. The feature never advertised itself on a new
+        // newsletter, which is where it is most wanted.
+        if ((context.BirthdayListIsStale || context.BirthdayListIsEmpty) && context.IssueDateChosen)
         {
-            steps.Add(new NextStep(
-                "Update the birthday list",
-                "The birthday list no longer matches your address book — either this issue has moved "
-                + "to another month, or somebody's details have changed.",
-                Actions.ActionId.SyncBirthdays));
+            steps.Add(context.BirthdayListIsEmpty && !context.BirthdayListIsStale
+                ? new NextStep(
+                    "Fill in the birthday list",
+                    $"The birthday list on the page is empty, and your address book has "
+                    + $"{People(context.RosterBirthdaysThisMonth)} born in "
+                    + $"{ActionCatalog.MonthName(context.IssueMonth)}, which is the month this issue "
+                    + "is for.",
+                    Actions.ActionId.SyncBirthdays)
+                : new NextStep(
+                    "Update the birthday list",
+                    "The birthday list no longer matches your address book for "
+                    + $"{ActionCatalog.MonthName(context.IssueMonth)} — either this issue has moved "
+                    + "to another month, or somebody's details have changed.",
+                    Actions.ActionId.SyncBirthdays));
         }
 
         if (context.OfficersTableIsStale)
@@ -70,7 +84,18 @@ public static class WhatsNext
                 Actions.ActionId.SyncOfficers));
         }
 
-        if (context.RosterEmptyButNeeded)
+        // M75 (f): an unreadable address book looks empty from up here, and telling somebody to fill
+        // in a book he has already filled in is how a locked file becomes an afternoon's work.
+        if (context.RosterCouldNotBeRead)
+        {
+            steps.Add(new NextStep(
+                "Let TrestleBoard reach your address book",
+                "Your address book is on this computer but could not be read, so nothing can be "
+                + "filled in for you. It is not empty. Close any other program using it, then start "
+                + "TrestleBoard again.",
+                null));
+        }
+        else if (context.RosterEmptyButNeeded)
         {
             steps.Add(new NextStep(
                 "Fill in your address book",
@@ -127,4 +152,9 @@ public static class WhatsNext
 
         return steps;
     }
+
+    /// <summary>"one person" or "3 people" — a count read aloud, not a number in a field.</summary>
+    private static string People(int count) => count == 1
+        ? "one person"
+        : $"{count.ToString(System.Globalization.CultureInfo.InvariantCulture)} people";
 }

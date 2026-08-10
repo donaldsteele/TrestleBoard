@@ -395,6 +395,40 @@ public sealed class BirthdayRosterProjectionTests
         Assert.Equal(generated.Entries[0].MemberId, read.Entries[0].MemberId);
     }
 
+    // ---- an empty list the address book could fill in (M75 (e)) --------------------------------
+
+    /// <summary>
+    /// A <b>guard</b> on new API (M75 (e) defect 2): <c>CouldBeFilledIn</c> did not exist before the
+    /// fix, so this cannot be made to fail against the old tree. The behaviour it underpins — the
+    /// "what's next" card offering to fill an empty list in — is pinned where it can fail, in
+    /// <c>AddressBookHonestyTests</c> and <c>BirthdayReportingTests</c>.
+    ///
+    /// <para>What it holds is the narrowness of the question. <see cref="BirthdayRosterProjection.IsStale"/>
+    /// answers false for a manual list at its first line and must go on doing so; this asks a
+    /// different question about a list with <b>no rows at all</b>.</para>
+    /// </summary>
+    [Fact]
+    public void AnEmptyManualListCouldBeFilledInAndAListWithARowInItCouldNot()
+    {
+        var empty = new BirthdayListData { Source = BirthdayListSource.Manual };
+
+        Assert.True(BirthdayRosterProjection.CouldBeFilledIn(empty, Book(), March));
+
+        // Nobody is born in this month, so there is nothing to offer.
+        Assert.False(BirthdayRosterProjection.CouldBeFilledIn(empty, Book(), 12));
+
+        // One row somebody typed, and the list is his. This is the protection that predates M75.
+        var typed = new BirthdayListData
+        {
+            Source = BirthdayListSource.Manual,
+            Entries = [new BirthdayEntry { Name = "E. Placeholder", Month = March, Day = 4, IsManual = true }],
+        };
+        Assert.False(BirthdayRosterProjection.CouldBeFilledIn(typed, Book(), March));
+
+        // And staleness is unchanged: a list somebody typed is still never nagged about.
+        Assert.False(BirthdayRosterProjection.IsStale(typed, Book(), March));
+    }
+
     // ---- fictional scaffolding -------------------------------------------------------------------
 
     private static IWizardStep ListStep() =>

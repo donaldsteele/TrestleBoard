@@ -139,6 +139,30 @@ public sealed class ReviewChecklistTests
             f => f.Kind == ReviewFindingKind.DateFromAnotherMonth);
     }
 
+    /// <summary>
+    /// M75 (g), and a <b>guard</b> rather than a regression test: this sentence was already right,
+    /// and nothing tied it to the issue's real month, which is precisely how a newsletter can spend
+    /// sixty milestones being January 2000 while every test passes. It cannot fail against the tree
+    /// as it stood before M75 (e) because nothing about it changed — it exists so that a future
+    /// edit to the issue date's plumbing cannot quietly detach this question from the issue.
+    /// </summary>
+    [Theory]
+    [InlineData(7, "June", "July")]
+    [InlineData(12, "November", "December")]
+    [InlineData(1, "December", "January")]
+    public void TheDateQuestionNamesTheIssuesOwnMonth(int issueMonth, string mentioned, string issue)
+    {
+        Document document = Clean(issueMonth: issueMonth);
+        document.Stories[0].Paragraphs[0].Runs[0].Text = $"The {mentioned} picnic was a fine evening.";
+
+        ReviewFinding finding = Assert.Single(
+            ReviewChecklist.Build(document),
+            f => f.Kind == ReviewFindingKind.DateFromAnotherMonth);
+
+        Assert.Contains($"names {mentioned}", finding.Question, StringComparison.Ordinal);
+        Assert.Contains($"this issue is for {issue}", finding.Question, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void JanuaryLooksBackAtDecember()
     {

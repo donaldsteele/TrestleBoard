@@ -221,6 +221,32 @@ public static class BirthdayRosterProjection
     }
 
     /// <summary>
+    /// M75 (e): is this an empty list the address book could fill in?
+    ///
+    /// <para><see cref="IsStale"/> cannot answer this and must not be made to. It answers "has the
+    /// address book moved since this list was made", and it returns false at its first line for a
+    /// list whose <see cref="BirthdayListData.Source"/> is <c>Manual</c> — which is right, because
+    /// nagging about a list somebody typed would be nonsense, and because the
+    /// <c>IsGenerated</c>/<c>IsManual</c> protection is the promise that the user's own rows are
+    /// never rewritten.</para>
+    ///
+    /// <para>But a freshly inserted list, and a list a template ships, is <b>also</b> manual — and
+    /// empty. So until M75 the shell could only ever offer to <i>re</i>-fill a list that had already
+    /// been generated once: on a new newsletter, the one place the offer is most useful, the feature
+    /// never advertised itself at all. This asks the narrower question, and it is deliberately
+    /// narrow: <b>no rows at all</b>. One typed row and the answer is false, because from that
+    /// moment the list is the user's.</para>
+    /// </summary>
+    /// <param name="month">The issue month, 1–12 — the real one, which is the rest of M75.</param>
+    public static bool CouldBeFilledIn(BirthdayListData data, IReadOnlyList<Member> members, int month)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentNullException.ThrowIfNull(members);
+
+        return data.Entries.Count == 0 && CountFor(members, month) > 0;
+    }
+
+    /// <summary>
     /// A hash of exactly the fields that reach the page: who is in this month, what he is called and
     /// on which day. A changed phone number is not a stale birthday list, and must not claim to be —
     /// and neither is a change to somebody the user has already taken off this list, which is why the

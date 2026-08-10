@@ -480,8 +480,11 @@ public static class ActionCatalog
                 ActionAvailability.Available,
 
             // ---- The address book (M12) -----------------------------------------------------------
-            ActionId.ExportPeople => context.RosterCount > 0
-                ? ActionAvailability.Available
+            // M75 (f): the unreadable case first here too. "Save as a spreadsheet" over a book that
+            // could not be read would write an empty spreadsheet the user might then re-import.
+            ActionId.ExportPeople =>
+                context.RosterCouldNotBeRead ? ActionAvailability.Blocked(CouldNotReadTheAddressBook)
+                : context.RosterCount > 0 ? ActionAvailability.Available
                 : ActionAvailability.Blocked(
                     "Your address book is empty, so there is nothing to save yet. Import a list, or "
                     + "add somebody in the People window.",
@@ -715,10 +718,13 @@ public static class ActionCatalog
             // Reachable two ways (M13): with the list selected, and — because that is where the
             // user is actually standing when they are told the list has gone stale — from the
             // "what's next" card with nothing selected at all. The shell finds the stale list.
+            // M75 (e) defect 2: an empty list reaches it the second way too. Without this the
+            // "Fill in the birthday list" row on the card would offer a button that can only refuse,
+            // which gate 24 forbids and which is the shape this milestone is about.
             ActionId.SyncBirthdays =>
                 context.WidgetTypeId == BirthdayListTypeId
                     ? EvaluateWidget(context, EvaluateBirthdaySync(context))
-                    : context.BirthdayListIsStale
+                    : context.BirthdayListIsStale || context.BirthdayListIsEmpty
                         ? EvaluateBirthdaySync(context)
                         : ActionAvailability.NotApplicable(NeedsBirthdayList),
 
@@ -1046,6 +1052,17 @@ public static class ActionCatalog
                 ActionId.SetIssueDate);
         }
 
+        // M75 (f), and it goes before the empty test, because an unreadable book LOOKS empty from
+        // here: RosterService hands out an empty placeholder when the file will not load. Told it
+        // was empty, the user imports his list again over a file that was only locked.
+        // M75 (f), and it goes before the empty test, because an unreadable book LOOKS empty from
+        // here: RosterService hands out an empty placeholder when the file will not load. Told it
+        // was empty, the user imports his list again over a file that was only locked.
+        if (context.RosterCouldNotBeRead)
+        {
+            return ActionAvailability.Blocked(CouldNotReadTheAddressBook);
+        }
+
         if (context.RosterCount == 0)
         {
             return ActionAvailability.Blocked(
@@ -1056,9 +1073,14 @@ public static class ActionCatalog
 
         if (context.RosterBirthdaysThisMonth == 0)
         {
+            // M75 (e) defect 1: it NAMES THE MONTH. "This issue's month" is read as the month the
+            // user thinks he is working in, which is exactly how a wrong issue date hides — the
+            // owner read this sentence about a July address book and a January newsletter and it
+            // told him nothing. Naming January would have ended the hunt in one glance.
             return ActionAvailability.Blocked(
-                "Nobody in your address book has a birthday in this issue's month. You can still "
-                + "type a birthday in yourself, or add the missing dates in the People window.",
+                $"Nobody in your address book has a birthday in {MonthName(context.IssueMonth)}, "
+                + "which is the month this issue is for. You can still type a birthday in yourself, "
+                + "or add the missing dates in the People window.",
                 ActionId.ShowPeople);
         }
 
@@ -1073,6 +1095,15 @@ public static class ActionCatalog
     /// </summary>
     private static ActionAvailability EvaluateOfficersSync(ActionContext context)
     {
+        // M75 (f): the same third branch, for the same reason. Every rule that can say "your address
+        // book is empty" must first be sure that it is.
+        // M75 (f): the same third branch, for the same reason. Every rule that can say "your address
+        // book is empty" must first be sure that it is.
+        if (context.RosterCouldNotBeRead)
+        {
+            return ActionAvailability.Blocked(CouldNotReadTheAddressBook);
+        }
+
         if (context.RosterCount == 0)
         {
             return ActionAvailability.Blocked(
@@ -1113,6 +1144,30 @@ public static class ActionCatalog
             : context.IssueDateChosen
                 ? ActionAvailability.Available
                 : ActionAvailability.Blocked(NoIssueDate(because), ActionId.SetIssueDate);
+
+    /// <summary>
+    /// M75 (f): what the user is told when the address book file is there but would not load.
+    ///
+    /// <para>It carries no <c>RemedyId</c> on purpose. Every remedy in this catalog is a command the
+    /// app can run, and there is nothing the app can do about a file another program is holding —
+    /// offering "Import your member list" here would invite the user to overwrite a good address
+    /// book he still has. The sentence says who can fix it, which is him.</para>
+    /// </summary>
+    public const string CouldNotReadTheAddressBook =
+        "TrestleBoard could not read your address book, so it does not know who is in it. It is not "
+        + "empty — the file is on this computer but would not open, which usually means another "
+        + "program is using it. Close that program, then start TrestleBoard again.";
+
+    /// <summary>
+    /// The issue's month by name, for the refusals that must say WHICH month (M75 (e)).
+    ///
+    /// <para>Invariant culture, like every other month name the app prints: the newsletter is
+    /// written in English and the sentence is read beside a cover that says "July".</para>
+    /// </summary>
+    public static string MonthName(int month) =>
+        month is >= 1 and <= 12
+            ? System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(month)
+            : "this issue's month";
 
     /// <summary>The one sentence, so eight commands cannot drift into eight ways of saying it.</summary>
     private static string NoIssueDate(string because) =>

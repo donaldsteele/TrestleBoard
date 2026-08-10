@@ -462,6 +462,7 @@ public partial class MainWindow : Window
                 CoverDateMissing: CoverHeadingNeedsADate(),
                 RosterEmptyButNeeded: RosterEmptyButNeeded(),
                 BirthdayListIsStale: BirthdayListNeedsUpdating(),
+                BirthdayListIsEmpty: BirthdayListCouldBeFilledIn(),
                 RosterBirthdaysThisMonth: _session is null
                     ? 0
                     : BirthdayRosterProjection.CountFor(
@@ -480,6 +481,10 @@ public partial class MainWindow : Window
                 // the silent wrongness M11 exists to remove. HasEarlierVersions is tracked rather
                 // than re-scanned, so no refresh lists a directory.
                 RosterCount: Roster.Book.Count,
+
+                // M75 (f). RosterService has known this since M24 and nothing above it ever asked,
+                // so an address book another program had locked was reported to the user as empty.
+                RosterCouldNotBeRead: Roster.CouldNotBeRead,
                 RosterCanUndo: Roster.CanUndo,
                 RosterUndoDescription: Roster.UndoDescription,
                 RosterHasEarlierVersions: Roster.HasEarlierVersions,
@@ -1063,7 +1068,7 @@ public partial class MainWindow : Window
         }
 
         Core.Model.DocumentMetadata meta = _package.Document.Metadata;
-        string stem = $"{meta.Title} {meta.IssueYear}-{meta.IssueMonth:00}";
+        string stem = Integration.IssueNaming.FileStem(meta);
         string? path = ExportPathForTest;
         if (path is null && !ExportPickerHasNoLocalPathForTest)
         {
@@ -1101,7 +1106,10 @@ public partial class MainWindow : Window
             AtomicFileWrite.Write(path, stream => DocumentPdfExporter.Export(
                 stream,
                 _source,
-                new PdfMetadata(meta.Title, meta.LodgeName, $"Trestle board {meta.IssueYear}-{meta.IssueMonth:00}"),
+                new PdfMetadata(
+                    Integration.IssueNaming.Title(meta),
+                    meta.LodgeName,
+                    Integration.IssueNaming.PdfSubject(meta)),
                 draft ? WatermarkRenderer.DraftText : null));
 
             _exportedThisSession = true;
@@ -3506,8 +3514,7 @@ public partial class MainWindow : Window
         {
             Title = "Save this newsletter",
             DefaultExtension = "tboard",
-            SuggestedFileName =
-                $"{meta.Title} {meta.IssueYear}-{meta.IssueMonth:00}.tboard",
+            SuggestedFileName = $"{Integration.IssueNaming.FileStem(meta)}.tboard",
             FileTypeChoices = [new FilePickerFileType("TrestleBoard newsletter") { Patterns = ["*.tboard"] }],
         });
 
@@ -5528,6 +5535,33 @@ public partial class MainWindow : Window
         return false;
     }
 
+    /// <summary>
+    /// M75 (e): is there an empty birthday list on the page that the address book could fill in?
+    ///
+    /// <para>The other half of <see cref="BirthdayListNeedsUpdating"/>, and the half that matters on
+    /// a brand-new newsletter: the list a template ships and the list the Insert wizard leaves are
+    /// both <c>Manual</c>, so staleness — rightly — says nothing about them.</para>
+    /// </summary>
+    private bool BirthdayListCouldBeFilledIn()
+    {
+        if (_session is null)
+        {
+            return false;
+        }
+
+        int month = _session.Document.Metadata.IssueMonth;
+        foreach (string blockId in BirthdayListBlockIds())
+        {
+            if (TryReadBirthdayList(blockId, out BirthdayListData data)
+                && BirthdayRosterProjection.CouldBeFilledIn(data, Roster.Book.Members, month))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private IEnumerable<string> BirthdayListBlockIds() => WidgetBlockIds(BirthdayListTypeId);
 
     private bool TryReadBirthdayList(string blockId, out BirthdayListData data)
@@ -5568,12 +5602,18 @@ public partial class MainWindow : Window
         string? blockId = _frames?.SelectedBlockId;
         if (blockId is null || _widgets.GetWidgetType(blockId) != BirthdayListTypeId)
         {
+            int wanted = _session.Document.Metadata.IssueMonth;
+
+            // M75 (e) defect 2: an EMPTY list is worth finding too. Looking only for a stale one
+            // meant the "what's next" card could never lead the user to the list a template ships,
+            // because a template's list is manual and manual lists are never stale.
             blockId = BirthdayListBlockIds().FirstOrDefault(
                 id => TryReadBirthdayList(id, out BirthdayListData d)
-                    && BirthdayRosterProjection.IsStale(d, Roster.Book.Members, _session.Document.Metadata.IssueMonth));
+                    && (BirthdayRosterProjection.IsStale(d, Roster.Book.Members, wanted)
+                        || BirthdayRosterProjection.CouldBeFilledIn(d, Roster.Book.Members, wanted)));
             if (blockId is null)
             {
-                Announce("There is no birthday list on this newsletter yet. Add one from the Insert menu.");
+                Announce(NothingToBringIn(wanted));
                 return false;
             }
 
@@ -5608,7 +5648,18 @@ public partial class MainWindow : Window
         {
             // Still a change: the provenance stamp is written even though no name moved.
             ApplyBirthdayPlan(blockId, plan);
-            Announce("The birthday list already matches your address book.");
+
+            // M75 (e) defect 4: "already matches your address book" having matched NOBODY is the
+            // most reassuring wrong answer in the app — it is what the owner was told while his
+            // July address book was being read for January. The two cases are different facts and
+            // now read differently, and both name the month.
+            int fromTheBook = plan.Result.Entries.Count(e => e.MemberId is { Length: > 0 } && !e.IsManual);
+            Announce(fromTheBook == 0
+                ? $"Nobody from your address book has a birthday in {BirthdaySyncDialog.MonthName(month)}, "
+                    + "which is the month this issue is for, so there was nothing to bring in. "
+                    + "Anything you typed in yourself has been left alone."
+                : $"The birthday list already matches the {BirthdaySyncDialog.MonthName(month)} "
+                    + "birthdays in your address book.");
             return true;
         }
 
@@ -5624,20 +5675,91 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// At insert time only: the extra first screen. With an empty address book — or a month nobody
-    /// was born in — the wizard is exactly what it has always been, and the user is asked nothing.
+    /// M75 (e) defect 3: what the user is told when "Bring in birthdays" was pressed with nothing
+    /// chosen and the shell found no list worth acting on.
+    ///
+    /// <para>The old sentence — "There is no birthday list on this newsletter yet. Add one from the
+    /// Insert menu." — was said with a birthday list sitting on page three, because the search that
+    /// preceded it looked for a <b>stale</b> list and reported its own emptiness as the page's.
+    /// Three different facts get three different sentences now, and each of the two about the
+    /// address book names the month.</para>
     /// </summary>
-    private async Task<System.Text.Json.JsonElement?> OfferBirthdaysFromRosterAsync()
+    private string NothingToBringIn(int month)
     {
-        if (_session is null || Roster.Book.Count == 0)
+        if (!BirthdayListBlockIds().Any())
+        {
+            return "There is no birthday list on this newsletter yet. Add one from the Insert menu.";
+        }
+
+        // M75 (f): an unreadable book is not an empty one, here as in the catalog.
+        if (Roster.CouldNotBeRead)
+        {
+            return Editing.Actions.ActionCatalog.CouldNotReadTheAddressBook;
+        }
+
+        string monthName = BirthdaySyncDialog.MonthName(month);
+        if (BirthdayRosterProjection.CountFor(Roster.Book.Members, month) == 0)
+        {
+            return $"Nobody in your address book has a birthday in {monthName}, which is the month "
+                + "this issue is for, so the birthday list was left as it is.";
+        }
+
+        // A list that WAS filled in from the address book and still agrees with it is up to date,
+        // and may be said to be. A list somebody typed is not — it was never asked, and saying
+        // "already up to date" of it would be the same reassuring falsehood defect 4 is about. It
+        // is left alone here because filling in a list with rows in it is a change worth choosing
+        // deliberately, with the list in front of you.
+        bool oneIsGenerated = BirthdayListBlockIds().Any(
+            id => TryReadBirthdayList(id, out BirthdayListData d) && d.Source == BirthdayListSource.Roster);
+
+        return oneIsGenerated
+            ? $"The birthday list is already up to date with the {monthName} birthdays in your "
+                + "address book."
+            : $"The birthday list on this newsletter was typed in by hand, so TrestleBoard has left "
+                + $"it alone. Choose it on the page first if you would like the {monthName} "
+                + "birthdays brought in.";
+    }
+
+    /// <summary>
+    /// At insert time only: the extra first screen. With an empty address book — or a month nobody
+    /// was born in — the wizard is exactly what it has always been.
+    ///
+    /// <para>M75 (e) defect 5: but it no longer happens in silence. Every one of these three ways
+    /// out used to return null and let the plain empty wizard open with nothing said, so a user who
+    /// had just pressed "Birthdays" expecting his lodge to appear was left to work out for himself
+    /// whether the address book, the month or the program was at fault. It was the month.</para>
+    /// </summary>
+    internal async Task<System.Text.Json.JsonElement?> OfferBirthdaysFromRosterAsync()
+    {
+        if (_session is null)
         {
             return null;
         }
 
+        if (Roster.CouldNotBeRead)
+        {
+            Announce(
+                Editing.Actions.ActionCatalog.CouldNotReadTheAddressBook
+                + " The birthday list opens empty for you to type into.");
+            return null;
+        }
+
         int month = _session.Document.Metadata.IssueMonth;
+        string monthName = BirthdaySyncDialog.MonthName(month);
+        if (Roster.Book.Count == 0)
+        {
+            Announce(
+                "Your address book is empty, so there are no birthdays to bring in. The birthday "
+                + "list opens empty for you to type into.");
+            return null;
+        }
+
         BirthdayProjection plan = BirthdayRosterProjection.Plan(new BirthdayListData(), Roster.Book.Members, month);
         if (plan.Additions.Count == 0)
         {
+            Announce(
+                $"Nobody in your address book has a birthday in {monthName}, which is the month "
+                + "this issue is for, so the birthday list opens empty for you to type into.");
             return null;
         }
 

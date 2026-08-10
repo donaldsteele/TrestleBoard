@@ -19,6 +19,10 @@ namespace TrestleBoard.Editing.Actions;
 /// <param name="SelectedWidgetDisplayName">What the selected widget is called in the interface.</param>
 /// <param name="RosterEmptyButNeeded">M12: a people widget is on the page and the address book is empty.</param>
 /// <param name="BirthdayListIsStale">M13: a generated birthday list no longer matches the address book.</param>
+/// <param name="BirthdayListIsEmpty">
+/// M75 (e): a birthday list on the page has no rows and the address book has somebody born in this
+/// issue's month. Only the shell can see both halves, exactly as with staleness.
+/// </param>
 /// <param name="RosterBirthdaysThisMonth">M13: how many people are born in this issue's month.</param>
 /// <param name="OfficersTableIsStale">M19: a generated officers table no longer matches the book.</param>
 /// <param name="RosterOfficesFilledIn">M19: how many of the twelve offices the book could fill in.</param>
@@ -27,6 +31,10 @@ namespace TrestleBoard.Editing.Actions;
 /// </param>
 /// <param name="CoverDateMissing">The cover heading has no meeting date filled in.</param>
 /// <param name="RosterCount">M12: how many people the address book holds.</param>
+/// <param name="RosterCouldNotBeRead">
+/// M75 (f): the address book file is there but would not load, so the empty book the app is holding
+/// is a placeholder and must never be described as an empty address book.
+/// </param>
 /// <param name="RosterCanUndo">M12: there is one address-book change to take back.</param>
 /// <param name="RosterUndoDescription">M12: what that change was, in the user's words.</param>
 /// <param name="RosterHasEarlierVersions">M12: the backup ring holds something to restore.</param>
@@ -44,12 +52,14 @@ public readonly record struct ShellFacts(
     string? SelectedWidgetDisplayName = null,
     bool RosterEmptyButNeeded = false,
     bool BirthdayListIsStale = false,
+    bool BirthdayListIsEmpty = false,
     int RosterBirthdaysThisMonth = 0,
     bool OfficersTableIsStale = false,
     int RosterOfficesFilledIn = 0,
     string? SelectionFilledInFromRoster = null,
     bool CoverDateMissing = false,
     int RosterCount = 0,
+    bool RosterCouldNotBeRead = false,
     bool RosterCanUndo = false,
     string? RosterUndoDescription = null,
     bool RosterHasEarlierVersions = false,
@@ -125,6 +135,10 @@ public static class ActionContextFactory
             // property of the newsletter, and the one thing the whole milestone is about is that
             // nothing was reading it. A document with no session at all counts as unanswered.
             IssueDateChosen = session?.Document.Metadata.HasIssueDate == true,
+
+            // M75 (e). Zero with no newsletter open, which is the one state where "this issue's
+            // month" is still the honest phrase.
+            IssueMonth = session?.Document.Metadata.IssueMonth ?? 0,
             HasCoverHeading = session is not null && HasACoverHeading(session.Document),
             HasOversetText = source is { IsOverset: true },
             HasUnsavedChanges = hasDocument && shell.HasUnsavedChanges,
@@ -176,12 +190,14 @@ public static class ActionContextFactory
             CoverDateMissing = shell.CoverDateMissing,
             RosterEmptyButNeeded = shell.RosterEmptyButNeeded,
             BirthdayListIsStale = shell.BirthdayListIsStale,
+            BirthdayListIsEmpty = shell.BirthdayListIsEmpty,
             RosterBirthdaysThisMonth = shell.RosterBirthdaysThisMonth,
             OfficersTableIsStale = shell.OfficersTableIsStale,
             RosterOfficesFilledIn = shell.RosterOfficesFilledIn,
             SelectionFilledInFromRoster = shell.SelectionFilledInFromRoster,
 
             RosterCount = shell.RosterCount,
+            RosterCouldNotBeRead = shell.RosterCouldNotBeRead,
             RosterCanUndo = shell.RosterCanUndo,
             RosterUndoDescription = shell.RosterUndoDescription,
             RosterHasEarlierVersions = shell.RosterHasEarlierVersions,
