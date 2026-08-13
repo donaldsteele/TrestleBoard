@@ -3830,8 +3830,6 @@ five bugs were found by the owner using the app, and gate 23's screen-reader pas
 > reviewers, traced to real lines. A clean result nobody wrote down is how this project came to need
 > M73 at all.
 
-### M74 — the final-check findings (M)
-
 **Goal.** Four independent reviewers went over v1.3.0 as the last gate before calling it
 production-ready — one on M72 (the newest code), one on the M73 fix wave (fast fixes breed
 regressions), one on the data-integrity core (the ground nobody had fresh-eyed since M24/M39), and
@@ -3969,8 +3967,6 @@ after CI is green on all three operating systems.
 > `Metadata.Title`, not the issue date, and a second question on the way into a newsletter is a second
 > question to get wrong. One fallback, `IssueNaming.DefaultTitle`, used everywhere — including the
 > window title bar, which the census caught reading `"TrestleBoard —  — not saved yet"`.
-
-### M75 — the newsletter knows which issue it is (M)
 
 **The report.** The owner set a cover date of 7 July, had a member with a 3 July birthday, and the
 birthday list would not fill in. It is not the projection: `BirthdayRosterProjection.Plan` is a pure
