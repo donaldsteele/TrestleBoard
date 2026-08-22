@@ -122,12 +122,18 @@ internal static partial class Program
         // prose files are meant to be editable by somebody who is not reading any code — and because
         // paths pasted into a page are a copy that can drift from the program's own.
         text = text.Replace("{{ornament}}", Emblems.Divider(), StringComparison.Ordinal);
+        text = EmblemToken().Replace(text, m => Emblems.Svg(m.Groups[1].Value, "emblem"));
 
-        return EmblemToken().Replace(text, m => Emblems.Svg(m.Groups[1].Value, "emblem"));
+        // {{os:windows}} and the other two: the marks on the download page. Same reasoning as the
+        // emblems — geometry belongs in code where it is reviewed, prose stays prose.
+        return OsToken().Replace(text, m => Platforms.Svg(m.Groups[1].Value));
     }
 
     [System.Text.RegularExpressions.GeneratedRegex(@"\{\{emblem:([a-z0-9-]+)\}\}")]
     private static partial System.Text.RegularExpressions.Regex EmblemToken();
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\{\{os:([a-z0-9-]+)\}\}")]
+    private static partial System.Text.RegularExpressions.Regex OsToken();
 
     /// <summary>
     /// Empties the output folder before writing it.

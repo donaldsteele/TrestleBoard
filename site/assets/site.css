@@ -653,3 +653,109 @@ figcaption {
   .hero-emblem .emblem { max-width: 6rem; }
   .hero-emblem-note { margin: 0; }
 }
+
+/* ------------------------------------------------------- the download page */
+
+/*
+  Four cards, and the reader has to be able to answer "which one is mine" without knowing what an
+  architecture is. So each card leads with the operating system in words, says who it is for in a
+  sentence, and — where two builds exist for one platform — tells them exactly where to look on
+  their own machine to find out.
+
+  The marks are drawn in tools/TrestleBoard.Site/Platforms.cs and are deliberately generic rather
+  than any company's logo. They sit BESIDE the name, never instead of it (PLAN.md §6).
+*/
+
+.chooser-heading { margin-top: 2rem; }
+
+.verdict {
+  font-size: 1.05rem;
+  color: var(--muted);
+  margin-bottom: 1.25rem;
+  max-width: 42rem;
+}
+
+.downloads {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.download {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  background: var(--sheet);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-surface);
+  padding: 1.25rem;
+  max-width: 46rem;
+}
+
+.os-mark {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  color: var(--board);
+  margin-top: 0.15rem;
+}
+
+.download-body { min-width: 0; }
+.download-name { margin: 0 0 0.35rem; font-size: 1.25rem; }
+.download-who { margin: 0 0 0.9rem; color: var(--muted); max-width: 34rem; }
+
+/* The "how to tell" sentence is the part somebody actually needs when two builds exist for one
+   platform, so it is on its own line rather than buried at the end of the paragraph. */
+.download-check { display: block; margin-top: 0.35rem; }
+
+.download-get { display: inline-block; }
+
+.download-file {
+  margin: 0.7rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+  word-break: break-word;
+}
+
+.downloads-note { color: var(--muted); font-size: 0.98rem; max-width: 42rem; }
+
+/*
+  THE RECOMMENDATION, WHEN THE BROWSER LETS US GUESS ONE.
+
+  Marked three ways and only one of them is colour, which is this project's rule everywhere else:
+  an accent bar down the side (a shape), the word "Recommended" written into the card by script,
+  and the card lifted onto the raised surface. With JavaScript off none of it appears and the page
+  is exactly as useful — four choices, each explaining who it is for.
+*/
+.download.is-recommended {
+  border-color: var(--board);
+  border-left: 5px solid var(--board);
+}
+
+.recommended-flag {
+  display: inline-block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--board);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.15rem 0.7rem;
+  margin-bottom: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .recommended-flag { color: #10182a; }
+}
+
+/* A choice the reader has been told is probably not theirs should still be easy to take — this
+   quietens the others slightly and does nothing else. Never a grey-out: PLAN.md §6 again. */
+.downloads.has-recommendation .download:not(.is-recommended) { background: transparent; }
+
+@media (max-width: 34rem) {
+  .download { flex-direction: column; gap: 0.75rem; }
+  .os-mark { width: 2.25rem; height: 2.25rem; }
+}

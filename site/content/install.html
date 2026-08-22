@@ -3,14 +3,85 @@
   can break your computer, and if you get stuck at a step you can stop and ask.
 </p>
 
-<div class="hero-actions">
-  <a class="button button-primary" href="https://github.com/donaldsteele/TrestleBoard/releases/latest">Go to the download page</a>
-</div>
+<h2 class="chooser-heading">Choose your download</h2>
 
-<p>
-  The newest version is <strong data-latest-version>1.4.0</strong>. Every file below is on that page
-  under the heading <span class="quoted">Assets</span>. Once TrestleBoard is installed it keeps
-  itself up to date, so this is the only time you will come here.
+<p id="os-verdict" class="verdict" role="status">
+  Pick the one that matches your computer. If you are not sure, each card says how to tell.
+</p>
+
+<ul class="downloads">
+  <li class="download" data-os="windows">
+    {{os:windows}}
+    <div class="download-body">
+      <h3 class="download-name">Windows</h3>
+      <p class="download-who">Any PC running Windows 10 or 11.</p>
+      <a class="button button-primary download-get"
+         href="https://github.com/donaldsteele/TrestleBoard/releases/latest/download/TrestleBoard-win-x64-Setup.exe">
+        Download for Windows
+      </a>
+      <p class="download-file">
+        <span data-file>TrestleBoard-win-x64-Setup.exe</span> · <span data-size="win-x64">about 61 MB</span>
+      </p>
+    </div>
+  </li>
+
+  <li class="download" data-os="mac-arm">
+    {{os:mac}}
+    <div class="download-body">
+      <h3 class="download-name">Mac with Apple silicon</h3>
+      <p class="download-who">
+        Any Mac from late 2020 onward — the chip is called M1, M2, M3 or M4.
+        <span class="download-check">Not sure? Apple menu → About This Mac. If it says
+        <strong>Chip: Apple</strong> something, this is yours.</span>
+      </p>
+      <a class="button button-primary download-get"
+         href="https://github.com/donaldsteele/TrestleBoard/releases/latest/download/TrestleBoard-osx-arm64-Setup.pkg">
+        Download for Apple silicon
+      </a>
+      <p class="download-file">
+        <span data-file>TrestleBoard-osx-arm64-Setup.pkg</span> · <span data-size="osx-arm64">about 54 MB</span>
+      </p>
+    </div>
+  </li>
+
+  <li class="download" data-os="mac-intel">
+    {{os:mac}}
+    <div class="download-body">
+      <h3 class="download-name">Mac with an Intel processor</h3>
+      <p class="download-who">
+        Older Macs, roughly 2020 and before.
+        <span class="download-check">About This Mac says <strong>Processor: Intel</strong>.</span>
+      </p>
+      <a class="button button-primary download-get"
+         href="https://github.com/donaldsteele/TrestleBoard/releases/latest/download/TrestleBoard-osx-x64-Setup.pkg">
+        Download for Intel Mac
+      </a>
+      <p class="download-file">
+        <span data-file>TrestleBoard-osx-x64-Setup.pkg</span> · <span data-size="osx-x64">about 56 MB</span>
+      </p>
+    </div>
+  </li>
+
+  <li class="download" data-os="linux">
+    {{os:linux}}
+    <div class="download-body">
+      <h3 class="download-name">Linux</h3>
+      <p class="download-who">An AppImage — no install step, and it runs on most distributions.</p>
+      <a class="button button-primary download-get"
+         href="https://github.com/donaldsteele/TrestleBoard/releases/latest/download/TrestleBoard-linux-x64.AppImage">
+        Download for Linux
+      </a>
+      <p class="download-file">
+        <span data-file>TrestleBoard-linux-x64.AppImage</span> · <span data-size="linux-x64">about 55 MB</span>
+      </p>
+    </div>
+  </li>
+</ul>
+
+<p class="downloads-note">
+  Version <strong data-latest-version>1.5.0</strong>. Every version ever released stays on the
+  <a href="https://github.com/donaldsteele/TrestleBoard/releases">releases page</a>, along with
+  portable copies that run from a folder without installing.
 </p>
 
 <div class="note warnbox">
@@ -22,7 +93,9 @@
   </p>
 </div>
 
-<h2>Windows</h2>
+{{ornament}}
+
+<h2>Installing on Windows</h2>
 
 <ol class="steps">
   <li>Open the download page and find the newest release at the top.</li>
@@ -50,7 +123,7 @@
   <li>You now have TrestleBoard on your Desktop and in the Start menu.</li>
 </ol>
 
-<h2>macOS</h2>
+<h2>Installing on a Mac</h2>
 
 <ol class="steps">
   <li>Open the download page and find the newest release.</li>
@@ -88,7 +161,7 @@
   certificate matter as the first time.
 </p>
 
-<h2>Linux</h2>
+<h2>Installing on Linux</h2>
 
 <ol class="steps">
   <li>
