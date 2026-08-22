@@ -64,16 +64,31 @@ public partial class MainWindow : Window
     private static readonly double[] ZoomSteps = [0.5, 0.65, 0.8, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0];
 
     /// <summary>
-    /// Below this much window width the panel folds away rather than squeezing the page out.
+    /// How much window the page keeps for itself before a strip of chrome is allowed to stand
+    /// beside it (M76 (g)).
     ///
-    /// <para><b>Derived from the panel width, not written beside it.</b> Until M16 this was a
-    /// hard-coded 900 sitting next to a hard-coded 320, and widening one without the other would
-    /// have changed the fold behaviour §11.9 of <c>docs/accessibility-test-script.md</c> tests by
-    /// hand without anybody deciding to change it. The rule the original number encoded is "fold
-    /// when the panel would take more than about a third of the window", and that is what this
-    /// expression says.</para>
+    /// <para><b>Why a second number was needed, and it was a screenshot that said so.</b> Since M16
+    /// the fold compared a CONSTANT — <c>ActionPanel.PanelWidth * 2.5</c>, or 900 — against the raw
+    /// window width, which was exactly right while there was one strip and it never changed size.
+    /// M76 broke both halves of
+    /// that at once: the rail is a second strip, and both of them are inside
+    /// <c>LayoutTransformControl</c>s that DOUBLE their width at the 200% UI scale §6 offers this
+    /// audience. At 200% in a 1280 window the two together asked for 368 + 720 = 1088 pixels and
+    /// the page was left about 190 — a sliver, in the one window this application exists to show.
+    /// <c>scale-200.png</c> showed it; no test did, because every fold test resizes the window and
+    /// none of them changes the scale.</para>
+    ///
+    /// <para>So the question is no longer "is the window wide enough" but "what would be left of the
+    /// page", and the answer has to be asked in the same units the chrome is drawn in. This is the
+    /// floor: below it the page is not a page, it is a column.</para>
+    ///
+    /// <para><b>540 is not a fresh opinion, it is the old number restated.</b> M16's 900 was the
+    /// panel's 360 plus 540 for the page. Keeping that 540 means the panel's behaviour at 100% is
+    /// exactly what it has been since M16, and §11.9 of <c>docs/accessibility-test-script.md</c>
+    /// still describes what a tester sees. What changes is only that the sum is computed at the
+    /// scale the chrome is actually drawn at, and that a second strip must fit in what is left.</para>
     /// </summary>
-    private const double PanelFoldWidth = ActionPanel.PanelWidth * 2.5;
+    private const double MinimumRoomForThePage = 540d;
 
     /// <summary>
     /// The app is the one place where "the newsletter must still open" outranks "fail loudly", so
@@ -83,6 +98,12 @@ public partial class MainWindow : Window
     /// </summary>
     private readonly FontStore _fonts = CreateAppFontStore();
     private readonly ActionPanel _panel = new();
+
+    /// <summary>
+    /// M76 (g): the row of miniature pages down the left. Built here rather than in the XAML because
+    /// it has one tile per page of whatever newsletter is open — see <see cref="PageRail"/>.
+    /// </summary>
+    private readonly PageRail _rail;
     private readonly ActionRunner _actions;
     private TboardPackage? _package;
     private DocumentRenderSource? _source;
@@ -165,6 +186,12 @@ public partial class MainWindow : Window
         DressToolbar();
         _actions = new ActionRunner(this);
         ActionPanelHost.Content = _panel;
+
+        // M76 (g). The rail is handed a way to draw a page and a way to run a command, and nothing
+        // else: it never reaches for the open document, because the document it would reach for is
+        // replaced every time somebody opens a newsletter and this control outlives all of them.
+        _rail = new PageRail(RenderPageThumbnail, RunActionFor);
+        PageRailHost.Content = _rail;
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
         PageCanvas.ContextRequested += OnCanvasContextRequested;
         PageCanvas.PeerAskedForContextMenu += (_, _) => ShowContextActions();
@@ -230,6 +257,7 @@ public partial class MainWindow : Window
             // point with unsaved work any more: OnWindowClosing has already offered to save it, and
             // the user either did, or said not to.
             _findWindow?.Close();
+            _rail.ForgetEveryThumbnail();
             _recoveryTimer?.Stop();
             _recovery?.Complete();
             _recovery?.Dispose();
@@ -260,8 +288,39 @@ public partial class MainWindow : Window
     internal Button[] ToolbarButtons =>
     [
         OpenButton, SaveButton, UndoButton, RedoButton, PrevPageButton, NextPageButton,
-        ZoomOutButton, ZoomInButton, FitButton,
+        ExportPdfButton,
     ];
+
+    /// <summary>
+    /// The canvas footer, as a list (M76(d)). These four were on the toolbar until this milestone
+    /// and are the reason it did not fit the window's own default width; they act on the VIEW of
+    /// the page rather than on the newsletter, so they now live under the canvas.
+    ///
+    /// <para>They are a SEPARATE list from <see cref="ToolbarButtons"/> rather than folded into it,
+    /// because the name of that property is what tells the next reader where a button is. What the
+    /// two lists must SHARE is every pass made over a button: availability, icons, wording and
+    /// tooltips all walk them concatenated. That was not true when this list was introduced — the
+    /// availability pass took the footer and the wording and tooltip tests did not, so three
+    /// commands lost the guarantee that their label is the catalog's own word for them, which is
+    /// exactly the drift the note over ToolbarButtons was written to prevent.</para>
+    ///
+    /// <para>The zoom-percentage button is not here: it carries no <c>ActionId</c> — it opens a
+    /// chooser rather than performing a command — and everything these lists are for is keyed on
+    /// one. It is never greyed, which is correct: pressing it always has something to say.</para>
+    /// </summary>
+    internal Button[] CanvasFooterButtons => [ZoomOutButton, ZoomInButton, FitButton];
+
+    /// <summary>The zoom-percentage button and the label inside it, for M76's footer test.</summary>
+    internal Button ZoomLadderButtonForTest => ZoomLadderButton;
+
+    /// <summary>The scrolling part of the toolbar, so M76's overflow test can measure it.</summary>
+    internal ScrollViewer ToolbarStripForTest => ToolbarStrip;
+
+    /// <summary>The controls in the toolbar's scrolling strip, whose total width must fit it.</summary>
+    internal Control ToolbarStackForTest => ToolbarStack;
+
+    /// <summary>The canvas footer strip, so a test can prove the moved controls are really in it.</summary>
+    internal Control CanvasFooterStackForTest => CanvasFooterStack;
 
     /// <summary>What the toolbar is saying about the save state, for the tests.</summary>
     internal string SaveStateTextForTest => SaveStateLabel.Text ?? string.Empty;
@@ -322,9 +381,28 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnActionClicked(object? sender, RoutedEventArgs e)
     {
-        if (sender is Control { Tag: string actionId })
+        if (sender is Control control)
         {
-            _ = _actions.RunAsync(actionId, sender as Control);
+            RunActionFor(control);
+        }
+    }
+
+    /// <summary>
+    /// Runs whatever command a control's <c>Tag</c> names, and hands the runner the control itself
+    /// so a command with a parameter can read it back off the thing the user pressed.
+    ///
+    /// <para>M76 (g) split this out of <see cref="OnActionClicked"/> because the page rail invokes
+    /// from two places — a click and the Enter key on a tile — and both must arrive at the runner by
+    /// exactly the same route. <see cref="ActionTarget.IdOf"/> is what lets a menu item's bare string
+    /// and a tile's id-plus-page-number be answered by one line: see ActionTarget for why the page
+    /// number rides beside the id rather than becoming an ActionId of its own.</para>
+    /// </summary>
+    internal void RunActionFor(Control control)
+    {
+        ArgumentNullException.ThrowIfNull(control);
+        if (ActionTarget.IdOf(control.Tag) is { } actionId)
+        {
+            _ = _actions.RunAsync(actionId, control);
         }
     }
 
@@ -352,7 +430,11 @@ public partial class MainWindow : Window
             Avalonia.Automation.AutomationProperties.SetHelpText(item, availability.Reason);
         }
 
-        foreach (Button button in ToolbarButtons)
+        // M76(d): the footer is walked with the toolbar, not after it. Zoom out, Zoom in and Fit
+        // page changed which strip of chrome they live on and nothing else — they must still be
+        // told when they cannot run, and still carry the catalog's reason where a screen reader
+        // finds it. A second loop here would be a second thing to forget.
+        foreach (Button button in ToolbarButtons.Concat(CanvasFooterButtons))
         {
             if (button.Tag is string actionId && ActionCatalog.TryGet(actionId, out _))
             {
@@ -361,6 +443,18 @@ public partial class MainWindow : Window
                 Avalonia.Automation.AutomationProperties.SetHelpText(button, availability.Reason);
             }
         }
+
+        // M76 (g): the rail is fed from the same one snapshot as the menus, the toolbar and the
+        // panel, so it cannot disagree with them about which page is showing or about why a page
+        // cannot be moved. It is updated IN PLACE — see PageRail.Update — because this method runs
+        // after every command and every selection change, and rebuilding the tiles each time would
+        // take the focus out from under a keyboard user in the middle of walking them.
+        _rail.Update(
+            PageIdsForRail(),
+            _pageIndex,
+            ActionCatalog.Evaluate(ActionId.GoToPage, _context),
+            ActionCatalog.Evaluate(ActionId.MovePageEarlier, _context),
+            ActionCatalog.Evaluate(ActionId.MovePageLater, _context));
 
         // Plain-language labels straight from the command descriptions (PLAN.md §4).
         UndoMenuItem.Header = _context.CanUndo ? $"_Undo {_context.UndoDescription}" : "_Undo";
@@ -629,6 +723,12 @@ public partial class MainWindow : Window
         (string Name, Control Root)[] regions =
         [
             ("the page", PageCanvas),
+
+            // M76 (g): the rail is a part of the window in its own right, so F6 has to stop at it.
+            // It is listed beside the page because that is where it stands, and a region that
+            // cannot take focus — the rail folded away on a narrow window — is stepped over by the
+            // loop below rather than announced as somewhere the user has been sent (M70(c)).
+            ("the pages down the side", PageRailHost),
             ("the panel of things you can do", ActionPanelHost),
             ("the toolbar", OpenButton),
             ("the menus", MenuScale),
@@ -704,13 +804,28 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// Whether a strip <paramref name="stripWidth"/> wide at 100% can stand beside the page without
+    /// squeezing it under <see cref="MinimumRoomForThePage"/>.
+    ///
+    /// <para><b>Derived, never written beside the thing it governs</b> — M16's rule, now covering
+    /// the scale as well as the width. The strips live in <c>LayoutTransformControl</c>s, so one at
+    /// 200% asks for twice the room, and a threshold that does not multiply is wrong in exactly the
+    /// place PLAN.md §6 cares about most. A window that has not been laid out yet
+    /// (<c>Bounds.Width</c> 0) counts as roomy, so nothing folds itself away before it is measured.
+    /// </para>
+    /// </summary>
+    private bool RoomBeside(double stripWidth) =>
+        Bounds.Width <= 0
+        || Bounds.Width >= (stripWidth * _settings.UiScale) + MinimumRoomForThePage;
+
+    /// <summary>
     /// The chrome budget (PLAN.md §11 M11): the panel folds itself away on a narrow window rather
     /// than leaving the page a strip down the middle.
     /// </summary>
     /// <returns>Whether the panel is now on screen — which is not the same as the setting.</returns>
     private bool ApplyPanelVisibility()
     {
-        bool roomForIt = Bounds.Width <= 0 || Bounds.Width >= PanelFoldWidth;
+        bool roomForIt = RoomBeside(ActionPanel.PanelWidth);
         bool showPanel = _settings.ShowActionPanel && roomForIt;
         PanelScale.IsVisible = showPanel;
         CollapsedPanelHost.IsVisible = !showPanel;
@@ -718,6 +833,60 @@ public partial class MainWindow : Window
             ? "▸"
             : "What can I do? ▸";
         return showPanel;
+    }
+
+    /// <summary>
+    /// M76 (g): the rail's half of the same switch, worded the same way and for the same reason.
+    /// M70(d)'s rule holds here too — the sentence says what is actually on screen, not what the
+    /// setting says, because on a narrow window the setting and the screen disagree on purpose.
+    /// </summary>
+    internal void TogglePageRail()
+    {
+        _settings = _settings with { ShowPageRail = !_settings.ShowPageRail };
+        bool remembered = _settings.Save();
+        bool showing = ApplyRailVisibility();
+        Announce((showing
+            ? "The pages are showing down the left-hand side."
+            : _settings.ShowPageRail
+                ? "This window is too narrow for the row of pages, so it stays folded away. "
+                    + "Make the window wider and it will come back."
+                : "The row of pages is hidden. Bring it back from View, Show the pages down the "
+                    + "side.")
+            + (remembered ? "" : ButTheChoiceCouldNotBeRemembered));
+    }
+
+    /// <summary>
+    /// The chrome budget again (PLAN.md §11 M11), from the other side of the window: the rail folds
+    /// itself away on a narrow window rather than taking a second strip out of the page.
+    ///
+    /// <para><b>The rail asks for the room the panel has already taken, and it folds first.</b> The
+    /// first version of this used the panel's own threshold on the grounds that "the reason either
+    /// folds is the page in the middle, which does not care which side the room was taken from" —
+    /// which is true of the page and false of the arithmetic. Two strips were each asked whether
+    /// ONE of them would fit, both answered yes, and at 200% they took 1088 of a 1280 window
+    /// between them. So the rail's question includes the panel: is there room for the panel, the
+    /// rail AND a page.
+    ///
+    /// <para>When only one can stand, it is the panel that stands. The panel is where §6 puts the
+    /// commands — "actions belong next to the object, not only in the menu bar" — while the rail is
+    /// a faster route to a page that Previous and Next still reach. Neither disappears: each folds
+    /// to a labelled button that brings it straight back.</para></para>
+    /// </summary>
+    /// <returns>Whether the rail is now on screen — which is not the same as the setting.</returns>
+    private bool ApplyRailVisibility()
+    {
+        bool panelStanding = _settings.ShowActionPanel && RoomBeside(ActionPanel.PanelWidth);
+        bool roomForIt = RoomBeside(
+            panelStanding ? PageRail.RailWidth + ActionPanel.PanelWidth : PageRail.RailWidth);
+        bool showRail = _settings.ShowPageRail && roomForIt;
+        RailScale.IsVisible = showRail;
+        CollapsedRailHost.IsVisible = !showRail;
+
+        // The label stays whole at every width. The panel's own button shortens to a bare "▸" when
+        // the window is too narrow for it, and this one deliberately does not follow it there: "no
+        // icon-only controls, ever" (PLAN.md §6) and "Pages" is five characters, so there is nothing
+        // to buy by dropping it.
+        return showRail;
     }
 
     // ---- Autosave and recovery ----------------------------------------------------------------
@@ -827,23 +996,44 @@ public partial class MainWindow : Window
 
         var start = new StartDialog(canStartFromLastMonth: false, Templates.All());
         await start.ShowDialog(this);
-
-        switch (start.Choice)
-        {
-            case StartChoice.MyTemplate when start.SelectedUserTemplateId is { } mine:
-                await OpenUserTemplateAsync(mine);
-                break;
-            case StartChoice.Template:
-                await OpenTemplateAsync(start.SelectedTemplateId);
-                break;
-            case StartChoice.OpenFile:
-                await OpenNewsletterAsync();
-                break;
-            case StartChoice.LastMonth:
-                // Only reachable once a newsletter is open; the tile explains that and is disabled.
-                break;
-        }
+        await ActOnWhatTheStartScreenSaidAsync(start);
     }
+
+    /// <summary>
+    /// Does the thing the start screen was pressed for — the ONE place that answer is acted on.
+    ///
+    /// <para><b>Why it is one place.</b> There were two switches over <c>StartChoice</c>, one for
+    /// first run and one for File &gt; New, and M76 (h) added a choice to the window and to neither
+    /// of them: pressing a recent newsletter closed the start screen and opened nothing, in silence,
+    /// while the suite stayed green because the only test asked the dialog what it had decided
+    /// rather than asking the shell what it had done. A second switch is a second thing to forget,
+    /// so there is now one, and every route through it answers whether a newsletter actually came
+    /// up.</para>
+    /// </summary>
+    /// <returns>
+    /// M74 (f): false where no new newsletter came up — a window closed without a choice, or the
+    /// chosen route itself coming to nothing.
+    /// </returns>
+    internal async Task<bool> ActOnWhatTheStartScreenSaidAsync(StartDialog start) =>
+        start.Choice switch
+        {
+            StartChoice.MyTemplate when start.SelectedUserTemplateId is { } mine =>
+                await OpenUserTemplateAsync(mine),
+            StartChoice.Template => await OpenTemplateAsync(start.SelectedTemplateId),
+            StartChoice.LastMonth => await CarryForwardToNextIssueAsync(),
+            StartChoice.OpenFile => await OpenNewsletterAsync(),
+
+            // M76 (h): the shortcut past the file dialog. Deliberately the ORDINARY open path and
+            // not a second way of loading a newsletter — so a file that has been moved or damaged
+            // since it was listed refuses in the M25 sentence, exactly as it would have done if the
+            // user had walked the dialog to it.
+            StartChoice.RecentFile when start.SelectedRecentPath is { } recent =>
+                OpenDocumentFromPath(recent),
+
+            // Closed without an answer, or a choice whose companion value is missing — which the
+            // window does not offer, but a switch has to say something about.
+            _ => false,
+        };
 
     /// <summary>Offers back anything that survived a previous run (docs/M9-spec.md §1.5).</summary>
     internal async Task<bool> OfferRecoveryAsync()
@@ -1026,18 +1216,7 @@ public partial class MainWindow : Window
         var start = new StartDialog(canStartFromLastMonth: _package is not null, Templates.All());
         await start.ShowDialog(this);
 
-        return start.Choice switch
-        {
-            StartChoice.MyTemplate when start.SelectedUserTemplateId is { } mine =>
-                await OpenUserTemplateAsync(mine),
-            StartChoice.Template => await OpenTemplateAsync(start.SelectedTemplateId),
-            StartChoice.LastMonth => await CarryForwardToNextIssueAsync(),
-            StartChoice.OpenFile => await OpenNewsletterAsync(),
-
-            // Closed without an answer, or "MyTemplate" with nothing selected — which the window
-            // does not offer, but a switch has to say something about.
-            _ => false,
-        };
+        return await ActOnWhatTheStartScreenSaidAsync(start);
     }
 
     internal Task<bool> ExportPdfAsync() => ExportPdfAsync(draft: false);
@@ -6140,7 +6319,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        _settings = dialog.Result with { ShowActionPanel = _settings.ShowActionPanel };
+        // Both strips of chrome the user can put away are carried across by hand: the settings
+        // window does not offer either of them, so its result holds the DEFAULT for each, and
+        // taking it whole would silently reopen a panel or a rail somebody had closed.
+        _settings = dialog.Result with
+        {
+            ShowActionPanel = _settings.ShowActionPanel,
+            ShowPageRail = _settings.ShowPageRail,
+        };
 
         // M73(e): Save was `void` with an empty catch, and this said "Saved." whatever happened.
         // Raise the text to 150%, be told it saved, find it back at 100% next time — and the one
@@ -6172,11 +6358,22 @@ public partial class MainWindow : Window
     /// </summary>
     private void DressToolbar()
     {
-        foreach (Button button in ToolbarScale.GetLogicalDescendants().OfType<Button>())
+        // M76(d): and the canvas footer with it. The four view controls kept their glyphs, their
+        // tooltips and the M37 pressable affordance when they moved off the bar — a control that
+        // loses its dressing by changing which strip it stands on is a control that got worse for
+        // a layout reason, which is not a trade this application makes.
+        IEnumerable<Button> dressed = ToolbarScale.GetLogicalDescendants().OfType<Button>()
+            .Concat(CanvasFooterScale.GetLogicalDescendants().OfType<Button>());
+
+        foreach (Button button in dressed)
         {
             // M37: the affordance that says "you can press this". Applied in the loop that already
             // walks the toolbar, so a button added to the XAML cannot miss it — and before the
             // early-out below, because a button without an icon still needs to look pressable.
+            // M76(e): "Make the PDF" takes this class like the rest and keeps the primary look
+            // anyway, because the Theme it sets in the markup is a LOCAL value and the "action"
+            // class sets Theme through a Style — a local value wins. It is still counted as a
+            // button the app made, which is all this class is asked to prove.
             button.Action();
 
             if (button is not { Tag: string actionId, Content: string label })
@@ -6236,7 +6433,14 @@ public partial class MainWindow : Window
         }
 
         double scale = _settings.UiScale;
-        foreach (LayoutTransformControl host in new[] { MenuScale, ToolbarScale, StatusScale, PanelScale })
+        // M76(d): CanvasFooterScale joins them. The footer is chrome ABOUT the page, not the page —
+        // 16pt labels on 44px targets, which is exactly the text this setting exists to raise. The
+        // scroller between the toolbar and the footer is still deliberately left out.
+        // M76(g): RailScale joins them for the same reason CanvasFooterScale did — the rail is
+        // chrome ABOUT the page rather than the page, and its 16pt labels are exactly the text this
+        // setting exists to raise.
+        foreach (LayoutTransformControl host in new[]
+                 { MenuScale, ToolbarScale, StatusScale, PanelScale, CanvasFooterScale, RailScale })
         {
             // A LAYOUT transform, not a render transform: scaled chrome has to take up the room it
             // now occupies, or the buttons simply overlap each other.
@@ -6244,6 +6448,7 @@ public partial class MainWindow : Window
         }
 
         ApplyPanelVisibility();
+        ApplyRailVisibility();
         PageCanvas.ShowSpelling = _settings.ShowSpelling;
     }
 
@@ -6258,7 +6463,8 @@ public partial class MainWindow : Window
     internal Task RunStartupForTest() => RunStartupAsync();
 
     /// <summary>The chrome hosts the UI scale is applied to; the canvas is deliberately not one.</summary>
-    internal LayoutTransformControl[] ChromeScaleHostsForTest => [MenuScale, ToolbarScale, StatusScale, PanelScale];
+    internal LayoutTransformControl[] ChromeScaleHostsForTest =>
+        [MenuScale, ToolbarScale, StatusScale, PanelScale, CanvasFooterScale, RailScale];
 
     // ---- Pages and flow (docs/M8-spec.md §2/§3) ---------------------------------------------
 
@@ -6880,6 +7086,135 @@ public partial class MainWindow : Window
 
     internal void GoToRelativePage(int delta) => GoToPage(_pageIndex + delta);
 
+    /// <summary>
+    /// M76 (g): <c>page.goTo</c>, the catalog's first command with a parameter.
+    ///
+    /// <para><b>Which page is read off the control the user pressed</b>, not off an id per page —
+    /// see <see cref="ActionTarget"/> for why. A rail tile carries one; the Page menu's item cannot,
+    /// because a menu item written in the XAML has no way of knowing which page somebody wants. So
+    /// the menu's half of this command is the honest one: it puts the row of pages on screen and
+    /// stands the keyboard on the page you are already looking at, where the arrows walk and Enter
+    /// goes. That is what "go to a page" means when nobody has said which one yet.</para>
+    /// </summary>
+    /// <returns>Whether anything actually happened (M73(f)): pressing the page you are already on
+    /// changes nothing, and saying "done" about it would be the app claiming work it did not do.</returns>
+    internal bool GoToPageFrom(Control? source)
+    {
+        if (ActionTarget.PageOf(source) is not { } index)
+        {
+            return ShowTheRailAndChooseAPage();
+        }
+
+        if (_source is null || index < 0 || index >= _source.PageCount)
+        {
+            // Only reachable if a tile outlived the newsletter it was built for, which the refresh
+            // is meant to prevent. The user still gets a sentence rather than a button that does
+            // nothing, and it says their work is untouched, because that is the question.
+            Announce(
+                "That page is not there any more, so nothing has happened and your newsletter has "
+                + "not changed.");
+            return false;
+        }
+
+        if (index == _pageIndex)
+        {
+            Announce($"You are already looking at page {index + 1} of {_source.PageCount}.");
+            return false;
+        }
+
+        GoToPage(index);
+        Announce($"Showing page {index + 1} of {_source.PageCount}.");
+        return true;
+    }
+
+    /// <summary>
+    /// The menu's answer to "go to a page": show the chooser and stand on it. Never silent — F6 and
+    /// M70(c) settled that a navigation command which cannot go anywhere still has to say so.
+    /// </summary>
+    private bool ShowTheRailAndChooseAPage()
+    {
+        // Asking to go to a page IS asking for the chooser, so a rail the user had put away is
+        // brought back rather than the command refusing with instructions for bringing it back by
+        // hand. A rail folded away for WIDTH is a different answer: the setting is not what is in
+        // the way, so turning it on would change a preference and still show nothing.
+        if (!RailScale.IsVisible && !_settings.ShowPageRail)
+        {
+            TogglePageRail();
+        }
+
+        if (!RailScale.IsVisible)
+        {
+            Announce(
+                "This window is too narrow for the row of pages. Make the window wider, or use "
+                + "Next page and Previous page to move through the newsletter.");
+            return false;
+        }
+
+        if (_rail.FocusTile(_pageIndex))
+        {
+            Announce(
+                "Choose a page: use the arrow keys to move along the pages down the side, then "
+                + "press Enter.");
+            return true;
+        }
+
+        Announce("There are no pages to choose from yet.");
+        return false;
+    }
+
+    /// <summary>
+    /// A PNG of one page for the rail, or null when there is no newsletter to draw. The rail is
+    /// handed this rather than the render source itself, because the source belongs to the open
+    /// document and is replaced under it every time somebody opens another one.
+    /// </summary>
+    private byte[]? RenderPageThumbnail(int pageIndex) =>
+        _source is { } source && pageIndex >= 0 && pageIndex < source.PageCount
+            ? source.RenderPageToPng(pageIndex, PageRail.ThumbnailScale)
+            : null;
+
+    /// <summary>
+    /// The id of every page, in order — what the rail is refreshed from.
+    ///
+    /// <para><b>Identities rather than a count, and the review that made it so.</b> The rail cached
+    /// each miniature against the page's POSITION, which is stable only until somebody uses the two
+    /// buttons the rail exists to give a home to. Moving a page, adding one or deleting one shifts
+    /// every position at or past the edit while every picture stays where it was, and a move leaves
+    /// the page COUNT alone, so the tiles are not even rebuilt — the rail would go on showing a
+    /// miniature of a page that is somewhere else, under a label and an accessible name recomputed
+    /// correctly on the same pass. Handed the ids, the rail matches a picture to the page it is a
+    /// picture of and the question of what moved never arises.</para>
+    /// </summary>
+    private IReadOnlyList<string> PageIdsForRail() =>
+        _package is { } package
+            ? [.. package.Document.Pages.Select(p => p.Id)]
+            : [];
+
+    /// <summary>The rail, for M76's tests.</summary>
+    internal PageRail RailForTest => _rail;
+
+    /// <summary>Whether the rail is on screen — which is not the same as the setting (M70(d)).</summary>
+    internal bool RailIsShowingForTest => RailScale.IsVisible;
+
+    /// <summary>
+    /// How much window is left for the newsletter itself. The fold rules exist to keep this above a
+    /// floor (see <c>MinimumRoomForThePage</c>), and a test that only asserted which strips are
+    /// showing would pass just as happily if a future strip took the room a folded one gave back.
+    /// </summary>
+    internal double CanvasScrollerWidthForTest => CanvasScroller.Bounds.Width;
+
+    /// <summary>The labelled button the rail folds away to, so a test can prove it takes its place.</summary>
+    internal Button ShowRailButtonForTest => ShowRailButton;
+
+    /// <summary>
+    /// The strip that HOLDS that button, which is the thing whose visibility is actually toggled.
+    ///
+    /// <para>Exposed because a test asserted on the button's own <c>IsVisible</c>, and nothing in
+    /// the application ever writes it — see <see cref="ApplyRailVisibility"/>, which toggles this
+    /// Border. The assertion was therefore always true, and the one claim the fold-away test made
+    /// about the fold-away was the one claim it did not check.</para>
+    /// </summary>
+    internal Border CollapsedRailHostForTest => CollapsedRailHost;
+
     internal void ZoomToActualSize() => SetZoom(1d, fit: false);
 
     internal void FitPage()
@@ -6901,6 +7236,7 @@ public partial class MainWindow : Window
         }
 
         ApplyPanelVisibility();
+        ApplyRailVisibility();
     }
 
     /// <summary>
@@ -6942,6 +7278,11 @@ public partial class MainWindow : Window
         var pages = new PageFlowController(session, source);
 
         _source?.Dispose();
+
+        // M76 (g): every miniature in the rail belongs to the newsletter that is being replaced.
+        // Dropped here rather than redrawn, because the tiles themselves are rebuilt on the next
+        // refresh — this newsletter may not even have the same number of pages.
+        _rail.ForgetEveryThumbnail();
         _source = source;
         _session = session;
         _editor = editor;
@@ -6995,6 +7336,12 @@ public partial class MainWindow : Window
                 _unsavedChanges = true;
                 UpdateTitle();
             }
+
+            // M76 (g): the miniature of the page being edited is now out of date. Marking is all
+            // that happens here — the redraw is delayed until the typing stops, because this fires
+            // once per change to the newsletter and a page re-rendered per keystroke would be felt
+            // (see PageRail.CatchUpDelay).
+            _rail.NoteThePageChanged(_pageIndex);
 
             RefreshActions();
         };
@@ -7255,6 +7602,75 @@ public partial class MainWindow : Window
     {
         Vector offset = CanvasScroller.Offset - delta;
         CanvasScroller.Offset = new Vector(Math.Max(0, offset.X), Math.Max(0, offset.Y));
+    }
+
+    /// <summary>
+    /// M76(d), docs/M76-spec.md §7: the zoom percentage stopped being dead text.
+    ///
+    /// <para>It sat between two steppers showing a number nobody could change — the one readout in
+    /// the window that looked like a control and was not one. Pressing it now opens the same ladder
+    /// of magnifications the steppers walk, so somebody who wants the page at 200% presses once
+    /// instead of four times, and — the part that matters more for this audience — can SEE what the
+    /// choices are instead of having to discover them by pressing until they stop changing.</para>
+    ///
+    /// <para><b>Which ladder, and why not <see cref="ZoomLadder"/>'s.</b> The rungs are
+    /// <see cref="ZoomSteps"/>, which is the ladder every zoom path in this window already
+    /// walks — the buttons, Ctrl+plus/minus and Ctrl+wheel all land in
+    /// <c>StepZoomAboutTheCentre</c>, which reads it. A chooser that offered a different set of
+    /// rungs from the steppers beside it would be two ladders for one number.
+    /// <c>ZoomLadder</c> is the PHOTO-POSITIONING ladder (M22) and starts at 100% on purpose,
+    /// because there the whole picture already fits at 1× and there is nothing to zoom out to; the
+    /// page can and must go below 100%. What is borrowed from it is <c>ZoomLadder.Label</c>, so the
+    /// percentage is spelt the same way in both places.</para>
+    ///
+    /// <para>The current rung carries a radio mark, which is a SHAPE, not a colour (PLAN.md §6),
+    /// and each item says its whole sentence to a screen reader.</para>
+    /// </summary>
+    private void OnZoomLadderClicked(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button)
+        {
+            return;
+        }
+
+        // M70's rule about silent no-ops: with nothing open there is no page to magnify, and an
+        // empty popup would be the app shrugging. It says so instead, in the status bar, and names
+        // the way out — which is also why this button needs no catalog entry to stay honest.
+        if (_source is null || _source.PageCount == 0)
+        {
+            Announce(
+                "There is no newsletter open yet, so there is nothing to make larger or smaller. "
+                + "Open one from the File menu, or start a new one.");
+            return;
+        }
+
+        double current = PageCanvas.Zoom;
+        var flyout = new MenuFlyout { Placement = PlacementMode.Top };
+
+        foreach (double rung in ZoomSteps)
+        {
+            double chosen = rung;
+            string label = ZoomLadder.Label((float)chosen);
+            var item = new MenuItem
+            {
+                Header = label,
+                FontSize = 16,
+                MinHeight = 44,
+                ToggleType = MenuItemToggleType.Radio,
+                IsChecked = Math.Abs(chosen - current) < 0.001,
+            };
+
+            Avalonia.Automation.AutomationProperties.SetName(item, $"Show the page at {label}");
+
+            // No Tag: every walk in the app and in the test suite reads a MenuItem's Tag as an
+            // ActionId, and this is a size rather than a command. M76 adds no ActionId — Zoom in,
+            // Zoom out and Fit page keep theirs and this chooser is a second way to reach the same
+            // number, not a tenth entry in the catalog.
+            item.Click += (_, _) => SetZoom(chosen, fit: false);
+            flyout.Items.Add(item);
+        }
+
+        flyout.ShowAt(button);
     }
 
     private void SetZoom(double zoom, bool fit)

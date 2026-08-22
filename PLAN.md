@@ -4075,6 +4075,71 @@ Chrome, catalog, Core metadata and the cover widget only; no snapshot baseline m
 
 ---
 
+### M76 — the chrome stops looking like 1998 (L) — **delivered 2026-08-21, `docs/M76-spec.md`**
+
+A UI review of the eight shipped shell screenshots against the palette M16 settled. **The palette is
+not the finding and is not replaced** — the finding is that a measured palette applied at one
+elevation, over Fluent's default control fills, is accessible and dated at the same time, and that
+those are separable.
+
+**One defect ships in the default window.** `MainWindow` opens at 1280 and the toolbar does not fit:
+`hero-issue-page1.png` has "Zoom in" clipped and "Fit page" off-screen behind M69's permanent scroll
+track. M69 was right and was looking at 200%; nobody asked why the bar overflowed at 100%. The fix is
+that zoom does not belong to the file — the four view controls move to a canvas footer, which also
+makes room for `newsletter.exportPdf`, the terminal goal of the product, on the toolbar at last.
+
+**One new token, above the ground rather than under it.** `Chrome.Surface` (Light `#FFFFFF`, Dark
+`#262A33`, HC `#000000`) is the raised plane for button fills, cards and rail tiles; every value and
+every measured pair `Chrome.Background` already carries is untouched, which is the whole reason the
+token was added above it. Seven new PAIR lines, all clearing their floors. The surface-on-ground pair
+is `decorative` at 1.15:1 and the spec argues it: **the tone is never the boundary** — the M37 border
+is — so colour is not merely "not the only signal" here, it is none of it.
+
+**The signature is the page rail.** Five pages and one route to page 4 is not navigation. A left rail
+of miniature sheets shows the plan laid out, which is what a trestle board is. `page.moveEarlier` and
+`page.moveLater` already exist and finally get a place where the thing they move is visible.
+`page.goTo` is the one new command, and it is the catalog's **first parameterised action** — the spec
+recommends the target in `Tag` beside the id, so the entry can still refuse in words ("There is only
+one page.") without the catalog's size depending on the document.
+
+Also: at most one primary per panel group (three navy-and-gold offers at once is the absence of an
+answer, not three of them); Source Sans 3 for chrome and Cinzel for the start-screen wordmark, both
+already in `fonts.json`, **subject to a spike and cut if Avalonia cannot resolve the bundled files
+without a second copy on disk**; the start screen's orphaned template picker moves inside its tile;
+recent newsletters appear beside it.
+
+**Acceptance.** The default window shows every toolbar control with no horizontal scrollbar — and the
+four moved controls are asserted *present in the footer*, because deleting them would also pass the
+first half. `ThemeCompositionTests` recomputes all twenty-one pairs. `ActionSurfaceTests` stays green
+against the new fills, which is why the themes change and the call sites do not. High Contrast is
+checked by eye as well, because §4 collapses a tonal step there on an argument rather than a
+measurement. **No baseline moves, no font file is added, no dialog is relaid out.**
+
+> **Delivered.** Suite 1952 -> **1975**, all eleven assemblies green, no snapshot baseline moved and no
+> `.ttf` added — the chrome typeface reaches Avalonia as an `AvaloniaResource` LINK to the file
+> `fonts.json` already registers, on the window icon's precedent.
+>
+> **Three independent reviewers, then a refuter per finding, and six defects survived** — among them
+> one CRITICAL: `StartChoice.RecentFile` reached the window and neither switch over a start-screen
+> answer had an arm for it, so pressing a recent newsletter closed the screen and opened nothing, in
+> silence. The two switches are now one method, because a second switch is a second thing to forget.
+> The rail's thumbnails were keyed by page ORDINAL — stable until somebody pressed the two buttons the
+> rail exists to give a home to — and are now keyed by page id. The primary treatment had no
+> `:disabled` rule, unreachable while only dialog defaults wore it and reached the moment "Make the
+> PDF" joined the toolbar refused. And one test asserted `x || IsVisible` on a property the repository
+> never writes, which is `Assert.True(true)` wearing a sentence.
+>
+> **Then the screenshots found four more that no test did** (spec §11), and they share one shape: a
+> rule that had been correct for as long as the thing it governed stood still. The fold threshold was
+> right for one strip and M76 added a second — at 200% the rail and the panel took 1088 of a 1280
+> window and left the newsletter about 190 pixels. Gate 26 was right for one never-greyed surface and
+> M76 added a second. The footer was moved off the toolbar to stop controls being pushed out of reach
+> and then sat in a narrower region, where at 200% two of them were. **The milestone moved three
+> long-standing rules and checked none of them against what it had just changed** — the M69–M74
+> audit-boundary lesson, arriving from inside the milestone's own diff rather than from the next one.
+
+---
+
 ## 12. Verification (end-to-end)
 
 1. **Per-milestone:** `dotnet build && dotnet test` locally + 3-OS CI matrix green; cavecrew-reviewer findings addressed; snapshot diffs reviewed as CI artifacts.

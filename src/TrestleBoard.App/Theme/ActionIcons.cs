@@ -195,12 +195,20 @@ internal static class ActionIcons
         [ActionId.MovePageEarlier] = "would collide with the chevrons already used for page movement",
         [ActionId.MovePageLater] = "would collide with the chevrons already used for page movement",
 
+        // M76 (g). The rail's tiles ARE the picture of this command — each one is the page it goes
+        // to, drawn at a size you can recognise — so a 20px glyph beside them would be a smaller,
+        // worse copy of what the user is already looking at.
+        [ActionId.GoToPage] = "the rail's own miniature pages are the picture; a glyph would repeat them",
+
         // --- View. Zoom and fit have glyphs; the rest are settings and navigation.
         [ActionId.ActualSize] = "a number, not a shape",
         [ActionId.Settings] = "a cogwheel is jargon to this audience",
         [ActionId.NextRegion] = "keyboard navigation, reached by F6 and not by looking",
         [ActionId.PreviousRegion] = "keyboard navigation, reached by F6 and not by looking",
         [ActionId.ToggleActionPanel] = "the panel it opens is the thing being described",
+
+        // M76 (g): the same reason as the panel's switch, one surface along.
+        [ActionId.TogglePageRail] = "the rail it opens is the thing being described",
         [ActionId.ShowFontChanges] = "a diagnostic overlay; no picture explains it",
         [ActionId.ShowMargins] = "a rectangle inside a rectangle, at 20px, is a grey square",
 

@@ -40,6 +40,13 @@ public sealed record AppSettings
     public bool ShowActionPanel { get; init; } = true;
 
     /// <summary>
+    /// Whether the row of miniature pages is docked open down the left (M76 (g)). On by default, for
+    /// the reason the panel is: it is how a page other than the next one is reached now, and
+    /// somebody who has never seen it cannot decide they do not want it.
+    /// </summary>
+    public bool ShowPageRail { get; init; } = true;
+
+    /// <summary>
     /// Whether "Make the PDF" offers to look the newsletter over first (M51). On by default,
     /// because somebody who has never been offered the review cannot decide they do not want it.
     ///

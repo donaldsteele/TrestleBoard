@@ -45,6 +45,17 @@ internal sealed record PastIssue(
 }
 
 /// <summary>
+/// One newsletter offered back on the start screen (M76 (h)).
+/// </summary>
+/// <param name="Path">The file to open, which is opened by the ordinary open path.</param>
+/// <param name="Name">The file's own plain name, without the <c>.tboard</c> on the end — which for
+/// anything this application saved is "Trestle Board 2026-07", so it says which issue it is.</param>
+/// <param name="Detail">When it was last saved, so two issues of the same month can be told
+/// apart. <b>Last saved, not last opened</b>: see <see cref="PastIssues.Recent"/> for why that is
+/// the honest word.</param>
+internal sealed record RecentIssue(string Path, string Name, string Detail);
+
+/// <summary>
 /// Finding the same month of last year (PLAN.md §11 M59).
 ///
 /// <para>The monthly cycle has an annual rhythm the product ignores: the picnic announcement, the
@@ -169,6 +180,76 @@ internal static class PastIssues
         }
 
         return articles;
+    }
+
+    /// <summary>
+    /// The newsletters this committee touched most recently, newest first (M76 (h), spec §7).
+    ///
+    /// <para><b>Why this lives here.</b> M59 already answered "where do the old issues live?" once
+    /// and remembered the answer in <c>AppSettings.OldIssuesFolder</c>. A recent-files list is the
+    /// same question asked a different way, so it is answered from the same folder rather than from
+    /// a second list kept somewhere else — two stores of "which newsletters matter" is two stores
+    /// to disagree with each other, and the one nobody maintains is the one that lies.</para>
+    ///
+    /// <para><b>It is recency of saving, not of opening, and it says so.</b> Nothing in the
+    /// application records when a file was last opened, and inventing a settings file to record it
+    /// was not in this deliverable's remit. The file system knows when each newsletter was last
+    /// written, which for this audience — who open a file, edit it and save it, for a week — is
+    /// very nearly the same list in very nearly the same order. The label the user reads says "Last
+    /// saved", because that is the fact we actually have.</para>
+    ///
+    /// <para><b>Nothing is loaded.</b> The name comes from the file name and the date from the
+    /// directory entry, so this stays instant on a folder holding ten years of issues. That is also
+    /// why an unreadable or too-old newsletter still appears: it is offered, and the ordinary open
+    /// path says the M25 sentence about it if it will not open. Deciding here would mean loading
+    /// every candidate to find out.</para>
+    ///
+    /// <para>Every failure is an empty list. A start screen that will not come up because a folder
+    /// went missing is a far worse thing than a start screen with no shortcuts on it.</para>
+    /// </summary>
+    /// <param name="folder">Where old issues live — <c>AppSettings.OldIssuesFolder</c>, which is
+    /// null until the committee has been asked.</param>
+    /// <param name="most">How many to offer. Short on purpose: this is a shortcut past the file
+    /// dialog, and a list long enough to need reading is not a shortcut.</param>
+    internal static IReadOnlyList<RecentIssue> Recent(string? folder, int most = 5)
+    {
+        if (most <= 0 || string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
+        {
+            return [];
+        }
+
+        string[] candidates;
+        try
+        {
+            candidates = Directory.GetFiles(folder, "*.tboard", SearchOption.AllDirectories);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return [];
+        }
+
+        var dated = new List<(string Path, DateTime When)>(candidates.Length);
+        foreach (string path in candidates)
+        {
+            try
+            {
+                dated.Add((path, File.GetLastWriteTime(path)));
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // One file the disk will not talk about does not cost the user the other four.
+            }
+        }
+
+        return dated
+            .OrderByDescending(f => f.When)
+            .ThenBy(f => f.Path, StringComparer.Ordinal)
+            .Take(most)
+            .Select(f => new RecentIssue(
+                f.Path,
+                System.IO.Path.GetFileNameWithoutExtension(f.Path),
+                $"Last saved on {f.When.ToString("d MMMM yyyy", System.Globalization.CultureInfo.CurrentCulture)}"))
+            .ToList();
     }
 
     /// <summary>The first few words, which is how a person tells one article from another.</summary>

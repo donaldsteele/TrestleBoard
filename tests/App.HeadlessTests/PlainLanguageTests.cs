@@ -76,6 +76,9 @@ public sealed class PlainLanguageTests
     ///
     /// <para>A shorter label is allowed, because the toolbar has less room; a DIFFERENT one is not.
     /// Containment in either direction is the test for "the same words".</para>
+    ///
+    /// <para>Both strips, since M76 (d) gave the view controls a second home under the canvas. A
+    /// command does not change its name by changing which strip it stands on.</para>
     /// </summary>
     [Fact]
     public async Task EveryToolbarButtonSaysWhatTheCatalogCallsThatCommand()
@@ -91,7 +94,13 @@ public sealed class PlainLanguageTests
             var mismatched = new List<string>();
             int compared = 0;
 
-            foreach (Button button in window.ToolbarButtons)
+            // M76 review: the FOOTER with the toolbar. M76 (d) moved Zoom out, Zoom in and Fit page
+            // off the bar and into the canvas footer, and the availability pass followed them there
+            // — this walk did not, so three commands quietly lost the guarantee that their label is
+            // the catalog's own word for them. The M27 invariant written over ToolbarButtons is that
+            // the wording test walks exactly the buttons the availability pass walks; it is walked
+            // here again rather than restated.
+            foreach (Button button in window.ToolbarButtons.Concat(window.CanvasFooterButtons))
             {
                 // LabelOf, because DressToolbar replaces a button's plain string Content with an
                 // icon-plus-label composite; reading Content directly finds nothing.
@@ -112,7 +121,13 @@ public sealed class PlainLanguageTests
                 }
             }
 
-            Assert.True(compared >= 5, $"only {compared} toolbar buttons were compared");
+            // Every button on both strips carries an id, so every one of them is compared. The
+            // floor is the whole count and not a sample: a command that leaves one of the two lists
+            // without joining the other is exactly the drift this test was extracted to catch, and
+            // a loose floor is how it would pass anyway.
+            Assert.True(
+                compared >= window.ToolbarButtons.Length + window.CanvasFooterButtons.Length,
+                $"only {compared} of the toolbar and footer buttons were compared");
             Assert.True(
                 mismatched.Count == 0,
                 "a toolbar button uses different words from its command: " + string.Join("; ", mismatched));
@@ -195,7 +210,13 @@ public sealed class PlainLanguageTests
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
             var missing = new List<string>();
-            foreach (Button button in window.ToolbarButtons)
+            // M76 review: the FOOTER with the toolbar. M76 (d) moved Zoom out, Zoom in and Fit page
+            // off the bar and into the canvas footer, and the availability pass followed them there
+            // — this walk did not, so three commands quietly lost the guarantee that their label is
+            // the catalog's own word for them. The M27 invariant written over ToolbarButtons is that
+            // the wording test walks exactly the buttons the availability pass walks; it is walked
+            // here again rather than restated.
+            foreach (Button button in window.ToolbarButtons.Concat(window.CanvasFooterButtons))
             {
                 if (button.Tag is not string actionId
                     || !ActionCatalog.TryGet(actionId, out EditorAction? action))
@@ -222,7 +243,7 @@ public sealed class PlainLanguageTests
 
             Assert.True(
                 missing.Count == 0,
-                "these toolbar buttons say nothing on hover: " + string.Join(", ", missing));
+                "these toolbar and footer buttons say nothing on hover: " + string.Join(", ", missing));
 
             window.Close();
         }, TestContext.Current.CancellationToken);

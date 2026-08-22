@@ -201,6 +201,14 @@ internal sealed class ActionPanel : Border
             _content.Children.Add(BuildWhatsNext(nextSteps, invoke));
         }
 
+        // M76 (f): who gets the gold, decided for the whole panel before a single button is made.
+        // The treatment means "the offer you probably came for" and that is a singular thing, so it
+        // is settled by the group rather than asserted by each action — see
+        // ActionCatalog.PrimaryOffers, which is where the rule and its reasoning live. It is
+        // computed here, once, rather than inside the loop, because "at most one per group" is a
+        // statement about the whole set of offers and cannot be decided a button at a time.
+        IReadOnlySet<string> primaries = ActionCatalog.PrimaryOffers(offers);
+
         ActionGroup? currentGroup = null;
         string? lastReasonShown = null;
         foreach (ActionOffer offer in offers)
@@ -220,7 +228,8 @@ internal sealed class ActionPanel : Border
                 && string.Equals(offer.Availability.Reason, lastReasonShown, StringComparison.Ordinal);
             lastReasonShown = offer.IsAvailable ? null : offer.Availability.Reason;
 
-            _content.Children.Add(BuildOffer(offer, context, invoke, repeated));
+            _content.Children.Add(
+                BuildOffer(offer, context, invoke, primaries.Contains(offer.Action.Id), repeated));
         }
 
         if (_content.Children.Count == 0)
@@ -241,13 +250,23 @@ internal sealed class ActionPanel : Border
     /// horizontal StackPanel measures its children with infinite width, so the label would never
     /// wrap and the clipping defect of 2026-07-27 would come straight back.</para>
     ///
-    /// <para><b>Primary emphasis cashes <c>EditorAction.IsPrimary</c></b>, which has marked the right
-    /// ten actions since M11 and which nothing read until M16. A primary offer gets the accent fill,
-    /// a taller minimum and a gold left bar — <b>three signals, so colour is never the only
-    /// one</b>. The other half of that field's old summary, "primary actions sort first in their
-    /// group", is deliberately not implemented and the summary now says so: declaration order in
+    /// <para><b>Primary emphasis means "this is the offer you probably came for"</b> — the accent
+    /// fill, a taller minimum and a gold left bar, <b>three signals, so colour is never the only
+    /// one</b>. That is what it has meant since M16 and none of it changes here. The other half of
+    /// the old <c>IsPrimary</c> summary, "primary actions sort first in their group", is
+    /// deliberately not implemented and the declaration now says so: declaration order in
     /// ActionCatalog already agrees with it, so a sort would be a near-no-op carrying real risk of
     /// reordering a group a test depends on.</para>
+    ///
+    /// <para><b>M76 (f): it is now singular, and that is the point of the change.</b> Fifteen
+    /// actions used to assert the treatment for themselves, so a selected photo got three gold bars
+    /// stacked in one panel — an emphasis that emphasises everything answers nothing, and the gold
+    /// is the only place the lodge's own gold is legal in this palette. The claim is now a rank on
+    /// the declaration and <c>ActionCatalog.PrimaryOffers</c> settles it, at most one winner per
+    /// group. <b>This method does not decide it and must not start:</b> "at most one per group" is
+    /// a fact about the whole set of offers, and a per-button decision cannot hold it. Everything
+    /// that loses takes <c>Tokens.Action()</c> below — the ordinary treatment, which is neither
+    /// unstyled nor disabled-looking; panel items are never disabled at all (M11).</para>
     /// </summary>
     private static Button PanelButton(string label, string? actionId, string? gesture, bool isPrimary)
     {
@@ -325,10 +344,17 @@ internal sealed class ActionPanel : Border
     /// sentence is left off here; it stays in <c>HelpText</c>, so nothing is hidden from a screen
     /// reader — only from a reader who has just read it.
     /// </param>
+    /// <param name="isPrimary">
+    /// This offer won its group's <see cref="EditorAction.PrimaryRank"/> contest, which
+    /// <c>ActionCatalog.PrimaryOffers</c> decided for the whole panel at once (M76 (f)). Losing it
+    /// costs nothing but the accent: the button is still drawn with the ordinary action treatment,
+    /// still pressable, still explains itself.
+    /// </param>
     private static Control BuildOffer(
         ActionOffer offer,
         ActionContext context,
         Action<string, Control?> invoke,
+        bool isPrimary,
         bool reasonAlreadyShown = false)
     {
         // The gesture is a second, quieter line rather than a suffix on the title. That removes
@@ -339,7 +365,7 @@ internal sealed class ActionPanel : Border
         // the declaration, so "Put a picture here…" becomes "Swap this picture…" once there is one.
         string title = ActionCatalog.TitleFor(offer.Action.Id, context);
         Button button = PanelButton(
-            title, offer.Action.Id, offer.Action.DisplayGesture, offer.Action.IsPrimary);
+            title, offer.Action.Id, offer.Action.DisplayGesture, isPrimary);
         AutomationProperties.SetName(button, title);
         AutomationProperties.SetHelpText(
             button,

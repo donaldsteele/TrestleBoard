@@ -16,6 +16,20 @@ namespace TrestleBoard.App.Theme;
 internal static class Tokens
 {
     internal const string ChromeBackground = "TrestleBoard.Chrome.Background";
+
+    /// <summary>
+    /// The RAISED plane (M76): button fills, list and form cards, the page rail's tiles.
+    /// <c>ChromeBackground</c> is the recessed ground it sits on, and keeps every value and every
+    /// measured pair it had — the second elevation was added above the ground rather than the
+    /// ground darkened beneath it, because the second would have re-measured fourteen pairs to get
+    /// the identical visual step.
+    ///
+    /// <para><b>The tonal step is never the boundary.</b> Surface against Background is 1.15:1 and
+    /// is declared <c>decorative</c> in the palette; what bounds a surface is its M37 border or the
+    /// <c>Rule</c> on the side that meets the ground. In High Contrast the two are the same black,
+    /// because there the border steps to 2px and does the whole job. See the palette's header.</para>
+    /// </summary>
+    internal const string ChromeSurface = "TrestleBoard.Chrome.Surface";
     internal const string ChromeForeground = "TrestleBoard.Chrome.Foreground";
 
     /// <summary>Secondary text. Full white in High Contrast — see the palette's header.</summary>
@@ -53,6 +67,29 @@ internal static class Tokens
     internal const string FocusThickness = "TrestleBoard.Focus.Thickness";
     internal const string RuleTop = "TrestleBoard.Rule.Top";
     internal const string RuleBottom = "TrestleBoard.Rule.Bottom";
+
+    /// <summary>
+    /// How much a CONTROL rounds by (M76) — a button, a field, a toolbar item. A radius is a
+    /// decision this application makes once, not a number typed into forty control themes; that is
+    /// the whole reason it is a token and not a literal, exactly as a colour is.
+    /// </summary>
+    internal const string RadiusControl = "TrestleBoard.Radius.Control";
+
+    /// <summary>
+    /// How much a SURFACE rounds by (M76) — a card, a panel, a page-rail tile. Larger than
+    /// <see cref="RadiusControl"/> on purpose: the two read as different kinds of thing, rather
+    /// than as one radius applied inconsistently.
+    /// </summary>
+    internal const string RadiusSurface = "TrestleBoard.Radius.Surface";
+
+    /// <summary>
+    /// The one shadow in the application, spent on the page sheet and on nothing else (M76). The
+    /// sheet is the only object in the window pretending to be a physical thing — paper that will
+    /// be printed — and a shadow is how paper says so. <b>None in High Contrast</b>: white sheet on
+    /// black backdrop is already 21:1, and a blur under a high-contrast user's page is noise added
+    /// to the one thing they most need crisp.
+    /// </summary>
+    internal const string ElevationSheet = "TrestleBoard.Elevation.Sheet";
 
     /// <summary>The ControlTheme in <c>Theme/Controls.axaml</c> that <see cref="Primary{T}"/> applies.</summary>
     internal const string PrimaryButtonTheme = "TrestleBoard.PrimaryButton";

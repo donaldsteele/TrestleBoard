@@ -394,8 +394,8 @@ public sealed class PageCanvasControl : Control
 
         context.Custom(new PageDrawOperation(
             new Rect(Bounds.Size), _source, PageIndex, Zoom, PagePaddingPx, selection, caret,
-            frameOverlay, pageFrames, fontOverrides, BackdropColour(), OverlayColours(),
-            OverlayLabelFace));
+            frameOverlay, pageFrames, fontOverrides, BackdropColour(), SheetShadowFor(),
+            OverlayColours(), OverlayLabelFace));
 
         DrawAdornments(context);
     }
@@ -664,6 +664,55 @@ public sealed class PageCanvasControl : Control
         // caught. Mid-grey keeps the sheet visible rather than drawing it on black.
         return new SKColor(0xFF, 0x6B, 0x6B, 0x6B);
     }
+
+    /// <summary>
+    /// The one shadow in the application, resolved from <c>Elevation.Sheet</c> (M76 — docs/M76-spec
+    /// §4). The sheet is the only object in this window pretending to be a physical thing, and a
+    /// shadow is how paper says so.
+    ///
+    /// <para>Before this milestone the shadow was three literal pixels of <c>0x55000000</c> painted
+    /// a few lines below — the same defect in the drawing path that M16 spent a milestone removing
+    /// from the markup, and invisible to <c>ThemeCompositionTests</c> because a literal is not a
+    /// token to look up. It is now one entry in the palette, per variant.</para>
+    ///
+    /// <para><b>Null in High Contrast</b>, where the palette sets the token to <c>none</c> and this
+    /// therefore parses to an empty <see cref="BoxShadows"/>: white sheet on black backdrop is
+    /// already 21:1, and a blur under a high-contrast user's page is noise added to the one thing
+    /// they most need crisp. Null when the key does not resolve either — no literal fallback, for
+    /// the reason <see cref="BrushFor"/> gives; a missing shadow is a missing comfort, and the page
+    /// is still bounded by 21:1 of tone against the backdrop.</para>
+    /// </summary>
+    private SheetShadow? SheetShadowFor()
+    {
+        if (this.TryFindResource(Tokens.ElevationSheet, ActualThemeVariant, out object? value)
+            && value is BoxShadows shadows
+            && shadows.Count > 0)
+        {
+            BoxShadow first = shadows[0];
+            Color c = first.Color;
+            return new SheetShadow(
+                (float)first.OffsetX,
+                (float)first.OffsetY,
+                (float)first.Blur,
+                (float)first.Spread,
+                new SKColor(c.R, c.G, c.B, c.A));
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// One <c>BoxShadow</c> flattened into the units the Skia draw operation works in (M76). The
+    /// draw op runs on the render thread and must not touch the visual tree, so the token is
+    /// resolved on the UI thread in <see cref="SheetShadowFor"/> and handed over by value —
+    /// exactly as the backdrop colour already is.
+    /// </summary>
+    private readonly record struct SheetShadow(
+        float OffsetX,
+        float OffsetY,
+        float Blur,
+        float Spread,
+        SKColor Color);
 
 
     /// <summary>Every laid-out text frame on one page, for the font-change overlay.</summary>
@@ -1478,6 +1527,7 @@ public sealed class PageCanvasControl : Control
         IReadOnlyList<FrameLayout> pageFrames,
         IReadOnlyList<SourceSpan> fontOverrides,
         SKColor backdrop,
+        SheetShadow? sheetShadow,
         FrameOverlayColours overlayColours,
         SKTypeface? overlayLabelFace) : ICustomDrawOperation
     {
@@ -1511,9 +1561,34 @@ public sealed class PageCanvasControl : Control
                 // Themed backdrop; the white sheet with a soft edge sits centered inside it.
                 canvas.DrawColor(backdrop);
                 var page = SKRect.Create((float)padding, (float)padding, pageW, pageH);
-                using (var shadow = new SKPaint { Color = new SKColor(0x55000000), IsAntialias = true })
+
+                // The sheet's shadow, from Elevation.Sheet (M76). Null in High Contrast, where the
+                // palette sets the token to none on purpose — so this branch is also how "no
+                // shadow" is expressed, and there is no colour left in this method to hard-code.
+                //
+                // Drawn in SCREEN pixels, before the clip and before the zoom transform: a shadow
+                // is a property of the sheet as an object on the desk, not of the paper's contents,
+                // so it must not grow with the zoom the way the page's own ink does.
+                if (sheetShadow is { } sh)
                 {
-                    canvas.DrawRect(new SKRect(page.Left + 3, page.Top + 3, page.Right + 3, page.Bottom + 3), shadow);
+                    SKRect box = page;
+                    box.Inflate(sh.Spread, sh.Spread);
+                    box.Offset(sh.OffsetX, sh.OffsetY);
+
+                    // Skia's blur takes a standard deviation where CSS-style box shadows take a
+                    // diameter; half the blur is the conversion Avalonia's own BoxShadow renderer
+                    // uses, and matching it is what keeps the shadow looking the same as it would
+                    // if this were an Avalonia Border rather than a Skia lease.
+                    using SKMaskFilter? blur = sh.Blur > 0f
+                        ? SKMaskFilter.CreateBlur(SKBlurStyle.Normal, sh.Blur / 2f)
+                        : null;
+                    using var shadow = new SKPaint
+                    {
+                        Color = sh.Color,
+                        IsAntialias = true,
+                        MaskFilter = blur,
+                    };
+                    canvas.DrawRect(box, shadow);
                 }
 
                 canvas.ClipRect(page);

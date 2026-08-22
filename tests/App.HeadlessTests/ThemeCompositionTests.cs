@@ -3,11 +3,14 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
+using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using TrestleBoard.App.Settings;
 using TrestleBoard.App.Theme;
 using TrestleBoard.Rendering;
@@ -339,6 +342,100 @@ public sealed class ThemeCompositionTests
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// <b>A refused button is still a readable button — in BOTH of the app's button treatments.</b>
+    ///
+    /// <para>M37 wrote that rule and gave it to <c>TrestleBoard.ActionButton</c>; nothing gave it to
+    /// <c>TrestleBoard.PrimaryButton</c>, because until M76 the primary treatment was worn only by
+    /// dialog default buttons and none of those is ever disabled. M76 (e) put the primary on the
+    /// toolbar and enrolled it in the availability pass, and <c>newsletter.exportPdf</c> is refused
+    /// with no newsletter open — so the state became not merely reachable but the state the
+    /// application starts in, and the button fell through to Fluent's grey slab with the 2.61:1
+    /// label.</para>
+    ///
+    /// <para>Read off the resolved template rather than the source, because the defect was a rule
+    /// that was absent: a source scan would have to know what to look for, and this asks the styling
+    /// system what a user would actually see. <see cref="EveryPieceOfTextTheWalkCanSeeMeetsItsFloorInAllThreeVariants"/>
+    /// cannot cover it — that walk skips disabled controls by design.</para>
+    /// </summary>
+    [Fact]
+    public async Task ARefusedButtonWearsThisApplicationsDisabledTreatmentInEitherTheme()
+    {
+        await Session.Dispatch(() =>
+        {
+            Application application = Application.Current!;
+            ThemeVariant original = application.RequestedThemeVariant ?? ThemeVariant.Default;
+            var failures = new List<string>();
+
+            try
+            {
+                foreach ((string variantName, ThemeVariant variant) in Variants())
+                {
+                    application.RequestedThemeVariant = variant;
+
+                    foreach (string themeKey in new[] { Tokens.PrimaryButtonTheme, Tokens.ActionButtonTheme })
+                    {
+                        var button = new Button { Content = "Make the PDF...", IsEnabled = false };
+                        var window = new Window { Content = button };
+                        window.RequestedThemeVariant = variant;
+                        window.Show();
+
+                        button.Theme = window.TryFindResource(themeKey, out object? theme)
+                            ? theme as ControlTheme
+                            : null;
+                        Assert.NotNull(button.Theme);
+                        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+                        ContentPresenter? presenter = button.GetVisualDescendants()
+                            .OfType<ContentPresenter>()
+                            .FirstOrDefault(p => p.Name == "PART_ContentPresenter");
+                        Assert.NotNull(presenter);
+
+                        // No fill and no border: "you cannot press this" is the ABSENCE of the
+                        // pressable shape, which is how M37 settled it.
+                        if (presenter!.Background is ISolidColorBrush { Color.A: > 0 } fill)
+                        {
+                            failures.Add(
+                                $"{variantName} {themeKey}: a disabled button still has a fill ({fill.Color})");
+                        }
+
+                        if (presenter.BorderThickness != default)
+                        {
+                            failures.Add(
+                                $"{variantName} {themeKey}: a disabled button still has a border "
+                                    + $"({presenter.BorderThickness})");
+                        }
+
+                        // And the label is the app's muted colour, not Fluent's — the whole point
+                        // being that an elderly user can still read what the button they cannot
+                        // press says, because its refusal sentence is about that name.
+                        Color? expected =
+                            (application.TryGetResource(Tokens.ChromeMuted, variant, out object? muted)
+                                ? muted as ISolidColorBrush
+                                : null)?.Color;
+                        Assert.NotNull(expected);
+
+                        Color? actual = (TextElement.GetForeground(presenter) as ISolidColorBrush)?.Color;
+                        if (actual != expected)
+                        {
+                            failures.Add(
+                                $"{variantName} {themeKey}: the disabled label is {actual?.ToString() ?? "unset"}, "
+                                    + $"not Chrome.Muted ({expected})");
+                        }
+
+                        window.Close();
+                    }
+                }
+            }
+            finally
+            {
+                application.RequestedThemeVariant = original;
+            }
+
+            Assert.True(failures.Count == 0, string.Join("; ", failures));
+        }, TestContext.Current.CancellationToken);
     }
 
     /// <summary>

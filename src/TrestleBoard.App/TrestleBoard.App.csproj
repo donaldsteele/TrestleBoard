@@ -47,6 +47,27 @@
          AppImage and the .icns. Linked rather than copied, so there is still exactly one drawing of
          this icon in the repository (assets-src/icons/README.md says how to redraw it). -->
     <AvaloniaResource Include="..\..\assets-src\icons\trestleboard.png" Link="Theme\trestleboard.png" />
+    <!-- M76 (c). CHROME TYPEFACE. The application shipped twenty-two licensed families and set its
+         own window text in whatever the OS handed it — the one thing in a program built on "the
+         same bytes everywhere" that differed on all three platforms.
+
+         These are LINKS, not copies. There is still exactly one SourceSans3-Regular.ttf and one
+         Cinzel-Regular.ttf in this repository, both under assets-src/fonts/, both registered with
+         their SHA-256 in assets-src/fonts/fonts.json, which stays the single register of what this
+         program ships (M14). The window icon above set the precedent for linking an asset out of
+         assets-src rather than duplicating it.
+
+         The second item can NOT be avoided by pointing avares:// at TrestleBoard.Layout: those
+         bytes are <EmbeddedResource> in a project that does not reference Avalonia (PLAN.md §9 —
+         App is the only one that does), so no Avalonia resource blob exists there for the asset
+         loader to read. The bytes therefore appear twice in the BUILD OUTPUT (~1.0 MB) — once for
+         HarfBuzz to shape the document with, once for Avalonia to draw the chrome with — and once
+         only in the repository, which is where the licence-tracking hazard lives.
+
+         Two families and no more: chrome is Source Sans 3, the start screen's wordmark is Cinzel
+         (docs/M76-spec.md §5). Adding a third means editing this list on purpose. -->
+    <AvaloniaResource Include="..\..\assets-src\fonts\source-sans-3\*.ttf" Link="Theme\Fonts\%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\..\assets-src\fonts\cinzel\*.ttf" Link="Theme\Fonts\%(Filename)%(Extension)" />
     <!-- M68: the application's own licence, embedded on the M14 font-licence precedent so it
          travels inside the assembly and reaches every installer without a copy step. PolyForm
          Noncommercial §Notices requires that anyone who gets a copy of the software also gets

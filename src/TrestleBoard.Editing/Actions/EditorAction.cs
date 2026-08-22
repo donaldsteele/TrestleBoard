@@ -71,11 +71,30 @@ public enum ActionGroup
 /// <param name="ShortDescription">One sentence saying what will happen; shown under the title in the panel.</param>
 /// <param name="Group">Which part of the panel and which submenu it belongs to.</param>
 /// <param name="DisplayGesture">The shortcut as the user would type it, or null if it has none.</param>
-/// <param name="IsPrimary">
-/// The one offer in this group most people came for. From M16 the panel draws a primary offer with
-/// the accent fill, a taller minimum and a gold left bar — three signals, so colour is never the
-/// only one (PLAN.md §6). Ten actions have been marked this way since M11 and nothing read the flag
-/// until then.
+/// <param name="PrimaryRank">
+/// How strong this action's claim is to being <b>the one offer in this group most people came
+/// for</b>. Zero — the default — is no claim at all; 1 is the group's first choice, 2 the
+/// runner-up, and so on. From M16 the panel draws a primary offer with the accent fill, a taller
+/// minimum and a gold left bar — three signals, so colour is never the only one (PLAN.md §6).
+/// <para><b>M76 (f): this is a rank the group resolves, not a flag each action asserts, and that
+/// change is the whole point of it.</b> It used to be a boolean, and fifteen actions set it for
+/// themselves — which is how <c>action-panel-photo.png</c> came to show three navy-and-gold slabs
+/// stacked in a single panel. "The offer you probably came for" is
+/// singular by construction: three simultaneous offers are not three answers to that question,
+/// they are the absence of an answer, and the gold bar is the most expensive ornament in the
+/// palette — the only place the lodge's own gold is legal — being spent on all of them at once.
+/// So the claim is now declared here and <i>settled</i> by
+/// <see cref="ActionCatalog.PrimaryOffers"/>, which grants the treatment to at most one action per
+/// <see cref="ActionGroup"/>.</para>
+/// <para><b>Losing is not being disabled and is not being unstyled.</b> Every action that does not
+/// win its group renders with the ordinary action treatment, exactly as the sixty-odd actions that
+/// never claimed a rank always have. Nothing in the panel is ever greyed (M11), and
+/// <c>ActionSurfaceTests</c> walks every window to prove no button carries neither treatment.</para>
+/// <para><b>Ties are impossible rather than broken.</b> Two actions in one group may not share a
+/// non-zero rank: <see cref="ActionCatalog"/> refuses to initialise if they do, in the spirit of
+/// <c>ActionAvailability</c> refusing an empty reason at construction. The alternative — resolving
+/// a tie by declaration order — was rejected because "whichever one happened to be enumerated
+/// first" is not a rule anybody can read off the source and predict.</para>
 /// <para>This field used to promise that primary actions "sort first in their group" as well.
 /// <b>That half is deliberately not implemented and the promise is withdrawn rather than left
 /// lying:</b> declaration order in <see cref="ActionCatalog"/> already agrees with it, so a sort
@@ -87,4 +106,4 @@ public sealed record EditorAction(
     string ShortDescription,
     ActionGroup Group,
     string? DisplayGesture = null,
-    bool IsPrimary = false);
+    int PrimaryRank = 0);

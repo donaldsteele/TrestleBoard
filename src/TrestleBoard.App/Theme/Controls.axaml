@@ -26,6 +26,10 @@
            tell the two fills apart (PLAN.md §6: colour is never the only signal). -->
       <Setter Property="BorderBrush" Value="{DynamicResource TrestleBoard.Ornament.OnAccent}" />
       <Setter Property="BorderThickness" Value="5,0,0,0" />
+      <!-- M76. The radius is a token for the same reason the colours are: a corner is a decision
+           this application makes once. The primary keeps its accent fill and its gold bar exactly
+           as M16 measured them — the only thing that changes here is the shape of the corner. -->
+      <Setter Property="CornerRadius" Value="{DynamicResource TrestleBoard.Radius.Control}" />
 
       <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="Background" Value="{DynamicResource TrestleBoard.Accent}" />
@@ -37,6 +41,30 @@
         <Setter Property="Background" Value="{DynamicResource TrestleBoard.Accent}" />
         <Setter Property="BorderBrush" Value="{DynamicResource TrestleBoard.Focus}" />
         <Setter Property="TextElement.Foreground" Value="{DynamicResource TrestleBoard.Accent.Foreground}" />
+      </Style>
+
+      <!-- UNAVAILABLE, and the reason this rule exists at all.
+
+           Until M76 the primary treatment was worn only by dialog default buttons, none of which is
+           ever disabled, so the state was unreachable and the rule was never written. M76 (e) put
+           "Make the PDF..." on the toolbar and enrolled it in the availability pass, and
+           newsletter.exportPdf is REFUSED with no newsletter open and refused again until the issue
+           date is chosen — which is the state the application starts in and stays in for the whole
+           of a freshly created issue. So the first thing a new user sees became the one control in
+           the window falling through to Fluent's disabled treatment: accent fill, gold bar and
+           readable label all replaced at once by the grey slab with the 2.61:1 label that M37
+           measured on the action button below and called not a weak signal but an unreadable one.
+
+           The refused primary therefore degrades to exactly the shape the action button's disabled
+           state has — no border, no fill, the label in Chrome.Muted, which is a measured pair
+           against Chrome.Background. That is deliberate and not merely convenient: a control that
+           cannot be pressed must not keep the most emphatic treatment in the application, and it
+           must still say what it is, because the reason it is unavailable is in its HelpText (M11)
+           and that sentence is about a button the user has to be able to read the name of. -->
+      <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource TrestleBoard.Chrome.Muted}" />
       </Style>
     </ControlTheme>
 
@@ -58,28 +86,61 @@
       3:1 floor for a boundary that must be perceived. Chrome.Foreground is 9.68:1 and is what is
       used. Border.Thickness is a token so High Contrast can step it up, exactly as every other
       rule in the app does.
+
+      M76: THE FILL IS NOW A TOKEN TOO. Until this milestone the enabled fill was whatever Fluent
+      handed the button — the #BEBFC2 measured above — which is the one colour in the running
+      application that was never in the palette and never in the contrast block. It is now
+      Chrome.Surface, the raised plane, and Chrome.Background underneath it is the ground. That
+      raises the label's own contrast as a side effect: Chrome.Foreground was 9.68:1 on the Fluent
+      grey and is 17.79:1 on Surface in Light.
+
+      THE TONAL STEP IS REINFORCEMENT, NOT THE BOUNDARY. Surface against Background is 1.15:1 and
+      the palette declares it decorative on purpose. What says where this button ends is still the
+      M37 border above — a shape — which is why that border is untouched here and why High Contrast,
+      where Surface and Background are the same black, loses nothing: there the border steps to 2px
+      and does the whole job alone. PLAN.md §6's "colour is never the only signal" is satisfied
+      because colour is not ANY of the signal here, only comfort.
     -->
     <ControlTheme x:Key="TrestleBoard.ActionButton"
                   TargetType="Button"
                   BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Background" Value="{DynamicResource TrestleBoard.Chrome.Surface}" />
       <Setter Property="BorderBrush" Value="{DynamicResource TrestleBoard.Chrome.Foreground}" />
       <Setter Property="BorderThickness" Value="{DynamicResource TrestleBoard.Border.Thickness}" />
+      <Setter Property="CornerRadius" Value="{DynamicResource TrestleBoard.Radius.Control}" />
 
       <!-- Fluent's own :pointerover and :pressed rules target the template's ContentPresenter, so
-           the border has to be restated there or it vanishes the instant the pointer arrives —
-           the same trap the primary button above documents. -->
+           the border AND the fill have to be restated there or they vanish the instant the pointer
+           arrives — the same trap the primary button above documents. Before M76 only the border
+           needed restating, because there was no fill of ours to lose; now there is, and a fill set
+           on the control alone would flash back to Fluent grey on hover.
+
+           The hover fill is Chrome.BACKGROUND: the button sinks one step towards the ground rather
+           than inventing a fourth grey. That choice is deliberate and not merely convenient — every
+           foreground in this application has already been measured against Chrome.Background, so
+           hovering a button cannot walk any pair under its floor, and a new hover colour would have
+           owed the contrast block another seven lines to prove the same thing. -->
       <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TrestleBoard.Chrome.Background}" />
         <Setter Property="BorderBrush" Value="{DynamicResource TrestleBoard.Chrome.Foreground}" />
       </Style>
 
+      <!-- Pressed keeps the sunk fill and swaps the border to Focus, so the press is a colour AND
+           a state the border already announces. -->
       <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource TrestleBoard.Chrome.Background}" />
         <Setter Property="BorderBrush" Value="{DynamicResource TrestleBoard.Focus}" />
       </Style>
 
       <!-- Unavailable: no border, no fill, and a label that can still be READ. Fluent's disabled
            foreground came out at 2.61:1 on the slab, which is not a weak signal but an unreadable
            one — an elderly user could not make out what the button they cannot press even says,
-           and the reason it is unavailable is written in its HelpText (M11). -->
+           and the reason it is unavailable is written in its HelpText (M11).
+
+           M76 DELIBERATELY LEFT THIS ALONE. Giving the disabled state the new Surface fill would
+           have undone the milestone above: a dead button with a raised plane under it is a slab
+           again, and "no border, no fill" is precisely how this application says you cannot press
+           this. The Transparent below is not an oversight to tidy up into a token. -->
       <Style Selector="^:disabled /template/ ContentPresenter#PART_ContentPresenter">
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Background" Value="Transparent" />
@@ -173,6 +234,43 @@
   -->
   <Style Selector="Window">
     <Setter Property="Icon" Value="avares://TrestleBoard.App/Theme/trestleboard.png" />
+  </Style>
+
+  <!--
+    M76 (c). THE CHROME'S TYPEFACE. Until now the document was set in bundled faces and the window
+    around it was set in whatever font the operating system volunteered — Segoe UI here, Cantarell
+    there, SF there — in an application whose central guarantee is that it looks the same on all
+    three. Source Sans 3 is already bundled and already licensed (assets-src/fonts/fonts.json), it
+    is humanist with open apertures, and it holds up at the 16pt floor PLAN.md §6 sets for the
+    eyes this program exists for.
+
+    The .ttf files reach here as AvaloniaResource LINKS out of assets-src/fonts — see the long note
+    in TrestleBoard.App.csproj for why the Layout project's embedded copies cannot serve, and why
+    no second .ttf was added to the repository to make this work.
+
+    TOPLEVEL, NOT WINDOW. FontFamily inherits down the visual tree, so a Window setter would reach
+    everything drawn inside the window — but a menu, a combo drop-down or a tooltip is hosted in a
+    PopupRoot, which is a TopLevel of its own and would have kept the platform font. Selecting
+    TopLevel catches both. It is safe on the same grounds the Window selector above is: a TopLevel
+    is never nested inside another control's template, so nothing inherits this by accident.
+
+    THIS IS NOT A SIZE. Every FontSize in the application is untouched; §6's 16pt floor and the
+    18-20pt dialog sizes are set where they always were.
+  -->
+  <!--
+    THE FALLBACK IS NOT DEFENSIVE PADDING, IT IS THE DIFFERENCE BETWEEN A PLAIN FONT AND A CRASH.
+    Avalonia resolves a FontFamily at RENDER time, and a family it cannot produce throws
+    "Could not create glyphTypeface" out of the render pass — which is not a paragraph in the wrong
+    typeface, it is a window that does not draw. That is exactly what happened the first time this
+    setter shipped: the headless suite's font manager (UseHeadlessDrawing) cannot load an embedded
+    family, and the throw landed inside a queued layout pass during dispatcher teardown, poisoning
+    the session for every test after it.
+
+    Naming $Default second means the worst case is the platform's own font, which is precisely what
+    this application looked like before M76 — a graceful loss of a nicety, never a lost window.
+  -->
+  <Style Selector="TopLevel">
+    <Setter Property="FontFamily" Value="avares://TrestleBoard.App/Theme/Fonts#Source Sans 3, $Default" />
   </Style>
 
 </Styles>

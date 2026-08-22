@@ -139,6 +139,14 @@ internal sealed class ActionRunner
             [ActionId.MovePageEarlier] = Sync(() => window.MovePage(-1)),
             [ActionId.MovePageLater] = Sync(() => window.MovePage(+1)),
 
+            // M76 (g). THE ONE HANDLER IN THIS MAP THAT READS ITS SOURCE. Every other command needs
+            // nothing but the id; this one needs to be told which page, and the answer rides in the
+            // pressed control's Tag beside the id (see ActionTarget). That is why it is written out
+            // rather than wrapped in Sync: `source` is the parameter, and the Sync helpers throw it
+            // away. Its bool is the M73(f) answer — pressing the page you are already on is a real
+            // "nothing happened", and saying otherwise would be the app claiming work it did not do.
+            [ActionId.GoToPage] = source => Task.FromResult(window.GoToPageFrom(source)),
+
             // ---- Looking at it ---------------------------------------------------------------------
             [ActionId.ZoomIn] = Sync(() => window.StepZoom(+1)),
             [ActionId.ZoomOut] = Sync(() => window.StepZoom(-1)),
@@ -148,6 +156,7 @@ internal sealed class ActionRunner
             [ActionId.NextRegion] = Sync(() => window.CycleRegion(forward: true)),
             [ActionId.PreviousRegion] = Sync(() => window.CycleRegion(forward: false)),
             [ActionId.ToggleActionPanel] = Sync(window.ToggleActionPanel),
+            [ActionId.TogglePageRail] = Sync(window.TogglePageRail),
             [ActionId.ShowFontChanges] = Sync(window.ToggleShowFontChanges),
             [ActionId.ShowSpelling] = Sync(window.ToggleShowSpelling),
             [ActionId.ShowMargins] = Sync(window.ToggleShowMargins),
