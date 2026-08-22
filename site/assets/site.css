@@ -565,3 +565,91 @@ figcaption {
   .rail, .masthead-links, .skip { display: none; }
   body { background: #fff; }
 }
+
+/* ---------------------------------------------------------------- emblems */
+
+/*
+  THE CRAFT'S OWN MARKS, AND WHERE THEY ARE ALLOWED TO APPEAR.
+
+  Every emblem on this site is drawn from TrestleBoard.Emblems — the same path geometry the program
+  puts on a newsletter cover — and painted in currentColor, so an emblem takes the colour of
+  whatever it stands in and there is not one hex value in this section.
+
+  Three placements, and the restraint is the point. A site about Freemasonry can drown in squares
+  and compasses; the mark means more used three times than thirty. The masthead says whose site this
+  is, the hero says what the program draws, and the rules dress the page the way a trestle board is
+  dressed. Nothing else on this site carries an emblem.
+*/
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Navy against the near-black wordmark: enough to read as the lodge's colour, not enough to
+   compete with the word beside it. It is hidden from screen readers — the word "TrestleBoard" is
+   right there, and an emblem announced here would make every page open by naming it twice. */
+.wordmark-emblem {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex: 0 0 auto;
+  color: var(--board);
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 13rem;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: start;
+  margin-bottom: 1.75rem;
+}
+
+.hero-words .lede { margin-bottom: 0; }
+
+.hero-emblem { text-align: center; }
+
+/* The one large mark on the site. It is the square and compasses WITH the letter G, which is the
+   version most lodges use on a trestle board, and it is the only place a page gives an emblem more
+   than a line of height. */
+.hero-emblem .emblem {
+  width: 100%;
+  max-width: 11rem;
+  height: auto;
+  color: var(--board);
+}
+
+.hero-emblem-note {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0.75rem auto 0;
+  max-width: 15rem;
+  text-align: left;
+}
+
+/* The rule between sections: the shelf's own rule-diamond, in the colour of a boundary rather than
+   of text, so it separates without competing with the heading under it. */
+.ornament {
+  display: flex;
+  justify-content: center;
+  margin: 3.5rem 0 0;
+}
+
+.ornament-rule {
+  width: min(100%, 20rem);
+  height: auto;
+  color: var(--rule);
+}
+
+/* A heading that follows a rule has already been separated from what came before it. */
+.ornament + h2 { margin-top: 1rem; }
+
+@media (max-width: 46rem) {
+  .hero { grid-template-columns: 1fr; }
+
+  /* Below the words rather than beside them, and smaller: on a telephone the emblem is a signature
+     at the end of the opening paragraph, not a banner above the fold. */
+  .hero-emblem { display: flex; align-items: center; gap: 1rem; text-align: left; }
+  .hero-emblem .emblem { max-width: 6rem; }
+  .hero-emblem-note { margin: 0; }
+}

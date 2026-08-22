@@ -20,6 +20,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\TrestleBoard.Editing\TrestleBoard.Editing.csproj" />
+    <!-- The square and compasses on this site is the geometry the program draws onto a
+         newsletter page, not a second drawing of it. See Emblems.cs. -->
+    <ProjectReference Include="..\..\src\TrestleBoard.Emblems\TrestleBoard.Emblems.csproj" />
   </ItemGroup>
 
 </Project>

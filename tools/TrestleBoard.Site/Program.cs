@@ -15,7 +15,7 @@ namespace TrestleBoard.Site;
 /// framework, nothing to install: open <c>site/_site/index.html</c> in a browser and the whole site
 /// works, which is how it gets checked before it is deployed.</para>
 /// </summary>
-internal static class Program
+internal static partial class Program
 {
     private static int Main(string[] args)
     {
@@ -107,11 +107,27 @@ internal static class Program
     /// so the built folder can be opened straight off the disk, with no web server, which is how it
     /// gets checked before it is deployed.</para>
     /// </summary>
-    private static string Fragment(string path, string root) =>
-        File.Exists(path)
-            ? File.ReadAllText(path).Trim().Replace("{{root}}", root, StringComparison.Ordinal)
-            : throw new InvalidOperationException(
+    private static string Fragment(string path, string root)
+    {
+        if (!File.Exists(path))
+        {
+            throw new InvalidOperationException(
                 $"The page fragment {path} is declared in Site.Pages and does not exist.");
+        }
+
+        string text = File.ReadAllText(path).Trim().Replace("{{root}}", root, StringComparison.Ordinal);
+
+        // {{ornament}} is the shelf's rule-diamond between sections; {{emblem:id}} is any emblem the
+        // program can draw. Both are written as tokens rather than as SVG in the prose, because the
+        // prose files are meant to be editable by somebody who is not reading any code — and because
+        // paths pasted into a page are a copy that can drift from the program's own.
+        text = text.Replace("{{ornament}}", Emblems.Divider(), StringComparison.Ordinal);
+
+        return EmblemToken().Replace(text, m => Emblems.Svg(m.Groups[1].Value, "emblem"));
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\{\{emblem:([a-z0-9-]+)\}\}")]
+    private static partial System.Text.RegularExpressions.Regex EmblemToken();
 
     /// <summary>
     /// Empties the output folder before writing it.
@@ -122,9 +138,40 @@ internal static class Program
     /// </summary>
     private static void Fresh(string output)
     {
-        if (Directory.Exists(output))
+        if (!Directory.Exists(output))
+        {
+            Directory.CreateDirectory(output);
+            return;
+        }
+
+        try
         {
             Directory.Delete(output, recursive: true);
+        }
+        catch (IOException)
+        {
+            // On Windows the output folder is held open by whatever is looking at it — a browser
+            // with a page from it loaded, an explorer window, a preview pane. Removing the FOLDER
+            // then fails while removing everything IN it succeeds, and emptying it achieves the
+            // same thing: no page survives into the next build. Checking the site by opening it is
+            // the workflow this tool is built for, so it must not be the thing that breaks it.
+            foreach (string file in Directory.EnumerateFiles(output, "*", SearchOption.AllDirectories))
+            {
+                File.Delete(file);
+            }
+
+            foreach (string folder in Directory.EnumerateDirectories(output))
+            {
+                try
+                {
+                    Directory.Delete(folder, recursive: true);
+                }
+                catch (IOException)
+                {
+                    // An empty folder left behind is harmless: it holds no page, and the next write
+                    // fills it. Failing the whole build over it would not be.
+                }
+            }
         }
 
         Directory.CreateDirectory(output);

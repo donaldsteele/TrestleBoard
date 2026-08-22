@@ -47,7 +47,7 @@ internal static class Shell
             <a class="skip" href="#main">Skip to the page</a>
 
             <header class="masthead">
-              <a class="wordmark" href="{root}">TrestleBoard</a>
+              <a class="wordmark" href="{root}">{Emblems.Svg("square-and-compasses", "wordmark-emblem")}<span>TrestleBoard</span></a>
               <nav class="masthead-links" aria-label="Elsewhere">
                 <a class="download-pill" href="{root}install/">Download</a>
                 <a href="{Site.Repository}">Source on GitHub</a>
