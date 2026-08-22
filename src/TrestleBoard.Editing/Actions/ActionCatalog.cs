@@ -90,7 +90,7 @@ public static class ActionCatalog
         new(ActionId.StartFromLastMonth, "Start from last month",
             "Copies this newsletter forward to next month and clears the articles.", ActionGroup.Newsletter),
         new(ActionId.Save, "Save this newsletter", "Keeps your work in its file so you can come back to it.",
-            ActionGroup.Newsletter, "Ctrl+S", IsPrimary: true),
+            ActionGroup.Newsletter, "Ctrl+S", PrimaryRank: 2),
         new(ActionId.SaveAs, "Save it as a new file…",
             "Keeps your work in a file you choose, leaving the one you started from alone.",
             ActionGroup.Newsletter, "Ctrl+Shift+S"),
@@ -109,8 +109,14 @@ public static class ActionCatalog
         new(ActionId.ReadAloud, "Read it back to me…",
             "Goes through the newsletter one sentence at a time, out loud where this computer can.",
             ActionGroup.Newsletter),
+        // M76 (f): rank 1 of the Newsletter group, ahead of Save (2) and "Which issue is this?"
+        // (3). The PDF is the terminal goal of the whole product — §7 calls it the file they email
+        // to the lodge — and a rank is a standing claim rather than a claim about right now, so the
+        // standing answer to "what did you come here to do" has to be the thing the committee is
+        // here to do. The other two are each the right answer at a moment, and a moment is what the
+        // what's-next card is for.
         new(ActionId.ExportPdf, "Make the PDF…", "Makes the file you email to the lodge.",
-            ActionGroup.Newsletter, "Ctrl+E", IsPrimary: true),
+            ActionGroup.Newsletter, "Ctrl+E", PrimaryRank: 1),
         new(ActionId.ExportDraftPdf, "Make a draft copy…",
             "Makes a PDF with DRAFT across every page, for the Master to read before you send it.",
             ActionGroup.Newsletter),
@@ -126,9 +132,15 @@ public static class ActionCatalog
         // every command have a gesture — Alt+F then C reaches this one, like the twenty others
         // that carry none. It is a primary panel action instead, because until it is answered it
         // is the only thing worth doing to this newsletter.
+        //
+        // M76 (f) settles that claim against the other two in this group and it comes third, which
+        // does NOT weaken the M75 argument: that argument is about the state before the question is
+        // answered, and WhatsNext already leads its card with this command in exactly that state
+        // ("Say which issue this is", and nothing else on the card is worth doing first). A rank is
+        // fixed for all time; the card is where an offer that is only sometimes the answer belongs.
         new(ActionId.SetIssueDate, "Which issue is this?…",
             "Asks which month and year this newsletter is for, on the cover heading.",
-            ActionGroup.Newsletter, IsPrimary: true),
+            ActionGroup.Newsletter, PrimaryRank: 3),
         new(ActionId.SendIt, "Now send it…",
             "Opens your email with the brethren who get it by email already filled in.",
             ActionGroup.Newsletter),
@@ -163,10 +175,16 @@ public static class ActionCatalog
             "Looks for words and puts different ones in their place.", ActionGroup.Edit, "Ctrl+H"),
 
         // ---- Text -------------------------------------------------------------------------------
+        // M76 (f): Bold 1, Italic 2, "Change the font for this style" 3. All three used to assert
+        // the primary treatment for themselves and all three got it at once, which is the panel of
+        // three gold bars the M76 audit found. Bold leads because it is the commonest thing anybody
+        // does to writing they have just highlighted; the style command is last because it changes
+        // every paragraph of that kind in the newsletter, which is a bigger act than the emphasis
+        // bar should be inviting.
         new(ActionId.Bold, "Bold", "Makes the highlighted words heavier.", ActionGroup.Text, "Ctrl+B",
-            IsPrimary: true),
+            PrimaryRank: 1),
         new(ActionId.Italic, "Italic", "Slants the highlighted words.", ActionGroup.Text, "Ctrl+I",
-            IsPrimary: true),
+            PrimaryRank: 2),
         new(ActionId.BulletList, "Make this a list of points",
             "Puts a dot in front of this paragraph, and keeps the wrapped lines lined up under the "
             + "writing.", ActionGroup.Text),
@@ -177,7 +195,7 @@ public static class ActionCatalog
             "Chooses what kind of paragraph this is, such as a heading.", ActionGroup.Text),
         new(ActionId.FontsAndStyles, "Change the font for this style ▸",
             "Chooses the typeface and size for every piece of writing of this kind.",
-            ActionGroup.Text, "Ctrl+Shift+D", IsPrimary: true),
+            ActionGroup.Text, "Ctrl+Shift+D", PrimaryRank: 3),
         new(ActionId.BiggerText, "+ Bigger", "Makes this kind of writing one step larger everywhere.",
             ActionGroup.Text, "Ctrl+Shift+."),
         new(ActionId.SmallerText, "− Smaller", "Makes this kind of writing one step smaller everywhere.",
@@ -196,10 +214,13 @@ public static class ActionCatalog
         new(ActionId.SavePhrase, "Keep these words for next time…",
             "Saves the writing you have highlighted, so you can use it again in a later issue.",
             ActionGroup.Insert),
+        // M76 (f): a box for writing leads the Insert group and a picture follows it. A trestle
+        // board is mostly words — the pictures go into the frames the template already ships — so
+        // the standing answer to "what are you here to add" is somewhere to write.
         new(ActionId.AddTextFrame, "Add a box for writing", "Puts an empty box on the page for you to write in.",
-            ActionGroup.Insert, "Ctrl+Shift+T", IsPrimary: true),
+            ActionGroup.Insert, "Ctrl+Shift+T", PrimaryRank: 1),
         new(ActionId.InsertPhoto, "Insert a picture…", "Puts a photograph on the page.",
-            ActionGroup.Insert, "Ctrl+Shift+P", IsPrimary: true),
+            ActionGroup.Insert, "Ctrl+Shift+P", PrimaryRank: 2),
         new(ActionId.InsertOfficers, "Lodge officers", "Adds the officers table and asks who they are.",
             ActionGroup.Insert),
         new(ActionId.InsertBirthdays, "Birthdays", "Adds the birthday list.", ActionGroup.Insert),
@@ -216,7 +237,7 @@ public static class ActionCatalog
         new(ActionId.DeleteFrame, "Delete this", "Takes it off the page. You can undo this.",
             ActionGroup.Item, "Delete"),
         new(ActionId.EditWidget, "Change what this says…", "Asks the questions again, already filled in.",
-            ActionGroup.Item, "Ctrl+Shift+E", IsPrimary: true),
+            ActionGroup.Item, "Ctrl+Shift+E", PrimaryRank: 1),
         new(ActionId.EditWidgetList, "Edit the list…", "Shows the whole list at once, with big rows.",
             ActionGroup.Item, "Ctrl+Shift+G"),
         new(ActionId.FitToContents, "Make it fit what is in it", "Makes the box exactly as tall as what is in it.",
@@ -231,10 +252,15 @@ public static class ActionCatalog
         // ---- Pictures ---------------------------------------------------------------------------
         // M18 puts the replace command FIRST: an empty frame is the state every photo template
         // ships in, and until M18 no command in the app could fill one.
+        //
+        // M76 (f) makes that ordering the emphasis too: rank 1 here, "Fix this picture" rank 2.
+        // Until there is a picture in the frame there is nothing to fix, and once there is one this
+        // command is the way to change it — so putting the gold on the other would spend it on a
+        // command that is refused in the state the templates ship in.
         new(ActionId.ReplacePicture, "Put a picture here…", "Chooses a picture file and puts it in this frame.",
-            ActionGroup.Picture, "Ctrl+Shift+O", IsPrimary: true),
+            ActionGroup.Picture, "Ctrl+Shift+O", PrimaryRank: 1),
         new(ActionId.FixPhoto, "Fix this picture", "Crops it to the frame and brightens it in one step.",
-            ActionGroup.Picture, "Ctrl+Shift+F", IsPrimary: true),
+            ActionGroup.Picture, "Ctrl+Shift+F", PrimaryRank: 2),
         // M38: these two names describe the OUTCOME rather than the operation, and there are two of
         // them rather than three.
         //
@@ -262,7 +288,7 @@ public static class ActionCatalog
 
         // ---- How text flows ---------------------------------------------------------------------
         new(ActionId.ToggleWrap, "Make the writing flow around it", "Makes the writing on the page flow around it.",
-            ActionGroup.TextFlow, "Ctrl+Shift+W", IsPrimary: true),
+            ActionGroup.TextFlow, "Ctrl+Shift+W", PrimaryRank: 1),
         new(ActionId.LinkFrames, "Continue this text in another frame…",
             "Lets a long article carry on in a second box.", ActionGroup.TextFlow, "Ctrl+Shift+L"),
         new(ActionId.UnlinkFrames, "Stop continuing into the next frame",
@@ -314,6 +340,13 @@ public static class ActionCatalog
             ActionGroup.Page),
         new(ActionId.MovePageLater, "Move this page later", "Swaps it with the page after it.", ActionGroup.Page),
 
+        // M76 (g). The command the page rail is made of: one press, any page, instead of pressing
+        // "Next page" three times to reach page four. No shortcut — the target is a page number and
+        // a chord cannot carry one; the rail's own arrow keys are the keyboard path, and the menu
+        // item below opens the rail and stands on the page you are on (docs/M76-spec.md §6).
+        new(ActionId.GoToPage, "Go to a page", "Shows whichever page you pick out of the row down the side.",
+            ActionGroup.Page),
+
         // ---- Looking at it ----------------------------------------------------------------------
         new(ActionId.ZoomIn, "Zoom in", "Makes the page on screen bigger.", ActionGroup.View, "Ctrl+="),
         new(ActionId.ZoomOut, "Zoom out", "Makes the page on screen smaller.", ActionGroup.View, "Ctrl+-"),
@@ -330,6 +363,11 @@ public static class ActionCatalog
             "Moves the other way round the window.", ActionGroup.View, "Shift+F6"),
         new(ActionId.ToggleActionPanel, "Show what I can do",
             "Shows or hides the panel of things you can do to what you have chosen.", ActionGroup.View),
+        // M76 (g): the rail's own switch, declared beside the panel's because it makes the same
+        // promise about the same kind of thing — chrome the user is allowed to put away.
+        new(ActionId.TogglePageRail, "Show the pages down the side",
+            "Shows or hides the row of small pages down the left, so you can see the whole "
+            + "newsletter at once and go straight to any page of it.", ActionGroup.View),
         new(ActionId.ShowMargins, "Show the edge to keep inside",
             "Draws a faint line where the printing stops, so you can see what is too close to it.",
             ActionGroup.View),
@@ -342,7 +380,7 @@ public static class ActionCatalog
 
         // ---- The address book (M12) ---------------------------------------------------------------
         new(ActionId.ShowPeople, "People…", "Opens your lodge address book.",
-            ActionGroup.People, "Ctrl+Shift+R", IsPrimary: true),
+            ActionGroup.People, "Ctrl+Shift+R", PrimaryRank: 1),
         new(ActionId.ImportPeople, "Import from a file…",
             "Reads a list of members from a spreadsheet you already have.", ActionGroup.People),
         new(ActionId.ExportPeople, "Save as a spreadsheet…",
@@ -378,7 +416,7 @@ public static class ActionCatalog
         // ---- Help -------------------------------------------------------------------------------
         new(ActionId.HowDoI, "How do I…?",
             "Opens a search box over everything TrestleBoard can do. Type it in your own words.",
-            ActionGroup.Help, "F1", IsPrimary: true),
+            ActionGroup.Help, "F1", PrimaryRank: 1),
         new(ActionId.ShowTheTour, "Show me round again",
             "Walks through how a month goes, in five screens. The same one you were shown the first "
             + "time TrestleBoard opened.",
@@ -400,6 +438,46 @@ public static class ActionCatalog
 
     private static readonly Dictionary<string, EditorAction> ById =
         AllActions.ToDictionary(a => a.Id, StringComparer.Ordinal);
+
+    /// <summary>
+    /// M76 (f). <b>Two actions in one group may not claim the same non-zero
+    /// <see cref="EditorAction.PrimaryRank"/>, and the catalog refuses to exist if they do.</b>
+    ///
+    /// <para>This is the same stance <c>ActionAvailability</c> takes on an empty reason: the
+    /// invariant is enforced where the mistake is made rather than reported where it shows up.
+    /// A tie would have to be broken by something, and the only thing left to break it with is
+    /// declaration order — "whichever one happened to be enumerated first", which is not a rule
+    /// anybody can read off the source and predict, and which is exactly what the emphasis was
+    /// being rescued from. So ties are made impossible instead of resolved.</para>
+    ///
+    /// <para>A negative rank is refused for the same reason: zero already means "no claim", so a
+    /// negative number is somebody expressing something the scale does not carry.</para>
+    /// </summary>
+    static ActionCatalog()
+    {
+        foreach (IGrouping<ActionGroup, EditorAction> group in AllActions.GroupBy(a => a.Group))
+        {
+            foreach (EditorAction action in group.Where(a => a.PrimaryRank < 0))
+            {
+                throw new InvalidOperationException(
+                    $"{action.Id} declares a negative PrimaryRank ({action.PrimaryRank}). Zero "
+                    + "means no claim to the primary treatment; ranks start at 1.");
+            }
+
+            IGrouping<int, EditorAction>? clash = group
+                .Where(a => a.PrimaryRank > 0)
+                .GroupBy(a => a.PrimaryRank)
+                .FirstOrDefault(byRank => byRank.Count() > 1);
+
+            if (clash is not null)
+            {
+                throw new InvalidOperationException(
+                    $"{string.Join(" and ", clash.Select(a => a.Id))} both claim PrimaryRank "
+                    + $"{clash.Key} in the {group.Key} group. Only one action per group may hold a "
+                    + "rank, because only one of them can be drawn as the offer the user came for.");
+            }
+        }
+    }
 
     /// <summary>Every action, in declaration order.</summary>
     public static IReadOnlyList<EditorAction> All => AllActions;
@@ -467,7 +545,12 @@ public static class ActionCatalog
             // open, and an empty book is exactly when importing matters most.
             ActionId.Open or ActionId.OpenSample or ActionId.NewFromTemplate or ActionId.Exit
                 or ActionId.Settings or ActionId.NextRegion or ActionId.PreviousRegion
-                or ActionId.ToggleActionPanel or ActionId.CheckForUpdates or ActionId.About
+                or ActionId.ToggleActionPanel
+                // M76 (g): showing or hiding the rail is a fact about the window, not about the
+                // newsletter — there is something to say either way, and an empty window is
+                // exactly when somebody might want the strip out of the road.
+                or ActionId.TogglePageRail
+                or ActionId.CheckForUpdates or ActionId.About
                 or ActionId.FontLicences or ActionId.Licence or ActionId.ShowExampleIssue
                 or ActionId.ManageTemplates
                 // M63: help must never be unavailable. An app that will not tell you how to do
@@ -868,6 +951,19 @@ public static class ActionCatalog
                     ? ActionAvailability.Available
                     : ActionAvailability.Blocked("This page is already last."),
 
+            // M76 (g). The one availability rule in the catalog that answers for a command with a
+            // PARAMETER, and it is written to answer the question it can actually answer: not "can
+            // you go to page four", which depends on a number this layer never sees, but "is there
+            // anywhere to go at all". A one-page newsletter is the whole of the no — and it is
+            // refused in words rather than by a greyed rail, because a rail whose tiles go grey is
+            // the exact thing M11 exists to remove (docs/M76-spec.md §6).
+            ActionId.GoToPage => !context.HasDocument
+                ? RequiresDocument(context)
+                : context.PageCount > 1
+                    ? ActionAvailability.Available
+                    : ActionAvailability.Blocked(
+                        "There is only one page, so there is nowhere else to go."),
+
             // ---- Looking at it --------------------------------------------------------------------
             ActionId.ZoomIn or ActionId.ZoomOut or ActionId.ActualSize or ActionId.FitPage =>
                 RequiresDocument(context),
@@ -899,6 +995,59 @@ public static class ActionCatalog
         }
 
         return offers;
+    }
+
+    /// <summary>
+    /// Which of these offers — if any — the panel draws in the primary treatment: <b>at most one
+    /// per <see cref="ActionGroup"/></b>, whatever the selection (PLAN.md §11 M76 (f)).
+    ///
+    /// <para>M16 defined that treatment as "the offer you probably came for", singular, and then
+    /// left every action to assert it for itself. Fifteen did, and <c>action-panel-photo.png</c>
+    /// is what that came to: three navy-and-gold slabs stacked one above the other in a single
+    /// panel. Three simultaneous offers are not three answers to that question; they are the
+    /// absence of one, and the gold bar is the most expensive ornament in the palette being spent
+    /// on all of them at once.</para>
+    ///
+    /// <para><b>The rule, whole:</b> an action with <see cref="EditorAction.PrimaryRank"/> of zero
+    /// never wins; among the ranked actions <i>present in these offers</i>, the lowest rank in each
+    /// group wins; and two actions in a group cannot share a rank, because the static constructor
+    /// above refuses to let the catalog exist if they do. Nothing here depends on the order the
+    /// offers arrive in — hand this the same set shuffled and it answers the same thing, which is
+    /// the property "the first one that happens to be enumerated" would not have had.</para>
+    ///
+    /// <para><b>Presence, not availability, is what the ranks are filtered by.</b> A blocked offer
+    /// can still win its group and still be drawn primary, exactly as it was before M76: the panel
+    /// never greys anything (M11), a blocked button carries its reason in words and stays pressable,
+    /// and demoting the emphasis of a refusal would make the panel jump its gold bar about as the
+    /// selection changed — churn, on a surface built for people who need it to stay still.</para>
+    ///
+    /// <para>Everything that does not win is drawn with the ordinary action treatment. Losing is
+    /// not being disabled, and it is not being unstyled — <c>ActionSurfaceTests</c> walks every
+    /// window proving that no app-made button carries neither treatment.</para>
+    /// </summary>
+    public static IReadOnlySet<string> PrimaryOffers(IEnumerable<ActionOffer> offers)
+    {
+        ArgumentNullException.ThrowIfNull(offers);
+
+        var winners = new Dictionary<ActionGroup, EditorAction>();
+        foreach (ActionOffer offer in offers)
+        {
+            EditorAction action = offer.Action;
+            if (action.PrimaryRank <= 0)
+            {
+                continue;
+            }
+
+            if (winners.TryGetValue(action.Group, out EditorAction? held)
+                && held.PrimaryRank <= action.PrimaryRank)
+            {
+                continue;
+            }
+
+            winners[action.Group] = action;
+        }
+
+        return winners.Values.Select(a => a.Id).ToHashSet(StringComparer.Ordinal);
     }
 
     /// <summary>The panel's heading, and the sentence a screen reader hears when the selection changes.</summary>

@@ -343,6 +343,12 @@
         <Separator />
         <MenuItem Header="Show what I can _do" Tag="view.toggleActionPanel"
                   Click="OnActionClicked" AutomationProperties.Name="Show or hide the panel of things you can do" />
+        <!-- M76(g): beside the panel's switch, because it is the same promise about the same kind of
+             thing — a strip of chrome the user is allowed to put away, which folds itself away below
+             the same window width rather than squeezing the page out (docs/M76-spec.md §6). -->
+        <MenuItem Header="_Show the pages down the side" Tag="view.togglePageRail"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Show or hide the pages down the side" />
         <!-- M47: the page has had margins in its model since M2 and has never drawn them. -->
         <MenuItem Header="Show the ed_ge to keep inside" Tag="view.showMargins"
                   Click="OnActionClicked"
@@ -371,6 +377,12 @@
                   Click="OnActionClicked" AutomationProperties.Name="Next page" />
         <MenuItem Header="_Previous page" Tag="page.previous" InputGesture="Ctrl+PageUp"
                   Click="OnActionClicked" AutomationProperties.Name="Previous page" />
+        <!-- M76(g). The menu's half of page.goTo, and the reason the command carries its page in the
+             pressed control's Tag rather than in its id: a menu item cannot know which page you
+             want, so this one opens the row of pages and stands the keyboard on the page you are
+             already looking at, where the arrows walk and Enter goes (docs/M76-spec.md §6). -->
+        <MenuItem Header="_Go to a page" Tag="page.goTo"
+                  Click="OnActionClicked" AutomationProperties.Name="Go to a page" />
         <Separator />
         <MenuItem Header="_Add a page after this one" Tag="page.add" InputGesture="Ctrl+Shift+N"
                   Click="OnActionClicked" AutomationProperties.Name="Add a page after this one" />
@@ -439,6 +451,13 @@
     <!-- Nine controls, down from eighteen (M11). Bold, italic, paragraph style, wrap, insert and
          arrange all moved into the panel, where they sit beside the thing they act on.
 
+         M76: nine buttons became seven, and M11's rule that this bar must not grow back is not
+         bent by it. Zoom out, Zoom in and Fit page left for the canvas footer, taking the zoom
+         percentage with them — they act on the VIEW of the page rather than on the newsletter, and
+         with them here the bar was wider than the window at its own default 1280, which is how
+         "Fit page" came to be off screen in a committed screenshot. "Make the PDF" took part of the
+         room they freed, and the bar is two controls SHORTER than before (docs/M76-spec.md §2, §3).
+
          M27: every label here is the label the menu uses for the same command. They used to differ
          — "Smaller"/"Bigger" against the View menu's "Zoom out"/"Zoom in", and a bare "Back"/"Next"
          against "Previous page"/"Next page". Two of those were worse than merely inconsistent:
@@ -456,9 +475,18 @@
            window. It auto-hid before, which meant the last button was simply cut off at the window
            edge with nothing to say it could be reached — the same failure this comment warns about,
            arriving through the scrollbar rather than through the overflow. -->
-      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+      <!-- M76(e), docs/M76-spec.md §3: two columns rather than one strip. "Make the PDF" is the
+           terminal goal of the whole product — it is the file the committee emails to the lodge —
+           and until now it appeared only inside the what's-next card, which scrolls, and only when
+           that card decided to offer it. Here it is permanent, right-aligned, and deliberately
+           OUTSIDE the scroller: a command that can be scrolled out of reach is not where you put
+           the thing this audience came here to do. The scrolling group is declared first so Tab
+           walks the bar left to right, the way it reads. -->
+      <Grid ColumnDefinitions="*,Auto">
+      <ScrollViewer x:Name="ToolbarStrip" Grid.Column="0"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
                     AllowAutoHide="False">
-      <StackPanel Orientation="Horizontal" Spacing="8">
+      <StackPanel x:Name="ToolbarStack" Orientation="Horizontal" Spacing="8">
         <Button x:Name="OpenButton" FontSize="16" MinHeight="44" Tag="newsletter.open" Click="OnActionClicked"
                 AutomationProperties.Name="Open a newsletter">Open</Button>
         <!-- M41: the toolbar is where this audience looks first, and until now the one command they
@@ -483,17 +511,24 @@
                    AutomationProperties.Name="Current page" AutomationProperties.LiveSetting="Polite" />
         <Button x:Name="NextPageButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="page.next" Click="OnActionClicked"
                 AutomationProperties.Name="Next page">Next page</Button>
-        <Button x:Name="ZoomOutButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="view.zoomOut" Click="OnActionClicked"
-                AutomationProperties.Name="Zoom out">Zoom out</Button>
-        <TextBlock x:Name="ZoomLabel" FontSize="16" VerticalAlignment="Center" MinWidth="64"
-                   TextAlignment="Center" Text="100%"
-                   AutomationProperties.Name="Current zoom" AutomationProperties.LiveSetting="Polite" />
-        <Button x:Name="ZoomInButton" FontSize="16" MinHeight="44" MinWidth="44" Tag="view.zoomIn" Click="OnActionClicked"
-                AutomationProperties.Name="Zoom in">Zoom in</Button>
-        <Button x:Name="FitButton" FontSize="16" MinHeight="44" Tag="view.fitPage" Click="OnActionClicked"
-                AutomationProperties.Name="Fit the whole page in the window">Fit page</Button>
+        <!-- M76(d): Zoom out, the percentage, Zoom in and Fit page USED TO SIT HERE, and that is
+             why the bar overflowed at Width="1280" — the size the window chooses for itself. They
+             act on the VIEW of the page, not on the newsletter, so they moved to the canvas footer
+             below, where every document application this audience has ever used puts them. Their
+             menu items, shortcuts and KeyboardMap rows are untouched: what moved is a command's
+             second home, not the command (docs/M76-spec.md §2, §10). -->
       </StackPanel>
       </ScrollViewer>
+      <!-- The one primary in this region, which is what makes it unambiguous (docs/M76-spec.md §3).
+           The treatment is the PrimaryButton theme rather than IsDefault: IsDefault on a main
+           window would also claim the Enter key for the whole shell, and Enter belongs to whatever
+           the user is typing in. The label is the catalog's own title, so the toolbar and the File
+           menu say the same words — M27's rule, and the reason PlainLanguageTests walks this bar. -->
+      <Button x:Name="ExportPdfButton" Grid.Column="1" Margin="8,0,0,0"
+              Theme="{DynamicResource TrestleBoard.PrimaryButton}"
+              FontSize="16" MinHeight="44" Tag="newsletter.exportPdf" Click="OnActionClicked"
+              AutomationProperties.Name="Make the PDF">Make the PDF…</Button>
+      </Grid>
     </Border>
     </LayoutTransformControl>
 
@@ -524,10 +559,38 @@
               AutomationProperties.Name="Show what I can do">What can I do? ▸</Button>
     </Border>
 
+    <!-- THE PAGE RAIL (M76(g), docs/M76-spec.md §6). One miniature sheet per page, in order, down
+         the left of the canvas. Until this milestone "Page 1 of 5" sat between two buttons and
+         pressing Next three times was the only route to page four; a four-to-six page newsletter is
+         small enough to show whole, and showing the plan laid out is what a trestle board IS.
+
+         It is built in C# rather than declared here, because there is one tile per page of whatever
+         newsletter happens to be open — see Actions/PageRail.cs, where the marking of the current
+         page, the keyboard walk and the thumbnail cache all live.
+
+         LEFT, and declared before the canvas so Tab reaches the pages before the page. It takes the
+         UI scale like every other strip of chrome (RailScale joins the scale loop in ApplySettings),
+         and it folds itself away to the labelled button below it under the same window width the
+         action panel uses, because the page must never be squeezed out from both sides at once. -->
+    <LayoutTransformControl x:Name="RailScale" DockPanel.Dock="Left">
+      <ContentControl x:Name="PageRailHost" />
+    </LayoutTransformControl>
+
+    <Border x:Name="CollapsedRailHost" DockPanel.Dock="Left" Padding="4" IsVisible="False">
+      <Button x:Name="ShowRailButton" Classes="action" FontSize="16" MinHeight="44" VerticalAlignment="Top"
+              Tag="view.togglePageRail" Click="OnActionClicked"
+              AutomationProperties.Name="Show the pages down the side">◂ Pages</Button>
+    </Border>
+
+    <!-- M76(d): the canvas region is the scroller PLUS the strip of chrome that belongs to the
+         VIEW of the page. Two rows rather than one, and the scroller is declared first so Tab
+         reaches the page before the controls that magnify it — page, then footer, then the status
+         line, which is the order they read down the window. -->
+    <Grid RowDefinitions="*,Auto">
     <!-- The backdrop is painted twice — here and in Canvas/PageCanvasControl.cs — and the two must
          move together, because they meet wherever the page does not fill the scroller. Neither is
          the document: both fill the area AROUND the sheet, which is chrome. -->
-    <ScrollViewer x:Name="CanvasScroller"
+    <ScrollViewer x:Name="CanvasScroller" Grid.Row="0"
                   HorizontalScrollBarVisibility="Auto"
                   VerticalScrollBarVisibility="Auto"
                   Background="{DynamicResource TrestleBoard.Page.Backdrop}"
@@ -540,5 +603,73 @@
                                 DragDrop.Drop="OnCanvasDrop"
                                 AutomationProperties.Name="Newsletter page editor" />
     </ScrollViewer>
+
+    <!-- THE CANVAS FOOTER (M76(d), docs/M76-spec.md §2). The four controls that act on the view of
+         the page rather than on the newsletter: Zoom out, the percentage, Zoom in, Fit page. They
+         were on the toolbar, where they made it wider than the window at the default 1280 and put
+         "Fit page" off screen behind M69's permanent scroll track.
+
+         IT IS DOCKED, NOT FLOATING. A footer floating over the scroller would sit on top of the
+         bottom of the sheet — which is the last line of somebody's article — and the sheet is the
+         one thing in this window that must never be covered up. Docked, it also cannot scroll away
+         with the page: it is a row of the canvas region, not a child of the scroller.
+
+         AND IT IS CHROME, SO IT SCALES. The canvas deliberately does NOT take the UI scale, because
+         the page has its own zoom (PLAN.md §11 M11, and see ApplySettings). The footer sits on the
+         other side of that line: it is not the page, it is the buttons ABOUT the page, and its
+         labels are 16pt UI text that an elderly user raising the interface to 150% needs raised
+         with everything else. So CanvasFooterScale joins MenuScale/ToolbarScale/StatusScale/
+         PanelScale in the scale loop, and the scroller between them stays untransformed. -->
+    <LayoutTransformControl x:Name="CanvasFooterScale" Grid.Row="1">
+      <Border Padding="8,6"
+              Background="{DynamicResource TrestleBoard.Chrome.Background}"
+              BorderBrush="{DynamicResource TrestleBoard.Chrome.Border}"
+              BorderThickness="{DynamicResource TrestleBoard.Rule.Top}">
+        <!-- IT SCROLLS, FOR THE REASON M69 MADE THE TOOLBAR SCROLL, and it was scale-200.png that
+             asked for this too. The canvas region is what is left after the rail and the panel have
+             taken their room, so at 200% these four scaled buttons are wider than it — and without
+             a scroller "Zoom in" and "Fit page" were simply cut off at the panel's edge with
+             nothing on screen to say they could be reached. That is the exact failure M69 wrote
+             AllowAutoHide=False against: a control the user cannot reach is the same as a control
+             that is not there (PLAN.md §6). An auto-hiding bar would not do, because it appears
+             only once the pointer is already over it. -->
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                      AllowAutoHide="False">
+        <!-- No Classes="action" is written here, exactly as none is written on the toolbar:
+             DressToolbar applies the M37 pressable affordance to every button in both strips, and
+             one place that cannot be forgotten beats four attributes that can. -->
+        <StackPanel x:Name="CanvasFooterStack" Orientation="Horizontal" Spacing="8"
+                    HorizontalAlignment="Right"
+                    AutomationProperties.Name="How large the page is shown">
+          <Button x:Name="ZoomOutButton" FontSize="16" MinHeight="44" MinWidth="44"
+                  Tag="view.zoomOut" Click="OnActionClicked"
+                  AutomationProperties.Name="Zoom out">Zoom out</Button>
+          <!-- M76(d), docs/M76-spec.md §7: the percentage used to be dead text sitting between two
+               steppers — the one place in the window that showed a number and would not let you
+               change it. It is a button now, and it opens the same ladder of magnifications the
+               steppers walk, so somebody who wants 200% gets there in one press instead of four.
+
+               The TextBlock is kept INSIDE the button rather than replaced by a string Content, and
+               that is deliberate: the live-region announcement is made by the text element, and a
+               Button's automation name is "Current zoom", which never changes and would therefore
+               announce nothing when the zoom did. -->
+          <Button x:Name="ZoomLadderButton" FontSize="16" MinHeight="44" MinWidth="72"
+                  Click="OnZoomLadderClicked"
+                  AutomationProperties.Name="Current zoom — press to choose how large the page is shown">
+            <TextBlock x:Name="ZoomLabel" FontSize="16" TextAlignment="Center" Text="100%"
+                       AutomationProperties.Name="Current zoom"
+                       AutomationProperties.LiveSetting="Polite" />
+          </Button>
+          <Button x:Name="ZoomInButton" FontSize="16" MinHeight="44" MinWidth="44"
+                  Tag="view.zoomIn" Click="OnActionClicked"
+                  AutomationProperties.Name="Zoom in">Zoom in</Button>
+          <Button x:Name="FitButton" FontSize="16" MinHeight="44"
+                  Tag="view.fitPage" Click="OnActionClicked"
+                  AutomationProperties.Name="Fit the whole page in the window">Fit page</Button>
+        </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </LayoutTransformControl>
+    </Grid>
   </DockPanel>
 </Window>

@@ -38,6 +38,29 @@
   every variant, so a Dark value would be a pale grey on white paper — unreadable, and wrong for the
   same reason Page.Sheet does not theme. High Contrast still moves, because there the floor moves.
 
+  ONE ELEVATION WAS NOT ENOUGH, AND THE SECOND ONE IS ARGUED RATHER THAN ASSUMED (§11 M76).
+  Until M76 the menu bar, the toolbar, the action panel, the status bar and every dialog body all
+  painted Chrome.Background, and buttons painted whatever Fluent handed them — a window with no
+  figure and no ground, in which the M37 borders did the entire structural job alone.
+  Chrome.Surface is the raised plane those things now sit on: button fills, list and form cards,
+  the page rail's tiles. Chrome.Background is untouched — every value, every pair already
+  measured against it — because darkening the ground instead would have re-measured fourteen
+  pairs to achieve the identical visual step.
+
+  THE SURFACE/GROUND PAIR IS 1.15:1 AND IS DECLARED decorative. A reviewer should challenge that,
+  so here is the answer. It is legitimate for exactly one reason: THE TONE IS NEVER THE BOUNDARY.
+  A button is bounded by its M37 border, a card by the Rule on the side that meets the ground, the
+  panel by the rule it already carries. The tonal step is reinforcement and comfort, nothing more,
+  so the rule that colour is never the ONLY signal is not merely satisfied here — colour is not
+  ANY of the signal, only the softening of one that is already drawn. That is the same declaration
+  Chrome.Divider carries and for the same reason: a difference nobody has to perceive must never
+  be quietly promoted into one somebody does.
+
+  IN HIGH CONTRAST THE TWO COLLAPSE TO THE SAME BLACK, ON PURPOSE. Nothing is lost, because there
+  Border.Thickness steps to 2px and does the whole job by itself — which is exactly the point of
+  the paragraph above. Written down because this, too, will otherwise be helpfully "fixed" into a
+  near-black that would give a high-contrast user a smudge where they had an edge.
+
   ==== CONTRAST ====
   ThemeCompositionTests parses the block below OUT OF THIS FILE, recomputes every ratio from the
   hex values above it, and fails if a number here is wrong or a floor is missed. The ratios are not
@@ -59,6 +82,13 @@
   PAIR Warning on Chrome.Background >= 4.5 : Light 6.81  Dark 8.35  HighContrast 10.64
   PAIR Adornment.Hint on Page.Sheet >= 4.5 : Light 5.33  Dark 5.33  HighContrast 21.00
   PAIR Adornment.Hover on Page.Sheet >= 3 : Light 4.91  Dark 4.91  HighContrast 21.00
+  PAIR Chrome.Foreground on Chrome.Surface >= 4.5 : Light 17.79  Dark 13.05  HighContrast 21.00
+  PAIR Chrome.Muted on Chrome.Surface >= 4.5 : Light 7.54  Dark 6.73  HighContrast 21.00
+  PAIR Chrome.Border on Chrome.Surface >= 3 : Light 4.34  Dark 4.70  HighContrast 21.00
+  PAIR Accent on Chrome.Surface >= 3 : Light 12.48  Dark 6.75  HighContrast 16.75
+  PAIR Focus on Chrome.Surface >= 3 : Light 17.79  Dark 13.05  HighContrast 19.56
+  PAIR Warning on Chrome.Surface >= 4.5 : Light 7.85  Dark 7.28  HighContrast 10.64
+  PAIR Chrome.Surface on Chrome.Background >= decorative : Light 1.15  Dark 1.15  HighContrast 1.00
   ==== END CONTRAST ====
 
   Two rules bind absolutely and both are tested: colour is never the only signal (Border.Thickness
@@ -73,6 +103,7 @@
     <!-- ============================ LIGHT ============================ -->
     <ResourceDictionary x:Key="Light">
       <SolidColorBrush x:Key="TrestleBoard.Chrome.Background" Color="#EDEFF2" />
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Surface" Color="#FFFFFF" />
       <SolidColorBrush x:Key="TrestleBoard.Chrome.Foreground" Color="#14181F" />
       <SolidColorBrush x:Key="TrestleBoard.Chrome.Muted" Color="#4A5567" />
       <SolidColorBrush x:Key="TrestleBoard.Chrome.Border" Color="#6E7A8F" />
@@ -91,11 +122,23 @@
       <Thickness x:Key="TrestleBoard.Focus.Thickness">2</Thickness>
       <Thickness x:Key="TrestleBoard.Rule.Top">0,1,0,0</Thickness>
       <Thickness x:Key="TrestleBoard.Rule.Bottom">0,0,0,1</Thickness>
+      <!-- SHAPE IS A TOKEN TOO (§11 M76). A corner radius typed into forty control themes is a
+           forty-place decision; here it is one. Control is what a button or a field rounds by,
+           Surface what a card, a tile or a panel rounds by — the larger plane takes the larger
+           radius so the two read as different kinds of thing rather than as one sloppy one. -->
+      <CornerRadius x:Key="TrestleBoard.Radius.Control">6</CornerRadius>
+      <CornerRadius x:Key="TrestleBoard.Radius.Surface">10</CornerRadius>
+      <!-- Spent on the page sheet and on nothing else: the sheet is the one object in the window
+           pretending to be a physical thing, and a shadow is how paper says so. -->
+      <BoxShadows x:Key="TrestleBoard.Elevation.Sheet">0 2 12 0 #33000000</BoxShadows>
     </ResourceDictionary>
 
     <!-- ============================ DARK ============================= -->
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="TrestleBoard.Chrome.Background" Color="#1C1F26" />
+      <!-- One step ABOVE the ground, never below it: Chrome.Background keeps every value and
+           every measured pair it had, and the raised plane is the new token. -->
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Surface" Color="#262A33" />
       <SolidColorBrush x:Key="TrestleBoard.Chrome.Foreground" Color="#F2F4F8" />
       <SolidColorBrush x:Key="TrestleBoard.Chrome.Muted" Color="#A8B2C4" />
       <SolidColorBrush x:Key="TrestleBoard.Chrome.Border" Color="#8A94A6" />
@@ -117,6 +160,12 @@
       <Thickness x:Key="TrestleBoard.Focus.Thickness">2</Thickness>
       <Thickness x:Key="TrestleBoard.Rule.Top">0,1,0,0</Thickness>
       <Thickness x:Key="TrestleBoard.Rule.Bottom">0,0,0,1</Thickness>
+      <!-- Identical to Light: shape does not theme. See the Light dictionary. -->
+      <CornerRadius x:Key="TrestleBoard.Radius.Control">6</CornerRadius>
+      <CornerRadius x:Key="TrestleBoard.Radius.Surface">10</CornerRadius>
+      <!-- Deeper than Light for the same apparent softness: black bleeds into a dark backdrop
+           faster than it does into a pale one. -->
+      <BoxShadows x:Key="TrestleBoard.Elevation.Sheet">0 2 12 0 #59000000</BoxShadows>
     </ResourceDictionary>
 
     <!-- ========================= HIGH CONTRAST ======================= -->
@@ -127,6 +176,10 @@
          and because yellow on black is the highest-contrast pairing available after plain white. -->
     <ResourceDictionary x:Key="{x:Static theme:AppTheme.HighContrast}">
       <SolidColorBrush x:Key="TrestleBoard.Chrome.Background" Color="#000000" />
+      <!-- Deliberately the same black as the ground: see the header. The border steps to 2px
+           here and carries the whole boundary on its own, so the tonal step has nothing left
+           to reinforce and a near-black-on-black step would only muddy it. -->
+      <SolidColorBrush x:Key="TrestleBoard.Chrome.Surface" Color="#000000" />
       <SolidColorBrush x:Key="TrestleBoard.Chrome.Foreground" Color="#FFFFFF" />
       <!-- Deliberately white: there is no de-emphasised text at 7:1. See the header. -->
       <SolidColorBrush x:Key="TrestleBoard.Chrome.Muted" Color="#FFFFFF" />
@@ -147,6 +200,14 @@
       <Thickness x:Key="TrestleBoard.Focus.Thickness">3</Thickness>
       <Thickness x:Key="TrestleBoard.Rule.Top">0,2,0,0</Thickness>
       <Thickness x:Key="TrestleBoard.Rule.Bottom">0,0,0,2</Thickness>
+      <!-- Identical to Light and Dark, and it does NOT collapse here the way the tonal step does:
+           a radius is a shape, and shape is the signal High Contrast leans ON rather than the one
+           it gives up. Rounding a control never costs a boundary — the 2px border still draws it. -->
+      <CornerRadius x:Key="TrestleBoard.Radius.Control">6</CornerRadius>
+      <CornerRadius x:Key="TrestleBoard.Radius.Surface">10</CornerRadius>
+      <!-- None. White sheet on black backdrop is already 21:1, and a blur under a high-contrast
+           user's page is noise added to the one thing they most need crisp. -->
+      <BoxShadows x:Key="TrestleBoard.Elevation.Sheet">none</BoxShadows>
     </ResourceDictionary>
 
   </ResourceDictionary.ThemeDictionaries>

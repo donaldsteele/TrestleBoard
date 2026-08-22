@@ -250,6 +250,19 @@ public static class ActionId
     public const string MovePageEarlier = "page.moveEarlier";
     public const string MovePageLater = "page.moveLater";
 
+    /// <summary>
+    /// M76 (g): show a page the user picked, rather than the one after this one.
+    ///
+    /// <para><b>The catalog's first parameterised action, and the parameter is deliberately not
+    /// here.</b> "Which page" is carried in the pressed control's <c>Tag</c> beside this id — see
+    /// <c>ActionTarget</c> in the App layer — because the alternative, one <see cref="ActionId"/>
+    /// per page, would make the size of the catalog depend on the newsletter that happens to be
+    /// open (docs/M76-spec.md §6). What this entry means is therefore "can you jump to a page at
+    /// all", which is a true and useful thing to be able to refuse: with a one-page newsletter
+    /// there is nowhere to jump to, and the refusal says so in words.</para>
+    /// </summary>
+    public const string GoToPage = "page.goTo";
+
     // ---- Looking at it ------------------------------------------------------------------------
     public const string ZoomIn = "view.zoomIn";
     public const string ZoomOut = "view.zoomOut";
@@ -259,6 +272,15 @@ public static class ActionId
     public const string NextRegion = "view.nextRegion";
     public const string PreviousRegion = "view.previousRegion";
     public const string ToggleActionPanel = "view.toggleActionPanel";
+
+    /// <summary>
+    /// M76 (g): show or hide the row of small pages down the left-hand side.
+    ///
+    /// <para>The same shape as <see cref="ToggleActionPanel"/>, because it is the same promise: a
+    /// strip of chrome the user can put away, which folds itself away below the same window width
+    /// rather than squeezing the page out (docs/M76-spec.md §6).</para>
+    /// </summary>
+    public const string TogglePageRail = "view.togglePageRail";
 
     /// <summary>M14: underline the text whose font was changed by hand. Off by default.</summary>
     public const string ShowFontChanges = "view.showFontChanges";

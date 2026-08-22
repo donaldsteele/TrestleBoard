@@ -460,15 +460,29 @@ public sealed class OfferIntegrityTests
     /// <c>IsEnabled</c> against the catalog would flag M11 working correctly, which is the one thing
     /// this gate must never do. The panel's own integrity is gate 24's
     /// (<c>Editing.Tests/ReachabilityTests</c>) and <see cref="ActionSurfaceTests"/>'.</para>
+    ///
+    /// <para><b>M76 adds a second surface in that same category, and it is excluded for the
+    /// identical reason rather than a new one.</b> The page rail never greys either: a tile whose
+    /// page cannot be jumped to, and a move button that cannot move, stay pressable and answer in
+    /// words (docs/M76-spec.md §6). Left in the sweep it produced five "drawn enabled and the
+    /// catalog says no" disagreements which were the rail obeying M11, not breaking it — the exact
+    /// false positive the paragraph above exists to prevent. Its integrity is proved instead by
+    /// <c>PageRailTests.NothingInTheRailIsEverGreyed</c>, which asserts the stronger thing this gate
+    /// cannot: not merely that the refusal carries words, but that the words are the catalog's own
+    /// sentences, and
+    /// <c>PageRailTests.WithOnePageAllThreePageCommandsRefuseAndEachSentenceIsTrue</c>, which asserts
+    /// each sentence is TRUE of the state that produced it.</para>
     /// </summary>
     private static IEnumerable<(string ActionId, Control Control)> TaggedControls(MainWindow window)
     {
         ActionPanel panel = window.PanelForTest;
+        PageRail rail = window.RailForTest;
 
         return window.GetLogicalDescendants()
             .OfType<Control>()
             .Where(c => c is MenuItem or Button)
             .Where(c => !c.GetLogicalAncestors().Contains(panel))
+            .Where(c => !c.GetLogicalAncestors().Contains(rail))
             .Where(c => c.Tag is string id && ActionCatalog.TryGet(id, out _))
             .Select(c => ((string)c.Tag!, c));
     }
