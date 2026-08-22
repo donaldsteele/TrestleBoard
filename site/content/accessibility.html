@@ -1,0 +1,104 @@
+<p class="lede">
+  The committee this was built for is mostly elderly. That is not a note at the end of the design; it
+  is the design. Below is what it changed — written as the rules the program is actually tested
+  against, not as a claim about caring.
+</p>
+
+<h2>Nothing is ever greyed out without saying why</h2>
+
+<p>
+  Choose something on the page, and what you can do to it appears beside it, each with a sentence
+  saying what it is for. A command that does not apply to what you have chosen is simply not there. A
+  command that applies but cannot run right now stays pressable and tells you why in plain words.
+</p>
+
+<figure>
+  <img src="{{root}}images/action-panel-photo.png" width="1280" height="860"
+       alt="The editor with a photograph selected. A panel down the right-hand side is headed A photo is selected and lists what can be done to it, each with a short explanation.">
+  <figcaption>
+    Headed with what you have chosen, so an absent command reads as <em>not about photographs</em>
+    rather than as something broken.
+  </figcaption>
+</figure>
+
+<p>
+  In the menus, unavailable commands still grey — that is a convention screen readers announce, and
+  discarding it would trade one confusion for another. But every one of them carries the same plain
+  sentence, and choosing it writes that sentence along the bottom of the window.
+</p>
+
+<h2>The floors, and they are enforced</h2>
+
+<ul>
+  <li><strong>16 point minimum</strong> for anything you press or read in the program's own chrome, 18 to 20 in the wizards.</li>
+  <li><strong>44 by 44 pixels minimum</strong> for anything you have to hit.</li>
+  <li><strong>Every command has a keyboard path and a menu entry.</strong> Dragging is always an accelerator, never the only way to do something.</li>
+  <li><strong>An icon never appears without its label.</strong> There are no icon-only buttons anywhere.</li>
+  <li><strong>Colour is never the only signal.</strong> Anything that changes colour to tell you something also changes shape, thickness or wording.</li>
+  <li><strong>Every control has a name a screen reader can read</strong>, including the page canvas, which describes what is on the page rather than announcing a blank rectangle.</li>
+</ul>
+
+<p>
+  These are not aspirations. Each is a test that fails the build: a new button with no name, a
+  shortcut with no menu entry, or a command that could become unavailable without a written reason
+  stops the program from being released.
+</p>
+
+<h2>Two settings, in one small window</h2>
+
+<figure>
+  <img src="{{root}}images/settings.png" width="620" height="560"
+       alt="The how-things-look window, offering a theme and a size for the app's own text, both as large controls.">
+  <figcaption>A theme and a size. There is nothing else in this window.</figcaption>
+</figure>
+
+<p>
+  The whole interface scales to twice its size without the page changing, because the page is a piece
+  of paper and has a zoom of its own. Menus, buttons, panels and wizards all grow; the newsletter
+  keeps its proportions, because what you are laying out has to print the way it looks.
+</p>
+
+<figure>
+  <img src="{{root}}images/scale-200.png" width="1280" height="860"
+       alt="The same newsletter page with the menus, buttons and panel text at twice their usual size, and the page itself unchanged.">
+  <figcaption>
+    Everything at twice the size. When the chrome no longer leaves the page enough room, a strip folds
+    itself away to a labelled button rather than squeezing the newsletter into a column.
+  </figcaption>
+</figure>
+
+<h2>A real high-contrast theme</h2>
+
+<p>
+  Not a dark theme with the brightness turned up. Every pairing of text and background is measured
+  and holds at 7:1 or better, borders thicken so that no meaning rests on colour alone, and the
+  newsletter itself stays white — because it is paper, and paper does not have a theme.
+</p>
+
+<figure>
+  <img src="{{root}}images/high-contrast.png" width="1280" height="860"
+       alt="The same newsletter page shown in the high-contrast theme: white text on black chrome, with the page itself still white paper.">
+  <figcaption>Black chrome, white page. The sheet does not change, in any theme.</figcaption>
+</figure>
+
+<h2>It reads the newsletter aloud</h2>
+
+<p>
+  <span class="quoted">Read it back to me…</span> reads the issue in your computer's own voice,
+  highlighting each sentence on the page as it is spoken. It is meant to complement a screen reader,
+  never to replace one — and it catches, in a way that reading with your eyes does not, the sentence
+  that came out wrong.
+</p>
+
+<h2>Forgiveness, everywhere</h2>
+
+<p>
+  Unlimited undo. Saving every minute without being asked. Confirmations that say what will happen and
+  that you can take it back. Wizards that read out what they are about to write before they write it.
+  A restore window that shows a picture of the work it is offering you.
+</p>
+
+<p>
+  The thread through all of it is that this program is used by people who have been told, often, that
+  computers are unforgiving and that mistakes are theirs. It is built to disagree.
+</p>

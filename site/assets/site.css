@@ -1,0 +1,567 @@
+/*
+  TRESTLEBOARD — the project site.
+
+  The palette is not designed for this site. It is the application's own, from
+  src/TrestleBoard.App/Theme/Palette.axaml, including the constraint that makes it interesting:
+  THE LODGE GOLD IS 2.41:1 ON WHITE AND MAY NEVER CARRY MEANING ON A LIGHT GROUND. In the app the
+  token is called Ornament.OnAccent — the key name states its only legal background — and the same
+  rule holds here. Every gold mark on this site sits on navy. There is no exception, and a rule
+  inherited from the thing being documented is worth more than a palette invented for the occasion.
+
+  Three typefaces, each with a job that means something:
+    Cinzel          the wordmark and page titles. Engraved Roman lapidary lettering, which is what
+                    the title of a printed trestle board has always been set in. Used sparingly.
+    Source Sans 3   the interface voice: navigation, buttons, the command reference. The app's own
+                    chrome face since M76.
+    EB Garamond     ONLY inside something representing the printed page. Chrome type speaks as the
+                    application; paper type speaks as the newsletter. Both faces ship inside the
+                    program too, under the SIL Open Font License.
+*/
+
+:root {
+  --ink: #14181f;
+  --muted: #4a5567;
+  --board: #1e335c;
+  --gold: #c8a24b;
+  --chalk: #edeff2;
+  --sheet: #ffffff;
+  --rule: #6e7a8f;
+  --hairline: #d5dae1;
+  --warn: #a31515;
+
+  --sans: "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --display: "Cinzel", Georgia, "Times New Roman", serif;
+  --paper: "EB Garamond", Georgia, "Times New Roman", serif;
+
+  --radius: 6px;
+  --radius-surface: 10px;
+  --rail-width: 232px;
+  --measure: 34rem;
+}
+
+/* The app's Dark values, not a guess at them: Chrome.Background #1C1F26, Chrome.Surface #262A33,
+   and the accent walked pale because navy is 1.68:1 on that ground and structurally unusable. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #f2f4f8;
+    --muted: #a8b2c4;
+    --board: #8fb4e8;
+    --gold: #4a3708;
+    --chalk: #1c1f26;
+    --sheet: #262a33;
+    --rule: #8a94a6;
+    --hairline: #3a4150;
+    --warn: #ff9e9e;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--chalk);
+  color: var(--ink);
+  font-family: var(--sans);
+  /* 18px, not 16. PLAN.md §6 sets a 16pt floor inside the app for eyes this project exists for,
+     and a website read by the same people has no business being smaller than the program. */
+  font-size: 18px;
+  line-height: 1.6;
+  font-weight: 380;
+}
+
+img { max-width: 100%; height: auto; }
+
+a { color: inherit; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+a:hover { text-decoration-color: currentColor; }
+
+/* The app's focus ring is two tokens — an outer that contrasts with the chrome and an inner that
+   contrasts with the outer — because no single colour clears 3:1 against both near-white and navy.
+   Same idea here, drawn as an outline plus a ring in the ground colour. */
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+  background: var(--board);
+  color: #fff;
+  padding: 0.75rem 1.25rem;
+  z-index: 10;
+}
+.skip:focus { left: 1rem; top: 0.5rem; }
+
+/* ---------------------------------------------------------------- masthead */
+
+.masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.9rem clamp(1rem, 4vw, 2.5rem);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--sheet);
+}
+
+.wordmark {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.4rem;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.masthead-links {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  font-size: 1rem;
+}
+
+/* Gold on navy, which is the only ground its name permits. */
+.download-pill {
+  background: var(--board);
+  color: #fff;
+  border-left: 5px solid var(--gold);
+  border-radius: var(--radius);
+  padding: 0.55rem 1.1rem;
+  text-decoration: none;
+  font-weight: 600;
+}
+@media (prefers-color-scheme: dark) {
+  .download-pill { color: #10182a; }
+}
+.download-pill:hover { text-decoration: underline; text-decoration-color: currentColor; }
+
+/* -------------------------------------------------------------------- rail */
+
+.frame {
+  display: grid;
+  grid-template-columns: var(--rail-width) minmax(0, 1fr);
+  gap: clamp(1.5rem, 5vw, 4rem);
+  max-width: 78rem;
+  margin: 0 auto;
+  padding: 2.5rem clamp(1rem, 4vw, 2.5rem) 4rem;
+}
+
+.rail { position: sticky; top: 1.5rem; align-self: start; }
+
+.rail-heading {
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 0.75rem 1rem;
+}
+
+.rail ul { list-style: none; margin: 0; padding: 0; }
+
+.rail-item a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.9rem 0.6rem 0;
+  text-decoration: none;
+  color: var(--muted);
+  border-radius: var(--radius);
+}
+
+.rail-item a:hover { color: var(--ink); background: var(--sheet); }
+
+/* THE SIGNATURE. M76 gave the editor a left rail of miniature pages, the current one marked by an
+   accent bar carrying a gold notch. This is that mark. Marked three ways and only one of them is a
+   colour, which is the app's rule: the bar is a shape, the label goes bold, and the anchor carries
+   aria-current so a screen reader is told the same thing. */
+.rail-mark {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 2.1rem;
+  border-radius: 0 3px 3px 0;
+  background: transparent;
+}
+
+.is-current .rail-mark {
+  background: var(--board);
+  position: relative;
+}
+
+.is-current .rail-mark::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.is-current a { color: var(--ink); font-weight: 600; }
+
+/* -------------------------------------------------------------------- main */
+
+main { min-width: 0; }
+
+.page-title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: clamp(2rem, 5vw, 3.1rem);
+  line-height: 1.12;
+  letter-spacing: 0.01em;
+  margin: 0 0 1.5rem;
+  max-width: 20ch;
+}
+
+main h2 {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  line-height: 1.25;
+  margin: 3rem 0 0.75rem;
+}
+
+main h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 2rem 0 0.5rem;
+}
+
+main p, main li { max-width: var(--measure); }
+main p { margin: 0 0 1rem; }
+
+.lede {
+  font-size: 1.25rem;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 40rem;
+}
+
+main ul, main ol { padding-left: 1.25rem; }
+main li { margin-bottom: 0.5rem; }
+
+strong { font-weight: 700; }
+
+kbd {
+  font-family: var(--sans);
+  font-size: 0.85em;
+  font-weight: 600;
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0.1em 0.45em;
+  white-space: nowrap;
+  background: var(--sheet);
+}
+
+/* ------------------------------------------------------- shots and quotes */
+
+/* A screenshot is a picture of a window, so it is framed like one: a surface, a real border, and
+   the app's own corner radius. */
+figure { margin: 2rem 0; }
+
+figure img {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-surface);
+  background: var(--sheet);
+}
+
+figcaption {
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin-top: 0.6rem;
+  max-width: 42rem;
+}
+
+/* The one place the paper voice is allowed: something standing in for the printed newsletter.
+   White in both themes, because the app's Page.Sheet does not theme either — the user is laying
+   out something that will be printed on paper. */
+.paper {
+  background: #fff;
+  color: #14181f;
+  font-family: var(--paper);
+  font-size: 1.15rem;
+  line-height: 1.5;
+  border-radius: 2px;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  margin: 2rem 0;
+  box-shadow: 0 2px 14px rgb(0 0 0 / 22%);
+  max-width: 38rem;
+}
+
+.paper p { max-width: none; }
+.paper p:last-child { margin-bottom: 0; }
+
+.paper-head {
+  font-family: var(--display);
+  font-size: 1.3rem;
+  text-align: center;
+  letter-spacing: 0.04em;
+  margin: 0 0 0.25rem;
+}
+
+.paper-sub {
+  text-align: center;
+  font-size: 0.8rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-family: var(--sans);
+  border-bottom: 1px solid #14181f;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ------------------------------------------------------------------- cards */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 2rem;
+  padding: 0;
+  list-style: none;
+}
+
+.cards li { margin: 0; max-width: none; }
+
+.card {
+  display: block;
+  height: 100%;
+  background: var(--sheet);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-surface);
+  padding: 1.1rem 1.25rem;
+  text-decoration: none;
+}
+
+.card:hover { border-color: var(--rule); }
+
+.card-title {
+  font-weight: 700;
+  margin: 0 0 0.35rem;
+  max-width: none;
+}
+
+.card-what { color: var(--muted); margin: 0; font-size: 0.98rem; max-width: none; }
+
+/* A short factual strip — platforms, price, licence. Not a statistics band; each item is a fact a
+   reader has to have before they can decide anything. */
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2rem;
+  list-style: none;
+  padding: 1rem 0 0;
+  margin: 0 0 2rem;
+  border-top: 1px solid var(--hairline);
+  color: var(--muted);
+  font-size: 0.98rem;
+}
+.facts li { margin: 0.25rem 0; max-width: none; }
+.facts strong { color: var(--ink); font-weight: 600; }
+
+.note {
+  background: var(--sheet);
+  border: 1px solid var(--hairline);
+  border-left: 5px solid var(--board);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+}
+.note p:last-child { margin-bottom: 0; }
+
+.warnbox {
+  border-left-color: var(--warn);
+}
+
+/* ------------------------------------------------------------------ hero */
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0 0 1.5rem;
+}
+
+.button {
+  display: inline-block;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--sheet);
+  color: var(--ink);
+  padding: 0.7rem 1.3rem;
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 44px;
+}
+
+.button:hover { background: var(--chalk); }
+
+.button-primary {
+  background: var(--board);
+  border-color: var(--board);
+  border-left: 5px solid var(--gold);
+  color: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  .button-primary { color: #10182a; }
+}
+.button-primary:hover { background: var(--board); }
+
+/* --------------------------------------------------------------- steps */
+
+/* Numbers appear on this site in exactly one place: an installation, where the order is the whole
+   content and doing step 4 before step 3 leaves somebody stuck at a warning. Nothing else here is
+   numbered, because nothing else here is a sequence. */
+.steps { counter-reset: step; list-style: none; padding: 0; }
+
+.steps > li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 3rem;
+  margin-bottom: 1.25rem;
+  max-width: var(--measure);
+}
+
+.steps > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0.05rem;
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--board);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+@media (prefers-color-scheme: dark) {
+  .steps > li::before { color: #10182a; }
+}
+
+.quoted {
+  font-weight: 600;
+  background: var(--sheet);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 0.05em 0.4em;
+}
+
+/* ------------------------------------------------------- command reference */
+
+.finder { margin: 2rem 0 1rem; }
+
+.finder-label { display: block; font-weight: 600; margin-bottom: 0.4rem; }
+
+#command-search {
+  width: 100%;
+  max-width: 28rem;
+  font: inherit;
+  padding: 0.7rem 0.9rem;
+  min-height: 48px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--sheet);
+  color: var(--ink);
+}
+
+.finder-count { color: var(--muted); font-size: 0.95rem; margin: 0.5rem 0 0; min-height: 1.6em; }
+
+.commands { margin-bottom: 2.5rem; }
+.group-blurb { color: var(--muted); margin-top: -0.25rem; }
+
+.command-list { list-style: none; padding: 0; margin: 1rem 0 0; }
+
+.command {
+  border-top: 1px solid var(--hairline);
+  padding: 0.85rem 0;
+  max-width: 46rem;
+}
+
+.command-name {
+  margin: 0 0 0.15rem;
+  font-weight: 700;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.6rem;
+  max-width: none;
+}
+
+.command-what { margin: 0; color: var(--muted); max-width: none; }
+
+.shortcut { font-weight: 600; }
+
+.finder-empty { color: var(--muted); }
+
+/* ------------------------------------------------------------------ footer */
+
+.foot {
+  border-top: 1px solid var(--hairline);
+  background: var(--sheet);
+  padding: 2rem clamp(1rem, 4vw, 2.5rem);
+}
+
+.foot-line { max-width: 46rem; margin: 0 auto 0.75rem; font-size: 0.95rem; }
+.foot-quiet { color: var(--muted); margin-bottom: 0; }
+
+/* -------------------------------------------------------------- responsive */
+
+@media (max-width: 60rem) {
+  .frame { grid-template-columns: 1fr; padding-top: 1.5rem; }
+
+  .rail {
+    position: static;
+    border-bottom: 1px solid var(--hairline);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .rail-heading { display: none; }
+
+  .rail ul {
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+
+  /* The mark turns on its side with the rail and keeps both signals: a bar and a notch. The label
+     goes above it, so the mark reads as an underline rather than as an unexplained line overhead —
+     which is why the bar is rounded along its bottom edge and the notch sits at the bottom. */
+  .rail-item a {
+    flex-direction: column-reverse;
+    gap: 0.3rem;
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap;
+  }
+
+  .rail-mark { width: 2rem; height: 5px; border-radius: 0 0 3px 3px; }
+
+  .is-current .rail-mark::after {
+    left: 50%;
+    top: auto;
+    bottom: 1px;
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+@media print {
+  .rail, .masthead-links, .skip { display: none; }
+  body { background: #fff; }
+}
