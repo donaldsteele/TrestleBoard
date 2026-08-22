@@ -13,10 +13,14 @@
     <Project Path="src/TrestleBoard.Spelling/TrestleBoard.Spelling.csproj" />
     <Project Path="src/TrestleBoard.Widgets/TrestleBoard.Widgets.csproj" />
   </Folder>
-  <!-- Compiled by CI so it cannot rot; never run by CI (PLAN.md §11 M15). -->
+  <!-- Compiled by CI so they cannot rot. The screenshot harness is never RUN by CI — screenshots
+       are documentation, not a regression gate (PLAN.md §11 M15) — but the site generator is, by
+       .github/workflows/pages.yml, because its command reference is a projection of ActionCatalog
+       and a site rebuilt on every push cannot describe a version nobody is running. -->
   <Folder Name="/tools/">
     <Project Path="tools/TrestleBoard.PdfImport/TrestleBoard.PdfImport.csproj" />
     <Project Path="tools/TrestleBoard.Screenshots/TrestleBoard.Screenshots.csproj" />
+    <Project Path="tools/TrestleBoard.Site/TrestleBoard.Site.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/App.HeadlessTests/App.HeadlessTests.csproj" />

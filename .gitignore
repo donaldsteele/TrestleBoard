@@ -51,3 +51,8 @@ Thumbs.db
 # Font build tooling (M14) — the venv and the upstream download cache are local aids.
 assets-src/fonts/tools/.venv/
 assets-src/fonts/tools/.cache/
+
+# The generated project site. `dotnet run --project tools/TrestleBoard.Site` writes it, and
+# .github/workflows/pages.yml rebuilds it on every push — a checked-in copy would be a second
+# answer to the question "what does the site say", and the stale one.
+site/_site/

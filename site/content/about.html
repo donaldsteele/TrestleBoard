@@ -1,0 +1,94 @@
+<p class="lede">
+  TrestleBoard was built for the trestle board committee of Indian Land Masonic Lodge No. 414, to
+  produce a four-to-six page newsletter every month and the PDF that goes out with it.
+</p>
+
+<h2>What it costs</h2>
+
+<p>
+  Nothing, for anybody not making money with it. A lodge, a church, a charity, a school, a public body
+  or a person at home may use it, copy it, change it and pass it on, at no cost and without asking.
+  That is the
+  <a href="https://github.com/donaldsteele/TrestleBoard/blob/main/LICENSE">PolyForm Noncommercial
+  Licence 1.0.0</a>, and its full text is compiled into the program so it travels with every installed
+  copy — <span class="quoted">Help → Licence</span>.
+</p>
+
+<p>
+  Making money with it — selling it, selling a service built on it, or using it in the running of a
+  for-profit business — needs a separate licence.
+  <a href="https://github.com/donaldsteele/TrestleBoard/issues">Ask for one by opening an issue.</a>
+</p>
+
+<h2>The typefaces are somebody else's work</h2>
+
+<p>
+  Twenty families ship inside the program, used under the SIL Open Font License 1.1, with their
+  designers, sources and pinned versions recorded in
+  <a href="https://github.com/donaldsteele/TrestleBoard/blob/main/docs/FONTS.md">docs/FONTS.md</a>.
+  Their complete licence text ships inside the installer too and is reachable from
+  <span class="quoted">Help → Fonts and licences</span> — the OFL requires that of anything
+  redistributing the fonts, and shipping them without it would not be enough.
+</p>
+
+<p>
+  Nothing here grants any right in the names, arms or symbols of Indian Land Masonic Lodge No. 414 or
+  of any Grand Lodge.
+</p>
+
+<h2>How it is built</h2>
+
+<ul>
+  <li><strong>Windows, macOS and Linux</strong>, on .NET 10 and Avalonia.</li>
+  <li>
+    <strong>Its own layout and drawing engine</strong>, on SkiaSharp and HarfBuzzSharp. The same code
+    draws the editor and the PDF, which is what makes what you see what prints.
+  </li>
+  <li>
+    <strong>Newsletters are <code>.tboard</code> files</strong> — a container holding the document and
+    the untouched original of every photograph in it.
+  </li>
+  <li>
+    <strong>Fonts are bundled only.</strong> No font installed on your computer is ever used. Every
+    face is a static instance recorded with its SHA-256, which is what lets one newsletter paginate
+    identically on all three operating systems.
+  </li>
+  <li>
+    <strong>Nothing leaves your machine.</strong> No account, no server, no telemetry. The only
+    outbound request the program makes is asking the releases page whether a newer version exists.
+  </li>
+</ul>
+
+<figure>
+  <img src="{{root}}images/officers-table-widget.png" width="1280" height="860"
+       alt="A newsletter page showing a table of lodge officers with their positions and telephone numbers, selected on the page, with the article text flowing beside it.">
+  <figcaption>
+    A laid-out officers table. Every name, office and telephone number in every picture on this site
+    is invented.
+  </figcaption>
+</figure>
+
+<h2>About the pictures on this site</h2>
+
+<p>
+  They are generated, not photographed: a harness opens the real program against fictional records and
+  a temporary settings folder, and writes the images out. It cannot read a real address book, because
+  it never looks in the place one would be. That is a rule of the project rather than a habit — the
+  example PDFs this program was designed from hold real members' names and telephone numbers, and none
+  of that has ever been in this repository.
+</p>
+
+<h2>The source</h2>
+
+<p>
+  Everything is on
+  <a href="https://github.com/donaldsteele/TrestleBoard">GitHub</a>: the program, the plan it was built
+  to, a specification for each of its milestones, and this site. Faults and requests go in
+  <a href="https://github.com/donaldsteele/TrestleBoard/issues">the issues</a>.
+</p>
+
+<p>
+  If you are a secretary at another lodge wondering whether this would suit you: install it, open
+  <span class="quoted">Help → Show me an example newsletter</span>, and take it apart. That is what the
+  example is for.
+</p>

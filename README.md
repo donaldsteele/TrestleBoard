@@ -129,6 +129,17 @@ its reminder text, a PDF not yet exported.
 To see a finished newsletter without making one, open **Help → Show me an example
 newsletter**.
 
+## The project site
+
+**<https://donaldsteele.github.io/TrestleBoard/>** — a tour of what the app does, install
+instructions in plain language, help pages for the committee, and a reference listing every command
+with its shortcut. That reference is generated from `ActionCatalog` by `tools/TrestleBoard.Site` and
+rebuilt on every push, for the reason `TrestleBoard.Editing/Help/HelpIndex.cs` gives about the in-app
+help: hand-written help is a promise nobody can keep.
+
+Build it locally with `dotnet run --project tools/TrestleBoard.Site` and open `site/_site/index.html`
+— it is a plain folder of HTML and needs no server.
+
 ## Installing
 
 Downloads for Windows, macOS and Linux are on the

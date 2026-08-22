@@ -1,0 +1,80 @@
+# Publishes the project site at https://donaldsteele.github.io/TrestleBoard/
+#
+# The site's command reference is generated from ActionCatalog by tools/TrestleBoard.Site, which is
+# why this builds rather than uploading a folder of checked-in HTML: the reference then cannot
+# describe a version of the program nobody is running. See the note at the top of
+# src/TrestleBoard.Editing/Help/HelpIndex.cs, which makes the same argument about the help window.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    # Only when something the site is made of changes. The generator reads ActionCatalog, so a
+    # command renamed in TrestleBoard.Editing changes the site even though nothing under site/ moved.
+    paths:
+      - 'site/**'
+      - 'docs/images/**'
+      - 'assets-src/icons/**'
+      - 'src/TrestleBoard.Editing/**'
+      - 'tools/TrestleBoard.Site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and a newer push wins. cancel-in-progress is false so a deploy that has
+# started is allowed to finish rather than leaving the site half-published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build the site
+        run: dotnet run --project tools/TrestleBoard.Site
+
+      - name: Check every page was written
+        # Cheap, and it catches the failure that would otherwise deploy quietly: a page declared in
+        # Site.Pages whose fragment is missing throws, but a fragment that exists and is empty does
+        # not. Eleven files with content, or this job fails before anything is published.
+        run: |
+          missing=0
+          while IFS= read -r page; do
+            if [ ! -s "$page" ]; then
+              echo "empty or missing: $page"
+              missing=1
+            fi
+          done < <(find site/_site -name 'index.html')
+          count=$(find site/_site -name 'index.html' | wc -l)
+          echo "$count pages"
+          if [ "$count" -lt 11 ] || [ "$missing" -ne 0 ]; then
+            echo "The site did not build completely."
+            exit 1
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/_site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The project site's generator. It is in the solution so CI COMPILES it and it cannot rot, on
+       the screenshot harness's precedent — but unlike that one CI does RUN this, in
+       .github/workflows/pages.yml, because a site that is rebuilt on every push is a site that
+       cannot describe an application that no longer exists.
+
+       It references TrestleBoard.Editing and nothing else. That is the whole point: the command
+       reference is a projection of ActionCatalog, the same declaration the menu bar, the action
+       panel, the keyboard table and the in-app help window all read. See the note at the top of
+       src/TrestleBoard.Editing/Help/HelpIndex.cs, which says why hand-written help is a promise
+       nobody can keep — a hand-written website is that promise one layer further from the code. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- `dotnet test TrestleBoard.slnx` must not try to run this exe as a test assembly. -->
+    <IsTestProject>false</IsTestProject>
+    <AssemblyName>TrestleBoard.Site</AssemblyName>
+    <RootNamespace>TrestleBoard.Site</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TrestleBoard.Editing\TrestleBoard.Editing.csproj" />
+  </ItemGroup>
+
+</Project>
