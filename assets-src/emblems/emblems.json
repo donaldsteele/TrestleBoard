@@ -11,15 +11,15 @@
       "id": "square-and-compasses-g",
       "name": "Square and compasses, with the G",
       "category": "The working tools",
-      "parts": 7,
-      "sha256": "a5cc964418cee87e543b9c04b36386061210182b1604669069515d5464f859b9"
+      "parts": 5,
+      "sha256": "b4adc938ec02160e1a425ef3a4e3261b24358101e0da7c9730ca9857615365cb"
     },
     {
       "id": "square-and-compasses",
       "name": "Square and compasses",
       "category": "The working tools",
-      "parts": 6,
-      "sha256": "b8d22a4dec6b26dfd83f3e49c2583042d66cea8447f38c9bf0aaf918a103a566"
+      "parts": 4,
+      "sha256": "9605fb7739ab9474f90e998929ff54760be4b075a6053df155c36194889fdb0d"
     },
     {
       "id": "square",
@@ -32,8 +32,8 @@
       "id": "compasses",
       "name": "The compasses",
       "category": "The working tools",
-      "parts": 5,
-      "sha256": "f014f57ef9d59c89e9184b8d6fa00fa8b63de2f2a35a999dd4b947b99d8eab46"
+      "parts": 3,
+      "sha256": "4d31de8c04d112f2d56c3934945c632ebebd07e6332a9f2a92968e2ae4799136"
     },
     {
       "id": "plumb",

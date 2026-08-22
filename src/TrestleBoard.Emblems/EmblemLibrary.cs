@@ -35,18 +35,61 @@ public static class EmblemLibrary
     // The compasses and the square appear alone and together, and the emblem everybody knows is the
     // two of them interlocked. Drawn once each, so the pair can never drift from its halves.
 
+    /// <summary>
+    /// The compasses: a hinge, and two legs that taper to a point.
+    ///
+    /// <para><b>A LEG IS ONE FILLED SHAPE, NOT A STROKE WITH A POINT STUCK ON THE END.</b> It was
+    /// the second thing until the owner said the points looked wrong, and they did, for a reason
+    /// worth writing down: the legs travel 20.7° out from vertical while the triangles that ended
+    /// them were axis-aligned and pointed straight DOWN. Every compass point on every page this
+    /// program has drawn was aimed twenty degrees away from the leg it belonged to. The round cap on
+    /// the 58-wide stroke made it worse — the leg swelled at the very place it should have begun to
+    /// narrow, so the point read as a spearhead bolted to a rod.</para>
+    ///
+    /// <para>Each leg is now a five-point polygon in the leg's own frame: full width at the hinge,
+    /// slightly narrower at four-fifths of the way down, and closing to a needle at the tip, so the
+    /// point continues the leg's direction because it is made of the same shape. There is nothing
+    /// to keep aligned any more, which is the only kind of fix worth making to geometry — the two
+    /// things that could drift are now one thing.</para>
+    ///
+    /// <para><b>The spread and the reach were wrong as well, and less obviously.</b> The legs opened
+    /// 21° from vertical where the emblem everybody recognises opens nearer 30°, so the compasses
+    /// read as pinched; and the points reached BELOW the square's vertex, where the emblem rests
+    /// them inside its V. Both were measured against a picture rather than argued about: the legs
+    /// now open 26.8° and reach 81% of the height, with the square's vertex closing below them at
+    /// 92%. The legs were extended twice: the first pass fixed the spread and left them looking
+    /// stubby against the square, which is the trouble with correcting one proportion at a time.</para>
+    ///
+    /// <para><b>Authored here, not imported.</b> A public-domain drawing was used to judge what was
+    /// wrong; not one of its numbers is in this file. <c>assets-src/emblems/EMBLEMS-PROVENANCE.txt</c>
+    /// states that every emblem in this application was drawn for it, with no traced artwork of any
+    /// kind, and that statement is still true.</para>
+    /// </summary>
     private static IReadOnlyList<EmblemPart> Compasses { get; } =
     [
         new EmblemPart("M500,150 m-62,0 a62,62 0 1,0 124,0 a62,62 0 1,0 -124,0"),
-        new EmblemPart("M500,170 L268,790", 58),
-        new EmblemPart("M500,170 L732,790", 58),
-        new EmblemPart("M232,760 L268,860 L304,760 Z"),
-        new EmblemPart("M696,760 L732,860 L768,760 Z"),
+        new EmblemPart("M466,151 L179,726 L178,806 L241,758 L534,185 Z"),
+        new EmblemPart("M534,151 L821,726 L822,806 L759,758 L466,185 Z"),
     ];
 
+    /// <summary>
+    /// The square: a filled chevron whose ends are cut at ninety degrees.
+    ///
+    /// <para><b>It was a stroke, and a stroke could not have the right ends.</b>
+    /// <see cref="EmblemPart"/> strokes with round caps and joins, which is right for a plumb line
+    /// and wrong for a mason's square — the one tool in the craft whose whole meaning is the true
+    /// right angle, finishing in two rounded blobs. There is no cap setting to reach for and there
+    /// should not be: a square end is a fact about this shape, not a property of how somebody draws
+    /// it, so the shape carries it. Same move as the compasses' legs above, for the same reason.
+    /// </para>
+    ///
+    /// <para>Six points: the outer edge from arm to mitred vertex to arm, the two ends cut square
+    /// across, and the inner edge back. The band is 76 wide, which is what the stroke was, so the
+    /// emblem's weight is unchanged.</para>
+    /// </summary>
     private static IReadOnlyList<EmblemPart> Square { get; } =
     [
-        new EmblemPart("M150,480 L500,865 L850,480", 76),
+        new EmblemPart("M178,454 L500,809 L822,454 L878,506 L500,921 L122,506 Z"),
     ];
 
     private static IReadOnlyList<EmblemPart> LetterG { get; } =
