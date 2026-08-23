@@ -56,3 +56,8 @@ assets-src/fonts/tools/.cache/
 # .github/workflows/pages.yml rebuilds it on every push — a checked-in copy would be a second
 # answer to the question "what does the site say", and the stale one.
 site/_site/
+
+# Local tool caches and scratch. `.detangle/` is a code-analysis tool's cache database and
+# `tmp/` is a hand-scratch area — neither is an answer this repo owes anyone.
+.detangle/
+tmp/
