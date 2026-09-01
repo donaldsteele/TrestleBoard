@@ -54,8 +54,9 @@ public sealed class IconTests
         HashSet<string> declared = DeclaredGeometryKeys();
         IReadOnlySet<string> referenced = ActionIcons.EveryGlyphKey;
 
-        // 24 through M23; the 25th is M24's save disk; the 26th is M60's list of your own.
-        Assert.Equal(26, declared.Count);
+        // 24 through M23; the 25th is M24's save disk; the 26th is M60's list of your own; the
+        // 27th is M84's month on a grid.
+        Assert.Equal(27, declared.Count);
         Assert.True(
             declared.SetEquals(referenced),
             $"declared but never referenced: [{string.Join(", ", declared.Except(referenced).Order())}]; "

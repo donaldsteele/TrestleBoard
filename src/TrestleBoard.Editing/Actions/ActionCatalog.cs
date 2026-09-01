@@ -246,6 +246,8 @@ public static class ActionCatalog
             ActionGroup.Insert),
         new(ActionId.InsertBirthdays, "Birthdays", "Adds the birthday list.", ActionGroup.Insert),
         new(ActionId.InsertCommittees, "Committees", "Adds the committee list.", ActionGroup.Insert),
+        new(ActionId.InsertMonthCalendar, "This month's calendar",
+            "Adds the month on a grid, with the stated meeting already marked.", ActionGroup.Insert),
         new(ActionId.InsertDistrictCalendar, "District calendar", "Adds the 22nd District meeting table.",
             ActionGroup.Insert),
         new(ActionId.InsertEventCard, "Announcement box", "Adds a box for one announcement.", ActionGroup.Insert),
@@ -806,7 +808,8 @@ public static class ActionCatalog
             // ---- Putting things on the page -----------------------------------------------------
             ActionId.AddTextFrame or ActionId.InsertPhoto or ActionId.InsertOfficers
                 or ActionId.InsertBirthdays or ActionId.InsertCommittees
-                or ActionId.InsertDistrictCalendar or ActionId.InsertEventCard
+                or ActionId.InsertDistrictCalendar or ActionId.InsertMonthCalendar
+                or ActionId.InsertEventCard
                 or ActionId.InsertCoverBanner or ActionId.InsertSimpleList
                 or ActionId.InsertEmblem or ActionId.BringInWriting => RequiresDocument(context),
 

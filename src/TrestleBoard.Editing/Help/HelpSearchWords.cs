@@ -46,6 +46,11 @@ public static class HelpSearchWords
 
         // M83. "Columns" is in the title; these are what somebody says instead.
         [ActionId.ToggleTwoColumns] = ["two columns", "newspaper", "side by side", "split the text"],
+
+        // M84. "Calendar" alone would compete with the district one, which has had the word since
+        // M7; every word here is one somebody uses for the month-on-a-grid view specifically.
+        [ActionId.InsertMonthCalendar] =
+            ["month at a glance", "grid", "dates", "what is on", "diary", "wall calendar"],
         // Deliberately NOT the bare word "picture": the help index ranks by synonym, and this
         // entry outranked "Insert a picture" for somebody typing the one word that means putting a
         // photograph on the page. Every word here is one that only means SHARING.

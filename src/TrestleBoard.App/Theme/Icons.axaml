@@ -60,6 +60,9 @@
   <!-- M60: a list of the user's own — a header row with a rule under it, then two rows of two
        cells. Deliberately reads as a TABLE rather than as bullets, which is what distinguishes it
        from M61's paragraph lists. -->
+  <!-- M84: a month on a wall. A bar across the top for the day names, then two rows of cells —
+       the shape of every calendar in every lodge hall, at 24 pixels. -->
+  <StreamGeometry x:Key="TrestleBoard.Icon.month-calendar">M3,4 L21,4 L21,8 L3,8 Z M3,9.5 L7,9.5 L7,13.5 L3,13.5 Z M9.5,9.5 L14.5,9.5 L14.5,13.5 L9.5,13.5 Z M17,9.5 L21,9.5 L21,13.5 L17,13.5 Z M3,15 L7,15 L7,19 L3,19 Z M9.5,15 L14.5,15 L14.5,19 L9.5,19 Z M17,15 L21,15 L21,19 L17,19 Z</StreamGeometry>
   <StreamGeometry x:Key="TrestleBoard.Icon.simple-list">M3,4 L21,4 L21,7 L3,7 Z M3,8.5 L21,8.5 L21,9.5 L3,9.5 Z M3,11 L10,11 L10,14 L3,14 Z M12,11 L21,11 L21,14 L12,14 Z M3,16 L10,16 L10,19 L3,19 Z M12,16 L21,16 L21,19 L12,19 Z</StreamGeometry>
 
   <StreamGeometry x:Key="TrestleBoard.Icon.district-calendar">M6,2 L8,2 L8,6 L6,6 Z M16,2 L18,2 L18,6 L16,6 Z M3,4 L21,4 L21,8 L3,8 Z M3,9 L21,9 L21,22 L3,22 Z</StreamGeometry>

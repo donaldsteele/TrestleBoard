@@ -177,6 +177,12 @@ public static class ActionId
     public const string InsertBirthdays = "insert.birthdayList";
     public const string InsertCommittees = "insert.committeeList";
     public const string InsertDistrictCalendar = "insert.districtCalendar";
+
+    /// <summary>
+    /// M84: this month on a grid, with the stated meeting already marked. The district calendar is
+    /// a table of six lodges; this is one lodge's month laid out the way a wall calendar is.
+    /// </summary>
+    public const string InsertMonthCalendar = "insert.monthCalendar";
     public const string InsertEventCard = "insert.eventCard";
     public const string InsertCoverBanner = "insert.coverBanner";
 

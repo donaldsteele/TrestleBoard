@@ -19,8 +19,10 @@ public sealed class WidgetContractTests
     public void EveryWidgetIsRegisteredInMenuOrder()
     {
         Assert.Equal(
-            ["officersTable", "birthdayList", "committeeList", "districtCalendar", "eventCard",
-                "coverBanner", "simpleList"],
+            // M84 added the eighth, beside the district calendar because they are the two
+            // calendars — one for the district's six lodges, one for this lodge's month.
+            ["officersTable", "birthdayList", "committeeList", "districtCalendar", "monthCalendar",
+                "eventCard", "coverBanner", "simpleList"],
             Provider.Registry.All.Select(d => d.TypeId));
     }
 

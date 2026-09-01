@@ -264,6 +264,10 @@
         <MenuItem Header="_District calendar" Tag="insert.districtCalendar"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Insert the district calendar" />
+        <!-- M84: the other calendar — this lodge's month, on a grid. -->
+        <MenuItem Header="This mon_th&apos;s calendar" Tag="insert.monthCalendar"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Insert this month&apos;s calendar" />
         <MenuItem Header="_Announcement box" Tag="insert.eventCard"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Insert an announcement box" />

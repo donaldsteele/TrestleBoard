@@ -3,6 +3,7 @@ using TrestleBoard.Widgets.Builtins.CommitteeList;
 using TrestleBoard.Widgets.Builtins.CoverBanner;
 using TrestleBoard.Widgets.Builtins.DistrictCalendar;
 using TrestleBoard.Widgets.Builtins.EventCard;
+using TrestleBoard.Widgets.Builtins.MonthCalendar;
 using TrestleBoard.Widgets.Builtins.OfficersTable;
 using TrestleBoard.Widgets.Builtins.SimpleList;
 
@@ -21,6 +22,11 @@ public static class BuiltInWidgets
         new BirthdayListDefinition(),
         new CommitteeListDefinition(),
         new DistrictCalendarDefinition(),
+
+        // M84: the eighth. Beside the district calendar because they are the two calendars, and
+        // after it because the district one has been there since M7 — this is the month-at-a-glance
+        // view the district table cannot give.
+        new MonthCalendarDefinition(),
         new EventCardDefinition(),
         new CoverBannerDefinition(),
 

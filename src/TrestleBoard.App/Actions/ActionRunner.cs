@@ -21,6 +21,7 @@ internal sealed class ActionRunner
         (ActionId.InsertBirthdays, "birthdayList"),
         (ActionId.InsertCommittees, "committeeList"),
         (ActionId.InsertDistrictCalendar, "districtCalendar"),
+        (ActionId.InsertMonthCalendar, "monthCalendar"),
         (ActionId.InsertEventCard, "eventCard"),
         (ActionId.InsertCoverBanner, "coverBanner"),
         (ActionId.InsertSimpleList, "simpleList"),
