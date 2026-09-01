@@ -428,6 +428,10 @@
         <MenuItem Header="_Check for an update" Tag="help.checkForUpdates"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Check for an update" />
+        <!-- M77: the non-crash half of the problem report. A crash offers it by itself. -->
+        <MenuItem Header="Save a re_port of a problem…" Tag="help.problemReport"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Save a report of a problem" />
         <!-- M15: the five-page example issue used to be a fixture only the tests could reach. -->
         <MenuItem Header="_Show me an example newsletter" Tag="help.exampleIssue"
                   Click="OnActionClicked"

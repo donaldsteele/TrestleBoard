@@ -170,6 +170,7 @@ internal sealed class ActionRunner
 
             // ---- Help ------------------------------------------------------------------------------
             [ActionId.CheckForUpdates] = Async(() => window.CheckForUpdatesForTest(userAsked: true)),
+            [ActionId.SaveProblemReport] = Async(() => window.SaveAProblemReportAsync(null)),
             [ActionId.About] = Async(() => window.ShowAboutAsync()),
             [ActionId.FontLicences] = Async(() => window.ShowFontLicencesAsync()),
             [ActionId.Licence] = Async(() => window.ShowLicenceAsync()),
@@ -238,6 +239,13 @@ internal sealed class ActionRunner
     internal async Task<ActionOutcome> RunAsync(string actionId, Control? source = null)
     {
         LastActionForTest = actionId;
+
+        // M77: every surface — the menu bar, the panel, the flyout, the keyboard table — comes
+        // through here, so the trail is fed in one place and no surface can be forgotten. Recorded
+        // BEFORE the availability check, because "asked for a thing the app refused" is exactly the
+        // sort of step a maintainer reading the report needs to see.
+        Diagnostics.ActionTrail.Shared.Record(actionId, DateTimeOffset.Now);
+
         if (InterceptorForTest is { } intercept && intercept(actionId))
         {
             // The keyboard audit stops the command short of running, so by construction nothing

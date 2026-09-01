@@ -221,6 +221,11 @@ internal static class ActionIcons
 
         // --- Help. Every one of these is a sentence the user reads once.
         [ActionId.CheckForUpdates] = "read once, never hunted for",
+
+        // M77. Reached from a menu, at a moment when the user is being TOLD where it is rather
+        // than looking for it — the crash card offers the same thing, and nobody hunts the Help
+        // menu for a picture of a problem.
+        [ActionId.SaveProblemReport] = "reached when the app has just offered it, never hunted for",
         [ActionId.About] = "read once, never hunted for",
         [ActionId.FontLicences] = "read once, never hunted for",
         [ActionId.Licence] = "read once, never hunted for",

@@ -142,6 +142,15 @@ public partial class MainWindow : Window
         }
     }
     private UpdateCoordinator? _updates;
+
+    /// <summary>
+    /// M77: the handler that stands between an unhandled exception and a window that vanishes.
+    /// Held so that the shell can be asked, in a test, whether it caught anything.
+    /// </summary>
+    private Diagnostics.CrashGuard? _crashGuard;
+
+    /// <summary>M77: whether the last crash managed to write the snapshot, for the card's promise.</summary>
+    private bool _lastCrashKeptTheWork;
     private AppSettings _settings = AppSettings.Load();
     private RosterService? _roster;
     private readonly WidgetLayoutProvider _widgetProvider = WidgetLayoutProvider.CreateDefault();
@@ -183,6 +192,11 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        // M77: before anything else can throw. The size the window opens at is settled here, from
+        // what the user left it at last time, and the screen check happens on Opened — by which
+        // point Avalonia knows what screens there are.
+        RestoreRememberedSize();
         DressToolbar();
         _actions = new ActionRunner(this);
         ActionPanelHost.Content = _panel;
@@ -221,10 +235,27 @@ public partial class MainWindow : Window
         ApplySettings(_settings);
         RefreshActions();
 
+        // M77: three doors, one room. Installed here rather than in Program so that the handler has
+        // a window to hang a card off, and so that the two callbacks are the shell's own methods
+        // rather than statics reaching back for it.
+        _crashGuard = new Diagnostics.CrashGuard(KeepTheWorkAfterACrash, ShowTheProblemCard);
+        if (!SuppressStartupForTest)
+        {
+            // Never in the headless tests: a process-wide exception handler installed by one test
+            // outlives it and changes how every other test in the assembly fails. What the tests
+            // drive is CrashGuard.Handle, which is where the behaviour worth proving lives.
+            _crashGuard.Install();
+        }
+
         // The start screen and the recovery offer are the app's front door; without this they exist
         // but nobody ever sees them.
         Opened += async (_, _) =>
         {
+            // M77: the position, once there are screens to check it against. Runs even under the
+            // test suppression, because where the window sits is not part of the startup flow the
+            // tests are suppressing.
+            RestoreRememberedPosition();
+
             if (SuppressStartupForTest)
             {
                 return;
@@ -256,6 +287,10 @@ public partial class MainWindow : Window
             // when the app CRASHED. What makes deleting correct now is that nothing reaches this
             // point with unsaved work any more: OnWindowClosing has already offered to save it, and
             // the user either did, or said not to.
+            // M77: where the window was, so it opens there next time. Before the teardown below
+            // rather than after it: this is the cheap step and the one the user notices, and a
+            // throw from any of the disposals would otherwise skip it silently.
+            RememberWherePlaced();
             _findWindow?.Close();
             _rail.ForgetEveryThumbnail();
             _recoveryTimer?.Stop();
@@ -7896,4 +7931,226 @@ public partial class MainWindow : Window
 
         await dialog.ShowDialog(this);
     }
+
+    // ---- When something goes wrong (PLAN.md §11 M77) -------------------------------------------
+
+    /// <summary>
+    /// The first thing the crash guard does. Writes the recovery snapshot the app already knows how
+    /// to write, so that whatever happens next, the evening's work is on the disk.
+    ///
+    /// <para>It sets <see cref="_lastCrashKeptTheWork"/> rather than returning, because the guard
+    /// deliberately swallows what this throws — and the card that comes next has to know which of
+    /// its two promises it is allowed to make. M73's standard: never claim what did not happen.</para>
+    /// </summary>
+    private void KeepTheWorkAfterACrash()
+    {
+        _lastCrashKeptTheWork = false;
+        if (_recovery is not { } recovery)
+        {
+            // Nothing open. There is no work to lose, so the promise is true by vacancy — and
+            // saying "your newsletter has been kept" over an empty window is still the right
+            // sentence, because what the user is being told is that they have lost nothing.
+            _lastCrashKeptTheWork = true;
+            return;
+        }
+
+        // SaveNow returns false when the document is not dirty, which also means nothing was lost.
+        recovery.SaveNow();
+        _lastCrashKeptTheWork = true;
+    }
+
+    /// <summary>
+    /// The second thing the crash guard does. One card, two answers, and the exception nowhere on
+    /// screen (docs — <see cref="Dialogs.ProblemCard"/> says why).
+    /// </summary>
+    private void ShowTheProblemCard(Diagnostics.CrashGuard.CrashReport report)
+    {
+        LastCrashForTest = report;
+        if (SuppressStartupForTest || SwallowErrorsForTest)
+        {
+            // A headless test has nobody to press the buttons. The facts are still recorded above,
+            // because what a test wants to assert is what the shell decided, not that a window
+            // appeared.
+            return;
+        }
+
+        var card = new Dialogs.ProblemCard(_lastCrashKeptTheWork, report.AppWillClose);
+        _ = ShowTheProblemCardAsync(card, report.Error);
+    }
+
+    private async Task ShowTheProblemCardAsync(Dialogs.ProblemCard card, Exception error)
+    {
+        try
+        {
+            await card.ShowDialog(this);
+            if (card.Choice == Dialogs.ProblemCardChoice.SaveTheReport)
+            {
+                await SaveAProblemReportAsync(error);
+            }
+        }
+        catch (Exception)
+        {
+            // Showing the card is already the recovery path. There is nowhere left to report a
+            // failure to report a failure, and throwing from here would re-enter the guard.
+        }
+    }
+
+    /// <summary>What the crash guard last caught, for the tests. Null until something does.</summary>
+    internal Diagnostics.CrashGuard.CrashReport? LastCrashForTest { get; private set; }
+
+    /// <summary>Whether the last crash was able to keep the work, for the tests.</summary>
+    internal bool LastCrashKeptTheWorkForTest => _lastCrashKeptTheWork;
+
+    /// <summary>Lets a test drive the guard without a real crash, which is the whole design.</summary>
+    internal void SimulateCrashForTest(Exception error, bool appWillClose = false) =>
+        _crashGuard?.Handle(new Diagnostics.CrashGuard.CrashReport(error, appWillClose));
+
+    /// <summary>
+    /// Writes the report the user emails to whoever looks after TrestleBoard (M77).
+    /// </summary>
+    /// <param name="error">
+    /// What went wrong, or null when nobody crashed and the user asked from the Help menu.
+    /// </param>
+    internal async Task<bool> SaveAProblemReportAsync(Exception? error)
+    {
+        string text = Diagnostics.ProblemReport.Compose(
+            new Diagnostics.ProblemReportFacts(
+                AppVersion(),
+                Environment.OSVersion.VersionString,
+                _settings.UiScalePercent,
+                _settings.Theme.ToString(),
+                error,
+                Diagnostics.ActionTrail.Shared.Recent(Diagnostics.ProblemReport.ActionsShown)),
+            DateTimeOffset.Now);
+
+        LastProblemReportForTest = text;
+
+        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save a report of the problem",
+            DefaultExtension = "txt",
+            SuggestedFileName = Diagnostics.ProblemReport.SuggestedFileName,
+            FileTypeChoices = [new FilePickerFileType("Text file") { Patterns = ["*.txt"] }],
+        });
+
+        // Only ever where the user browsed to — the same rule the address book export follows
+        // (PLAN.md §0 rule 5). There is no default folder beside the newsletter.
+        if (file?.TryGetLocalPath() is not { } path)
+        {
+            return false;
+        }
+
+        try
+        {
+            await File.WriteAllTextAsync(path, text);
+            Announce(
+                $"The report was saved as {Path.GetFileName(path)}. "
+                + "Email it to whoever looks after TrestleBoard for the lodge.");
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            await ShowErrorAsync(
+                "Could not save the report",
+                "TrestleBoard could not write that file. Try somewhere else, such as your Desktop. "
+                + ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>The text of the last report composed, for the tests that check what is in it.</summary>
+    internal string? LastProblemReportForTest { get; private set; }
+
+    /// <summary>Lets a test set the remembered geometry without going through the settings file.</summary>
+    internal void SetSettingsForTest(AppSettings settings) => _settings = settings;
+
+    // ---- Where the window opens (PLAN.md §11 M77) ----------------------------------------------
+
+    /// <summary>
+    /// The size the user left it at. Done in the constructor, before the window is shown, because
+    /// resizing a visible window is a flicker the audience would notice.
+    /// </summary>
+    private void RestoreRememberedSize()
+    {
+        (int width, int height) = Settings.WindowPlacement.ChooseSize(
+            _settings.WindowWidth, _settings.WindowHeight);
+        Width = width;
+        Height = height;
+    }
+
+    /// <summary>
+    /// The position, once Avalonia knows what screens exist — which it does not in the constructor.
+    ///
+    /// <para>A remembered position that is no longer on any screen is thrown away rather than
+    /// clamped: a window half off the edge of a monitor that is no longer plugged in cannot be
+    /// dragged back by somebody who cannot see its title bar, and this audience would not think to
+    /// try the keyboard.</para>
+    /// </summary>
+    private void RestoreRememberedPosition()
+    {
+        if (_settings.WindowMaximised)
+        {
+            WindowState = WindowState.Maximized;
+            return;
+        }
+
+        if (_settings.WindowLeft is not { } left || _settings.WindowTop is not { } top)
+        {
+            return;
+        }
+
+        var remembered = new Settings.PlacementRect(left, top, (int)Width, (int)Height);
+        List<Settings.PlacementRect> screens = Screens.All
+            .Select(screen => new Settings.PlacementRect(
+                screen.Bounds.X, screen.Bounds.Y, screen.Bounds.Width, screen.Bounds.Height))
+            .ToList();
+
+        if (Settings.WindowPlacement.CanRestore(remembered, screens))
+        {
+            Position = new PixelPoint(left, top);
+        }
+    }
+
+    /// <summary>
+    /// Writes the geometry back on close. Best-effort like every other preference: a size that
+    /// could not be written is a nuisance next week, not a failure now.
+    /// </summary>
+    private void RememberWherePlaced()
+    {
+        // Not under test. Every window in the headless suite shares one app-state root, and several
+        // of them resize themselves on purpose — ToolbarFitTests opens at 2560 to check the bar at
+        // 200%, PageRailTests narrows the window to make the rail fold. Writing those sizes back
+        // would make one test's deliberate geometry the next test's starting point, which is a
+        // failure that appears and disappears with the order the runner happens to choose. In the
+        // app there is one window and one person, so the rule this guards is not weakened by it:
+        // what is skipped is only ever a size nobody chose.
+        if (SuppressStartupForTest)
+        {
+            return;
+        }
+
+        try
+        {
+            _settings = GeometryRemembered();
+            _settings.Save();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            // Nothing to say and nobody to say it to: the window is closing.
+            _ = ex;
+        }
+    }
+
+    /// <summary>
+    /// What the settings would become, given where the window is right now. Split out from the
+    /// write so that a test can assert the RULE — a maximised window keeps the size it had before —
+    /// without a file, and without the suppression above standing in its way.
+    /// </summary>
+    internal AppSettings GeometryRemembered() => Settings.WindowPlacement.Remember(
+        _settings,
+        WindowState == WindowState.Maximized,
+        (int)Width,
+        (int)Height,
+        Position.X,
+        Position.Y);
 }

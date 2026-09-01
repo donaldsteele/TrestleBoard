@@ -307,6 +307,16 @@ public static class ActionId
 
     // ---- Help ---------------------------------------------------------------------------------
     public const string CheckForUpdates = "help.checkForUpdates";
+
+    /// <summary>
+    /// M77: writes a file describing this installation and what it has just been asked to do, for
+    /// the person who looks after TrestleBoard for the lodge.
+    ///
+    /// <para>It exists for the case where nothing crashed. A crash puts the same offer in front of
+    /// the user by itself; this is for "it is doing something odd", which is the report this
+    /// audience is far more likely to need and would otherwise have no way to make.</para>
+    /// </summary>
+    public const string SaveProblemReport = "help.problemReport";
     public const string About = "help.about";
 
     /// <summary>M14: the OFL text for every bundled family, as the licence requires we ship it.</summary>

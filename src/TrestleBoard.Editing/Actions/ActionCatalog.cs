@@ -423,6 +423,10 @@ public static class ActionCatalog
             ActionGroup.Help),
         new(ActionId.CheckForUpdates, "Check for an update", "Asks whether a newer TrestleBoard exists.",
             ActionGroup.Help),
+        new(ActionId.SaveProblemReport, "Save a report of a problem…",
+            "Writes a file you can email to whoever looks after TrestleBoard, saying what this "
+            + "computer is and what went wrong. It holds nothing about your members.",
+            ActionGroup.Help),
         new(ActionId.About, "About TrestleBoard", "Shows which version this is.", ActionGroup.Help),
         new(ActionId.FontLicences, "Fonts and licences",
             "Lists the typefaces that came with TrestleBoard and the licence each one is used under.",
@@ -556,6 +560,11 @@ public static class ActionCatalog
                 // M63: help must never be unavailable. An app that will not tell you how to do
                 // something because of what you have selected is the exact moment help is needed.
                 or ActionId.HowDoI or ActionId.ShowTheTour
+                // M77: a report about an app that is misbehaving must not be refused BY the app
+                // that is misbehaving. It needs no newsletter and no selection — the facts it
+                // carries are about the installation, and they are all there before anything is
+                // open.
+                or ActionId.SaveProblemReport
                 // M64: neither needs a newsletter open, and both are most likely to be reached on a
                 // computer that has never had one — the successor's, on their first afternoon.
                 or ActionId.PackUpForSuccessor or ActionId.BringInAPack

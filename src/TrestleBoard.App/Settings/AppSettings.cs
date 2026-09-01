@@ -104,6 +104,30 @@ public sealed record AppSettings
     /// </summary>
     public string SicknessContactOffice { get; init; } = PhraseLibrary.DefaultOffice;
 
+    /// <summary>
+    /// Where the window was when it last closed (M77), or null until it has closed once.
+    ///
+    /// <para>Four nullable fields rather than one rectangle, because a settings file that has been
+    /// hand-edited or written by an older build may have some and not others, and four nulls
+    /// degrade to "open where you always did" while a half-built rectangle would not.</para>
+    ///
+    /// <para><b>Remembering the size is not a nicety here.</b> M76 fixed the toolbar overflowing at
+    /// the default 1280, and the reason it overflowed was that somebody at 200% scale had been
+    /// maximising the window at every single launch for months. A preference this audience has to
+    /// re-express daily is one the app is failing to hold.</para>
+    /// </summary>
+    public int? WindowWidth { get; init; }
+
+    public int? WindowHeight { get; init; }
+
+    public int? WindowLeft { get; init; }
+
+    public int? WindowTop { get; init; }
+
+    /// <summary>Whether it was maximised. Kept separately from the size, so un-maximising lands on
+    /// the size it had before rather than on the whole screen.</summary>
+    public bool WindowMaximised { get; init; }
+
     [JsonIgnore]
     public double UiScale => Math.Clamp(UiScalePercent, MinScalePercent, MaxScalePercent) / 100d;
 

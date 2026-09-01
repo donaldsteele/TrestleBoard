@@ -32,6 +32,11 @@ public static class HelpSearchWords
     {
         // The word this audience uses for a photograph is "picture", and the app says "photo".
         [ActionId.InsertPhoto] = ["picture", "image", "photograph", "add a picture"],
+
+        // M77. Nobody looks for "problem report" — they look for the word for what happened, and
+        // every one of these is a word this audience has used down a telephone.
+        [ActionId.SaveProblemReport] =
+            ["crash", "broken", "error", "bug", "went wrong", "not working", "froze", "help me"],
         [ActionId.ReplacePicture] = ["picture", "image", "change the picture", "swap"],
         [ActionId.FixPhoto] = ["picture", "image", "sideways", "rotate", "upside down"],
         [ActionId.AdjustPhoto] = ["picture", "image", "brightness", "dark", "washed out"],
