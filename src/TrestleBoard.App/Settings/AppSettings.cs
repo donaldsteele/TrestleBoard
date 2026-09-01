@@ -105,6 +105,44 @@ public sealed record AppSettings
     public string SicknessContactOffice { get; init; } = PhraseLibrary.DefaultOffice;
 
     /// <summary>
+    /// Pictures used before, newest first (M80). At most <see cref="RecentPicturesKept"/>.
+    ///
+    /// <para><b>Paths, never copies.</b> The lodge front and the Master's portrait go into most
+    /// issues, and the committee should not have to find the same file every month. What is stored
+    /// is where it was, so nothing is duplicated and nothing grows — and a path that no longer
+    /// leads anywhere is dropped silently rather than offered.</para>
+    ///
+    /// <para>These are the user's own file paths and therefore §0 material: they are shown by FILE
+    /// NAME only, never in full, and they never reach a problem report — <c>ProblemReportFacts</c>
+    /// has nowhere to put them.</para>
+    /// </summary>
+    public IReadOnlyList<string> RecentPictures { get; init; } = [];
+
+    /// <summary>How many are remembered. Ten is about a year of a committee's habits.</summary>
+    public const int RecentPicturesKept = 10;
+
+    /// <summary>
+    /// This list with <paramref name="path"/> at the front, no duplicates, capped.
+    ///
+    /// <para>A pure function on the settings record so the rule — most recent first, each path
+    /// once — is testable without a window and without a disk.</para>
+    /// </summary>
+    public AppSettings WithPictureUsed(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return this;
+        }
+
+        List<string> kept = [path];
+        kept.AddRange(RecentPictures
+            .Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase))
+            .Take(RecentPicturesKept - 1));
+
+        return this with { RecentPictures = kept };
+    }
+
+    /// <summary>
     /// Where the window was when it last closed (M77), or null until it has closed once.
     ///
     /// <para>Four nullable fields rather than one rectangle, because a settings file that has been

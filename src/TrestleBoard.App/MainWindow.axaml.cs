@@ -5195,21 +5195,121 @@ public partial class MainWindow : Window
             return false;
         }
 
+        // M80: the pictures this committee has used before, offered first. The lodge front and the
+        // Master's portrait go into most issues, and every month somebody navigated the same four
+        // folders to find the same file.
+        List<string> recent = RecentPicturesThatStillExist();
+        if (recent.Count > 0 && !SuppressStartupForTest)
+        {
+            var strip = new Dialogs.RecentPicturesDialog(recent);
+            await strip.ShowDialog(this);
+            switch (strip.Choice)
+            {
+                case Dialogs.RecentPictureChoice.Cancelled:
+                    return false;
+                case Dialogs.RecentPictureChoice.UseThisOne when strip.ChosenPath is { } chosen:
+                    return await InsertPhotoFromPathAsync(chosen);
+                default:
+                    break;
+            }
+        }
+
         IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Choose a picture",
             AllowMultiple = false,
-            FileTypeFilter = [FilePickerFileTypes.ImageAll],
+            FileTypeFilter = [PictureFileTypes()],
         });
         if (files.Count == 0)
         {
             return false;
         }
 
+        RememberPictureUsed(files[0].TryGetLocalPath());
         return await InsertPhotoFromFileAsync(files[0]);
     }
 
+    /// <summary>
+    /// One the user has used before, opened straight from its path (M80).
+    ///
+    /// <para>It goes through the same bytes-to-page route as everything else, iPhone conversion
+    /// included — the file may have been replaced since it was last used, and a path is not a
+    /// promise about what is at the end of it.</para>
+    /// </summary>
+    private async Task<bool> InsertPhotoFromPathAsync(string path)
+    {
+        byte[] bytes;
+        try
+        {
+            bytes = await File.ReadAllBytesAsync(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            await ShowErrorAsync(
+                "Could not open that picture",
+                $"TrestleBoard could not open {Path.GetFileName(path)} any more. It may have been "
+                + "moved or renamed. Choose it again with “Choose a file…”. " + ex.Message);
+            return false;
+        }
+
+        if (await MakeReadableAsync(bytes) is not { } readable)
+        {
+            return false;
+        }
+
+        RememberPictureUsed(path);
+        await PlacePictureAsync(readable, Path.GetFileName(path), centre: null);
+        return true;
+    }
+
+    /// <summary>
+    /// The remembered pictures that are still where they were.
+    ///
+    /// <para>A path that no longer leads anywhere is dropped silently rather than offered: a tile
+    /// that fails when pressed is worse than a tile that is not there.</para>
+    /// </summary>
+    private List<string> RecentPicturesThatStillExist()
+    {
+        var live = new List<string>();
+        foreach (string path in _settings.RecentPictures)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    live.Add(path);
+                }
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // A network share that is not answering. Leaving it out is the right answer.
+                _ = e;
+            }
+        }
+
+        return live;
+    }
+
+    /// <summary>Puts a picture at the front of the remembered list. Best-effort, like every
+    /// preference: a list that could not be written is a nuisance next month, not a failure now.</summary>
+    private void RememberPictureUsed(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        _settings = _settings.WithPictureUsed(path);
+        _settings.Save();
+    }
+
     /// <summary>The file's bytes, or null once the failure has been explained to the user.</summary>
+    /// <summary>
+    /// The one funnel every file-borne picture comes through — the picker, a drag onto the page,
+    /// and a file on the clipboard — which is why M80's iPhone conversion lives here and nowhere
+    /// else. (A bitmap pasted from the clipboard has already been decoded by whoever put it there,
+    /// so it cannot be a HEIC.)
+    /// </summary>
     private async Task<byte[]?> ReadPictureBytesAsync(IStorageFile file)
     {
         try
@@ -5217,13 +5317,77 @@ public partial class MainWindow : Window
             await using Stream stream = await file.OpenReadAsync();
             using var buffer = new MemoryStream();
             await stream.CopyToAsync(buffer);
-            return buffer.ToArray();
+            return await MakeReadableAsync(buffer.ToArray());
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             await ShowErrorAsync("Could not open that picture", ex.Message);
             return null;
         }
+    }
+
+    /// <summary>
+    /// M80: an iPhone photograph, converted where this computer can and explained where it cannot.
+    ///
+    /// <para>The format is read from the BYTES, never the file name — a photograph out of a
+    /// phone-sync folder is a HEIC whatever it is called, and one renamed to <c>.jpg</c> by a
+    /// well-meaning relative is still a HEIC.</para>
+    ///
+    /// <para>What goes on to the page is the CONVERTED picture. Keeping the original would mean a
+    /// newsletter that opened on the machine that converted it and failed on the secretary's.</para>
+    /// </summary>
+    private async Task<byte[]?> MakeReadableAsync(byte[] bytes)
+    {
+        if (Imaging.PictureFormat.Sniff(bytes) != Imaging.PictureFormatKind.Heic)
+        {
+            return bytes;
+        }
+
+        HeicResult result = HeicConversion.Handle(HeicConverter, bytes);
+        LastHeicMessageForTest = result.WhatToTell;
+
+        if (result.Converted is { } converted)
+        {
+            // Said in the status bar rather than in a dialog: it worked, the photograph is going on
+            // the page, and a modal in the middle of a success is a step nobody asked for.
+            Announce(result.WhatToTell);
+            return converted;
+        }
+
+        await ShowErrorAsync("That is an iPhone photograph", result.WhatToTell);
+        return null;
+    }
+
+    /// <summary>
+    /// How this computer converts iPhone photographs. Settable so a test can drive both answers —
+    /// neither is reproducible on CI, which is exactly why the decision has to be testable apart
+    /// from the machine.
+    /// </summary>
+    internal IHeicConverter HeicConverter { get; set; } = HeicConversion.ForThisComputer();
+
+    /// <summary>The last thing an iPhone photograph was explained with, for the tests.</summary>
+    internal string? LastHeicMessageForTest { get; private set; }
+
+    /// <summary>The tests' way into the one funnel every file-borne picture comes through.</summary>
+    internal Task<byte[]?> MakeReadableForTest(byte[] bytes) => MakeReadableAsync(bytes);
+
+    /// <summary>
+    /// What the picker will show (M80).
+    ///
+    /// <para>Avalonia's own "all images" filter does not list <c>.heic</c>, so on a computer that
+    /// CAN convert them an iPhone photograph was not even choosable — the user could see it in the
+    /// folder, greyed, with no explanation at all. Where conversion is impossible the extensions
+    /// stay out, because a file the app will refuse should not be offered.</para>
+    /// </summary>
+    private FilePickerFileType PictureFileTypes()
+    {
+        string[] ordinary = ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.bmp", "*.webp", "*.tif", "*.tiff"];
+        return new FilePickerFileType("Pictures")
+        {
+            Patterns = HeicConverter.CanConvert
+                ? [.. ordinary, "*.heic", "*.heif"]
+                : ordinary,
+        };
     }
 
     private async Task<bool> InsertPhotoFromFileAsync(IStorageFile file)
@@ -5381,7 +5545,7 @@ public partial class MainWindow : Window
         {
             Title = "Choose a picture",
             AllowMultiple = false,
-            FileTypeFilter = [FilePickerFileTypes.ImageAll],
+            FileTypeFilter = [PictureFileTypes()],
         });
         if (files.Count == 0)
         {
