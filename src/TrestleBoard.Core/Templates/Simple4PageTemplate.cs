@@ -27,7 +27,11 @@ internal static class Simple4PageTemplate
     {
         var document = new Document();
         TemplateHelpers.AddStandardStyles(document);
-        document.PageMasters.Add(new PageMaster { Id = "master-letter" });
+        // M78: the three templates are where a default that only applies to NEW work belongs. A
+        // newsletter written before M78 has no such property in its file and must open looking
+        // exactly as it did yesterday; one started from a template gets the footer every issue
+        // from the old tool had.
+        document.PageMasters.Add(new PageMaster { Id = "master-letter", ShowFooter = true });
         document.Stories.Add(TemplateHelpers.PromptStory("story-cover", CoverEssayPrompt));
         document.Stories.Add(TemplateHelpers.PromptStory("story-page2", Page2Prompt));
         document.Stories.Add(TemplateHelpers.PromptStory("story-page3", Page3Prompt));

@@ -162,6 +162,52 @@ public sealed class RemoveStoryCommand(string storyId) : IDocumentCommand
     public bool TryMerge(IDocumentCommand newer) => false;
 }
 
+/// <summary>
+/// Turns the page footer on or off for every page in the newsletter (M78).
+///
+/// <para>Every master at once, not the current page's: a newsletter whose cover had a footer and
+/// whose inside pages did not would look like a mistake, and nobody asked for the two to differ.
+/// Reverting puts each master back to what it individually was, so a document that arrived with a
+/// mixture keeps its mixture on undo.</para>
+/// </summary>
+public sealed class ShowPageFooterCommand(bool show) : IDocumentCommand
+{
+    private Dictionary<string, bool>? _old;
+
+    public bool Show { get; } = show;
+
+    public string Description => Show ? "Show page numbers" : "Hide page numbers";
+
+    public ChangeScope Scope => new(ChangeKind.PageStructure);
+
+    public void Apply(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        // Re-captured on every Apply, so redo is as correct as undo (see IDocumentCommand).
+        _old = document.PageMasters.ToDictionary(m => m.Id, m => m.ShowFooter, StringComparer.Ordinal);
+        foreach (PageMaster master in document.PageMasters)
+        {
+            master.ShowFooter = Show;
+        }
+    }
+
+    public void Revert(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        Dictionary<string, bool> old = _old ?? throw new InvalidOperationException("Revert before Apply.");
+        foreach (PageMaster master in document.PageMasters)
+        {
+            if (old.TryGetValue(master.Id, out bool was))
+            {
+                master.ShowFooter = was;
+            }
+        }
+    }
+
+    public bool TryMerge(IDocumentCommand newer) => false;
+}
+
 public sealed class SetMetadataCommand(DocumentMetadata newMetadata) : IDocumentCommand
 {
     private DocumentMetadata? _old;

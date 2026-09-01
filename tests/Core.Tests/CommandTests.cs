@@ -90,6 +90,11 @@ public sealed class CommandTests
         // size, so both of these genuinely touch more than one style definition.
         ["SetCharacterStyleFont.Family"] = _ => new SetCharacterStyleFontCommand("body", "Lora", null),
         ["SetCharacterStyleFont.SizeOnly"] = _ => new SetCharacterStyleFontCommand("body", null, 14f),
+
+        // M78. Both directions, because the revert has to put each master back to what IT was
+        // rather than to one answer for all of them — a document that arrived with a mixture keeps
+        // its mixture on undo, and only a fixture whose masters start apart could catch that.
+        ["ShowPageFooter.On"] = _ => new ShowPageFooterCommand(true),
     };
 
     [Theory]

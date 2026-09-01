@@ -4794,6 +4794,41 @@ public partial class MainWindow : Window
     /// they are trying to read. It is a VIEW setting and never prints — the exporter draws through
     /// <c>RenderPage</c>, which knows nothing about it.</para>
     /// </summary>
+    /// <summary>
+    /// M78: turns the line along the bottom of every page on or off.
+    ///
+    /// <para>A document change and therefore undoable, unlike the three view toggles it sits near —
+    /// the margin line and the two diagnostic overlays are about what the EDITOR shows, and this one
+    /// prints. Somebody who turns it on and does not like it reaches for Ctrl+Z, which is the
+    /// gesture they already have.</para>
+    /// </summary>
+    internal void TogglePageFooter()
+    {
+        if (_session is null || _package is null)
+        {
+            return;
+        }
+
+        // Read off the first master rather than a field of our own: two things that can disagree
+        // eventually will, and here the disagreement prints the wrong page (the M55 rule).
+        bool showing = _session.Document.PageMasters.Count > 0
+            && _session.Document.PageMasters[0].ShowFooter;
+
+        _session.Execute(new ShowPageFooterCommand(!showing));
+        _source?.Invalidate(new ChangeScope(ChangeKind.PageStructure));
+        PageCanvas.InvalidateVisual();
+        _rail.ForgetEveryThumbnail();
+        RefreshActions();
+
+        Announce(showing
+            ? "The line along the bottom of each page is hidden."
+            : "Every page now says the lodge, the month and which page it is, along the bottom.");
+    }
+
+    /// <summary>Whether the footer is on, for the tests and for anything that wants to say so.</summary>
+    internal bool PageFooterShowing =>
+        _session?.Document.PageMasters is { Count: > 0 } masters && masters[0].ShowFooter;
+
     internal void ToggleShowMargins()
     {
         PageCanvas.ShowMargins = !PageCanvas.ShowMargins;

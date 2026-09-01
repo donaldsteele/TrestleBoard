@@ -33,6 +33,10 @@ public static class HelpSearchWords
         // The word this audience uses for a photograph is "picture", and the app says "photo".
         [ActionId.InsertPhoto] = ["picture", "image", "photograph", "add a picture"],
 
+        // M78. "Footer" is a word from another program. What people ask for is the number.
+        [ActionId.ShowPageFooter] =
+            ["page number", "numbering", "footer", "bottom of the page", "which page", "page 3 of 6"],
+
         // M77. Nobody looks for "problem report" — they look for the word for what happened, and
         // every one of these is a word this audience has used down a telephone.
         [ActionId.SaveProblemReport] =

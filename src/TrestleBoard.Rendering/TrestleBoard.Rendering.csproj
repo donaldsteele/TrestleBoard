@@ -7,4 +7,10 @@
     <ProjectReference Include="..\TrestleBoard.Layout\TrestleBoard.Layout.csproj" />
     <ProjectReference Include="..\TrestleBoard.Imaging\TrestleBoard.Imaging.csproj" />
   </ItemGroup>
+
+  <!-- M78: the snapshot tests prove that turning the page footer off puts the pixels back, which
+       means reaching the page master THIS source resolved rather than a copy of it. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Rendering.SnapshotTests" />
+  </ItemGroup>
 </Project>

@@ -3,6 +3,7 @@ using System.Text.Json;
 using SkiaSharp;
 using TrestleBoard.Core.Commands;
 using TrestleBoard.Core.Model;
+using TrestleBoard.Core.Text;
 using TrestleBoard.Imaging;
 using TrestleBoard.Layout;
 using TrestleBoard.Layout.Documents;
@@ -790,6 +791,90 @@ public sealed class DocumentRenderSource : IDisposable
         return true;
     }
 
+
+    /// <summary>
+    /// One tappable stretch, as a rectangle on one page and the address it hands the reader.
+    /// </summary>
+    /// <param name="Rect">Where it is, in page points.</param>
+    /// <param name="Uri">What the reader's device is given — <c>mailto:</c>, <c>tel:</c> or a URL.</param>
+    public readonly record struct PageLink(RectPt Rect, string Uri);
+
+    /// <summary>
+    /// The email addresses, web addresses and telephone numbers already written on this page, as
+    /// rectangles the exporter can hang PDF annotations off (PLAN.md §11 M78).
+    ///
+    /// <para><b>Nothing here changes what is drawn.</b> This is a query over geometry the layout
+    /// already produced; the glyphs were on the page before M78 and are unchanged by it. What the
+    /// PDF gains is an annotation over them, which is the reader's device's business rather than
+    /// the newsletter's.</para>
+    ///
+    /// <para>The rectangles come from <see cref="StoryTextGeometry.GetSelectionRects"/> — the same
+    /// machinery that draws a highlight when the user drags across words. A link is exactly a
+    /// selection nobody made, so there was no reason to write a second way of measuring one, and
+    /// every wrapping and column case it already handles is handled here for free. A stretch that
+    /// wraps across two lines yields two rectangles and therefore two annotations, which is what a
+    /// reader expects: both halves are tappable.</para>
+    /// </summary>
+    /// <summary>
+    /// The document this source is drawing. For the tests that have to reach the model the renderer
+    /// actually reads — proving that turning the footer off puts the pixels back means changing the
+    /// page master this source resolved, not a copy of it.
+    /// </summary>
+    internal Document DocumentForTest => _document;
+
+    public IReadOnlyList<PageLink> GetLinksOnPage(int pageIndex)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentOutOfRangeException.ThrowIfNegative(pageIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(pageIndex, PageCount);
+        EnsureLayout();
+
+        var links = new List<PageLink>();
+        Page page = _document.Pages[pageIndex];
+
+        foreach (Block block in page.Blocks)
+        {
+            if (block is not TextBlock frame
+                || !_framesByBlockId.TryGetValue(frame.Id, out (string StoryId, int FrameIndex) owner)
+                || !_geometriesByStory.TryGetValue(owner.StoryId, out StoryTextGeometry? geometry)
+                || !_document.TryGetStory(owner.StoryId, out Story? story))
+            {
+                continue;
+            }
+
+            IReadOnlyList<string> paragraphs = story.Paragraphs
+                .Select(p => string.Concat(p.Runs.Select(r => r.Text)))
+                .ToList();
+
+            foreach (DetectedLink link in LinkDetector.FindInParagraphs(paragraphs))
+            {
+                var range = new TextRange(
+                    new TextPosition(owner.StoryId, link.ParagraphIndex, link.Start),
+                    new TextPosition(owner.StoryId, link.ParagraphIndex, link.End));
+
+                foreach (SelectionRect rect in geometry.GetSelectionRects(range))
+                {
+                    // A story can run through frames on several pages. Only the bands that landed
+                    // in THIS frame belong on this page — the rest are somebody else's annotation.
+                    if (rect.FrameIndex != owner.FrameIndex)
+                    {
+                        continue;
+                    }
+
+                    links.Add(new PageLink(
+                        new RectPt(
+                            rect.LeftPt,
+                            rect.TopPt,
+                            rect.RightPt - rect.LeftPt,
+                            rect.BottomPt - rect.TopPt),
+                        link.Uri));
+                }
+            }
+        }
+
+        return links;
+    }
+
     public void RenderPage(SKCanvas canvas, int pageIndex, uint backgroundArgb = 0xFFFFFFFF)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -813,6 +898,29 @@ public sealed class DocumentRenderSource : IDisposable
         foreach (Block block in page.Blocks.OrderBy(b => b.ZOrder))
         {
             RenderBlock(canvas, block);
+        }
+
+        // M78: the line along the bottom. LAST, so nothing on the page can be drawn over it — a
+        // footer a photograph had covered would be the app's own furniture losing an argument with
+        // the user's content, which is not a thing the reader can be asked to work out.
+        //
+        // Drawn here rather than placed as a block, so it is on the page for the reader and not on
+        // the page for the canvas: it cannot be selected, moved or deleted, and there is no frame
+        // to explain.
+        if (master.ShowFooter)
+        {
+            PageFooterRenderer.Draw(
+                canvas,
+                _fonts,
+                PageFooterRenderer.Compose(
+                    _document.Metadata.LodgeName,
+                    _document.Metadata.HasIssueDate
+                        ? new DateOnly(_document.Metadata.IssueYear, _document.Metadata.IssueMonth, 1)
+                        : null,
+                    pageIndex + 1,
+                    _document.Pages.Count),
+                master.Size.Width,
+                master.Size.Height - master.MarginBottomPt);
         }
     }
 

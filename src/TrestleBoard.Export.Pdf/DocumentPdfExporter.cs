@@ -49,6 +49,25 @@ public static class DocumentPdfExporter
                 Core.Model.SizePt size = source.GetPageSize(i);
                 SKCanvas canvas = document.BeginPage(size.Width, size.Height);
                 source.RenderPage(canvas, i);
+
+                // M78: the email addresses, web addresses and telephone numbers already on the
+                // page become tappable. Half the lodge reads this on a phone.
+                //
+                // AFTER the page is drawn and never instead of any of it: an annotation is not a
+                // drawing operation, it marks a rectangle of the page that is already finished.
+                // Nothing above this line changed in M78 and a snapshot test holds it to that —
+                // no underline, no blue, not a pixel. The reader's PDF app owns the affordance.
+                foreach (DocumentRenderSource.PageLink link in source.GetLinksOnPage(i))
+                {
+                    canvas.DrawUrlAnnotation(
+                        new SKRect(
+                            link.Rect.X,
+                            link.Rect.Y,
+                            link.Rect.X + link.Rect.Width,
+                            link.Rect.Y + link.Rect.Height),
+                        link.Uri);
+                }
+
                 if (!string.IsNullOrWhiteSpace(watermark))
                 {
                     // Over the page, not under it: a draft mark beneath the text would be hidden by

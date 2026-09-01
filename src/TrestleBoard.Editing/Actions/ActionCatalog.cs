@@ -339,6 +339,9 @@ public static class ActionCatalog
         new(ActionId.MovePageEarlier, "Move this page earlier", "Swaps it with the page before it.",
             ActionGroup.Page),
         new(ActionId.MovePageLater, "Move this page later", "Swaps it with the page after it.", ActionGroup.Page),
+        new(ActionId.ShowPageFooter, "Show page numbers at the bottom",
+            "Puts the lodge, the month and “page 3 of 6” along the bottom of every page.",
+            ActionGroup.Page),
 
         // M76 (g). The command the page rail is made of: one press, any page, instead of pressing
         // "Next page" three times to reach page four. No shortcut — the target is a page number and
@@ -743,6 +746,12 @@ public static class ActionCatalog
                         "This writing already uses the font its kind of writing normally uses."),
             ActionId.ShowFontChanges or ActionId.ShowMargins or ActionId.ShowSpelling =>
                 RequiresDocument(context),
+
+            // M78. Needs a newsletter and nothing else — not an issue date, deliberately. The line
+            // leaves out whichever of the three facts it does not have, and "page 3 of 6" on its
+            // own is still the fact a reader is most likely to be looking for. Refusing until the
+            // date is filled in would be refusing a page number because of a month.
+            ActionId.ShowPageFooter => RequiresDocument(context),
 
             // M50. Same rule as SelectAllFrames: there has to be something on the page. It is
             // deliberately NOT gated on there already being a selection — with nothing chosen,

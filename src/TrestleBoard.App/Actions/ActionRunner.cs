@@ -146,6 +146,7 @@ internal sealed class ActionRunner
             // away. Its bool is the M73(f) answer — pressing the page you are already on is a real
             // "nothing happened", and saying otherwise would be the app claiming work it did not do.
             [ActionId.GoToPage] = source => Task.FromResult(window.GoToPageFrom(source)),
+            [ActionId.ShowPageFooter] = Sync(window.TogglePageFooter),
 
             // ---- Looking at it ---------------------------------------------------------------------
             [ActionId.ZoomIn] = Sync(() => window.StepZoom(+1)),

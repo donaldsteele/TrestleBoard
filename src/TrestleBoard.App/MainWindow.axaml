@@ -392,6 +392,11 @@
                   Click="OnActionClicked" AutomationProperties.Name="Move this page earlier" />
         <MenuItem Header="Move this page _later" Tag="page.moveLater"
                   Click="OnActionClicked" AutomationProperties.Name="Move this page later" />
+        <Separator />
+        <!-- M78: every issue from the old tool had one. One wording, editable nowhere. -->
+        <MenuItem Header="Show page num_bers at the bottom" Tag="page.footer"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Show page numbers at the bottom" />
       </MenuItem>
       <!-- Top-level rather than buried in File (M12): the address book becomes one of the five
            things this app does, and the whole point of it is that a name is typed once. -->

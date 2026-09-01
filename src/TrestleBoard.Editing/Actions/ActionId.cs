@@ -263,6 +263,15 @@ public static class ActionId
     /// </summary>
     public const string GoToPage = "page.goTo";
 
+    /// <summary>
+    /// M78: the line along the bottom of every page — the lodge, the issue, and "page 3 of 6".
+    ///
+    /// <para>A toggle over the whole newsletter rather than the current page: a cover with a footer
+    /// and inside pages without one looks like a mistake, and nobody asked for the two to differ.
+    /// Every fact it prints is already known, so there is nothing to fill in.</para>
+    /// </summary>
+    public const string ShowPageFooter = "page.footer";
+
     // ---- Looking at it ------------------------------------------------------------------------
     public const string ZoomIn = "view.zoomIn";
     public const string ZoomOut = "view.zoomOut";
