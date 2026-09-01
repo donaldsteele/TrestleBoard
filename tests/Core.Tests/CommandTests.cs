@@ -99,6 +99,9 @@ public sealed class CommandTests
         // M79. The style definition is added AND the block is pointed at it in one command, so one
         // Ctrl+Z takes both back — a split would leave a style behind that nothing refers to.
         ["SetFrameLook.Border"] = _ => new SetFrameLookCommand("text-1", border: true, shade: false),
+
+        // M81. Position and size only — a locked block is still chosen, typed into and deleted.
+        ["SetBlockLocked"] = _ => new SetBlockLockedCommand("text-1", locked: true),
     };
 
     [Theory]

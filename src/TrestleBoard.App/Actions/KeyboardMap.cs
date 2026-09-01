@@ -100,6 +100,9 @@ internal static class KeyboardMap
         // advertise it, and it could not be refused with a reason like every other command. Both
         // keys reach a frame the same way now.
         new(Key.Back, KeyModifiers.None, ActionId.DeleteFrame, KeyScope.WhileNotTyping),
+        // M81. Ctrl+D is the gesture every publishing program uses for "make another like this",
+        // and it was free. Scoped away from typing, where D belongs to the caret.
+        new(Key.D, Ctrl, ActionId.Duplicate, KeyScope.WhileNotTyping),
         new(Key.E, CtrlShift, ActionId.EditWidget),
         new(Key.G, CtrlShift, ActionId.EditWidgetList),
         new(Key.Y, CtrlShift, ActionId.FitToContents),

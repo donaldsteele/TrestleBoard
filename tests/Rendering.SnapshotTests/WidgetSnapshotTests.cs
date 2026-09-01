@@ -83,6 +83,34 @@ public sealed class WidgetSnapshotTests
         Assert.True(diff.DiffPixelCount > 0, "the on-screen prompt should be visible");
     }
 
+    /// <summary>
+    /// M81: the "not filled in yet" prompts are an on-screen nudge and must never reach anything a
+    /// reader sees — and a page saved to share is read by more people than the PDF is.
+    ///
+    /// <para>This test lives HERE rather than beside the rest of M81, because
+    /// <see cref="DocumentRenderSource.ShowEmptyPrompts"/> governs WIDGET prompts and nothing else:
+    /// the empty-picture and empty-frame hints are drawn by the canvas control, above the renderer,
+    /// and never reach an export by any route. A first version of this test used an empty picture
+    /// frame, compared two identical pictures, and passed against a renderer with no suppression in
+    /// it at all. The fixture has to be one that can actually draw the thing being suppressed.</para>
+    /// </summary>
+    [Fact]
+    public void APageSavedToShareCarriesNoEmptyWidgetPrompts()
+    {
+        Document document = EmptyWidgetDocument();
+        using DocumentRenderSource source = DocumentRenderSource.Create(
+            document, new Dictionary<string, byte[]>(), SnapshotInfra.Store.Value, options: null, widgets: Widgets);
+
+        source.ShowEmptyPrompts = false;
+        byte[] withoutPrompts = source.RenderPageToJpeg(0);
+
+        // With the editor showing prompts, the shared picture must be the same bytes: the export
+        // turns them off for itself and puts the setting back.
+        source.ShowEmptyPrompts = true;
+        Assert.Equal(withoutPrompts, source.RenderPageToJpeg(0));
+        Assert.True(source.ShowEmptyPrompts, "asking for a picture must not change what the editor shows");
+    }
+
     [Fact]
     public void RenderingIsStableAcrossRepeatedPaints()
     {

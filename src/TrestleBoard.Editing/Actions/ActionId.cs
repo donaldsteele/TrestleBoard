@@ -60,6 +60,12 @@ public static class ActionId
     public const string ExportPdf = "newsletter.exportPdf";
 
     /// <summary>
+    /// M81: one page as a picture, for the lodge's Facebook group or a text message. The PDF is
+    /// what goes in the email; a picture is what goes anywhere else.
+    /// </summary>
+    public const string ExportPagePicture = "newsletter.exportPicture";
+
+    /// <summary>
     /// M53: the same PDF with "DRAFT — not for sending" across every page. Before this, the copy
     /// the Master reviewed and the copy sixty people received differed only in the sender's memory.
     /// </summary>
@@ -324,6 +330,15 @@ public static class ActionId
     /// no command ever reached it, so "put a box round the fish-fry notice" — one of the two
     /// layout requests a committee actually makes — could not be done at all.
     /// </summary>
+    /// <summary>
+    /// M81: a copy of the chosen thing, a little down and across. How a novice makes a second event
+    /// card without running the wizard again — copy has meant WORDS since M4.
+    /// </summary>
+    public const string Duplicate = "item.duplicate";
+
+    /// <summary>M81: the chosen thing stays where it is. Position and size only.</summary>
+    public const string ToggleLocked = "item.lock";
+
     public const string ToggleBorder = "item.border";
 
     /// <summary>M79: a pale tint behind the chosen box, to mark a notice.</summary>

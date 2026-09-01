@@ -540,6 +540,64 @@ public sealed class DocumentRenderSource : IDisposable
     }
 
     /// <summary>
+    /// One page as a JPEG, for sharing (PLAN.md §11 M81).
+    ///
+    /// <para><b>The lodge's Facebook group and a text message are how half the lodge actually sees
+    /// the notice.</b> A PDF is what goes in the email; a picture is what goes anywhere else, and
+    /// until M81 the app could make one only for its own thumbnails.</para>
+    ///
+    /// <para>JPEG rather than PNG, at 150 dots per inch. A page of text as a PNG is several
+    /// megabytes and some services refuse it; the same page as a JPEG is a few hundred kilobytes
+    /// and reads identically on a telephone. 150 is twice what a screen shows and half what the
+    /// PDF prints — enough to read, small enough to send.</para>
+    ///
+    /// <para>The SAME renderer as the canvas and the PDF, so what is shared is what was seen.</para>
+    /// </summary>
+    /// <param name="quality">0–100. The default is where JPEG stops visibly hurting text.</param>
+    public byte[] RenderPageToJpeg(int pageIndex, float dpi = SharingDpi, int quality = 88)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(dpi);
+
+        // A point is a seventy-second of an inch, which is what makes this arithmetic and not a
+        // guess: at 72 dpi one page point is one pixel.
+        float scale = dpi / 72f;
+        SizePt size = GetPageSize(pageIndex);
+        var info = new SKImageInfo(
+            Math.Max(1, (int)MathF.Ceiling(size.Width * scale)),
+            Math.Max(1, (int)MathF.Ceiling(size.Height * scale)),
+            SKColorType.Rgba8888,
+            SKAlphaType.Premul,
+            SKColorSpace.CreateSrgb());
+
+        using SKSurface surface = SKSurface.Create(info)
+            ?? throw new InvalidOperationException("Could not create a surface for the picture.");
+        surface.Canvas.Scale(scale);
+
+        // The prompts are an on-screen nudge and must never reach anything a reader sees — the same
+        // rule the PDF exporter follows, for the same reason.
+        bool prompts = ShowEmptyPrompts;
+        ShowEmptyPrompts = false;
+        try
+        {
+            RenderPage(surface.Canvas, pageIndex);
+            surface.Canvas.Flush();
+        }
+        finally
+        {
+            ShowEmptyPrompts = prompts;
+        }
+
+        using SKImage image = surface.Snapshot();
+        using SKData data = image.Encode(SKEncodedImageFormat.Jpeg, quality)
+            ?? throw new InvalidOperationException("Could not make a picture of that page.");
+        return data.ToArray();
+    }
+
+    /// <summary>Dots per inch a shared page is made at. See <see cref="RenderPageToJpeg"/>.</summary>
+    public const float SharingDpi = 150f;
+
+    /// <summary>
     /// What a screen reader should say about each block on a page, in stacking order
     /// (docs/M9-spec.md §5). Names come from the SAME data the page prints — a photo's alt text, a
     /// widget's display name, the story's own first words — so they cannot drift from what is there.

@@ -409,6 +409,15 @@ public sealed class FrameEditorController
             return false;
         }
 
+        // M81: a block being kept in place refuses the gesture and SAYS SO. A drag that silently
+        // does nothing is the M11 failure — the user tries harder, then decides the app is broken.
+        if (SelectionIsLocked)
+        {
+            StatusMessage = LockedMessage;
+            Raise();
+            return false;
+        }
+
         _dragHandle = handle;
         _dragStartRect = rect;
         _previewRect = rect;
@@ -526,6 +535,15 @@ public sealed class FrameEditorController
             return false;
         }
 
+        // The keyboard route is refused for the same reason as the mouse one, and by the same
+        // sentence. Two ways in, one rule (M28's standard).
+        if (SelectionIsLocked)
+        {
+            StatusMessage = LockedMessage;
+            Raise();
+            return false;
+        }
+
         float step = large ? LargeNudgeStepPt : NudgeStepPt;
         _session.Execute(new MoveBlockCommand(
             _selectedBlockId, FrameGeometry.Translate(rect, dxSteps * step, dySteps * step)));
@@ -538,6 +556,13 @@ public sealed class FrameEditorController
     {
         if (_selectedBlockId is null || IsDragging || SelectedRect is not { } rect)
         {
+            return false;
+        }
+
+        if (SelectionIsLocked)
+        {
+            StatusMessage = LockedMessage;
+            Raise();
             return false;
         }
 
@@ -648,6 +673,212 @@ public sealed class FrameEditorController
         return blockId;
     }
 
+
+
+    // ---- Make another like this, and keep this where it is (PLAN.md §11 M81) --------------------
+
+    /// <summary>How far down and across a copy lands, so it visibly IS a copy.</summary>
+    private const float CopyOffsetPt = 24f;
+
+    /// <summary>
+    /// What a locked block says when it is dragged. It names the way out, which is the M11 rule:
+    /// nothing in this app becomes unavailable without saying why and what to do instead.
+    /// </summary>
+    internal const string LockedMessage =
+        "This is being kept in place. Choose “Let it move” to move it.";
+
+    /// <summary>Whether the chosen block is being kept in place.</summary>
+    public bool SelectionIsLocked =>
+        _selectedBlockId is { } id
+        && _session.Document.TryFindBlock(id, out _, out Block? block)
+        && block.Locked;
+
+    /// <summary>
+    /// Keeps the chosen block where it is, or lets it move again (M81).
+    /// </summary>
+    /// <returns>False when nothing is chosen.</returns>
+    public bool ToggleLocked()
+    {
+        if (_selectedBlockId is not { } blockId
+            || !_session.Document.TryFindBlock(blockId, out _, out Block? block))
+        {
+            return false;
+        }
+
+        _session.Execute(new SetBlockLockedCommand(blockId, !block.Locked));
+        return true;
+    }
+
+    /// <summary>
+    /// A copy of the chosen block, a little down and across (PLAN.md §11 M81).
+    ///
+    /// <para><b>This is how a novice makes a second event card.</b> Copy has meant words since M4,
+    /// so the only way to get a second announcement box was to run the wizard again and re-answer
+    /// every question. The copy lands offset rather than on top, so it is visibly a copy rather
+    /// than a page that appears not to have changed, and it is chosen afterwards so the next
+    /// keystroke moves it.</para>
+    ///
+    /// <para><b>A linked frame copies as an UNLINKED frame holding the same writing.</b> Copying a
+    /// link would mean two frames claiming to continue the same story, which is not a thing the
+    /// flow model can mean — so the copy gets a story of its own with the same paragraphs in it,
+    /// and the caller says so.</para>
+    ///
+    /// <para><b>A picture SHARES its asset.</b> The bytes are already in the package and a second
+    /// copy of a three-megabyte photograph would double the file for no reason a reader could
+    /// see.</para>
+    /// </summary>
+    /// <returns>The copy's id, or null when nothing was chosen.</returns>
+    public string? DuplicateSelected()
+    {
+        if (_selectedBlockId is not { } blockId
+            || !_session.Document.TryFindBlock(blockId, out Page? page, out Block? original))
+        {
+            return null;
+        }
+
+        Document document = _session.Document;
+        string copyId = NextId("copy", id => document.Pages.Any(p => p.Blocks.Any(b => b.Id == id)));
+        PageMaster master = document.GetMaster(page.MasterRef);
+
+        // Kept on the paper. A copy that landed off the edge would be a copy the user cannot see,
+        // and "nothing happened" is the one outcome this command must never produce.
+        RectPt from = original.FrameRect;
+        var rect = new RectPt(
+            Math.Min(from.X + CopyOffsetPt, Math.Max(0f, master.Size.Width - from.Width)),
+            Math.Min(from.Y + CopyOffsetPt, Math.Max(0f, master.Size.Height - from.Height)),
+            from.Width,
+            from.Height);
+
+        int zOrder = page.Blocks.Count == 0 ? 0 : page.Blocks.Max(b => b.ZOrder) + 1;
+        var children = new List<IDocumentCommand>();
+        Block copy;
+
+        switch (original)
+        {
+            case TextBlock text:
+            {
+                // Its own story, holding the same paragraphs. Never the same story: two blocks on
+                // one story is what a LINK is, and a copy is not a continuation.
+                string storyId = NextId("story", id => document.Stories.Any(s => s.Id == id));
+                var story = new Story { Id = storyId };
+                if (document.TryGetStory(text.StoryRef, out Story? source))
+                {
+                    story.Paragraphs.AddRange(source.Paragraphs.Select(CopyParagraph));
+                }
+
+                children.Add(new AddStoryCommand(story));
+                copy = new TextBlock
+                {
+                    Id = copyId,
+                    StoryRef = storyId,
+                    ColumnCount = text.ColumnCount,
+                    VerticalAlign = text.VerticalAlign,
+
+                    // Deliberately NOT copied: a copy continues nothing.
+                    LinkNext = null,
+                };
+                break;
+            }
+
+            case ImageFrame image:
+                copy = new ImageFrame
+                {
+                    Id = copyId,
+                    AssetRef = image.AssetRef,
+                    Recipe = image.Recipe.Clone(),
+                    Fit = image.Fit,
+                    Caption = image.Caption,
+                    AltText = image.AltText,
+                    SourcePdfAssetRef = image.SourcePdfAssetRef,
+                    SourcePdfPage = image.SourcePdfPage,
+                };
+                break;
+
+            case WidgetBlock widget:
+                copy = new WidgetBlock
+                {
+                    Id = copyId,
+                    WidgetType = widget.WidgetType,
+                    DataVersion = widget.DataVersion,
+                    Data = widget.Data,
+                    TableStyleRef = widget.TableStyleRef,
+                };
+                break;
+
+            case VectorBlock vector:
+                copy = new VectorBlock
+                {
+                    Id = copyId,
+                    ViewBoxWidth = vector.ViewBoxWidth,
+                    ViewBoxHeight = vector.ViewBoxHeight,
+                    Parts = [.. vector.Parts.Select(part => new VectorPart
+                    {
+                        PathData = part.PathData,
+                        StrokeWidth = part.StrokeWidth,
+                    })],
+                    InkArgb = vector.InkArgb,
+                    AltText = vector.AltText,
+                    Caption = vector.Caption,
+                    EmblemId = vector.EmblemId,
+                    EmblemFingerprint = vector.EmblemFingerprint,
+                };
+                break;
+
+            case ShapeBlock shape:
+                copy = new ShapeBlock
+                {
+                    Id = copyId,
+                    Kind = shape.Kind,
+                    StrokeArgb = shape.StrokeArgb,
+                    StrokeWidthPt = shape.StrokeWidthPt,
+                    FillArgb = shape.FillArgb,
+                };
+                break;
+
+            default:
+                // A block kind nobody wired up must not be silently half-copied. M72's lesson: a
+                // new type that "appears to work" while doing the wrong thing is worse than one
+                // that refuses.
+                return null;
+        }
+
+        copy.FrameRect = rect;
+        copy.ZOrder = zOrder;
+        copy.WrapMode = original.WrapMode;
+        copy.WrapMarginPt = original.WrapMarginPt;
+        copy.FrameStyleRef = original.FrameStyleRef;
+
+        // Deliberately NOT copied: a copy the user has just asked for is a copy they are about to
+        // move, and one that arrived pinned would refuse the very next thing they do.
+        copy.Locked = false;
+
+        children.Add(new AddBlockCommand(page.Id, copy));
+        _session.Execute(new CompositeCommand(
+            "Make another like this",
+            new ChangeScope(ChangeKind.PageStructure, PageId: page.Id, BlockId: copyId),
+            children));
+
+        Select(copyId);
+        return copyId;
+    }
+
+    /// <summary>Whether the chosen block was continuing its writing somewhere else — which a copy
+    /// cannot do, so the shell says so.</summary>
+    public bool SelectionWasLinked =>
+        _selectedBlockId is { } id
+        && _session.Document.TryFindBlock(id, out _, out Block? block)
+        && block is TextBlock { LinkNext: not null };
+
+    private static StoryParagraph CopyParagraph(StoryParagraph paragraph) => new()
+    {
+        ParagraphStyleRef = paragraph.ParagraphStyleRef,
+        ListKind = paragraph.ListKind,
+        Runs = [.. paragraph.Runs.Select(run => new StoryRun
+        {
+            Text = run.Text,
+            CharacterStyleRef = run.CharacterStyleRef,
+        })],
+    };
 
     // ---- Borders, shading and a line across the page (PLAN.md §11 M79) -------------------------
 

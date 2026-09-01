@@ -151,6 +151,37 @@ public sealed class PageLookTests
         Assert.Equal(drawn, DocumentSnapshotTests.RenderPagePng(source, 0));
     }
 
+    // ---- One page as a picture (M81) --------------------------------------------------------------
+
+    /// <summary>
+    /// <b>A JPEG, not a PNG, and not the full print resolution.</b> A page of text as a PNG is
+    /// several megabytes and some services refuse it; the same page as a JPEG at 150 dots per inch
+    /// is a few hundred kilobytes and reads identically on a telephone.
+    /// </summary>
+    [Fact]
+    public void ASharedPageIsAJpegAtTheSharingSize()
+    {
+        TboardPackage package = SampleDocument.CreatePackage(DocumentSnapshotTests.TestPhotoPng());
+        using DocumentRenderSource source =
+            DocumentRenderSource.Create(package.Document, package.Assets, SnapshotInfra.Store.Value);
+
+        byte[] jpeg = source.RenderPageToJpeg(0);
+
+        Assert.Equal(
+            TrestleBoard.Imaging.PictureFormatKind.Jpeg,
+            TrestleBoard.Imaging.PictureFormat.Sniff(jpeg));
+
+        using SKBitmap decoded = SKBitmap.Decode(jpeg);
+        Core.Model.SizePt page = source.GetPageSize(0);
+        float expected = DocumentRenderSource.SharingDpi / 72f;
+
+        Assert.Equal((int)MathF.Ceiling(page.Width * expected), decoded.Width);
+        Assert.Equal((int)MathF.Ceiling(page.Height * expected), decoded.Height);
+
+        // Bigger than a thumbnail, smaller than the print raster — the point of the whole choice.
+        Assert.True(decoded.Width > (int)page.Width, "a shared page must be sharper than the screen");
+    }
+
     private static byte[] Look(Document document, DocumentRenderSource source, bool border, bool shade)
     {
         new SetFrameLookCommand("block-body-1", border, shade).Apply(document);

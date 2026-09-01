@@ -226,6 +226,12 @@ internal static class ActionIcons
         // a small grey rectangle — which is what an icon-less action already looks like. The words
         // carry it; the page shows the result the moment it is pressed.
         [ActionId.AddRule] = "the result is visible on the page; a glyph would restate the words",
+
+        // M81. All three are read as words: two are verbs about the chosen thing and the third is
+        // a File-menu export beside the others, none of which carries a glyph either.
+        [ActionId.Duplicate] = "a verb about the chosen thing, read as words",
+        [ActionId.ToggleLocked] = "a verb about the chosen thing, read as words",
+        [ActionId.ExportPagePicture] = "an export beside the others, none of which carries a glyph",
         [ActionId.ToggleBorder] = "the result is visible on the page; a glyph would restate the words",
         [ActionId.ToggleShade] = "the result is visible on the page; a glyph would restate the words",
 

@@ -48,6 +48,18 @@ internal static class IssueNaming
     /// What the PDF says about itself in its own properties, which travels with every copy the
     /// lodge receives.
     /// </summary>
+    /// <summary>
+    /// What a shared page is called (M81): the issue's own stem with the page number after it, so a
+    /// folder of them sorts and a person can tell them apart at a glance.
+    /// </summary>
+    internal static string PagePictureName(Document document, int pageNumber)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        return string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"{FileStem(document.Metadata)} page {pageNumber}.jpg");
+    }
+
     internal static string PdfSubject(DocumentMetadata metadata)
     {
         ArgumentNullException.ThrowIfNull(metadata);

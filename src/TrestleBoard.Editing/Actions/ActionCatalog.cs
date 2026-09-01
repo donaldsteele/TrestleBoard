@@ -117,6 +117,14 @@ public static class ActionCatalog
         // what's-next card is for.
         new(ActionId.ExportPdf, "Make the PDF…", "Makes the file you email to the lodge.",
             ActionGroup.Newsletter, "Ctrl+E", PrimaryRank: 1),
+        // M81. NOT "Save a page as a picture", which was the first wording: the help index ranks a
+        // command's own title above everything else, so that title beat "Insert a picture" for
+        // somebody typing the single word "picture" — which means putting a photograph ON the page
+        // nine times out of ten. The word "picture" belongs to that command. This one says what it
+        // is FOR, and its description still carries the word for anybody searching the sentence.
+        new(ActionId.ExportPagePicture, "Save a page to share…",
+            "Makes a picture of one page, to put on the lodge’s page or send in a message.",
+            ActionGroup.Newsletter),
         new(ActionId.ExportDraftPdf, "Make a draft copy…",
             "Makes a PDF with DRAFT across every page, for the Master to read before you send it.",
             ActionGroup.Newsletter),
@@ -219,6 +227,12 @@ public static class ActionCatalog
         // the standing answer to "what are you here to add" is somewhere to write.
         new(ActionId.AddRule, "A line across the page",
             "Puts a straight line right across, under whatever you have chosen.", ActionGroup.Insert),
+        new(ActionId.Duplicate, "Make another like this",
+            "Puts a copy of the chosen thing on the page, just below it.",
+            ActionGroup.Item, "Ctrl+D"),
+        new(ActionId.ToggleLocked, "Keep it where it is",
+            "Stops it being moved or resized by accident. You can still change what it says.",
+            ActionGroup.Item),
         new(ActionId.ToggleBorder, "Put a border round it",
             "Draws a thin line round the edge of the chosen box.", ActionGroup.Item),
         new(ActionId.ToggleShade, "Shade it",
@@ -902,6 +916,17 @@ public static class ActionCatalog
             ActionId.DismissCropNotice => context.PictureCropIsStale
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(NeedsPicture),
+
+            // ---- Make another, and keep it where it is (M81) ---------------------------------------
+            // Both act on a chosen block of any kind, for the same reason the two M79 verbs do.
+            ActionId.Duplicate or ActionId.ToggleLocked => context.HasFrameSelection
+                ? ActionAvailability.Available
+                : ActionAvailability.NotApplicable(ChooseSomething),
+
+            // M81: a picture of a page needs a page, and nothing else. NOT gated on the issue date
+            // — a cover somebody wants to put on the lodge's page is a cover whether or not the
+            // month has been filled in yet.
+            ActionId.ExportPagePicture => RequiresDocument(context),
 
             // ---- Borders, shading and a line across the page (M79) ---------------------------------
             // Both act on a chosen block of any kind. A bordered photograph and a bordered

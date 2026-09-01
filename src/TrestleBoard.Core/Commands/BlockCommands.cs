@@ -408,3 +408,39 @@ public sealed class SetPictureWordsCommand : IDocumentCommand
     /// </summary>
     public bool TryMerge(IDocumentCommand newer) => false;
 }
+
+/// <summary>
+/// Keeps a block where it is, or lets it move again (M81).
+///
+/// <para>Position and size only — see <see cref="Block.Locked"/> for why that is the whole of it.
+/// A one-field command with a plain description, so the Edit menu reads "Undo keeping it in
+/// place" rather than "Undo block change".</para>
+/// </summary>
+public sealed class SetBlockLockedCommand(string blockId, bool locked) : IDocumentCommand
+{
+    private bool _wasLocked;
+
+    public string BlockId { get; } = blockId;
+
+    public bool Locked { get; } = locked;
+
+    public string Description => Locked ? "Keep it in place" : "Let it move";
+
+    public ChangeScope Scope => new(ChangeKind.BlockContent, BlockId: BlockId);
+
+    public void Apply(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        (_, Block block) = document.FindBlock(BlockId);
+        _wasLocked = block.Locked;
+        block.Locked = Locked;
+    }
+
+    public void Revert(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        document.FindBlock(BlockId).Block.Locked = _wasLocked;
+    }
+
+    public bool TryMerge(IDocumentCommand newer) => false;
+}

@@ -35,6 +35,15 @@ public static class HelpSearchWords
 
         // M79. Nobody types "frame style". They type the shape they can see in their head.
         [ActionId.AddRule] = ["line", "rule", "divider", "underline the heading", "separator", "bar"],
+
+        // M81. "Duplicate" is a word from another program; what people say is "another one".
+        [ActionId.Duplicate] = ["copy", "duplicate", "another one", "same again", "second one"],
+        [ActionId.ToggleLocked] = ["lock", "keep it still", "stop it moving", "pin", "fix in place"],
+        // Deliberately NOT the bare word "picture": the help index ranks by synonym, and this
+        // entry outranked "Insert a picture" for somebody typing the one word that means putting a
+        // photograph on the page. Every word here is one that only means SHARING.
+        [ActionId.ExportPagePicture] =
+            ["facebook", "share", "jpeg", "screenshot", "post it", "text message", "social media"],
         [ActionId.ToggleBorder] = ["border", "box", "outline", "frame", "line round it", "boxed notice"],
         [ActionId.ToggleShade] = ["shade", "shading", "background", "grey box", "highlight", "tint"],
 

@@ -55,6 +55,19 @@ public abstract class Block
 
     public string? FrameStyleRef { get; set; }
 
+    /// <summary>
+    /// Whether this block stays where it is (M81).
+    ///
+    /// <para><b>Position and size only.</b> A locked block is still chosen, still typed into, still
+    /// captioned, still deleted — what it refuses is being dragged and being resized, which are the
+    /// two things a tremor does by accident on a page somebody has finished laying out.</para>
+    ///
+    /// <para><b>Nothing ships locked.</b> A template that arrived with something pinned would
+    /// produce a "why will it not move" telephone call, which is worse than the stray drag this
+    /// exists to prevent — so it is false everywhere until a person asks for it.</para>
+    /// </summary>
+    public bool Locked { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtraProperties { get; set; }
 }

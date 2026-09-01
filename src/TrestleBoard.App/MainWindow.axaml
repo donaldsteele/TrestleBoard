@@ -80,6 +80,10 @@
         <MenuItem Header="Make a _draft copy…" Tag="newsletter.exportDraft"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Make a draft copy for the Master to read" />
+        <!-- M81: the lodge's Facebook group and a text message are how half the lodge sees it. -->
+        <MenuItem Header="Save a page to s_hare…" Tag="newsletter.exportPicture"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Save a page to share as a picture" />
         <MenuItem Header="Pr_int it" Tag="newsletter.print"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Print the PDF you just made" />
@@ -303,6 +307,10 @@
         <MenuItem Header="Make it _fit what is in it" Tag="item.fitToContents" InputGesture="Ctrl+Shift+Y"
                   Click="OnActionClicked" AutomationProperties.Name="Make it fit what is in it" />
         <!-- M79: the two sentences a committee says out loud about a notice. -->
+        <MenuItem Header="Make _another like this" Tag="item.duplicate" InputGesture="Ctrl+D"
+                  Click="OnActionClicked" AutomationProperties.Name="Make another like this" />
+        <MenuItem Header="Kee_p it where it is" Tag="item.lock"
+                  Click="OnActionClicked" AutomationProperties.Name="Keep it where it is" />
         <MenuItem Header="P_ut a border round it" Tag="item.border"
                   Click="OnActionClicked" AutomationProperties.Name="Put a border round it" />
         <MenuItem Header="S_hade it" Tag="item.shade"

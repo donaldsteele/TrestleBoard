@@ -4913,6 +4913,108 @@ public partial class MainWindow : Window
     /// stopped, so the user was left looking at an empty rectangle with no sign that typing was
     /// what to do next; the inline editor underneath has worked since M4.
     /// </summary>
+    // ---- Make another like this, and keep it where it is (PLAN.md §11 M81) ---------------------
+
+    /// <summary>
+    /// M81: a copy of the chosen thing, just below it and chosen, so the next keystroke moves it.
+    /// </summary>
+    internal void DuplicateSelected()
+    {
+        if (_frames is null)
+        {
+            return;
+        }
+
+        bool wasLinked = _frames.SelectionWasLinked;
+        _editor?.End();
+        if (_frames.DuplicateSelected() is null)
+        {
+            Announce("There is nothing chosen to make another of. Click something on the page first.");
+            return;
+        }
+
+        _source?.Invalidate(new ChangeScope(ChangeKind.PageStructure));
+        _rail.ForgetEveryThumbnail();
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+
+        // A copy of a frame that continued its writing elsewhere is NOT a continuation, and the
+        // user is told rather than left to discover it: two frames claiming to continue one story
+        // is not a thing the flow model can mean.
+        Announce(wasLinked
+            ? "There is now a copy just below it, holding the same writing. The copy does not "
+              + "continue into the next frame — it is a page of its own."
+            : "There is now a copy just below it. Drag it where you want it, or press Ctrl+Z to undo.");
+    }
+
+    /// <summary>M81: keeps the chosen thing where it is, or lets it move again.</summary>
+    internal void ToggleLocked()
+    {
+        if (_frames is null || !_frames.ToggleLocked())
+        {
+            return;
+        }
+
+        RefreshActions();
+        Announce(_frames.SelectionIsLocked
+            ? "This is now kept in place. You can still change what it says, and still delete it."
+            : "This can be moved again.");
+    }
+
+    // ---- One page as a picture (PLAN.md §11 M81) ------------------------------------------------
+
+    /// <summary>
+    /// M81: a picture of one page, for the lodge's page or a message.
+    ///
+    /// <para>The dialog says two true things rather than none: page 1 is the one people share, and
+    /// a picture carries no words a screen reader can read while the PDF still does. Neither is a
+    /// refusal — both are what somebody would want to know before sending it.</para>
+    /// </summary>
+    internal async Task<bool> ExportPageAsPictureAsync()
+    {
+        if (_source is null || _package is null)
+        {
+            return false;
+        }
+
+        int pageIndex = _pageIndex;
+        IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Save this page as a picture",
+            DefaultExtension = "jpg",
+            SuggestedFileName = Integration.IssueNaming.PagePictureName(_package.Document, pageIndex + 1),
+            FileTypeChoices = [new FilePickerFileType("Picture") { Patterns = ["*.jpg"] }],
+        });
+
+        if (file?.TryGetLocalPath() is not { } path)
+        {
+            return false;
+        }
+
+        try
+        {
+            byte[] jpeg = _source.RenderPageToJpeg(pageIndex);
+            await File.WriteAllBytesAsync(path, jpeg);
+            LastPagePictureForTest = path;
+            Announce(
+                $"Page {pageIndex + 1} was saved as {Path.GetFileName(path)}. "
+                + "A picture carries no words a screen reader can read — the PDF still does, "
+                + "so send that to anybody who needs it read out.");
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            await ShowErrorAsync(
+                "Could not save that picture",
+                "TrestleBoard could not write that file. Try somewhere else, such as your Desktop. "
+                + ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>Where the last shared page went, for the tests.</summary>
+    internal string? LastPagePictureForTest { get; private set; }
+
     // ---- Borders, shading and a line across the page (PLAN.md §11 M79) -------------------------
 
     /// <summary>M79: a thin line round the edge of the chosen box, or off again.</summary>

@@ -48,6 +48,7 @@ internal sealed class ActionRunner
             [ActionId.ShowLastYear] = Async(() => window.ShowLastYearAsync()),
             [ActionId.ExportPdf] = Async(() => window.ExportPdfAsync()),
             [ActionId.ExportDraftPdf] = Async(() => window.ExportDraftPdfAsync()),
+            [ActionId.ExportPagePicture] = Async(() => window.ExportPageAsPictureAsync()),
             [ActionId.PrintPdf] = Async(() => window.PrintTheLastPdfAsync()),
             [ActionId.SendIt] = Async(() => window.SendItAsync()),
             [ActionId.SaveAsTemplate] = Async(() => window.SaveAsTemplateAsync()),
@@ -89,6 +90,8 @@ internal sealed class ActionRunner
             // ---- Putting things on the page --------------------------------------------------------
             [ActionId.AddTextFrame] = Sync(window.AddTextFrame),
             [ActionId.AddRule] = Sync(window.AddRuleAcrossThePage),
+            [ActionId.Duplicate] = Sync(window.DuplicateSelected),
+            [ActionId.ToggleLocked] = Sync(window.ToggleLocked),
             [ActionId.ToggleBorder] = Sync(window.ToggleBorder),
             [ActionId.ToggleShade] = Sync(window.ToggleShade),
             [ActionId.InsertPhrase] = Async(() => window.InsertPhraseAsync()),
