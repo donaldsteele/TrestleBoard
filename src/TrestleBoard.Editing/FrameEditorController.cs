@@ -676,6 +676,34 @@ public sealed class FrameEditorController
 
 
 
+    /// <summary>Whether the chosen box of writing is in two columns (M83).</summary>
+    public bool SelectionIsTwoColumns =>
+        _selectedBlockId is { } id
+        && _session.Document.TryFindBlock(id, out _, out Block? block)
+        && block is Core.Model.TextBlock { ColumnCount: > 1 };
+
+    /// <summary>
+    /// Splits the chosen box of writing into two columns, or puts it back to one (M83).
+    ///
+    /// <para><b>A toggle rather than a number.</b> Two columns look "proper" and the old tool's
+    /// issues used them; every column is also another place for writing to hide, and three of them
+    /// in a letter-width frame is an inch and a half each with no hyphenation to rescue it. Two or
+    /// one is the whole of the offer, and there is no gutter to set.</para>
+    /// </summary>
+    /// <returns>False when nothing suitable is chosen.</returns>
+    public bool ToggleTwoColumns()
+    {
+        if (_selectedBlockId is not { } blockId
+            || !_session.Document.TryFindBlock(blockId, out _, out Block? block)
+            || block is not Core.Model.TextBlock text)
+        {
+            return false;
+        }
+
+        _session.Execute(new SetColumnCountCommand(blockId, text.ColumnCount > 1 ? 1 : 2));
+        return true;
+    }
+
     /// <summary>
     /// Makes the chosen box taller until the writing fits, or until it reaches the bottom margin
     /// (PLAN.md §11 M82).

@@ -245,6 +245,12 @@ public static class ActionId
     /// </summary>
     public const string GrowToFit = "flow.growToFit";
 
+    /// <summary>
+    /// M83: two columns in one box of writing, or back to one. <c>ColumnCount</c> has been in the
+    /// document model and in the layout engine's input since M1 and was always 1.
+    /// </summary>
+    public const string ToggleTwoColumns = "flow.twoColumns";
+
     // ---- Arranging ----------------------------------------------------------------------------
     public const string BringForward = "arrange.bringForward";
     public const string SendBackward = "arrange.sendBackward";

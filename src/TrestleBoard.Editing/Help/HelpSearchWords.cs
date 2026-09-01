@@ -43,6 +43,9 @@ public static class HelpSearchWords
         // M82. What somebody types is the symptom, not the cure.
         [ActionId.GrowToFit] =
             ["too long", "does not fit", "runs over", "bigger box", "taller", "more room", "cut off"],
+
+        // M83. "Columns" is in the title; these are what somebody says instead.
+        [ActionId.ToggleTwoColumns] = ["two columns", "newspaper", "side by side", "split the text"],
         // Deliberately NOT the bare word "picture": the help index ranks by synonym, and this
         // entry outranked "Insert a picture" for somebody typing the one word that means putting a
         // photograph on the page. Every word here is one that only means SHARING.

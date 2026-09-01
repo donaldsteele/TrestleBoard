@@ -4966,6 +4966,38 @@ public partial class MainWindow : Window
     /// what to do next; the inline editor underneath has worked since M4.
     /// </summary>
     /// <summary>
+    /// M83: two columns in the chosen box of writing, or back to one.
+    ///
+    /// <para>The sentence about the overset marker is not decoration. On a two-column frame the
+    /// writing runs out at the bottom of the RIGHT column, which is where nobody is looking — so
+    /// where it happens is said in words rather than left to a marker in the corner of the eye.</para>
+    /// </summary>
+    internal bool ToggleTwoColumns()
+    {
+        if (_frames is null || !_frames.ToggleTwoColumns())
+        {
+            Announce("Choose a box of writing on the page first.");
+            return false;
+        }
+
+        _source?.Invalidate(new ChangeScope(ChangeKind.BlockGeometry));
+        PageCanvas.InvalidateVisual();
+        _rail.ForgetEveryThumbnail();
+        RefreshActions();
+
+        bool twoNow = _frames.SelectionIsTwoColumns;
+        bool overset = _frames.IsSelectionOverset;
+        Announce((twoNow
+            ? "The writing now runs down two columns, filling the left one before the right."
+            : "The writing is back to one column.")
+            + (overset && twoNow
+                ? " There is still more writing than fits — it runs out at the bottom of the "
+                  + "right-hand column."
+                : string.Empty));
+        return true;
+    }
+
+    /// <summary>
     /// M82: makes the chosen box taller until the writing fits, and says which of the four things
     /// actually happened rather than "Done".
     /// </summary>

@@ -46,6 +46,54 @@ public sealed class TextLayoutEngine
     /// </summary>
     private const float MinimumLineHeightPt = 0.5f;
 
+    /// <summary>
+    /// The space between two columns (PLAN.md §11 M83). Fixed, and there is no way to change it:
+    /// a gutter is a number the committee would have to be taught to have an opinion about, and
+    /// twelve points is what looks right at every body size this app ships.
+    /// </summary>
+    public const float ColumnGutterPt = 12f;
+
+    /// <summary>
+    /// The columns a frame is laid out in, left to right (PLAN.md §11 M83).
+    ///
+    /// <para><b>A frame with one column returns its own rectangle</b>, so the single-column path
+    /// through the engine is arithmetically identical to what it was before M83 — the same rect, the
+    /// same band loop, the same output. That is what lets a milestone that touches the layout
+    /// engine move no baseline at all.</para>
+    ///
+    /// <para>Columns split the frame evenly. An uneven split would need a measurement of the
+    /// content, which this engine does not have when it decides where the columns are, and a guess
+    /// there is a guess that prints.</para>
+    /// </summary>
+    public static IReadOnlyList<FrameRect> Columns(LayoutFrame frame)
+    {
+        ArgumentNullException.ThrowIfNull(frame);
+
+        int count = Math.Max(1, frame.ColumnCount);
+        if (count == 1)
+        {
+            return [frame.Rect];
+        }
+
+        float total = frame.Rect.Right - frame.Rect.Left;
+        float width = (total - (ColumnGutterPt * (count - 1))) / count;
+        if (width <= 0f)
+        {
+            // Too narrow to divide. One column is what the user can actually read, and it is what
+            // the frame already was — refusing to lay anything out would lose their article.
+            return [frame.Rect];
+        }
+
+        var columns = new List<FrameRect>(count);
+        for (int i = 0; i < count; i++)
+        {
+            float left = frame.Rect.Left + (i * (width + ColumnGutterPt));
+            columns.Add(new FrameRect(left, frame.Rect.Top, left + width, frame.Rect.Bottom));
+        }
+
+        return columns;
+    }
+
     private readonly FontStore _fonts;
     private readonly LayoutOptions _options;
     private readonly Dictionary<(FontKey Key, float SizePt), FontMetrics> _metricsCache = new();
@@ -72,7 +120,12 @@ public sealed class TextLayoutEngine
         {
             LayoutFrame frame = request.Frames[frameIdx];
             var lines = new List<LineBox>();
-            float y = frame.Rect.Top;
+
+            // M83: one pass per column, left to right, filling each before starting the next. With
+            // one column this is the loop that has always been here, over the frame's own rect.
+            foreach (FrameRect column in Columns(frame))
+            {
+            float y = column.Top;
             bool frameFull = false;
 
             while (!frameFull && paraIdx < plans.Count)
@@ -97,13 +150,13 @@ public sealed class TextLayoutEngine
                     var emptySegments = new List<FloatInterval>();
                     while (true)
                     {
-                        if (y + para.LineHeight > frame.Rect.Bottom + Epsilon)
+                        if (y + para.LineHeight > column.Bottom + Epsilon)
                         {
                             frameFull = true;
                             break;
                         }
 
-                        emptySegments = ComputeSegments(frame, y, y + para.LineHeight, emptyMinWidth);
+                        emptySegments = ComputeSegments(column, frame.Exclusions, y, y + para.LineHeight, emptyMinWidth);
                         if (emptySegments.Count > 0)
                         {
                             break;
@@ -140,13 +193,13 @@ public sealed class TextLayoutEngine
                 var segments = new List<FloatInterval>();
                 while (true)
                 {
-                    if (y + para.LineHeight > frame.Rect.Bottom + Epsilon)
+                    if (y + para.LineHeight > column.Bottom + Epsilon)
                     {
                         frameFull = true;
                         break;
                     }
 
-                    segments = ComputeSegments(frame, y, y + para.LineHeight, minSegWidth);
+                    segments = ComputeSegments(column, frame.Exclusions, y, y + para.LineHeight, minSegWidth);
                     if (segments.Count > 0)
                     {
                         break;
@@ -170,6 +223,8 @@ public sealed class TextLayoutEngine
                     paraIdx++;
                     wordIdx = 0;
                 }
+            }
+
             }
 
             // Orphan control runs after the frame is full and never on the last frame in the chain,
@@ -429,10 +484,22 @@ public sealed class TextLayoutEngine
 
     // ---- Band segments (PLAN.md §3 exclusion → segment algorithm) --------------------------
 
-    private static List<FloatInterval> ComputeSegments(LayoutFrame frame, float bandTop, float bandBottom, float minWidth)
+    /// <summary>
+    /// The usable stretches of one band, given what is in the way.
+    ///
+    /// <para>M83 split the rectangle out from the frame: a column is a narrower rectangle inside
+    /// the same frame, wrapping around the same photographs. Everything else here is unchanged, and
+    /// a single-column frame passes its own rect, so the arithmetic is what it always was.</para>
+    /// </summary>
+    private static List<FloatInterval> ComputeSegments(
+        FrameRect rect,
+        IReadOnlyList<ExclusionRect> exclusions,
+        float bandTop,
+        float bandBottom,
+        float minWidth)
     {
-        var intervals = new List<FloatInterval> { new(frame.Rect.Left, frame.Rect.Right) };
-        foreach (ExclusionRect exclusion in frame.Exclusions)
+        var intervals = new List<FloatInterval> { new(rect.Left, rect.Right) };
+        foreach (ExclusionRect exclusion in exclusions)
         {
             FrameRect r = exclusion.Rect;
             float left = r.Left - exclusion.WrapMargin;

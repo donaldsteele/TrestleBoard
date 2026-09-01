@@ -102,6 +102,10 @@ public sealed class CommandTests
 
         // M81. Position and size only — a locked block is still chosen, typed into and deleted.
         ["SetBlockLocked"] = _ => new SetBlockLockedCommand("text-1", locked: true),
+
+        // M83. Geometry rather than content: nothing about the words changed, only the shape they
+        // flow in.
+        ["SetColumnCount"] = _ => new SetColumnCountCommand("text-1", 2),
     };
 
     [Theory]

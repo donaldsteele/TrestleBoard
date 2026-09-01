@@ -115,6 +115,44 @@ public sealed class SetStoryRefCommand(string blockId, string storyRef) : IDocum
 }
 
 /// <summary>
+/// Splits a box of writing into two columns, or puts it back to one (M83).
+///
+/// <para>Two or one, and nothing else. Three columns in a letter-width frame gives about an inch
+/// and a half of text each, which is a column of hyphens waiting to happen — and this app has no
+/// hyphenation (PLAN.md §1 non-goals). Every column is another place for writing to hide, which is
+/// why the answer is a toggle rather than a number.</para>
+/// </summary>
+public sealed class SetColumnCountCommand(string blockId, int columns) : IDocumentCommand
+{
+    private int _oldColumns;
+
+    public string BlockId { get; } = blockId;
+
+    public int Columns { get; } = Math.Clamp(columns, 1, 2);
+
+    public string Description => Columns > 1 ? "Split into two columns" : "Back to one column";
+
+    // Geometry rather than content: nothing about the words changed, only the shape they flow in.
+    public ChangeScope Scope => new(ChangeKind.BlockGeometry, BlockId: BlockId);
+
+    public void Apply(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        var block = (TextBlock)document.FindBlock(BlockId).Block;
+        _oldColumns = block.ColumnCount;
+        block.ColumnCount = Columns;
+    }
+
+    public void Revert(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ((TextBlock)document.FindBlock(BlockId).Block).ColumnCount = _oldColumns;
+    }
+
+    public bool TryMerge(IDocumentCommand newer) => false;
+}
+
+/// <summary>
 /// Puts a border or shading on a frame, or takes it off (M79).
 ///
 /// <para>Two facts, one command, one undo step: the style definition is added to the sheet if it is
