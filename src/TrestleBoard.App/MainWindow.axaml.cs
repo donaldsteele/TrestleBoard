@@ -4419,6 +4419,12 @@ public partial class MainWindow : Window
             _findWindow = new FindWindow(_find);
             _findWindow.Closed += (_, _) => _findWindow = null;
 
+            // M85: the window asks; the shell answers. FindWindow knows nothing about folders and
+            // nothing about files, which is what keeps the archive search out of the one control
+            // that has to keep working when there is no archive at all.
+            _findWindow.SearchTheArchive += () => _ = LookInEarlierNewslettersAsync();
+            _findWindow.OpenTheIssue += hit => _ = OpenDocumentFromPathAsync(hit.Path);
+
             // Not modal: this window exists to point at the page behind it (see FindWindow's own
             // header), which is why M21 had to make the text session survive losing focus first.
             _findWindow.Show(this);
@@ -4427,6 +4433,59 @@ public partial class MainWindow : Window
         _findWindow.SetMode(replacing);
         _findWindow.Activate();
     }
+
+    /// <summary>
+    /// M85: looks through the folder of old newsletters for the words in the find box.
+    ///
+    /// <para>"When did we last mention the fish fry?" is a real question and a quarterly one, and
+    /// until now the only way to answer it was to open eleven files one at a time.</para>
+    ///
+    /// <para><b>It says it is working before it starts.</b> Reading a folder of newsletters takes a
+    /// moment, and a window that goes quiet for two seconds has told this audience that it has
+    /// broken. The sentence goes up first, then the yield, then the work.</para>
+    /// </summary>
+    internal async Task<bool> LookInEarlierNewslettersAsync()
+    {
+        if (_findWindow is not { } window)
+        {
+            return false;
+        }
+
+        string words = window.WordsToLookFor;
+        bool matchCase = window.MatchCase;
+
+        // Asked once and remembered, exactly as M59 does — and through the same setting, because a
+        // committee has one folder of old newsletters rather than one per feature.
+        if (string.IsNullOrWhiteSpace(_settings.OldIssuesFolder))
+        {
+            string? chosen = OldIssuesFolderAnswerForTest ?? await AskForTheOldIssuesFolderAsync();
+            if (string.IsNullOrWhiteSpace(chosen))
+            {
+                window.ShowArchiveResults(new Integration.ArchiveSearchResult(
+                    [], 0, "TrestleBoard needs to know where you keep your old newsletters first."));
+                return false;
+            }
+
+            _settings = _settings with { OldIssuesFolder = chosen };
+            _settings.Save();
+        }
+
+        window.SayTheArchiveIsBeingRead();
+
+        // Off the UI thread: this opens and parses every newsletter in the folder, and doing that
+        // on the dispatcher is how an app stops repainting.
+        string? folder = _settings.OldIssuesFolder;
+        string? except = DocumentPath;
+        Integration.ArchiveSearchResult result = await Task.Run(
+            () => Integration.ArchiveSearch.Search(folder, words, matchCase, except));
+
+        LastArchiveSearchForTest = result;
+        window.ShowArchiveResults(result);
+        return result.Hits.Count > 0;
+    }
+
+    /// <summary>What the last archive search found, for the tests.</summary>
+    internal Integration.ArchiveSearchResult? LastArchiveSearchForTest { get; private set; }
 
     internal FindController? FindForTest => _find;
 

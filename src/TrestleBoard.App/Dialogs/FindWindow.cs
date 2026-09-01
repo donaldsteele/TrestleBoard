@@ -30,6 +30,11 @@ public sealed class FindWindow : Window
     private readonly Button _replace;
     private readonly Button _replaceAll;
 
+    /// <summary>M85: the results from the archive, hidden until there are some.</summary>
+    private readonly ListBox _archiveResults;
+
+    private readonly Button _searchArchive;
+
     public FindWindow(FindController find)
     {
         _find = find ?? throw new ArgumentNullException(nameof(find));
@@ -118,6 +123,31 @@ public sealed class FindWindow : Window
         Avalonia.Automation.AutomationProperties.SetName(close, "Close the find window");
         close.Click += (_, _) => Close();
 
+        // M85. "When did we last mention the fish fry?" is a real question and a quarterly one,
+        // and until now the only way to answer it was to open eleven files one at a time.
+        _searchArchive = MakeButton("Look in earlier newsletters too", () => SearchTheArchive?.Invoke());
+        Avalonia.Automation.AutomationProperties.SetName(
+            _searchArchive, "Look for these words in earlier newsletters too");
+
+        _archiveResults = new ListBox
+        {
+            FontSize = 16,
+            MaxHeight = 220,
+            IsVisible = false,
+        };
+        Avalonia.Automation.AutomationProperties.SetName(
+            _archiveResults, "What was found in earlier newsletters");
+
+        // Double-click opens the issue the words were found in, which is the one thing anybody
+        // wants to do with a result.
+        _archiveResults.DoubleTapped += (_, _) =>
+        {
+            if (_archiveResults.SelectedItem is ArchiveHitRow row)
+            {
+                OpenTheIssue?.Invoke(row.Hit);
+            }
+        };
+
         _replaceRow = new StackPanel
         {
             Spacing = 8,
@@ -139,12 +169,13 @@ public sealed class FindWindow : Window
                 _replaceRow,
                 _matchCase,
                 _message,
+                _archiveResults,
                 new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
                     Spacing = 12,
                     HorizontalAlignment = HorizontalAlignment.Right,
-                    Children = { close, _replaceAll, _replace, findNext },
+                    Children = { close, _searchArchive, _replaceAll, _replace, findNext },
                 },
             },
         };
@@ -161,6 +192,72 @@ public sealed class FindWindow : Window
 
     /// <summary>The message the window is currently showing, for the tests and the status bar.</summary>
     internal string MessageForTest => _message.Text ?? string.Empty;
+
+    // ---- Looking in earlier newsletters (PLAN.md §11 M85) ---------------------------------------
+
+    /// <summary>One row of the results list. A record so the list shows <see cref="ToString"/>.</summary>
+    internal sealed record ArchiveHitRow(Integration.ArchiveHit Hit)
+    {
+        public override string ToString() => Hit.Describe();
+    }
+
+    /// <summary>Raised when the user asks to look in earlier newsletters. The shell does the work:
+    /// this window knows nothing about folders, and nothing about files.</summary>
+    internal event Action? SearchTheArchive;
+
+    /// <summary>Raised when the user picks a result. The shell opens it, read-only, on M59's pattern.</summary>
+    internal event Action<Integration.ArchiveHit>? OpenTheIssue;
+
+    /// <summary>What the user typed, for the shell to search with.</summary>
+    internal string WordsToLookFor => _search.Text ?? string.Empty;
+
+    /// <summary>Whether the user asked for exact capitals.</summary>
+    internal bool MatchCase => _matchCase.IsChecked == true;
+
+    /// <summary>
+    /// Shows what came back. An empty result hides the list rather than showing an empty box: a box
+    /// with nothing in it is a question the user then has to answer for themselves.
+    /// </summary>
+    internal void ShowArchiveResults(Integration.ArchiveSearchResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        _archiveResults.ItemsSource = result.Hits.Select(h => new ArchiveHitRow(h)).ToList();
+        _archiveResults.IsVisible = result.Hits.Count > 0;
+        _message.Text = DescribeArchive(result);
+    }
+
+    /// <summary>Said before the search starts, because reading a folder of newsletters is slow.</summary>
+    internal void SayTheArchiveIsBeingRead() =>
+        _message.Text = "Looking through your earlier newsletters. This can take a moment.";
+
+    /// <summary>The sentence after a search. Public so a test can assert it without a window.</summary>
+    internal static string DescribeArchive(Integration.ArchiveSearchResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        if (result.Problem is { Length: > 0 } problem)
+        {
+            return problem;
+        }
+
+        if (result.Hits.Count == 0)
+        {
+            return result.IssuesRead == 0
+                ? "There were no earlier newsletters in that folder to look through."
+                : $"Those words are not in any of the {result.IssuesRead} earlier newsletters.";
+        }
+
+        string found = result.Hits.Count == 1
+            ? "Found it once"
+            : $"Found it {result.Hits.Count} times";
+
+        return $"{found}, newest first. Double-click one to open that newsletter.";
+    }
+
+    /// <summary>For the tests, which cannot double-click.</summary>
+    internal Integration.ArchiveHit? FirstArchiveHitForTest =>
+        (_archiveResults.ItemsSource?.Cast<ArchiveHitRow>().FirstOrDefault())?.Hit;
 
     /// <summary>Shows or hides the replace half, and re-titles the window to match.</summary>
     public void SetMode(bool replacing)
