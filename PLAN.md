@@ -4140,6 +4140,384 @@ measurement. **No baseline moves, no font file is added, no dialog is relaid out
 
 ---
 
+### Product-owner review (2026-09-01): what a finished editor still does not do
+
+Seventy-six milestones in, the question changed from "what is broken" to "what would a member of the
+committee still have to phone the grandson about". The owner audited the command catalog and the
+object model against what other desktop publishers offer, and a UI designer for elderly audiences
+was consulted on every candidate before any of it was written down here. **Thirteen candidates went
+in; nine came out as milestones, two were cut, one was already built — and the owner then added
+two more (M86, M87) that the audit had under-weighted, and scheduled the three the designer would
+have deferred.**
+
+**The pattern behind the top of the list is that the document model is ahead of the commands.**
+`ShapeBlock` (rule / box) has been rendered on the canvas and in the PDF since M1 and no `ActionId`
+has ever reached it. `FrameStyleDef` carries fill, stroke and padding and no dialog exposes them.
+`PageMaster` exists and has no UI. `ColumnCount` has been "deferred" since M1. Each of these is a
+feature that costs a catalog entry and a runner rather than an engine, and each is something the
+committee asks for in the first ten minutes with the app.
+
+**Cut, on the record, with the designer's reasons:**
+
+- **Booklet imposition.** The lodge sends a PDF; the copy shop or the printer driver imposes. M53's
+  hand-off reasoning holds one layer further. If it is ever revisited it is a paragraph in "How do
+  I…?" about the driver's own booklet setting, not code.
+- ~~**Text colour from the ordinary editing path.**~~ The designer's advice was to keep colour
+  behind styles (free colour is how amateur newsletters end up red on gold). **Overruled by the
+  owner, 2026-09-01**: alignment, underline and colour join bold and italic as ordinary editing
+  verbs in **M86**, on the same derived-style machinery, with a fixed lodge palette first and a
+  full picker behind it. The designer's warning survives as a contrast sentence, not a refusal.
+- **A two-page spread view.** The M76 rail already shows the plan laid out; a spread solves a print
+  designer's problem, not a secretary's.
+- **Snap to other blocks while dragging** — not cut, **already done**: `SnapEngine.BuildTargets`
+  has offered every sibling's left/centre/right and top/middle/bottom since M5, one priority behind
+  the margins. The owner's audit missed it; recorded here so nobody audits it a third time.
+
+**The designer would have deferred three and noted two; the owner scheduled all five
+(2026-09-01):** "we should be looking for features to add, not features to defer." Two-column
+frames (M83), the month-at-a-glance calendar (M84) and search across earlier issues (M85) are
+scheduled after M82; "Keep this where it is" (a lock) is a deliverable of M81 and the
+recent-pictures strip a deliverable of M80. The designer's frequency argument is recorded above
+each so the order, not the existence, is what it decided.
+
+### M77 — The app keeps its footing (M)
+
+**Goal.** There is no unhandled-exception handler anywhere in `src/`, no log, and no way for a
+committee member to tell the maintainer what happened beyond "it went away". For an audience that
+cannot describe a defect, that absence is the largest engineering risk left on the list. Second,
+smaller, and in the same "the app looks after itself" spirit: the window opens at 1280×860 every
+launch, so a user at 200% scale maximises it every single time.
+
+**Deliverables.**
+
+- A global handler for `AppDomain.UnhandledException`, `TaskScheduler.UnobservedTaskException` and
+  the Avalonia dispatcher. Its first act is to write the autosave snapshot M24/M25 already know how
+  to write, **before** anything is shown; its second is one plain card: *"Something went wrong. Your
+  newsletter has been kept. Save a report for the person who looks after TrestleBoard?"* — with the
+  two answers that card implies and nothing else.
+- The report is a `.txt` the user chooses where to put (the save dialog, defaulting to the
+  Desktop): app version, OS and version, UI scale and theme, the exception with its stack, and the
+  last twenty `ActionId`s dispatched. **Never the roster, never a member's name, never a word of the
+  newsletter's text, never a file path under the user's home** — the last because a path is a name.
+- `Help ▸ Save a report of a problem` (`help.problemReport`) for the case where nothing crashed but
+  something is wrong; same file, same rules, no exception section.
+- A two-hundred-line ring of `ActionId`s and timestamps in memory only — it is what the report
+  reads; it is never written to disk on its own.
+- The main window's size, position and maximised state persist in `AppSettings` and are restored
+  **only if that rectangle still lies on a connected screen**; otherwise the M76 default.
+
+**Acceptance.** A test throws from inside a dispatched action and asserts that the snapshot exists
+on disk before the card is shown, and that the card's two buttons are the only controls. A
+privacy test builds a report from a session holding a fictional roster and a document of known
+text and asserts that no roster field value, no paragraph, and no segment of the home directory
+appears in the file — the §0 rule made structural, on the M13 projection-rule precedent. Window
+restore is tested with a rectangle wholly off-screen and asserts the default. New `ActionId`,
+catalog entry, availability rule, runner, `KeyboardMap` row: the M11 tests fail otherwise. No
+baseline moves.
+
+### M78 — Felt by every reader, seen by no editor (M)
+
+**Goal.** Two things every issue from the old tool had and this one does not, both invisible in the
+editor and both felt by every reader: a footer that says which issue and which page, and links
+that can be tapped. Half the lodge reads the PDF on a phone. A phone number that dials and an email
+address that opens the mail app are real value, and there is nothing to learn.
+
+**Deliverables.**
+
+- **Tappable links, with no UI at all.** At export, emails, web addresses and phone numbers are
+  detected in the shaped runs and given `SKCanvas.DrawUrlAnnotation` rectangles from the run
+  bounds; `mailto:` and `tel:` for the first and last. Nothing in the document changes, so there is
+  no undo step. The "Make the PDF" result card says once, in one sentence, *"Email addresses and
+  phone numbers in the newsletter can be tapped."* **No underline, no blue, no change to a single
+  rendered pixel:** the reader's PDF app owns the affordance, and blue underlines on paper are the
+  one modern habit this audience finds ugly. The phone detector must not fire on "Lodge No. 414",
+  on a date, or on a year.
+- **A page footer, one wording, editable nowhere.** `Page ▸ Show page numbers at the bottom`
+  (`page.footer`, a toggle, default **on** in all three templates and in carry-forward) fills the
+  `PageMaster` with one line built from the lodge name, M75's issue date and "page N of M": *Indian
+  Land Lodge 414 · September 2026 · page 3 of 6*. It sits **inside** the margin M47 draws — the one
+  thing outside it would be the one thing the margin display lied about — and it is **not
+  selectable on the canvas**: a frame that can be clicked but not deleted is a support call. Undo
+  is "Undo page numbers".
+
+**Acceptance.** A link test exports a fixture with a fictional email, URL, phone number, the
+string "Lodge No. 414" and a date, parses the PDF's annotation dictionary and asserts exactly three
+annotations with the expected URIs and rectangles that lie within the run bounds. A snapshot test
+proves the link pass moves no pixel: the same fixture rasterised with and without the annotation
+pass is byte-identical. The footer moves baselines **for the three templates only**, re-baked once
+by name on the M16 rule; every other baseline is asserted unmoved. A screen-reader peer reads the
+footer as text on the page, not as a control.
+
+### M79 — A line under it, a box round it (M)
+
+**Goal.** "Put a line under that heading" and "put a box round the fish-fry notice" are the two
+layout requests a committee actually makes, and the model has carried both answers since M1 with no
+command to reach either. The temptation is a shape tool; the answer is not one — a free-drawn line
+is a thing to drag by accident.
+
+**Deliverables.**
+
+- On a chosen box of writing, in the action panel's "The thing you chose" group: **"Put a border
+  round it"** and **"Shade it"**, each a choice among three fixed looks — none, a thin line, and a
+  tint from the M16 palette — no colour picker, no width entry. They write a `FrameStyleRef`. Undo
+  is "Undo border" / "Undo shading".
+- **"Make this heading the lodge colour"** on a chosen heading paragraph: one toggle, the accent
+  token. M86 generalises it; this is the one-press version that needs no picker.
+- `Insert ▸ A line across the page` (`insert.rule`): a `ShapeBlock` of kind `Rule`, margin-wide,
+  placed under the chosen frame or at the caret's paragraph, with its **height locked** — it is a
+  line and cannot become a rectangle by dragging a handle. It moves and deletes like any block.
+  Undo is "Undo the line".
+
+**Acceptance.** Stroke width floors at 1pt: a half-point hairline is invisible at 77% zoom and on a
+300-dpi print, and a test asserts no `ShapeBlock` or `FrameStyleDef` the commands write goes below
+it. Every shading tint is asserted against the body text colour at 4.5:1 in
+`ThemeCompositionTests`' manner, on the page and not the chrome. Snapshot baselines for the
+gallery page move once for the rule and the three frame looks, named in the spec; the M72 emblem
+baselines are asserted unmoved because both go through the vector path. Catalog, runner, panel
+offer and `KeyboardMap` per M11. The gates hold: nothing greys, every refusal says why.
+
+### M80 — The phone photo opens, and the copied one lands (M)
+
+**Goal.** "My phone photo won't open" is the sharpest daily complaint the designer predicted and the
+owner confirmed: iPhones shoot HEIC, Skia has no HEIC decoder, and today the picker fails with a
+sentence about a format nobody has heard of. Second: Ctrl+V with a picture on the clipboard — copied
+from an email or a web page — does nothing, because paste has been text-only since M4.
+
+**Deliverables.**
+
+- **HEIC, said plainly and converted where the machine can.** On Windows (the HEIF codec via WIC,
+  present on most Windows 11 installs) and macOS (`sips`), the picker's card reads *"This is an
+  iPhone photo in a format this computer can't read on its own. TrestleBoard will convert it now."*
+  and does. Where the OS cannot (Linux, or Windows without the codec) the card says what to do —
+  *"Send it to yourself from the phone as a JPEG, or ask the phone to use 'Most compatible'
+  format"* — and stops. **The converted JPEG is what goes into the `.tboard` as the original**, never
+  the HEIC, or "Fix the photo" fails on the next machine that opens the file.
+- **Paste a picture.** `edit.paste` with an image on the clipboard runs the existing "Put a picture
+  in" path: the frame lands centred in the visible part of the page, or replaces the chosen picture
+  if one is chosen, on M18's drop precedent. Undo is the one step M18 already names.
+- The picture picker's filter is `FilePickerFileTypes.ImageAll`, which does not list `.heic`/
+  `.heif`; on the platforms that can convert, the filter gains them, so the photo is choosable in
+  the first place. Where conversion is impossible the filter leaves them out and the card above
+  is reached by drag-and-drop only.
+- **A recent-pictures strip** in "Put a picture in": the last ten pictures used in any newsletter
+  on this machine, as tiles **with visible labels** (the file name, never a thumbnail alone),
+  above "Choose a file…". Most photos are reused — the lodge front, the Master — and the strip
+  remembers paths in `AppSettings`, never copies; a path that no longer exists is dropped from the
+  strip silently rather than offered. Undo is the ordinary insert step.
+
+**Acceptance.** Conversion is behind an `IPhotoConverter` seam with a per-OS implementation and a
+fictional HEIC fixture; the test asserts the container holds JPEG bytes and no HEIC after insert.
+The "cannot" path is tested by a converter that refuses, and asserts the card's sentence and that
+nothing was inserted. Clipboard paste is tested through `ITextClipboard`'s widened seam with a
+PNG on it and asserts one `ImageFrame`, one undo step, and the frame within the visible rectangle.
+The strip is tested with a settings list holding one live and one missing path and asserts one
+tile, labelled. No baseline moves.
+
+### M81 — Make another like this, and show it on Facebook (M)
+
+**Goal.** A novice makes a second event card by running the wizard again, because copy has always
+meant words. And the lodge's Facebook group and the members who get a text message are how half the
+lodge actually sees the notice — a page as a picture is a share the PDF is not.
+
+**Deliverables.**
+
+- **"Make another like this"** (`item.duplicate`, Ctrl+D), in the action panel's "The thing you
+  chose" group and on the Edit menu: a copy of the chosen block, 24pt down and to the right so it
+  visibly *is* a copy, chosen afterwards so the next keystroke moves it. Widgets copy their data;
+  pictures share the asset; linked text frames copy as an unlinked frame holding the same story
+  text, and the panel says so. Undo is "Undo making a copy".
+- **`File ▸ Save a page as a picture…`** (`newsletter.exportPicture`): the M67 page picker's pattern
+  to choose one page, then a JPEG at 150 dpi to a path the user chooses. The dialog says two true
+  things: *"Page 1 is the one people share"*, and *"A picture has no words a screen reader can
+  read — the PDF still does."* Not undoable; it writes a file.
+- **"Keep this where it is"** (`item.lock`, a toggle; "Let it move" when on) in the same panel
+  group. It locks **position and size only**: a locked frame is still chosen, still edited, still
+  Tab-reachable, still deleted. A drag on it does not move it and the status bar says why in words
+  — *"This is kept in place. Choose 'Let it move' to move it."* — the M11 rule that nothing refuses
+  silently. Templates never ship anything locked: a "why won't it move" call is worse than a stray
+  drag. Undo is "Undo keeping it in place".
+
+**Acceptance.** Duplicate is tested per block kind, including the linked-frame case, and asserts one
+undo step returns the page to byte-identical JSON. The picture export goes through `PngRenderer`'s
+existing path with a JPEG encode added and is snapshot-tested at the fixed dpi on all three OSes
+— the same determinism guarantee as the PDF, because it is the same renderer. `KeyboardMap` gains
+Ctrl+D and the M28 audit tests prove the shortcut reaches the runner. The lock is tested by a
+drag and a resize on a locked frame that assert no `IDocumentCommand` was dispatched and the
+status sentence was, and by a text edit on the same frame that asserts one was. No baseline moves.
+
+### M82 — About forty words too long (M)
+
+**Goal.** The overset marker says text does not fit (M43); it does not say by how much, and the
+answer the committee wants is in words, never in lines or points. Second, the send step: M51's
+review is a sibling command beside "Send it", and the designer's finding is that it belongs as the
+last step *of* sending — offered, never a gate. Third, two sentences the screenshots caught.
+
+**Deliverables.**
+
+- On a chosen frame that oversets, the panel's card reads *"About 40 words too long for this box"*
+  and offers two verbs: **"Make the box taller"** (grows the frame to fit, bounded by the margin,
+  and says if it could not) and **"Send the rest to the next page"** (M8's flow, `flow.auto`'s
+  machinery, one undo step). The count is words and only words; a test forbids "line" and "pt".
+- "Send it" opens with M51's list when it has something to say — *"Two things to look at first"* —
+  and a **"Send it anyway"** that is never disabled. A refusal to send is a phone call.
+- The "What's next" panel sentence *"A list of people is on the page but the address book is
+  empty"* is a statement about state; it now leads with the verb, as every other offer does. And
+  the unsaved state beside Save stops being grey text: while the newsletter has unsaved changes,
+  **Save is the primary in its group** and the label says so.
+
+**Acceptance.** The word estimate is tested against a fixture with a known overset and asserts the
+count within ±2 of the words actually hidden. The send path is tested with a review that has
+findings and asserts "Send it anyway" is present and enabled; the M46 jargon test walks the new
+copy. The primary-Save rule is checked against M76's "at most one primary per group" test, which
+must still pass — meaning Save takes the primary and nothing else in that group holds it at the
+same time. No baseline moves.
+
+### M83 — Two columns (M/L)
+
+**Goal.** `ColumnCount` has been deferred since M1. Two columns look "proper", and the old tool's
+issues used them; the designer's judgement is that every column is another place for text to hide,
+and the linked-frame flow already gives most of the same shape. The owner scheduled it anyway:
+the old tool's issues used two columns and the committee will ask.
+
+**Deliverables.** On a chosen box of writing: "Split into two columns" / "Back to
+one column", fixed gutter, no numeric entry; the layout engine's column loop; the overset marker
+announced in words because on a two-column frame it lands on the right column, where nobody looks.
+
+**Acceptance.** Screen-reader order follows the columns, not the lines. Golden `LineBox` tests
+for the column split; baselines move only for the fixtures that opt in.
+
+### M84 — This month's calendar (M/L)
+
+**Goal.** An eighth widget: one month on a grid, driven by M75's issue date, with the meeting rule,
+the district events and the birthdays already known to the app landing in the cells. The existing
+`DistrictCalendar` is a table, which is the right shape for six lodges and the wrong one for one
+month.
+
+**Deliverables.** `Insert ▸ This month's calendar`; cells filled from the roster
+projection (M13's rule, user-confirmed, never ambient), the meeting rule and the district data;
+re-edit through M60's grid path; a minimum cell height so a 7×5 grid is never set at 10pt; page-wide
+by default.
+
+**Acceptance.** The peer reads *"Tuesday the 3rd: Stated meeting"*, not cell coordinates. The M60
+lesson applies: a new widget is new data, not a new format, and the gallery baseline is a
+hand-written list — verify before assuming the expensive kind of change.
+
+### M85 — When did we last mention the fish fry? (M)
+
+**Goal.** M59 shows last year's same-month issue; nothing searches across the archive. A real
+question; the designer called it quarterly, the owner scheduled it.
+
+**Deliverables.** M21's Find gains "Look in earlier newsletters too", scanning the
+`OldIssuesFolder` M59 already knows; results name the issue and the page; opening one opens that
+issue read-only beside the current, on M59's pattern. A progress sentence, because the first run
+is slow.
+
+**Acceptance.** Read-only is structural (M51's serialise-and-compare), never careful. No baseline
+moves.
+
+### M86 — Bold, italic, underline, centred, and in colour (L)
+
+**Goal.** Bold and italic have been on the toolbar since M4. The rest of what every other editor
+puts beside them — underline, left/centred/right, and colour — is reachable only by opening the
+styles window and minting a style, which the committee will not do. The owner's decision
+(2026-09-01, overruling the designer's style-only advice) is that these are ordinary editing verbs.
+The constraint that stays: **runs never carry direct formatting.** Bold and italic work by minting
+a derived character style and applying it by reference (`StyleOverrides`, M14's `~` separator); the
+new verbs ride the same machinery, so the resolver, the serialiser and the canonicaliser learn
+nothing new.
+
+**Deliverables.**
+
+- `text.underline` (Ctrl+U), a toggle beside Bold and Italic on the toolbar and in the panel's
+  Text group. `CharacterStyleDef` gains `Underline` (default false); `BaseName` learns the
+  `-underline` suffix; the renderer draws the underline from the font's `post` table position and
+  thickness — never a hand-picked offset — on canvas and in the PDF from the same code, which is
+  what keeps them identical. Justified text stays a non-goal (§1), so underline is the only new
+  glyph-level decoration.
+- `text.alignLeft`, `text.alignCentre`, `text.alignRight` — three paragraph verbs, one group, the
+  chosen one shown pressed. They mint a derived **paragraph** style (`body~centred`) the way the
+  character verbs mint character styles, so "Paragraph style ▸" still tells the truth about what
+  the paragraph is based on. No "justify": §1 non-goal, and the designer's point stands that rivers
+  in a two-column frame are what justification gives this audience.
+- `text.colour` (`Format ▸ Colour ▸`): a strip of **eight fixed lodge-palette tiles** first (black,
+  the M16 navy and gold, two greys, a red for hard news, and two tints), each a labelled tile in
+  plain words, never a hex; then **"More colours…"**, Avalonia's `ColorPicker` in a dialog with the
+  chosen colour previewed on a sample of the actual highlighted words, on a white page, at print
+  size. `ColorArgb` already exists on `CharacterStyleDef`; the derived style carries it.
+  **The contrast sentence, not a refusal:** any colour under 4.5:1 against the page shows *"This
+  will be hard to read when printed"* beside the sample and lets the user choose it anyway.
+- "Show where fonts were changed" (`view.showFontChanges`) grows to show colour and underline
+  overrides too, and `text.clearFontOverride` clears them — one honest "put it back" for every
+  kind of override, so nothing the new verbs do is a one-way door.
+- Every new verb: `ActionId`, catalog entry with a plain-English refusal, availability rule,
+  runner, `KeyboardMap` row, help search words (M63), jargon test (M46) — the M11 tests fail
+  otherwise.
+
+**Acceptance.** Underline is a rendering change and moves baselines **only for fixtures that opt
+in** — a new `text-decorations` fixture, baked on all three OSes and asserted byte-identical, on
+the M1 determinism guarantee. Alignment is tested through the existing golden `LineBox` tests,
+which already cover `TextAlignment`; what is new is the command, and the test is that the derived
+paragraph style round-trips through save/open and `BaseName`. The palette's eight tiles are
+asserted against the page white and the shading tints of M79 in `ThemeCompositionTests`' manner.
+The `ColorPicker` is a new package reference: `Directory.Packages.props` gains it on the Avalonia
+11.3.x line, and the App project stays the only Avalonia reference. NVDA/VoiceOver run on the
+colour dialog before it is called done, because a colour picker is the first control in the app
+whose meaning is not in words.
+
+### M87 — Small enough to email (M)
+
+**Goal.** The exporter rasters pictures at 300 dpi and re-encodes nothing: a six-page issue with
+a photo on every page can be too big for a member's inbox, and the app has no idea. M56's send
+card names a file it has never weighed.
+
+**Deliverables.**
+
+- **"Make the PDF" weighs the result.** Above a threshold (8 MB to start, one constant, argued in
+  the spec against the common mailbox limits), the result card says *"This PDF is 14 MB, which
+  some email services will refuse"* and offers **"Make a smaller one for email"**.
+- The smaller one is a second export of the same document, not a post-process on the first: photos
+  rendered at 150 dpi, JPEG-encoded at a fixed quality (`SKDocumentPdfMetadata.EncodingQuality`),
+  text and emblems untouched — they are vectors and cost nothing. It is written beside the first as
+  *`September 2026 (for email).pdf`*, and the M56 send card names **that** file when it exists. The
+  full-quality PDF is what "Print it" (M53) hands off.
+- `view.settings` gains one sentence and one switch: *"Always make the email-sized PDF as well"*
+  — off by default, because two files is one more thing to explain.
+- The dialog says the trade in words a committee understands: *"Pictures will look a little softer
+  on a screen and noticeably softer if this copy is printed."*
+
+**Acceptance.** A fixture with six pictures exports both ways and the test asserts the email copy
+is under the threshold and the full copy is unchanged byte-for-byte from before this milestone.
+Bytes of the small copy are **not** snapshot-tested across OSes — JPEG encoding is not promised
+identical between Skia's bundled encoders — but page count, text extraction and the annotation
+count from M78 are asserted identical between the two copies, so nothing but the pictures differs.
+The threshold constant has one test that fails if it is changed without the spec sentence beside
+it changing too. No baseline moves.
+
+### Sizing & sequencing notes (M77–M87, added 2026-09-01)
+
+- **Order: M77 → M78 → M79 → M86 → M80 → M81 → M87 → M82 → M83 → M84 → M85.** Safety first and
+  zero UI to learn (M77); then the two that every reader feels and no editor sees (M78); then the
+  formatting the committee asks for in the first ten minutes (M79, M86); then pictures (M80,
+  M81); then the email-sized PDF (M87), which depends on M78 for its "same annotations" check;
+  then the copy and the gauge (M82); then the three the designer ranked by frequency (M83–M85),
+  columns first because M86's alignment verbs and M82's overset gauge both have to be right on a
+  two-column frame. **M86 and M87 were added by the owner on 2026-09-01**, after the designer's
+  report and against one part of it; M86 is an L and gets a spec pass first.
+- **Parallelizable:** M77 touches `App` startup and settings only and parallelizes with anything.
+  M78's link pass lives in `Export.Pdf` and M79 in `Editing`/`Rendering`; they meet nowhere.
+  M80 ∥ M81 — imaging seam versus catalog entries.
+- **Baselines:** only M78 (three template footers), M79 (the gallery page), M86 (one new
+  text-decorations fixture), M83 (fixtures that opt into columns) and M84 (the gallery page, if
+  the M60 check finds it is an enumeration after all) may move a baseline, each once, each named; the M16 rule holds for everything else and the tests assert it.
+- **M83–M85 are scheduled**, last, by the designer's frequency argument; the owner's instruction
+  is that the list is for features to add, not to defer, and the argument decides order only.
+- **The M69–M76 lesson applies to M78 in particular.** A footer inside the margin is a rule that
+  is correct while the margins stand still; M47's margin display, M69's scroll track and M76's
+  rail each moved a rule the previous milestone had checked. M78 checks the footer at 200% and
+  against every page-size the templates use, not only the one it was drawn on.
+
+---
+
 ## 12. Verification (end-to-end)
 
 1. **Per-milestone:** `dotnet build && dotnet test` locally + 3-OS CI matrix green; cavecrew-reviewer findings addressed; snapshot diffs reviewed as CI artifacts.
