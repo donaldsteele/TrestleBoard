@@ -314,6 +314,9 @@ public static class ActionCatalog
             "Lets a long article carry on in a second box.", ActionGroup.TextFlow, "Ctrl+Shift+L"),
         new(ActionId.UnlinkFrames, "Stop continuing into the next frame",
             "Ends the link so this box stands on its own.", ActionGroup.TextFlow, "Ctrl+Shift+K"),
+        new(ActionId.GrowToFit, "Make the box taller",
+            "Makes the chosen box taller, until the writing fits or it reaches the bottom of the page.",
+            ActionGroup.TextFlow),
         new(ActionId.AutoFlow, "Make the rest fit",
             "Adds pages and boxes until all of this writing has somewhere to go.",
             ActionGroup.TextFlow, "Ctrl+Shift+M"),
@@ -941,6 +944,16 @@ public static class ActionCatalog
             ActionId.AddRule => RequiresDocument(context),
 
             // ---- How text flows -------------------------------------------------------------------
+            // M82. A box of writing, and only that: making a photograph taller is a different
+            // idea with a different name, and this one is about words that do not fit.
+            ActionId.GrowToFit => !context.SelectionIsTextFrame
+                ? ActionAvailability.NotApplicable(NeedsTextFrame)
+                : context.SelectionOversetWords is > 0
+                    ? ActionAvailability.Available
+                    : ActionAvailability.NotApplicable(
+                        "All of the writing in this box already fits, so there is nothing to make "
+                        + "room for."),
+
             ActionId.ToggleWrap => context.HasFrameSelection
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(ChooseSomething),

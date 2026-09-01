@@ -39,6 +39,10 @@ public static class HelpSearchWords
         // M81. "Duplicate" is a word from another program; what people say is "another one".
         [ActionId.Duplicate] = ["copy", "duplicate", "another one", "same again", "second one"],
         [ActionId.ToggleLocked] = ["lock", "keep it still", "stop it moving", "pin", "fix in place"],
+
+        // M82. What somebody types is the symptom, not the cure.
+        [ActionId.GrowToFit] =
+            ["too long", "does not fit", "runs over", "bigger box", "taller", "more room", "cut off"],
         // Deliberately NOT the bare word "picture": the help index ranks by synonym, and this
         // entry outranked "Insert a picture" for somebody typing the one word that means putting a
         // photograph on the page. Every word here is one that only means SHARING.

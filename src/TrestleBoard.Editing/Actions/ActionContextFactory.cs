@@ -141,6 +141,9 @@ public static class ActionContextFactory
             IssueMonth = session?.Document.Metadata.IssueMonth ?? 0,
             HasCoverHeading = session is not null && HasACoverHeading(session.Document),
             HasOversetText = source is { IsOverset: true },
+            SelectionOversetWords = blockId is not null && source is not null
+                ? source.GetOversetWordCount(blockId)
+                : null,
             HasUnsavedChanges = hasDocument && shell.HasUnsavedChanges,
             DocumentHasFile = shell.DocumentFileName is not null,
             DocumentFileName = shell.DocumentFileName,

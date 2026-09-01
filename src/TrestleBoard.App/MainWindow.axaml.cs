@@ -1685,6 +1685,46 @@ public partial class MainWindow : Window
             : $"There {(questions == 1 ? "is 1 thing" : $"are {questions} things")} worth asking you about.");
     }
 
+    /// <summary>
+    /// M82: the last look before it goes out. Returns false only when the user chose to stop and
+    /// deal with something — never because the newsletter had findings.
+    /// </summary>
+    private async Task<bool> LookItOverBeforeSendingAsync()
+    {
+        if (_source is null || _package is null || !_settings.OfferTheReviewBeforeExport)
+        {
+            return true;
+        }
+
+        int questions = BuildReviewFindings().Count(f => f.Kind != ReviewFindingKind.LookAtThePage);
+        if (questions == 0)
+        {
+            return true;
+        }
+
+        LastSendReviewCountForTest = questions;
+        if (SuppressStartupForTest || SwallowErrorsForTest)
+        {
+            // Headless: the decision is recorded and the send goes on, which is the answer the
+            // "never a gate" rule demands when nobody is there to be asked.
+            return true;
+        }
+
+        var card = new Dialogs.SendReviewCard(questions);
+        await card.ShowDialog(this);
+        switch (card.Choice)
+        {
+            case Dialogs.SendReviewChoice.LookFirst:
+                ShowReview();
+                return false;
+            default:
+                return true;
+        }
+    }
+
+    /// <summary>How many things the review had to say before the last send, for the tests.</summary>
+    internal int? LastSendReviewCountForTest { get; private set; }
+
     private HelpWindow? _helpWindow;
 
     internal HelpWindow? HelpWindowForTest => _helpWindow;
@@ -3086,6 +3126,18 @@ public partial class MainWindow : Window
     internal async Task<bool> SendItAsync()
     {
         if (_package is null)
+        {
+            return false;
+        }
+
+        // M82: the review belongs to sending rather than beside it. M51 built the checklist and
+        // hung it on a command of its own; the moment it is actually wanted is the moment before
+        // sixty people get the newsletter.
+        //
+        // OFFERED, never a gate. "Send it anyway" is always there and is never disabled: a refusal
+        // to send is a telephone call, and the app has no business deciding that a newsletter with
+        // an unfilled picture frame must not go out. The user is told and then obeyed.
+        if (!await LookItOverBeforeSendingAsync())
         {
             return false;
         }
@@ -4913,6 +4965,46 @@ public partial class MainWindow : Window
     /// stopped, so the user was left looking at an empty rectangle with no sign that typing was
     /// what to do next; the inline editor underneath has worked since M4.
     /// </summary>
+    /// <summary>
+    /// M82: makes the chosen box taller until the writing fits, and says which of the four things
+    /// actually happened rather than "Done".
+    /// </summary>
+    internal bool GrowTheBox()
+    {
+        if (_frames is null)
+        {
+            return false;
+        }
+
+        FrameEditorController.GrowResult result = _frames.GrowToFit();
+        if (result is FrameEditorController.GrowResult.Fits
+            or FrameEditorController.GrowResult.GrewButStillDoesNotFit)
+        {
+            _source?.Invalidate(new ChangeScope(ChangeKind.BlockGeometry));
+            PageCanvas.InvalidateVisual();
+            _rail.ForgetEveryThumbnail();
+        }
+
+        RefreshActions();
+        Announce(result switch
+        {
+            FrameEditorController.GrowResult.Fits =>
+                "The box is taller and all of the writing fits now.",
+            FrameEditorController.GrowResult.GrewButStillDoesNotFit =>
+                "The box is as tall as the page allows, and there is still more writing than fits. "
+                + "Try “Make the rest fit”, which moves the rest to the next page.",
+            FrameEditorController.GrowResult.NoRoom =>
+                "This box already reaches the bottom of the page, so it cannot be made taller. "
+                + "Try “Make the rest fit”, which moves the rest to the next page.",
+            FrameEditorController.GrowResult.AlreadyFits =>
+                "All of the writing in this box already fits.",
+            _ => "Choose a box of writing on the page first.",
+        });
+
+        return result is FrameEditorController.GrowResult.Fits
+            or FrameEditorController.GrowResult.GrewButStillDoesNotFit;
+    }
+
     // ---- Make another like this, and keep it where it is (PLAN.md §11 M81) ---------------------
 
     /// <summary>
@@ -8101,6 +8193,38 @@ public partial class MainWindow : Window
         SaveStateLabel.Text = _package is null
             ? string.Empty
             : _unsavedChanges ? "Not saved yet" : "Saved";
+
+        // M82: while there is work to lose, SAVE is the offer the user came for, and the toolbar
+        // says so with the treatment rather than with a grey whisper beside it. "Not saved yet" in
+        // muted text is a fact stated at somebody who is not looking for a fact.
+        //
+        // The two swap rather than both being primary: M76 (f) settled that a group has at most one
+        // primary, and three navy slabs at once is the absence of an answer rather than three of
+        // them. Save and "Make the PDF" are both ActionGroup.Newsletter, so the rule applies as
+        // written.
+        bool saveLeads = _package is not null && _unsavedChanges;
+        SetPrimary(SaveButton, saveLeads);
+        SetPrimary(ExportPdfButton, !saveLeads);
+    }
+
+    /// <summary>
+    /// Gives a toolbar button the primary treatment, or takes it away.
+    ///
+    /// <para>Clearing has to be an explicit local-value clear rather than assigning some other
+    /// theme: M76 (e) records that the markup's <c>Theme</c> is a LOCAL value and beats the
+    /// "action" class's Style, so a button that once held it keeps it until the local value is
+    /// removed.</para>
+    /// </summary>
+    private static void SetPrimary(Button button, bool primary)
+    {
+        if (primary)
+        {
+            button.Primary();
+        }
+        else
+        {
+            button.ClearValue(StyledElement.ThemeProperty);
+        }
     }
 
     private void UpdateStatus()

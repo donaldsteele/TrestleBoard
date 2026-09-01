@@ -675,6 +675,82 @@ public sealed class FrameEditorController
 
 
 
+
+    /// <summary>
+    /// Makes the chosen box taller until the writing fits, or until it reaches the bottom margin
+    /// (PLAN.md §11 M82).
+    ///
+    /// <para><b>One of the two verbs the overset card offers.</b> The other is "send the rest to the
+    /// next page", which M8 already built. Between them they cover what somebody does about writing
+    /// that will not fit: give it more room here, or give it a room of its own.</para>
+    ///
+    /// <para><b>It stops at the margin M47 draws.</b> A box grown past the edge of the text area
+    /// would put the newsletter outside the line the app has told the user to keep inside — and the
+    /// caller is told it stopped short, so nobody is left thinking it worked when the writing still
+    /// does not fit.</para>
+    /// </summary>
+    /// <returns>
+    /// How it went, so the shell can say the truth rather than "Done" over a box that grew and
+    /// still cannot hold the article.
+    /// </returns>
+    public GrowResult GrowToFit()
+    {
+        if (_selectedBlockId is not { } blockId
+            || !_session.Document.TryFindBlock(blockId, out Page? page, out Block? block)
+            || block is not Core.Model.TextBlock)
+        {
+            return GrowResult.NothingChosen;
+        }
+
+        if (block.Locked)
+        {
+            StatusMessage = LockedMessage;
+            Raise();
+            return GrowResult.NothingChosen;
+        }
+
+        if (!IsOverset(blockId))
+        {
+            return GrowResult.AlreadyFits;
+        }
+
+        PageMaster master = _session.Document.GetMaster(page.MasterRef);
+        RectPt rect = block.FrameRect;
+        float room = master.Size.Height - master.MarginBottomPt - rect.Y;
+        if (room <= rect.Height + 1f)
+        {
+            return GrowResult.NoRoom;
+        }
+
+        // Grown in one step to the whole of the room available, then measured. A search downwards
+        // from the largest size would relayout the story a dozen times for a result the user cannot
+        // see the difference in; what matters is whether it fits at all, and if it does, a box that
+        // reaches the margin is where somebody would have dragged it to anyway.
+        _session.Execute(new ResizeBlockCommand(
+            blockId, new RectPt(rect.X, rect.Y, rect.Width, room)));
+
+        return IsOverset(blockId) ? GrowResult.GrewButStillDoesNotFit : GrowResult.Fits;
+    }
+
+    /// <summary>What happened when the box was made taller (M82).</summary>
+    public enum GrowResult
+    {
+        /// <summary>Nothing was chosen, or what was chosen is not a box of writing.</summary>
+        NothingChosen,
+
+        /// <summary>It all fitted already, so nothing was done.</summary>
+        AlreadyFits,
+
+        /// <summary>The box already reaches the bottom margin. Nothing was done.</summary>
+        NoRoom,
+
+        /// <summary>It is taller and the writing fits.</summary>
+        Fits,
+
+        /// <summary>It is taller and there is still more writing than fits.</summary>
+        GrewButStillDoesNotFit,
+    }
+
     // ---- Make another like this, and keep this where it is (PLAN.md §11 M81) --------------------
 
     /// <summary>How far down and across a copy lands, so it visibly IS a copy.</summary>

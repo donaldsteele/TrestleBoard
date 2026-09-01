@@ -97,10 +97,15 @@ public static class WhatsNext
         }
         else if (context.RosterEmptyButNeeded)
         {
+            // M82: this used to read "A list of people is on the page but the address book is
+            // empty" — a sentence about STATE, where every other row on this card is an
+            // instruction. It now leads with what to do, and says the state as the reason.
             steps.Add(new NextStep(
                 "Fill in your address book",
-                "A list of people is on the page but the address book is empty, so nothing can be filled in for you.",
-                null));
+                "Import your member list, or type a few names in, and TrestleBoard can fill in the "
+                + "list of people already on the page. The address book is empty at the moment, so "
+                + "there is nothing to fill it from.",
+                Actions.ActionId.ImportPeople));
         }
 
         // M18: the photo template ships three empty frames, and a first issue exported with grey
@@ -134,9 +139,16 @@ public static class WhatsNext
 
         if (context.HasOversetText)
         {
+            // M82: how much, when the chosen frame is the one that is short. The marker has said
+            // since M43 that there is more writing than fits and never said how much — and "about
+            // forty words" is a quantity a committee can act on, because they know what forty
+            // words of their own article looks like.
             steps.Add(new NextStep(
                 "Make the writing fit",
-                "Somewhere in the newsletter there is more writing than its frame can show.",
+                context.SelectionOversetWords is > 0 and { } words
+                    ? Core.Text.OversetWords.Describe(words)
+                        + " Make the box taller, or send the rest to the next page."
+                    : "Somewhere in the newsletter there is more writing than its frame can show.",
                 Actions.ActionId.AutoFlow));
         }
 

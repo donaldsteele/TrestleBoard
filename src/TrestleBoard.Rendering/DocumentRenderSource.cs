@@ -237,6 +237,33 @@ public sealed class DocumentRenderSource : IDisposable
     /// Last frame of every chain whose text ran out of room — where the overset badge hangs
     /// (docs/M5-spec.md §8.4).
     /// </summary>
+    /// <summary>
+    /// How many words did not fit in the story this block shows, or null when it all fits
+    /// (PLAN.md §11 M82).
+    ///
+    /// <para>The layout already knows exactly where the flow stopped — <c>OversetInfo</c> has
+    /// carried the paragraph and character since M1. All that was missing was somebody asking, and
+    /// a way of saying the answer that a committee can act on.</para>
+    /// </summary>
+    public int? GetOversetWordCount(string blockId)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        EnsureLayout();
+
+        if (!_framesByBlockId.TryGetValue(blockId, out (string StoryId, int FrameIndex) owner)
+            || !_layoutsByStory.TryGetValue(owner.StoryId, out LayoutResult? layout)
+            || layout.Overflow is not { } overflow
+            || !_document.TryGetStory(owner.StoryId, out Story? story))
+        {
+            return null;
+        }
+
+        IReadOnlyList<string> paragraphs = [.. story.Paragraphs
+            .Select(p => string.Concat(p.Runs.Select(r => r.Text)))];
+
+        return OversetWords.CountAfter(paragraphs, overflow.ParagraphIndex, overflow.CharIndex);
+    }
+
     public IReadOnlyList<string> GetOversetTailBlockIds()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

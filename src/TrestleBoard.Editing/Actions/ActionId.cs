@@ -238,6 +238,13 @@ public static class ActionId
     public const string UnlinkFrames = "flow.unlink";
     public const string AutoFlow = "flow.auto";
 
+    /// <summary>
+    /// M82: makes the chosen box taller until the writing fits, stopping at the bottom margin. The
+    /// other half of the answer to "about forty words too long" — this one gives the writing more
+    /// room where it is, and <see cref="AutoFlow"/> gives it a room of its own.
+    /// </summary>
+    public const string GrowToFit = "flow.growToFit";
+
     // ---- Arranging ----------------------------------------------------------------------------
     public const string BringForward = "arrange.bringForward";
     public const string SendBackward = "arrange.sendBackward";

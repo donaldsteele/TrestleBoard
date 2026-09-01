@@ -128,6 +128,16 @@ public sealed record ActionContext
     /// <summary>Somewhere in the newsletter, text does not fit its frame.</summary>
     public bool HasOversetText { get; init; }
 
+    /// <summary>
+    /// How many words did not fit in the CHOSEN frame, or null when it all fits or nothing is
+    /// chosen (M82).
+    ///
+    /// <para>The size of the problem, not merely its existence. M43 made the marker say what it
+    /// meant; this says how much, which is what somebody deciding between "make the box taller" and
+    /// "move it to the next page" actually needs.</para>
+    /// </summary>
+    public int? SelectionOversetWords { get; init; }
+
     /// <summary>M49: the page being looked at has at least one frame on it to take hold of.</summary>
     public bool PageHasFrames { get; init; }
 

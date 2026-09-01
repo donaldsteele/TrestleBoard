@@ -301,6 +301,9 @@
                   Click="OnActionClicked" AutomationProperties.Name="Continue this text in another frame" />
         <MenuItem Header="_Stop continuing into the next frame" Tag="flow.unlink" InputGesture="Ctrl+Shift+K"
                   Click="OnActionClicked" AutomationProperties.Name="Stop continuing into the next frame" />
+        <!-- M82: the two verbs the overset card offers, side by side. -->
+        <MenuItem Header="Make the bo_x taller" Tag="flow.growToFit"
+                  Click="OnActionClicked" AutomationProperties.Name="Make the box taller" />
         <MenuItem Header="_Make the rest fit" Tag="flow.auto" InputGesture="Ctrl+Shift+M"
                   Click="OnActionClicked" AutomationProperties.Name="Make the rest of this text fit" />
         <Separator />

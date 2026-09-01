@@ -120,6 +120,7 @@ internal sealed class ActionRunner
             [ActionId.LinkFrames] = Sync(window.BeginFrameLink),
             [ActionId.UnlinkFrames] = Sync(window.UnlinkFrames),
             [ActionId.AutoFlow] = Sync(window.AutoFlow),
+            [ActionId.GrowToFit] = Sync(window.GrowTheBox),
 
             // ---- Arranging -------------------------------------------------------------------------
             [ActionId.BringForward] = Sync(() => window.Restack(f => f.BringForward(), towardsFront: true)),

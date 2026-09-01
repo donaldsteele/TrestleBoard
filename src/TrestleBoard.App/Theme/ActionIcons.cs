@@ -230,6 +230,9 @@ internal static class ActionIcons
         // M81. All three are read as words: two are verbs about the chosen thing and the third is
         // a File-menu export beside the others, none of which carries a glyph either.
         [ActionId.Duplicate] = "a verb about the chosen thing, read as words",
+
+        // M82. Offered from the what's-next card beside its twin, where both are read as sentences.
+        [ActionId.GrowToFit] = "offered as a sentence on the what's-next card, never hunted for",
         [ActionId.ToggleLocked] = "a verb about the chosen thing, read as words",
         [ActionId.ExportPagePicture] = "an export beside the others, none of which carries a glyph",
         [ActionId.ToggleBorder] = "the result is visible on the page; a glyph would restate the words",
