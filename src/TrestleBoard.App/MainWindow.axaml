@@ -226,6 +226,9 @@
                   Click="OnActionClicked" AutomationProperties.Name="Add a box for writing" />
         <MenuItem Header="A _picture…" Tag="insert.photo" InputGesture="Ctrl+Shift+P"
                   Click="OnActionClicked" AutomationProperties.Name="Insert a picture" />
+        <!-- M79: the model has carried ShapeBlock since M1 with no command to reach it. -->
+        <MenuItem Header="A li_ne across the page" Tag="insert.rule"
+                  Click="OnActionClicked" AutomationProperties.Name="A line across the page" />
         <!-- M54: with the other two things you put into the writing itself, above the widgets. -->
         <MenuItem Header="W_ords for hard news…" Tag="insert.phrase"
                   Click="OnActionClicked"
@@ -299,6 +302,11 @@
         <Separator />
         <MenuItem Header="Make it _fit what is in it" Tag="item.fitToContents" InputGesture="Ctrl+Shift+Y"
                   Click="OnActionClicked" AutomationProperties.Name="Make it fit what is in it" />
+        <!-- M79: the two sentences a committee says out loud about a notice. -->
+        <MenuItem Header="P_ut a border round it" Tag="item.border"
+                  Click="OnActionClicked" AutomationProperties.Name="Put a border round it" />
+        <MenuItem Header="S_hade it" Tag="item.shade"
+                  Click="OnActionClicked" AutomationProperties.Name="Shade it" />
         <Separator />
         <MenuItem Header="Move it f_orward" Tag="arrange.bringForward" InputGesture="Ctrl+OemCloseBrackets"
                   Click="OnActionClicked" AutomationProperties.Name="Move it forward" />

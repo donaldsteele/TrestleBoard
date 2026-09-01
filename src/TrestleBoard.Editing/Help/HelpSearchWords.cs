@@ -33,6 +33,11 @@ public static class HelpSearchWords
         // The word this audience uses for a photograph is "picture", and the app says "photo".
         [ActionId.InsertPhoto] = ["picture", "image", "photograph", "add a picture"],
 
+        // M79. Nobody types "frame style". They type the shape they can see in their head.
+        [ActionId.AddRule] = ["line", "rule", "divider", "underline the heading", "separator", "bar"],
+        [ActionId.ToggleBorder] = ["border", "box", "outline", "frame", "line round it", "boxed notice"],
+        [ActionId.ToggleShade] = ["shade", "shading", "background", "grey box", "highlight", "tint"],
+
         // M78. "Footer" is a word from another program. What people ask for is the number.
         [ActionId.ShowPageFooter] =
             ["page number", "numbering", "footer", "bottom of the page", "which page", "page 3 of 6"],

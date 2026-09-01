@@ -648,6 +648,107 @@ public sealed class FrameEditorController
         return blockId;
     }
 
+
+    // ---- Borders, shading and a line across the page (PLAN.md §11 M79) -------------------------
+
+    /// <summary>
+    /// Whether the chosen frame has a border round it.
+    ///
+    /// <para>Read off the block rather than kept in a field: two things that can disagree
+    /// eventually will, and here the disagreement is a button whose label is the opposite of what
+    /// the page shows (the M55 rule).</para>
+    /// </summary>
+    public bool SelectionHasBorder =>
+        _selectedBlockId is { } id
+        && _session.Document.TryFindBlock(id, out _, out Block? block)
+        && PageLooks.HasBorder(block.FrameStyleRef);
+
+    /// <summary>Whether the chosen frame is shaded.</summary>
+    public bool SelectionHasShade =>
+        _selectedBlockId is { } id
+        && _session.Document.TryFindBlock(id, out _, out Block? block)
+        && PageLooks.HasShade(block.FrameStyleRef);
+
+    /// <summary>
+    /// Turns the border on the chosen frame on or off (M79).
+    ///
+    /// <para><b>A toggle rather than a menu of looks.</b> The plan offered "none, a thin line, a
+    /// tint" as one choice; two independent toggles give the same four answers with two verbs the
+    /// user already understands, no dialog to open, and no list to read. "Put a border round it"
+    /// and "Shade it" are the two sentences a committee says out loud.</para>
+    /// </summary>
+    /// <returns>False when nothing is chosen, so the caller can stay quiet rather than claim a
+    /// change nobody made (M73's standard).</returns>
+    public bool ToggleBorder() => SetLook(border: !SelectionHasBorder, shade: SelectionHasShade);
+
+    /// <summary>Turns the shading on the chosen frame on or off (M79).</summary>
+    public bool ToggleShade() => SetLook(border: SelectionHasBorder, shade: !SelectionHasShade);
+
+    private bool SetLook(bool border, bool shade)
+    {
+        if (_selectedBlockId is not { } blockId
+            || !_session.Document.TryFindBlock(blockId, out _, out _))
+        {
+            return false;
+        }
+
+        _session.Execute(new SetFrameLookCommand(blockId, border, shade));
+        return true;
+    }
+
+    /// <summary>
+    /// Puts a line right across the page, under whatever is chosen (M79).
+    ///
+    /// <para><b>Not a shape tool.</b> A line the user draws is a line the user drags by accident,
+    /// and dragging a hairline back to level is precisely the fine-motor task §6 exists to avoid.
+    /// This one arrives the width of the text area, level, in the right place, and can then be
+    /// moved and deleted like anything else on the page.</para>
+    ///
+    /// <para><b>Its height is fixed and its width is the margin's.</b> The block is a few points
+    /// tall so there is something to take hold of, and the line is drawn across the middle of it —
+    /// so a resize handle cannot turn a line into a rectangle, which is the one way this could stop
+    /// being the thing the user asked for.</para>
+    /// </summary>
+    /// <returns>The new block's id.</returns>
+    public string AddRuleAcrossThePage(int pageIndex)
+    {
+        Document document = _session.Document;
+        Page page = document.Pages[pageIndex];
+        PageMaster master = document.GetMaster(page.MasterRef);
+
+        float left = master.MarginLeftPt;
+        float width = Math.Max(0f, master.Size.Width - master.MarginLeftPt - master.MarginRightPt);
+
+        // Under the chosen frame when there is one — which is what "a line across the page" means
+        // when somebody has just finished a heading — and otherwise a little way down from the top
+        // margin, where it can be seen and moved.
+        float top = master.MarginTopPt + 24f;
+        if (_selectedBlockId is { } chosen && document.TryFindBlock(chosen, out Page? owner, out Block? block)
+            && owner.Id == page.Id)
+        {
+            top = block.FrameRect.Bottom + 6f;
+        }
+
+        float maxTop = Math.Max(
+            master.MarginTopPt,
+            master.Size.Height - master.MarginBottomPt - PageLooks.RuleBlockHeightPt);
+
+        string blockId = NextId("rule", id => document.Pages.Any(p => p.Blocks.Any(b => b.Id == id)));
+        var rule = new ShapeBlock
+        {
+            Id = blockId,
+            Kind = ShapeKind.Rule,
+            FrameRect = new RectPt(left, Math.Min(top, maxTop), width, PageLooks.RuleBlockHeightPt),
+            StrokeArgb = PageLooks.RuleArgb,
+            StrokeWidthPt = PageLooks.RuleWidthPt,
+            ZOrder = page.Blocks.Count == 0 ? 0 : page.Blocks.Max(b => b.ZOrder) + 1,
+        };
+
+        _session.Execute(new AddBlockCommand(page.Id, rule));
+        Select(blockId);
+        return blockId;
+    }
+
     /// <summary>Deletes the selected frame, detaching it from any chain first and dropping the
     /// story when nothing else shows it (docs/M5-spec.md §7).</summary>
     public bool DeleteSelected()

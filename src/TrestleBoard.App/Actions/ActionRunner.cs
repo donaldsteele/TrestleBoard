@@ -88,6 +88,9 @@ internal sealed class ActionRunner
 
             // ---- Putting things on the page --------------------------------------------------------
             [ActionId.AddTextFrame] = Sync(window.AddTextFrame),
+            [ActionId.AddRule] = Sync(window.AddRuleAcrossThePage),
+            [ActionId.ToggleBorder] = Sync(window.ToggleBorder),
+            [ActionId.ToggleShade] = Sync(window.ToggleShade),
             [ActionId.InsertPhrase] = Async(() => window.InsertPhraseAsync()),
             [ActionId.SavePhrase] = Async(() => window.SavePhraseAsync()),
             [ActionId.InsertPhoto] = Async(() => window.InsertPhotoAsync()),

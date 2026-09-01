@@ -4913,6 +4913,60 @@ public partial class MainWindow : Window
     /// stopped, so the user was left looking at an empty rectangle with no sign that typing was
     /// what to do next; the inline editor underneath has worked since M4.
     /// </summary>
+    // ---- Borders, shading and a line across the page (PLAN.md §11 M79) -------------------------
+
+    /// <summary>M79: a thin line round the edge of the chosen box, or off again.</summary>
+    internal void ToggleBorder() => ChangeTheLook(
+        () => _frames?.ToggleBorder() ?? false,
+        () => _frames?.SelectionHasBorder ?? false,
+        "There is now a thin line round the edge of it.",
+        "The line round the edge is gone.");
+
+    /// <summary>M79: a pale background behind the chosen box, to mark a notice.</summary>
+    internal void ToggleShade() => ChangeTheLook(
+        () => _frames?.ToggleShade() ?? false,
+        () => _frames?.SelectionHasShade ?? false,
+        "It now has a pale background behind it.",
+        "The pale background is gone.");
+
+    /// <summary>
+    /// The half of the two toggles that is the same for both: do it, redraw, and SAY which way it
+    /// went.
+    ///
+    /// <para>The sentence is read AFTER the change, off the block itself, rather than predicted
+    /// before it — a toggle that announces what it meant to do rather than what it did is the M73
+    /// failure, and here the two could differ if the command ever refused.</para>
+    /// </summary>
+    private void ChangeTheLook(Func<bool> change, Func<bool> isOnNow, string whenOn, string whenOff)
+    {
+        if (!change())
+        {
+            return;
+        }
+
+        _source?.Invalidate(new ChangeScope(ChangeKind.BlockContent));
+        PageCanvas.InvalidateVisual();
+        _rail.ForgetEveryThumbnail();
+        RefreshActions();
+        Announce(isOnNow() ? whenOn : whenOff);
+    }
+
+    /// <summary>M79: a straight line right across the page, under whatever is chosen.</summary>
+    internal void AddRuleAcrossThePage()
+    {
+        if (_frames is null)
+        {
+            return;
+        }
+
+        _editor?.End();
+        _frames.AddRuleAcrossThePage(_pageIndex);
+        _rail.ForgetEveryThumbnail();
+        PageCanvas.Focus();
+        RefreshActions();
+        Announce("A line now runs across the page. Drag it to move it, or press Delete to take it away.");
+    }
+
     internal void AddTextFrame()
     {
         _editor?.End();

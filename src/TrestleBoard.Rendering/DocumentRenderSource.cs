@@ -1047,6 +1047,12 @@ public sealed class DocumentRenderSource : IDisposable
         switch (block)
         {
             case TextBlock text:
+                // M79: the border and the shading, UNDER the words. FrameStyleRef has been on
+                // every block since M1 and only widgets ever consulted it, so a committee could
+                // not put a box round a notice at all — the model had the answer and no command
+                // reached it, and nothing drew it for a frame of writing.
+                RenderFrameStyle(canvas, text.FrameStyleRef, rect);
+
                 if (_frameLayoutsByBlockId.TryGetValue(text.Id, out FrameLayout? layout))
                 {
                     PageRenderer.RenderFrame(canvas, layout);
@@ -1147,6 +1153,50 @@ public sealed class DocumentRenderSource : IDisposable
         ImageFit.Stretch => ImageFitMode.Stretch,
         _ => ImageFitMode.Cover,
     };
+
+    /// <summary>
+    /// The fill and the outline a frame style asks for, drawn behind whatever the block holds
+    /// (M79).
+    ///
+    /// <para>Shared by every block kind that can carry one, so a bordered picture and a bordered
+    /// paragraph are drawn by the same three lines and cannot drift apart.</para>
+    /// </summary>
+    private void RenderFrameStyle(SKCanvas canvas, string? frameStyleRef, RectPt frameRect)
+    {
+        if (frameStyleRef is null
+            || _document.StyleSheet.FrameStyles.Find(s => s.Name == frameStyleRef) is not { } style)
+        {
+            return;
+        }
+
+        SKRect rect = ToRect(frameRect);
+        if (style.FillArgb is { } fill)
+        {
+            using var fillPaint = new SKPaint
+            {
+                Color = new SKColor(fill),
+                IsAntialias = true,
+                Style = SKPaintStyle.Fill,
+            };
+            canvas.DrawRect(rect, fillPaint);
+        }
+
+        if (style.StrokeArgb is { } stroke && style.StrokeWidthPt > 0f)
+        {
+            using var strokePaint = new SKPaint
+            {
+                Color = new SKColor(stroke),
+                IsAntialias = true,
+                Style = SKPaintStyle.Stroke,
+
+                // The floor is applied HERE as well as at the command, because a document written
+                // by hand or by an older build can carry any width at all, and a hairline that
+                // vanishes through a photocopier is the same failure whichever way it arrived.
+                StrokeWidth = Math.Max(style.StrokeWidthPt, PageLooks.MinimumStrokeWidthPt),
+            };
+            canvas.DrawRect(rect, strokePaint);
+        }
+    }
 
     private static void RenderShape(SKCanvas canvas, ShapeBlock shape, RectPt frameRect)
     {

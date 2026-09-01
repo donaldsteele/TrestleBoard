@@ -217,6 +217,13 @@ public static class ActionCatalog
         // M76 (f): a box for writing leads the Insert group and a picture follows it. A trestle
         // board is mostly words — the pictures go into the frames the template already ships — so
         // the standing answer to "what are you here to add" is somewhere to write.
+        new(ActionId.AddRule, "A line across the page",
+            "Puts a straight line right across, under whatever you have chosen.", ActionGroup.Insert),
+        new(ActionId.ToggleBorder, "Put a border round it",
+            "Draws a thin line round the edge of the chosen box.", ActionGroup.Item),
+        new(ActionId.ToggleShade, "Shade it",
+            "Puts a pale background behind the chosen box, to mark it out as a notice.",
+            ActionGroup.Item),
         new(ActionId.AddTextFrame, "Add a box for writing", "Puts an empty box on the page for you to write in.",
             ActionGroup.Insert, "Ctrl+Shift+T", PrimaryRank: 1),
         new(ActionId.InsertPhoto, "Insert a picture…", "Puts a photograph on the page.",
@@ -895,6 +902,18 @@ public static class ActionCatalog
             ActionId.DismissCropNotice => context.PictureCropIsStale
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(NeedsPicture),
+
+            // ---- Borders, shading and a line across the page (M79) ---------------------------------
+            // Both act on a chosen block of any kind. A bordered photograph and a bordered
+            // paragraph are drawn by the same three lines in the renderer, so refusing one of them
+            // here would be the catalog inventing a restriction the drawing does not have.
+            ActionId.ToggleBorder or ActionId.ToggleShade => context.HasFrameSelection
+                ? ActionAvailability.Available
+                : ActionAvailability.NotApplicable(ChooseSomething),
+
+            // The line needs a newsletter and nothing else: with nothing chosen it goes near the
+            // top of the page, which is somewhere the user can see it and move it.
+            ActionId.AddRule => RequiresDocument(context),
 
             // ---- How text flows -------------------------------------------------------------------
             ActionId.ToggleWrap => context.HasFrameSelection

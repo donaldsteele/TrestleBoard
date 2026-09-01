@@ -95,6 +95,10 @@ public sealed class CommandTests
         // rather than to one answer for all of them — a document that arrived with a mixture keeps
         // its mixture on undo, and only a fixture whose masters start apart could catch that.
         ["ShowPageFooter.On"] = _ => new ShowPageFooterCommand(true),
+
+        // M79. The style definition is added AND the block is pointed at it in one command, so one
+        // Ctrl+Z takes both back — a split would leave a style behind that nothing refers to.
+        ["SetFrameLook.Border"] = _ => new SetFrameLookCommand("text-1", border: true, shade: false),
     };
 
     [Theory]

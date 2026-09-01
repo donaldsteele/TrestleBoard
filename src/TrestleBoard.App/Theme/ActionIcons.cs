@@ -222,6 +222,13 @@ internal static class ActionIcons
         // --- Help. Every one of these is a sentence the user reads once.
         [ActionId.CheckForUpdates] = "read once, never hunted for",
 
+        // M79. All three are about how a thing LOOKS, and a glyph for "a border" at panel size is
+        // a small grey rectangle — which is what an icon-less action already looks like. The words
+        // carry it; the page shows the result the moment it is pressed.
+        [ActionId.AddRule] = "the result is visible on the page; a glyph would restate the words",
+        [ActionId.ToggleBorder] = "the result is visible on the page; a glyph would restate the words",
+        [ActionId.ToggleShade] = "the result is visible on the page; a glyph would restate the words",
+
         // M78. A toggle in a menu, decided once when the newsletter is set up and then left
         // alone — the same reasoning as the other three view toggles, none of which carries one.
         [ActionId.ShowPageFooter] = "a menu toggle set once, not a button hunted for",

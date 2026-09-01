@@ -113,3 +113,70 @@ public sealed class SetStoryRefCommand(string blockId, string storyRef) : IDocum
 
     public bool TryMerge(IDocumentCommand newer) => false;
 }
+
+/// <summary>
+/// Puts a border or shading on a frame, or takes it off (M79).
+///
+/// <para>Two facts, one command, one undo step: the style definition is added to the sheet if it is
+/// not already there, and the block is pointed at it. Splitting them would mean an undo that left a
+/// style behind, and a document accumulating definitions nothing refers to.</para>
+///
+/// <para>"Nothing at all" is stored as NO reference rather than as a style that draws nothing.
+/// A newsletter that has never been given a border must be byte-identical to one whose border was
+/// turned on and off again — which is the property that makes this milestone safe to try.</para>
+/// </summary>
+public sealed class SetFrameLookCommand(string blockId, bool border, bool shade) : IDocumentCommand
+{
+    private string? _oldStyleRef;
+    private bool _addedStyle;
+
+    public string BlockId { get; } = blockId;
+
+    public bool Border { get; } = border;
+
+    public bool Shade { get; } = shade;
+
+    public string Description => (Border, Shade) switch
+    {
+        (true, true) => "Put a border round it and shade it",
+        (true, false) => "Put a border round it",
+        (false, true) => "Shade it",
+        _ => "Take the border and shading off",
+    };
+
+    public ChangeScope Scope => new(ChangeKind.BlockContent, BlockId: BlockId);
+
+    public void Apply(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        (_, Block block) = document.FindBlock(BlockId);
+
+        // Re-captured on every Apply, so redo is as correct as undo (see IDocumentCommand).
+        _oldStyleRef = block.FrameStyleRef;
+        _addedStyle = false;
+
+        string? name = PageLooks.StyleNameFor(Border, Shade);
+        block.FrameStyleRef = name;
+        if (name is null || document.StyleSheet.FrameStyles.Exists(s => s.Name == name))
+        {
+            return;
+        }
+
+        document.StyleSheet.FrameStyles.Add(PageLooks.Define(name));
+        _addedStyle = true;
+    }
+
+    public void Revert(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        (_, Block block) = document.FindBlock(BlockId);
+        block.FrameStyleRef = _oldStyleRef;
+
+        if (_addedStyle && PageLooks.StyleNameFor(Border, Shade) is { } name)
+        {
+            document.StyleSheet.FrameStyles.RemoveAll(s => s.Name == name);
+        }
+    }
+
+    public bool TryMerge(IDocumentCommand newer) => false;
+}

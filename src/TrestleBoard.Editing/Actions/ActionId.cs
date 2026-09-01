@@ -151,6 +151,14 @@ public static class ActionId
     public const string AddTextFrame = "insert.textFrame";
 
     /// <summary>
+    /// M79: a line right across the page, under whatever is chosen.
+    ///
+    /// <para>Not a shape tool. A line the user draws is a line the user drags by accident, and
+    /// dragging a hairline back to level is exactly the fine-motor task §6 exists to avoid.</para>
+    /// </summary>
+    public const string AddRule = "insert.rule";
+
+    /// <summary>
     /// M54: a ready-made paragraph for a moment that is hard to write — a memorial, a
     /// sickness-and-distress entry. Blank-page paralysis is worst under grief.
     /// </summary>
@@ -311,6 +319,16 @@ public static class ActionId
     public const string ShowPeople = "people.show";
     public const string ImportPeople = "people.import";
     public const string ExportPeople = "people.export";
+    /// <summary>
+    /// M79: a line round the chosen box. <c>FrameStyleRef</c> has been on every block since M1 and
+    /// no command ever reached it, so "put a box round the fish-fry notice" — one of the two
+    /// layout requests a committee actually makes — could not be done at all.
+    /// </summary>
+    public const string ToggleBorder = "item.border";
+
+    /// <summary>M79: a pale tint behind the chosen box, to mark a notice.</summary>
+    public const string ToggleShade = "item.shade";
+
     public const string UndoPeopleChange = "people.undo";
     public const string RestorePeople = "people.restore";
 
