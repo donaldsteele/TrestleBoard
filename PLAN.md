@@ -4180,7 +4180,7 @@ scheduled after M82; "Keep this where it is" (a lock) is a deliverable of M81 an
 recent-pictures strip a deliverable of M80. The designer's frequency argument is recorded above
 each so the order, not the existence, is what it decided.
 
-### M77 — The app keeps its footing (M)
+### M77 — The app keeps its footing (M) — **delivered 2026-09-01**
 
 **Goal.** There is no unhandled-exception handler anywhere in `src/`, no log, and no way for a
 committee member to tell the maintainer what happened beyond "it went away". For an audience that
@@ -4215,7 +4215,7 @@ restore is tested with a rectangle wholly off-screen and asserts the default. Ne
 catalog entry, availability rule, runner, `KeyboardMap` row: the M11 tests fail otherwise. No
 baseline moves.
 
-### M78 — Felt by every reader, seen by no editor (M)
+### M78 — Felt by every reader, seen by no editor (M) — **delivered 2026-09-01**
 
 **Goal.** Two things every issue from the old tool had and this one does not, both invisible in the
 editor and both felt by every reader: a footer that says which issue and which page, and links
@@ -4248,7 +4248,7 @@ pass is byte-identical. The footer moves baselines **for the three templates onl
 by name on the M16 rule; every other baseline is asserted unmoved. A screen-reader peer reads the
 footer as text on the page, not as a control.
 
-### M79 — A line under it, a box round it (M)
+### M79 — A line under it, a box round it (M) — **delivered 2026-09-01**
 
 **Goal.** "Put a line under that heading" and "put a box round the fish-fry notice" are the two
 layout requests a committee actually makes, and the model has carried both answers since M1 with no
@@ -4276,7 +4276,7 @@ gallery page move once for the rule and the three frame looks, named in the spec
 baselines are asserted unmoved because both go through the vector path. Catalog, runner, panel
 offer and `KeyboardMap` per M11. The gates hold: nothing greys, every refusal says why.
 
-### M80 — The phone photo opens, and the copied one lands (M)
+### M80 — The phone photo opens, and the copied one lands (M) — **delivered 2026-09-01**
 
 **Goal.** "My phone photo won't open" is the sharpest daily complaint the designer predicted and the
 owner confirmed: iPhones shoot HEIC, Skia has no HEIC decoder, and today the picker fails with a
@@ -4313,7 +4313,7 @@ PNG on it and asserts one `ImageFrame`, one undo step, and the frame within the 
 The strip is tested with a settings list holding one live and one missing path and asserts one
 tile, labelled. No baseline moves.
 
-### M81 — Make another like this, and show it on Facebook (M)
+### M81 — Make another like this, and show it on Facebook (M) — **delivered 2026-09-01**
 
 **Goal.** A novice makes a second event card by running the wizard again, because copy has always
 meant words. And the lodge's Facebook group and the members who get a text message are how half the
@@ -4345,7 +4345,7 @@ Ctrl+D and the M28 audit tests prove the shortcut reaches the runner. The lock i
 drag and a resize on a locked frame that assert no `IDocumentCommand` was dispatched and the
 status sentence was, and by a text edit on the same frame that asserts one was. No baseline moves.
 
-### M82 — About forty words too long (M)
+### M82 — About forty words too long (M) — **delivered 2026-09-01**
 
 **Goal.** The overset marker says text does not fit (M43); it does not say by how much, and the
 answer the committee wants is in words, never in lines or points. Second, the send step: M51's
@@ -4372,7 +4372,7 @@ copy. The primary-Save rule is checked against M76's "at most one primary per gr
 must still pass — meaning Save takes the primary and nothing else in that group holds it at the
 same time. No baseline moves.
 
-### M83 — Two columns (M/L)
+### M83 — Two columns (M/L) — **delivered 2026-09-01**
 
 **Goal.** `ColumnCount` has been deferred since M1. Two columns look "proper", and the old tool's
 issues used them; the designer's judgement is that every column is another place for text to hide,
@@ -4386,7 +4386,7 @@ announced in words because on a two-column frame it lands on the right column, w
 **Acceptance.** Screen-reader order follows the columns, not the lines. Golden `LineBox` tests
 for the column split; baselines move only for the fixtures that opt in.
 
-### M84 — This month's calendar (M/L)
+### M84 — This month's calendar (M/L) — **delivered 2026-09-01**
 
 **Goal.** An eighth widget: one month on a grid, driven by M75's issue date, with the meeting rule,
 the district events and the birthdays already known to the app landing in the cells. The existing
@@ -4402,7 +4402,7 @@ by default.
 lesson applies: a new widget is new data, not a new format, and the gallery baseline is a
 hand-written list — verify before assuming the expensive kind of change.
 
-### M85 — When did we last mention the fish fry? (M)
+### M85 — When did we last mention the fish fry? (M) — **delivered 2026-09-01**
 
 **Goal.** M59 shows last year's same-month issue; nothing searches across the archive. A real
 question; the designer called it quarterly, the owner scheduled it.
@@ -4492,6 +4492,40 @@ identical between Skia's bundled encoders — but page count, text extraction an
 count from M78 are asserted identical between the two copies, so nothing but the pictures differs.
 The threshold constant has one test that fails if it is changed without the spec sentence beside
 it changing too. No baseline moves.
+
+> **M77–M85 delivered 2026-09-01, in one session, in the planned order.** Suite 1976 → **2106**,
+> all eleven assemblies green, **no snapshot baseline moved by any of the nine** — including M83,
+> which changed the layout engine, and M78 and M79, which the plan had budgeted a baseline move for
+> each. The M60 lesson held twice: **checking first is what saved the cost.** M78's three template
+> footers move nothing because there are no template baselines; M84's eighth widget needed no
+> migration because a widget is new DATA, not a new format.
+>
+> **Two things the plan asked for were already built, and neither was re-implemented.** Pasting a
+> picture (M80) has worked since M18, with M28 fixing its keyboard route; snapping to sibling edges
+> was already in `SnapEngine` from M5. The audit that produced these milestones was wrong about
+> both, and saying so is cheaper than a second implementation.
+>
+> **One deliverable was deliberately not built.** M79's "Make this heading the lodge colour" needs
+> the derived-style machinery M86 exists to add, and a half-version M86 would rewrite is worse than
+> the wait. Recorded rather than dropped.
+>
+> **Every milestone was checked failing-first, and three tests failed that check and were rebuilt.**
+> M77's maximise test passed against a rule that was backwards, because a headless window does not
+> change its reported width when maximised — the rule moved to a pure function whose seam can
+> express the failure. M80's brand-scanning test used a HEIF brand that is itself a listed major
+> brand, so it proved nothing about the loop it claimed to cover. M81's shared-page test was built
+> on an empty picture frame, but `ShowEmptyPrompts` governs WIDGET prompts and nothing else, so it
+> compared two identical pictures. In each case the seam, not the assertion, was what had to change.
+>
+> **Two real defects were found by tests during the work.** M78's telephone detector refused
+> `(803) 555-0100.` at the end of a sentence, because the full stop looked like the start of more
+> digits. M85's first search reported a linked story once per frame, so every article in a
+> two-page chain came back twice.
+>
+> **The standing gates earned their keep.** Between them, the access-key audit, the menu index, the
+> icon census, the command round-trip coverage and the help index caught fourteen omissions across
+> the nine milestones — including a command with no keyboard path at all, and a new command whose
+> title stole the word "picture" from "Insert a picture" in the help search.
 
 ### Sizing & sequencing notes (M77–M87, added 2026-09-01)
 
