@@ -162,21 +162,38 @@ public sealed class CrashGuardTests
     /// The scrubber itself, over a path shape rather than over whatever this machine happens to
     /// have — so the rule is checked identically on all three operating systems.
     /// </summary>
-    [Fact]
-    public void TheScrubberRemovesTheHomeDirectoryWhereverItAppears()
+    [Theory]
+    [InlineData("/home/margaret")]
+    [InlineData(@"C:\Users\Margaret")]
+    [InlineData("/Users/margaret")]
+    public void TheScrubberRemovesTheHomeDirectoryWhereverItAppears(string home)
     {
-        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        Assert.False(string.IsNullOrWhiteSpace(home), "every supported OS reports a home directory");
-
         string scrubbed = ProblemReport.Scrub(
-            $"at TrestleBoard.App.MainWindow.SaveAsync() in {Path.Combine(home, "src", "MainWindow.cs")}:line 12");
+            $"at TrestleBoard.App.MainWindow.SaveAsync() in {home}/src/MainWindow.cs:line 12",
+            [home]);
 
         Assert.DoesNotContain(home, scrubbed, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("argaret", scrubbed, StringComparison.Ordinal);
         Assert.Contains(ProblemReport.Redacted, scrubbed, StringComparison.Ordinal);
 
         // And the part that is not a path survives, or the report says nothing useful either.
         Assert.Contains("SaveAsync", scrubbed, StringComparison.Ordinal);
         Assert.Contains("line 12", scrubbed, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A folder the machine reports as blank, or as a bare separator, is skipped rather than
+    /// replaced at every position — the degenerate shapes a container can hand back.
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("/")]
+    public void ADegenerateFolderIsSkippedRatherThanMatchingEverything(string folder)
+    {
+        const string Text = "at TrestleBoard.App.MainWindow.SaveAsync():line 12";
+
+        Assert.Equal(Text, ProblemReport.Scrub(Text, [folder]));
     }
 
     /// <summary>

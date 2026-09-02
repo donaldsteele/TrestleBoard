@@ -100,8 +100,7 @@ internal static class ArchiveSearch
 
         foreach (string path in candidates.OrderBy(p => p, StringComparer.Ordinal))
         {
-            if (exceptPath is not null
-                && string.Equals(System.IO.Path.GetFullPath(path), System.IO.Path.GetFullPath(exceptPath), StringComparison.OrdinalIgnoreCase))
+            if (exceptPath is not null && IsTheSameFile(path, exceptPath))
             {
                 continue;
             }
@@ -211,6 +210,20 @@ internal static class ArchiveSearch
             + collapsed[start..end]
             + (end < collapsed.Length ? "…" : string.Empty);
     }
+
+    /// <summary>
+    /// Whether two paths name the same file.
+    ///
+    /// <para>Case-insensitively on Windows and macOS, whose file systems are; case-SENSITIVELY on
+    /// Linux, whose file system is not. Comparing with <c>OrdinalIgnoreCase</c> everywhere is the
+    /// Windows assumption, and on Linux it would silently leave a genuinely different newsletter
+    /// out of the results because its name differed only in capitals.</para>
+    /// </summary>
+    private static bool IsTheSameFile(string left, string right) =>
+        string.Equals(
+            System.IO.Path.GetFullPath(left),
+            System.IO.Path.GetFullPath(right),
+            OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
 
     /// <summary>"September 2025", or the file's own name when the issue never said.</summary>
     private static string IssueName(Document document)

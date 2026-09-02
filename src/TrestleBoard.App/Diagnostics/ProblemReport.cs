@@ -119,16 +119,37 @@ internal static class ProblemReport
     /// <para>Comparison is case-insensitive because Windows paths are, and a stack trace built on
     /// one machine and read on another may differ in case alone.</para>
     /// </summary>
-    internal static string Scrub(string? text)
+    internal static string Scrub(string? text) => Scrub(text, SensitiveFolders());
+
+    /// <summary>
+    /// The same rule over a folder list handed in, so the LOGIC can be checked without asking the
+    /// machine what folders it has.
+    ///
+    /// <para>That split is not tidiness. The first test of this rule named the machine's own
+    /// special folders and asserted the report contained none of them — which passed on Windows and
+    /// failed the release build on Linux, where <c>MyDocuments</c> comes back empty and
+    /// "does not contain the empty string" is false of every string there is. A test about the
+    /// runner's environment cannot be a test about the scrubber.</para>
+    /// </summary>
+    internal static string Scrub(string? text, IEnumerable<string> folders)
     {
+        ArgumentNullException.ThrowIfNull(folders);
+
         if (string.IsNullOrEmpty(text))
         {
             return string.Empty;
         }
 
         string scrubbed = text;
-        foreach (string folder in SensitiveFolders())
+        foreach (string folder in folders)
         {
+            // A blank folder would replace at every position, and a single separator is not a name
+            // worth striking out — it is every path on the machine.
+            if (string.IsNullOrWhiteSpace(folder) || folder.Length <= 1)
+            {
+                continue;
+            }
+
             scrubbed = scrubbed.Replace(folder, Redacted, StringComparison.OrdinalIgnoreCase);
         }
 
