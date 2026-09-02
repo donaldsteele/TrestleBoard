@@ -4526,6 +4526,37 @@ it changing too. No baseline moves.
 > icon census, the command round-trip coverage and the help index caught fourteen omissions across
 > the nine milestones — including a command with no keyboard path at all, and a new command whose
 > title stole the word "picture" from "Insert a picture" in the help search.
+>
+> **Shipped as v1.6.0 on 2026-09-02**, four RIDs, nineteen assets, the release body carrying all nine
+> milestones in the app's own language. Seven new screenshots were baked for it — two columns, the
+> month calendar, the page footer, a shaded notice with a border and a rule, the archive search, the
+> pictures used before, and the card shown when something goes wrong — each gated on the milestone it
+> needs, and ten existing images re-baked because the shell changed under them.
+>
+> **The first v1.6.0 tag failed its own verify job and published nothing, and that is the most useful
+> thing in this batch.** `TheReportCarriesNoPathUnderTheUsersOwnFolders` named the machine's own
+> special folders and asserted the report contained none of them. It passed on Windows, where all
+> five are distinct and non-empty, and failed on the ubuntu runner, where `MyDocuments` comes back
+> **empty** — and `Assert.DoesNotContain("")` is false of every string there is. **The assertion was
+> about the runner's environment rather than about the code under test.** The three-OS verify matrix
+> — added after v1.1.0 and v1.2.0 shipped macOS binaries nothing had run — stopped it before the
+> pack jobs began, so the tag could simply be moved. `ProblemReport.Scrub` now has an overload taking
+> the folder list, so the rule is checked against synthetic Windows, Linux and macOS paths
+> identically everywhere, and only the app calls the version that reads the machine.
+>
+> **This is the M39 lesson from a new angle, and it belongs beside it.** "Run the test against the
+> unfixed code" is necessary and not sufficient; M39 added "check WHERE it fails". This adds
+> **check where it RUNS**. A suite green on one operating system is one data point, and a test whose
+> outcome depends on the host is not a test of the code at all. A cross-platform audit of all ten new
+> test files followed, and found one more Windows assumption: M85 compared archive paths
+> case-insensitively, which on Linux would silently drop a newsletter whose name differed only in
+> capitals.
+>
+> **Two further defects came out of staging the screenshots rather than out of any test.** The find
+> window overflowed at its own width once M85's fifth button joined the row — the M76 toolbar
+> finding, one milestone later in a different window — and its result rows were clipped at the
+> window's edge, losing the end of the sentence the hit is in. Looking at the pictures is still a
+> test the test suite does not run.
 
 ### Sizing & sequencing notes (M77–M87, added 2026-09-01)
 
