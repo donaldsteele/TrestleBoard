@@ -114,21 +114,69 @@ public sealed class CrashGuardTests
     [Fact]
     public void TheReportCarriesNoPathUnderTheUsersOwnFolders()
     {
-        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        string documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-        Assert.False(string.IsNullOrWhiteSpace(home), "this machine has no home directory to test against");
+        // Only the folders this machine actually reports.
+        //
+        // The first version of this test named UserProfile and MyDocuments outright and asserted
+        // the report contained neither. It passed on Windows, where the five special folders are
+        // all distinct and non-empty, and FAILED THE RELEASE on the Linux runner, where
+        // MyDocuments comes back empty — and Assert.DoesNotContain("") fails against every string
+        // there is. The assertion was about the runner's environment rather than about the
+        // scrubber. This one asks the machine what it has and holds the scrubber to that.
+        string[] folders =
+        [
+            .. new[]
+            {
+                Environment.SpecialFolder.UserProfile,
+                Environment.SpecialFolder.MyDocuments,
+                Environment.SpecialFolder.ApplicationData,
+                Environment.SpecialFolder.LocalApplicationData,
+                Environment.SpecialFolder.DesktopDirectory,
+            }
+            .Select(Environment.GetFolderPath)
+            .Where(folder => !string.IsNullOrWhiteSpace(folder))
+            .Distinct(StringComparer.OrdinalIgnoreCase),
+        ];
 
-        var error = new IOException(
-            $"Could not open {Path.Combine(documents, "September Trestle Board.tboard")} "
-            + $"and could not read {Path.Combine(home, "AppData", "Roaming", "TrestleBoard", "roster.json")}.");
+        Assert.NotEmpty(folders);
+
+        // An exception message naming a file under each of them — which is what a failed open
+        // really carries, and what names a person, a computer and a newsletter all at once.
+        var error = new IOException(string.Join(
+            " ",
+            folders.Select(folder =>
+                $"Could not open {Path.Combine(folder, "September Trestle Board.tboard")}.")));
 
         string report = ProblemReport.Compose(
             new ProblemReportFacts("1.2.3", "Windows", 150, "Dark", error, []),
             DateTimeOffset.UnixEpoch);
 
-        Assert.DoesNotContain(home, report, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain(documents, report, StringComparison.OrdinalIgnoreCase);
+        foreach (string folder in folders)
+        {
+            Assert.DoesNotContain(folder, report, StringComparison.OrdinalIgnoreCase);
+        }
+
         Assert.Contains(ProblemReport.Redacted, report, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The scrubber itself, over a path shape rather than over whatever this machine happens to
+    /// have — so the rule is checked identically on all three operating systems.
+    /// </summary>
+    [Fact]
+    public void TheScrubberRemovesTheHomeDirectoryWhereverItAppears()
+    {
+        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        Assert.False(string.IsNullOrWhiteSpace(home), "every supported OS reports a home directory");
+
+        string scrubbed = ProblemReport.Scrub(
+            $"at TrestleBoard.App.MainWindow.SaveAsync() in {Path.Combine(home, "src", "MainWindow.cs")}:line 12");
+
+        Assert.DoesNotContain(home, scrubbed, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(ProblemReport.Redacted, scrubbed, StringComparison.Ordinal);
+
+        // And the part that is not a path survives, or the report says nothing useful either.
+        Assert.Contains("SaveAsync", scrubbed, StringComparison.Ordinal);
+        Assert.Contains("line 12", scrubbed, StringComparison.Ordinal);
     }
 
     /// <summary>
