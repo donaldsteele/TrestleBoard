@@ -33,6 +33,20 @@ internal static class MilestoneGate
                 "the emblem shelf"),
             ["M67"] = ("TrestleBoard.App.Dialogs.PdfPageWindow, TrestleBoard.App",
                 "bringing in a page from a PDF"),
+            ["M77"] = ("TrestleBoard.App.Dialogs.ProblemCard, TrestleBoard.App",
+                "the card shown when something goes wrong"),
+            ["M78"] = ("TrestleBoard.Rendering.PageFooterRenderer, TrestleBoard.Rendering",
+                "the line along the bottom of every page"),
+            ["M79"] = ("TrestleBoard.Core.Model.PageLooks, TrestleBoard.Core",
+                "borders, shading and a line across the page"),
+            ["M80"] = ("TrestleBoard.App.Dialogs.RecentPicturesDialog, TrestleBoard.App",
+                "the pictures used before"),
+            ["M83"] = ("TrestleBoard.Core.Commands.SetColumnCountCommand, TrestleBoard.Core",
+                "two columns"),
+            ["M84"] = ("TrestleBoard.Widgets.Builtins.MonthCalendar.MonthCalendarDefinition, TrestleBoard.Widgets",
+                "the month calendar"),
+            ["M85"] = ("TrestleBoard.App.Integration.ArchiveSearch, TrestleBoard.App",
+                "looking through earlier newsletters"),
         };
 
     /// <summary>

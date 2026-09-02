@@ -7,6 +7,7 @@ using TrestleBoard.App.Help;
 using TrestleBoard.App.Integration;
 using TrestleBoard.App.Settings;
 using TrestleBoard.Editing;
+using TrestleBoard.Core.Commands;
 using TrestleBoard.Core.Container;
 using TrestleBoard.Editing.Actions;
 using TrestleBoard.PdfPages;
@@ -32,6 +33,12 @@ internal static class ShotList
 
     /// <summary>The officers table on page 2 of the sample issue.</summary>
     private const string OfficersBlockId = "w-officers";
+
+    /// <summary>The essay on page 1, which M79's border and shading are shown on.</summary>
+    private const string EssayBlockId = "frame-essay-1";
+
+    /// <summary>Where the essay continues on page 2 — a full-width frame, so M83's columns show.</summary>
+    private const string SecondEssayBlockId = "frame-essay-2";
 
     public static IReadOnlyList<Shot> All { get; } =
     [
@@ -449,6 +456,114 @@ internal static class ShotList
         // There is no export dialog worth showing: it is a file picker, and file pickers leak paths
         // (PLAN.md §0 rule 6). This is also the most deterministic image in the set — no Avalonia
         // is involved in it at all.
+
+        // ---- What M77–M85 added (2026-09-01) ------------------------------------------------------
+
+        new("notice-border-and-rule", ShotKind.Window, "M79",
+            "A shaded notice with a border, and a line right across the page.",
+            "The editor showing a newsletter page. One block of writing has a pale background and a "
+            + "thin line round its edge, marking it out as a notice, and a straight rule runs right "
+            + "across the page under it. The panel down the right-hand side offers what can be done "
+            + "to the chosen thing, including making another like it and keeping it where it is.",
+            stage =>
+            {
+                MainWindow window = stage.OpenEditor();
+                FrameEditorController frames = window.FramesForTest!;
+
+                frames.Select(EssayBlockId);
+                frames.ToggleBorder();
+                frames.ToggleShade();
+
+                frames.AddRuleAcrossThePage(0);
+
+                window.SourceForTest!.Invalidate(new ChangeScope(ChangeKind.PageStructure));
+                return Task.FromResult(Stage.Shoot(window));
+            }),
+
+        new("page-footer", ShotKind.Render, "M78",
+            "Every page says which lodge, which issue, and which page it is.",
+            "The bottom of a newsletter page. One grey line of small type reads \"Placeholder Lodge "
+            + "No. 000\", then the month and year, then \"page 2 of 5\".",
+            stage =>
+            {
+                // Page 2, whose frame runs nearly the full height: the bottom of page 1 is empty,
+                // so the footer photographed there floats in white space and documents nothing.
+                MainWindow window = stage.OpenEditor();
+                window.TogglePageFooter();
+                return Task.FromResult(PageSpread.BottomOfPage(window.SourceForTest!, 1));
+            }),
+
+        new("month-calendar", ShotKind.Render, "M84",
+            "The month on a grid, with the stated meeting already marked.",
+            "A calendar for one month laid out as a grid of seven columns, one for each day of the "
+            + "week starting on Sunday. The day numbers run through the cells, and two of them "
+            + "carry short lines of writing: the stated meeting, and a supper.",
+            stage =>
+            {
+                MainWindow window = stage.OpenEditor();
+                Stage.PutACalendarOnThePage(window);
+                return Task.FromResult(PageSpread.OnePage(window.SourceForTest!, 2));
+            }),
+
+        new("two-columns", ShotKind.Render, "M83",
+            "An article running down two columns, still breaking around the photograph.",
+            "A newsletter page whose article runs down two columns of equal width with a gap "
+            + "between them. The left column fills before the right one begins, and the right "
+            + "column breaks around a photograph part way down.",
+            stage =>
+            {
+                // Page 1's frame, not page 2's: page 2 holds the TAIL of the essay, which fits
+                // inside a single column and so photographs as one narrow column beside the
+                // officers table — a picture of the feature not working. Page 1 has the whole
+                // article and a photograph in it, so both columns fill AND the writing still
+                // breaks round the picture, which is the two features together.
+                MainWindow window = stage.OpenEditor();
+                window.FramesForTest!.Select(EssayBlockId);
+                window.ToggleTwoColumns();
+                return Task.FromResult(PageSpread.OnePage(window.SourceForTest!, 0));
+            }),
+
+        new("archive-search", ShotKind.Dialog, "M85",
+            "Looking for words across every newsletter the committee has kept.",
+            "The Find window with a search box at the top and, under it, a list of what was found "
+            + "in earlier newsletters. Each row names the issue and the page, and shows the "
+            + "sentence the words appear in. Newest first.",
+            stage =>
+            {
+                // Find mode, not replace: the archive search is about looking, and a "Put this
+                // instead" box in the picture would suggest it can rewrite eleven old newsletters.
+                FindWindow window = stage.OpenDialog(
+                    new FindWindow(stage.OpenEditor().FindForTest!), height: 520);
+                window.SetMode(replacing: false);
+                window.TypeForTest("fish fry");
+                window.ShowArchiveResults(new ArchiveSearchResult(
+                    [
+                        new ArchiveHit("a", "March 2026", 2, "…tickets for the fish fry are on sale at the door…"),
+                        new ArchiveHit("b", "September 2025", 1, "…the fish fry raised two hundred dollars for the fund…"),
+                        new ArchiveHit("c", "June 2024", 3, "…thanks to everybody who cooked at the fish fry…"),
+                    ],
+                    11,
+                    null));
+                return Task.FromResult(Stage.Shoot(window));
+            }),
+
+        new("recent-pictures", ShotKind.Dialog, "M80",
+            "The pictures used before, offered ahead of the file picker.",
+            "The Put a picture in window. Three large buttons list pictures used in earlier "
+            + "newsletters by their file names, and below them a button reads \"Choose a file…\".",
+            stage => Task.FromResult(Stage.Shoot(stage.OpenDialog(
+                new RecentPicturesDialog(
+                    ["lodge-front.jpg", "worshipful-master.jpg", "summer-picnic-2025.jpg"]),
+                height: 420)))),
+
+        new("something-went-wrong", ShotKind.Dialog, "M77",
+            "When something goes wrong, the work is already kept.",
+            "A card headed \"Something went wrong\". The first line says the newsletter has been "
+            + "kept and nothing written is lost. Under it, two buttons: no thank you, and save a "
+            + "report.",
+            stage => Task.FromResult(Stage.Shoot(stage.OpenDialog(
+                new ProblemCard(workWasKept: true, appWillClose: false), height: 380)))),
+
         new("pdf-page-spread", ShotKind.Render, null,
             "Three pages of the exported PDF.",
             "Three pages of the finished newsletter side by side as they appear in the exported "

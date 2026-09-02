@@ -18,7 +18,7 @@ regeneration adds a full copy to the repository's history:
 dotnet run --project tools/TrestleBoard.Screenshots -- --only font-picker
 ```
 
-Last regenerated: **2026-08-22**, TrestleBoard **0.1.0**.
+Last regenerated: **2026-09-01**, TrestleBoard **0.1.0**.
 That date covers the run that last touched this file; a `--only` run rewrites it
 while leaving the other images as they were, which is the honest reading of it.
 
@@ -223,6 +223,62 @@ Importing asks one question per lodge field, not one per column. (one dialog on 
 `dotnet run --project tools/TrestleBoard.Screenshots -- --only import-columns`
 
 ![The import window asking which column of the spreadsheet holds each piece of information — name, birthday, telephone — with the guesses already filled in.](import-columns.png)
+
+### `notice-border-and-rule.png`
+
+A shaded notice with a border, and a line right across the page. (the whole editor window, 1280×860, Light, 100% scale)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only notice-border-and-rule`
+
+![The editor showing a newsletter page. One block of writing has a pale background and a thin line round its edge, marking it out as a notice, and a straight rule runs right across the page under it. The panel down the right-hand side offers what can be done to the chosen thing, including making another like it and keeping it where it is.](notice-border-and-rule.png)
+
+### `page-footer.png`
+
+Every page says which lodge, which issue, and which page it is. (drawn by the rendering engine — no Avalonia involved)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only page-footer`
+
+![The bottom of a newsletter page. One grey line of small type reads "Placeholder Lodge No. 000", then the month and year, then "page 2 of 5".](page-footer.png)
+
+### `month-calendar.png`
+
+The month on a grid, with the stated meeting already marked. (drawn by the rendering engine — no Avalonia involved)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only month-calendar`
+
+![A calendar for one month laid out as a grid of seven columns, one for each day of the week starting on Sunday. The day numbers run through the cells, and two of them carry short lines of writing: the stated meeting, and a supper.](month-calendar.png)
+
+### `two-columns.png`
+
+An article running down two columns, still breaking around the photograph. (drawn by the rendering engine — no Avalonia involved)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only two-columns`
+
+![A newsletter page whose article runs down two columns of equal width with a gap between them. The left column fills before the right one begins, and the right column breaks around a photograph part way down.](two-columns.png)
+
+### `archive-search.png`
+
+Looking for words across every newsletter the committee has kept. (one dialog on its own)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only archive-search`
+
+![The Find window with a search box at the top and, under it, a list of what was found in earlier newsletters. Each row names the issue and the page, and shows the sentence the words appear in. Newest first.](archive-search.png)
+
+### `recent-pictures.png`
+
+The pictures used before, offered ahead of the file picker. (one dialog on its own)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only recent-pictures`
+
+![The Put a picture in window. Three large buttons list pictures used in earlier newsletters by their file names, and below them a button reads "Choose a file…".](recent-pictures.png)
+
+### `something-went-wrong.png`
+
+When something goes wrong, the work is already kept. (one dialog on its own)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only something-went-wrong`
+
+![A card headed "Something went wrong". The first line says the newsletter has been kept and nothing written is lost. Under it, two buttons: no thank you, and save a report.](something-went-wrong.png)
 
 ### `pdf-page-spread.png`
 

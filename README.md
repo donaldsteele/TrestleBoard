@@ -31,7 +31,28 @@ The officers table, the birthday list, the committees and the district calendar 
 tables. A wizard asks one question per screen in large type, reads back what it is about to write,
 and lays it out for you — and the lodge's address book fills most of it in.
 
+An article can run down two columns, break around a photograph, carry a border or a shade to mark it
+out as a notice, and take a rule right across the page — none of which needs a ruler, a grid or a
+number typed into a box.
+
+![A newsletter page whose article runs down two columns of equal width with a gap between them. The left column fills before the right one begins, and the right column breaks around a photograph part way down.](docs/images/two-columns.png)
+
 There is a [tour with a picture of each part](https://donaldsteele.github.io/TrestleBoard/tour/).
+
+## What the reader gets
+
+Every page can carry a line along the bottom saying which lodge, which issue and which page it is —
+one wording, filled in from what the app already knows.
+
+In the exported PDF, **email addresses, web addresses and telephone numbers are tappable**. Half a
+lodge reads its newsletter on a telephone, and there is nothing to learn: the committee writes the
+address as they always did and the reader's device does the rest. Nothing is underlined and nothing
+turns blue, because the same file is still printed and handed out.
+
+A page can also be saved as a picture for the lodge's own page or a text message, and the month can
+go on the page as a grid with the stated meeting already marked.
+
+![A calendar for one month laid out as a grid of seven columns, one for each day of the week starting on Sunday. The day numbers run through the cells, and two of them carry short lines of writing: the stated meeting, and a supper.](docs/images/month-calendar.png)
 
 ## Built for the people who use it
 

@@ -4,6 +4,10 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using TrestleBoard.Core.Commands;
+using TrestleBoard.Core.Model;
+using TrestleBoard.Widgets;
+using TrestleBoard.Widgets.Builtins.MonthCalendar;
 using TrestleBoard.App;
 using TrestleBoard.App.Settings;
 
@@ -215,6 +219,50 @@ internal sealed class Stage : IDisposable
             frame.Save(buffer);
             return Png.Sanitise(buffer.ToArray());
         }
+    }
+
+    /// <summary>
+    /// Puts a month calendar on page 3 of the sample issue, filled in with fictional entries
+    /// (M84, §0 rule 2).
+    ///
+    /// <para>Through the document session and the widget's own definition, so what is photographed
+    /// is what the app produces — a hand-built draw list would document a widget that does not
+    /// exist.</para>
+    /// </summary>
+    public static void PutACalendarOnThePage(MainWindow window)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        DocumentSession session = window.SessionForTest
+            ?? throw new InvalidOperationException("No newsletter is open.");
+
+        var definition = new MonthCalendarDefinition();
+        var data = new MonthCalendarData
+        {
+            Heading = "This month at the lodge",
+            Month = 9,
+            Year = 2026,
+            MeetingRule = session.Document.Metadata.MeetingRule,
+            Entries =
+            [
+                new CalendarEntry { Day = 12, What = "Supper, 6pm" },
+                new CalendarEntry { Day = 19, What = "Degree practice" },
+                new CalendarEntry { Day = 26, What = "Work day at the hall" },
+            ],
+        };
+
+        session.Execute(new AddBlockCommand(
+            "page-3",
+            new WidgetBlock
+            {
+                Id = "w-month",
+                WidgetType = definition.TypeId,
+                DataVersion = definition.CurrentDataVersion,
+                Data = ((IWidgetDefinition)definition).WriteData(data),
+                FrameRect = new RectPt(54f, 470f, 504f, 260f),
+                ZOrder = 9,
+            }));
+
+        window.SourceForTest!.Invalidate(new ChangeScope(ChangeKind.PageStructure));
     }
 
     private void Track(Window window) => _windows.Add(window);

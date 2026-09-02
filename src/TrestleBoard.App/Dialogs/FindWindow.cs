@@ -142,9 +142,9 @@ public sealed class FindWindow : Window
         // wants to do with a result.
         _archiveResults.DoubleTapped += (_, _) =>
         {
-            if (_archiveResults.SelectedItem is ArchiveHitRow row)
+            if (_archiveResults.SelectedItem is ListBoxItem { Tag: Integration.ArchiveHit hit })
             {
-                OpenTheIssue?.Invoke(row.Hit);
+                OpenTheIssue?.Invoke(hit);
             }
         };
 
@@ -168,6 +168,18 @@ public sealed class FindWindow : Window
                 _search,
                 _replaceRow,
                 _matchCase,
+
+                // M85's button on its OWN row, left-aligned, and not in the row below. Putting it
+                // with the other four overflowed this window at its own 520pt width and pushed
+                // "Replace every one" off the right-hand edge — the M76 toolbar finding, repeating
+                // one milestone later in a different window. It also belongs apart: the other four
+                // act on the newsletter on screen, and this one goes looking somewhere else.
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    Children = { _searchArchive },
+                },
                 _message,
                 _archiveResults,
                 new StackPanel
@@ -175,7 +187,7 @@ public sealed class FindWindow : Window
                     Orientation = Orientation.Horizontal,
                     Spacing = 12,
                     HorizontalAlignment = HorizontalAlignment.Right,
-                    Children = { close, _searchArchive, _replaceAll, _replace, findNext },
+                    Children = { close, _replaceAll, _replace, findNext },
                 },
             },
         };
@@ -194,12 +206,6 @@ public sealed class FindWindow : Window
     internal string MessageForTest => _message.Text ?? string.Empty;
 
     // ---- Looking in earlier newsletters (PLAN.md §11 M85) ---------------------------------------
-
-    /// <summary>One row of the results list. A record so the list shows <see cref="ToString"/>.</summary>
-    internal sealed record ArchiveHitRow(Integration.ArchiveHit Hit)
-    {
-        public override string ToString() => Hit.Describe();
-    }
 
     /// <summary>Raised when the user asks to look in earlier newsletters. The shell does the work:
     /// this window knows nothing about folders, and nothing about files.</summary>
@@ -222,7 +228,19 @@ public sealed class FindWindow : Window
     {
         ArgumentNullException.ThrowIfNull(result);
 
-        _archiveResults.ItemsSource = result.Hits.Select(h => new ArchiveHitRow(h)).ToList();
+        // Each row is built rather than bound to ToString, so the sentence WRAPS. A row clipped at
+        // the window's edge loses the words the reader is looking at — and the sentence the hit is
+        // in is the whole reason the row is worth showing.
+        _archiveResults.ItemsSource = result.Hits.Select(hit => new ListBoxItem
+        {
+            Tag = hit,
+            Content = new TextBlock
+            {
+                Text = hit.Describe(),
+                FontSize = 16,
+                TextWrapping = TextWrapping.Wrap,
+            },
+        }).ToList();
         _archiveResults.IsVisible = result.Hits.Count > 0;
         _message.Text = DescribeArchive(result);
     }
@@ -257,7 +275,7 @@ public sealed class FindWindow : Window
 
     /// <summary>For the tests, which cannot double-click.</summary>
     internal Integration.ArchiveHit? FirstArchiveHitForTest =>
-        (_archiveResults.ItemsSource?.Cast<ArchiveHitRow>().FirstOrDefault())?.Hit;
+        _archiveResults.ItemsSource?.Cast<ListBoxItem>().FirstOrDefault()?.Tag as Integration.ArchiveHit;
 
     /// <summary>Shows or hides the replace half, and re-titles the window to match.</summary>
     public void SetMode(bool replacing)
