@@ -555,6 +555,13 @@ Member { id, displayName, sortName?, birthMonth?, birthDay?, phone?, email?,
 drift. One date plus a kind rather than two date fields, which keeps the add-a-person form to seven
 fields. **No birth year**, matching the existing month/day-only rule for birthdays.
 
+> **Reversed by the owner on 2026-09-04 (M88).** The seven-field record is now thirty: a postal
+> address, three telephone numbers, a member number, a degree, a Masonic title, a birth year and the
+> spouse's details, because the lodge's own member system already holds every one of them and a book
+> that drops them makes the secretary keep a second list. The single-screen *form* survives as the
+> first of two tabs; the birthday still prints as a month and a day, and the stored year never
+> reaches a page.
+
 **Import flow** — a `RosterImportWindow` over a headless `RosterImportSession`. It borrows `WizardWindow`'s
 visual language (20pt, one question per screen, big Back/Next, review) but **does not** go through
 `WizardDefinition`/`WizardSession`: the mapping step is dynamic (columns discovered at runtime) and the
@@ -4557,6 +4564,60 @@ it changing too. No baseline moves.
 > finding, one milestone later in a different window — and its result rows were clipped at the
 > window's edge, losing the end of the sentence the hit is in. Looking at the pictures is still a
 > test the test suite does not run.
+
+### M88 — The address book holds what the secretary holds (L) — **delivered 2026-09-04, `docs/M88-spec.md`**
+
+**The owner reversed M12's seven-fields decision on 2026-09-04**, after reading what the lodge's own
+member-management system exports: 112 members and 16 spouses, with a postal address for every man,
+three telephone numbers, a member number, his degree and its date, a Masonic post-nominal and a real
+birth date. M12 argued that a single-screen form is what an elderly committee can use and that the
+rest of the record could go; what that argument was protecting was the **form**, not the record, and
+a book that drops the rest makes the secretary keep a second list in another program — the thing
+this app exists to stop.
+
+**Goal.** Hold what the lodge already knows, without changing one character of what gets printed.
+
+**Deliverables (all shipped).**
+
+- **Sixteen new fields on `Member`**, flat rather than nested: member number, birth year, degree,
+  Masonic title, five address fields plus an undelivered flag, home/mobile/work telephones, and the
+  spouse's name, email and telephone. Thirty stored properties, one hand-written `Equals`, and a new
+  reflection test that changes each property in turn and demands the two members compare unequal —
+  the name census alone stopped being enough.
+- **`Phone` is untouched** and is still the only number any projection sees, because both roster
+  fingerprints are stored inside every synced `.tboard` and widening them would tell the whole
+  committee their newsletters are stale over a ZIP code. `RosterProjectionInvarianceTests` is the
+  guard, and it was strengthened after a deliberate break failed to trip it.
+- **A degree ladder** (EA / FC / MM) beside M12's raised-or-initiated, which answers a different
+  question. "Raised" migrates to Master Mason; **"initiated" deliberately does not** — a man
+  initiated in 1998 is almost certainly a Master Mason now, and guessing would put a false claim on
+  a real brother's card.
+- **The birth year is stored and never printed.** `BirthdayText` is unchanged, and a source census
+  asserts the property is not so much as named in Widgets, Editing, Rendering or PdfPages.
+- **A spouse is fields on her husband's card**, never a person in the book — structural, so no
+  projection, group or BCC line can find her.
+- **The member number becomes the merge's second match key, and fixes a real defect**:
+  `NameMatching` strips Jr/Sr, so a son's row used to overwrite his father and the book came out a
+  man short in silence. Two such pairs are in this lodge's list.
+- **The guesser prefers the longest matching hint**, which fixes "Mobile Phone" reading as the
+  printed telephone, "Address Undeliverable" as the street, and — a misfire older than this
+  milestone — "Highest Degree Date" as the degree itself.
+- **The lodge's own file imports as it stands:** repeated report rows collapse by member number, and
+  spouse rows are recognised, counted out loud and filed onto their husbands' cards. No conversion
+  script exists or ships.
+- **Export grows to 28 append-only columns**, header and value in one table so they cannot drift, and
+  a new round-trip test proves every written column comes back to the field it came from. It found
+  four that did not.
+- **The person form becomes two tabs** — "The basics" unchanged from M12, "Address and more" beside
+  it — over **one field descriptor table** that replaced seven parallel lists. A completeness test
+  holds the form to the model, and immediately found `Notes`: stored since M12, with no control
+  anywhere in the app. The accessibility walk gained a second yield for the second tab, without
+  which none of the new controls would have been audited at all.
+- **Schema version 2**, with no migration switch: a v1 file loads with the new fields absent, and a
+  file from a newer TrestleBoard is reported rather than refused.
+
+**Acceptance.** No snapshot baseline moves, and no `.tboard` widget reports itself stale.
+`people-address` is the new screenshot; `people-window` and `import-columns` were re-shot.
 
 ### Sizing & sequencing notes (M77–M87, added 2026-09-01)
 

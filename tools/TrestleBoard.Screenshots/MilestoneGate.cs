@@ -47,6 +47,8 @@ internal static class MilestoneGate
                 "the month calendar"),
             ["M85"] = ("TrestleBoard.App.Integration.ArchiveSearch, TrestleBoard.App",
                 "looking through earlier newsletters"),
+            ["M88"] = ("TrestleBoard.Roster.Degree, TrestleBoard.Roster",
+                "the address book holding a postal address, three telephone numbers and a degree"),
         };
 
     /// <summary>

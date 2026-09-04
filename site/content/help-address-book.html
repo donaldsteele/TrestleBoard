@@ -1,38 +1,94 @@
 <p class="lede">
   The address book is the lodge's member list, kept once and used everywhere. It belongs to the
-  program, not to any single newsletter, so it is there next month too.
+  program, not to any single newsletter, so it is there next month too — and for whoever takes the
+  secretary's chair after you.
 </p>
 
 <h2>Where your members come from</h2>
 
 <p>
-  Most committees already keep the list in a spreadsheet. Import it rather than retyping it:
-  <span class="quoted">People → Bring in a list of members…</span>.
+  Most committees already keep the list in a spreadsheet, and most lodges can export one from their
+  membership system. Bring it in rather than retyping it:
+  <span class="quoted">People → Import from a file…</span>. It reads spreadsheets saved as
+  <span class="quoted">.xlsx</span> and lists saved as <span class="quoted">.csv</span>.
 </p>
 
 <p>
   The import asks one question per piece of lodge information — <em>Name: which column has it?</em> —
-  rather than showing a grid of headings and hoping. It guesses first, and nothing is written until
-  the last screen shows you what it is about to do.
+  rather than showing a grid of headings and hoping. Each answer offers you the column letter, its
+  heading and the first couple of values in it, so you recognise the <em>data</em> rather than decode
+  a label. It guesses every answer first, and says so.
 </p>
 
 <figure>
   <img src="{{root}}images/import-columns.png" width="900" height="700"
-       alt="The import window asking which column of the spreadsheet holds each piece of information — name, birthday, telephone — with the guesses already filled in.">
+       alt="The import window asking which column of the spreadsheet holds each piece of information — name, birthday, telephone, and under a second heading the postal address and the rest — with the guesses already filled in.">
   <figcaption>One question per lodge field, with the guess already made. You correct it if it is wrong.</figcaption>
 </figure>
+
+<p>
+  Then it shows you what it is about to do, in plain counts. <strong>Nothing is written until you
+  press the button on this screen</strong>, and everything it cannot use is listed rather than
+  quietly dropped.
+</p>
+
+<figure>
+  <img src="{{root}}images/import-review.png" width="1000" height="780"
+       alt="The review screen of the import, listing in plain sentences how many people are new, how many rows are spouses rather than members, and the first few people as they will be stored — each with the telephone number and town read from their own row.">
+  <figcaption>
+    The last screen before anything changes. The counts are sentences, not a table — including the
+    awkward ones.
+  </figcaption>
+</figure>
+
+<h3>What it copes with, so you do not have to</h3>
+
+<ul>
+  <li>
+    <strong>Excel dates.</strong> A birthday column is usually a real date cell: it stores
+    <span class="quoted">45123</span> and merely <em>shows</em> <span class="quoted">7/4</span>.
+    Exported carelessly, that number is what lands in the file. TrestleBoard reads it back as a date.
+  </li>
+  <li>
+    <strong>The same man on several rows.</strong> Some membership systems write one row per report
+    item, so a brother appears two or three times. Rows carrying the same lodge member number are
+    understood as one man.
+  </li>
+  <li>
+    <strong>Spouses in the same sheet.</strong> A row marked as a spouse never becomes a member.
+    Where it says whose wife she is, her details go onto his card — and the review screen tells you
+    how many rows that was.
+  </li>
+  <li>
+    <strong>A father and a son.</strong> <span class="quoted">John Smith Jr.</span> and
+    <span class="quoted">John Smith Sr.</span> are the same name to almost any matcher. TrestleBoard
+    will not merge two men who carry different lodge member numbers, whatever their names do.
+  </li>
+  <li>
+    <strong>Three telephone columns and no plain one.</strong> If your file has Home, Mobile and Work
+    but nothing called <span class="quoted">Phone</span>, the newsletter's number is filled from the
+    mobile — and counted as a change on the review screen, rather than done quietly.
+  </li>
+</ul>
+
+<p>
+  Four rules the import will not break, whatever the file looks like: <strong>it never removes
+  anybody</strong>; a column you did not map is left alone; an empty cell in a mapped column is left
+  alone too; and two people are only ever merged on an exact match — anything close is a
+  <em>question</em>, never an action.
+</p>
 
 <h2>Adding and correcting people</h2>
 
 <p>
-  <span class="quoted">People → The lodge address book…</span> opens the list. Type three letters of a
+  <span class="quoted">People → People…</span> opens the list. Type three letters of a
   name in the box at the top and there they are; the form on the right corrects one detail without
   disturbing anything else.
 </p>
 
 <figure>
-  <img src="{{root}}images/people-window.png" width="1100" height="760"
-       alt="The people window, listing members of the lodge with their office and birthday, a large search box above them and a form on the right for correcting a detail.">
+  <img src="{{root}}images/people-window.png" width="1180" height="840"
+       alt="The people window, listing members of the lodge with their office and birthday, a large search box above them and, on the right, the first of two tabs holding the details somebody looks up in a hurry — name, birthday, telephone, email and office.">
   <figcaption>
     Every field says what it wants in the words you would use — <span class="quoted">Birthday, as a
     month and a day, like 7/4</span> — because a box labelled only <span class="quoted">DOB</span>
@@ -40,12 +96,61 @@
   </figcaption>
 </figure>
 
+<p>
+  The search box looks at more than the name. Any of these finds a brother: his lodge member number,
+  any of his telephone numbers, his email address, his street or town, his office, or his wife's name.
+</p>
+
+<figure>
+  <img src="{{root}}images/people-search.png" width="1180" height="840"
+       alt="The people window with a lodge member number typed into the search box, one brother found by it, and his card open on the right.">
+  <figcaption>Whatever you happen to have in front of you is enough to find him.</figcaption>
+</figure>
+
+<h3>What the book holds</h3>
+
+<p>
+  The form is in two tabs. The first is what somebody opening the window in a hurry came for — name,
+  birthday, telephone, email, office, degree, whether he is still a member, and which mailing lists
+  he is on.
+</p>
+
+<p>
+  The second holds everything a lodge's own membership records usually carry: his lodge member
+  number, the letters after his name, his postal address, whether post to it comes back undelivered,
+  his home, mobile and work telephone numbers, his wife's name and how to reach her, and a box for
+  notes.
+</p>
+
+<figure>
+  <img src="{{root}}images/people-address.png" width="1180" height="840"
+       alt="The second tab of the person form, showing his lodge member number, the letters after his name, his postal address, his home, mobile and work telephone numbers, his wife's name and contact details, and a box for notes.">
+  <figcaption>
+    The second tab. Three telephone numbers are kept, and the first tab says which one of them the
+    newsletter prints.
+  </figcaption>
+</figure>
+
+<p>
+  <strong>A wife is fields on her husband's card, never a separate person in the list.</strong> That
+  is not a preference, it is how it is built — there is no row for her, so she cannot appear in the
+  birthday list, the officers table or a count of printed copies.
+</p>
+
+<h2>Birthdays, and the year</h2>
+
+<p>
+  The newsletter prints a month and a day, and never a year. If your lodge's records carry a full
+  birth date, TrestleBoard keeps the year — it is your data, and throwing it away would mean
+  importing again to get it back — but nothing that reaches a printed page can see it.
+</p>
+
 <h2>What it saves you</h2>
 
 <ul>
   <li>
     <strong>The birthday list fills itself in.</strong> It knows which month the issue is for and
-    takes the brethren whose birthdays fall in it.
+    takes the brethren whose birthdays fall in it — nobody who has passed, and nobody off the rolls.
   </li>
   <li>
     <strong>The officers wizard offers names.</strong> Instead of asking you to spell a name it
@@ -54,6 +159,11 @@
   <li>
     <strong>Telephone numbers stay in one place.</strong> Correct a number once and every list that
     prints it is offered the correction.
+  </li>
+  <li>
+    <strong>Sending it round knows who gets it how.</strong> The email goes to the brethren in
+    <span class="quoted">Gets the newsletter by email</span>, and you are told how many printed copies
+    to run off for the rest.
   </li>
 </ul>
 
@@ -66,17 +176,40 @@
   </figcaption>
 </figure>
 
+<h2>Sending the list to somebody else</h2>
+
+<p>
+  <span class="quoted">People → Save as a spreadsheet…</span> writes the whole book out as an
+  <span class="quoted">.xlsx</span> file named for the day you made it. Every cell is written as
+  text on purpose: a real date cell would print a birthday as <span class="quoted">7/4/1900</span>,
+  and a numeric telephone number would come back as <span class="quoted">8.03555E+09</span>.
+</p>
+
+<p>
+  <strong>Export it, edit it in Excel, and bring it straight back:</strong> only the cells you changed
+  move — including when what you changed was somebody's name. That is also how you share the list
+  with another member of the committee, since the address book itself never leaves your computer.
+</p>
+
 <h2>Where it is kept, and who can see it</h2>
 
 <p>
   On your computer, in the program's own folder, and nowhere else. TrestleBoard has no account, no
   server and no synchronisation — nothing about your members leaves the machine you typed them into
-  unless you send a newsletter or hand on a pack yourself.
+  unless you send a newsletter, save a spreadsheet, or hand on a pack yourself.
 </p>
 
 <p>
-  A copy of the list is kept each time it changes, so a mistaken import or a deletion can be undone:
-  <span class="quoted">People → Go back to an earlier address book…</span>.
+  A copy of the list is kept each time it changes — ten of them, rotating — so a mistaken import or a
+  deletion can be undone. <span class="quoted">People → Undo the last change</span> puts back what
+  you had a moment ago; <span class="quoted">People → Restore an earlier version…</span>
+  lists the kept copies with their dates and how many people were in each.
+</p>
+
+<p>
+  And if the file cannot be read at all — a backup program holding it open, a permissions change —
+  TrestleBoard says so and <strong>refuses to write over it</strong>, rather than quietly starting an
+  empty list on top of your members.
 </p>
 
 <h2>Handing over to the next secretary</h2>

@@ -424,16 +424,60 @@ internal static class ShotList
         new("people-window", ShotKind.Dialog, "M12",
             "The address book: type three letters and there they are.",
             "The people window, listing members of the lodge with their office and birthday, a "
-            + "large search box above them and a form on the right for correcting a detail.",
+            + "large search box above them and, on the right, the first of two tabs holding the "
+            + "details somebody looks up in a hurry — name, birthday, telephone, email and office. "
+            + "The year he was born is stored beside the birthday and is never printed in the "
+            + "newsletter.",
             stage =>
             {
                 PeopleWindow people = stage.OpenDialog(
                     new PeopleWindow(Fixtures.FictionalRoster(stage.StateRoot)),
-                    width: 1100,
-                    height: 760);
-                // With nobody chosen the form on the right is seven empty boxes, which documents
-                // the layout but not the point of it.
+                    width: 1180,
+                    height: 840);
+                // With nobody chosen the form on the right is empty boxes, which documents the
+                // layout but not the point of it.
                 people.SelectForTest("person-1");
+                return Task.FromResult(Stage.Shoot(people));
+            }),
+
+        // The search, mid-typing. The People shot above shows the window; this shows the thing the
+        // window is FOR — three letters and the man is on screen — and, since M88, that the box
+        // looks at more than the name: a street, a town, a lodge member number.
+        new("people-search", ShotKind.Dialog, "M88",
+            "Look somebody up by whatever you happen to have.",
+            "The people window with a lodge member number typed into the search box, one brother "
+            + "found by it, and his card open on the right — showing that the search looks at more "
+            + "than the name: a member number, a telephone number, a street or a town all find him.",
+            stage =>
+            {
+                PeopleWindow people = stage.OpenDialog(
+                    new PeopleWindow(Fixtures.FictionalRoster(stage.StateRoot)),
+                    width: 1180,
+                    height: 840);
+
+                // A number rather than a name, deliberately: a name is the search everybody expects
+                // and this is the one M88 added. It also photographs unambiguously — a surname would
+                // pull in the brethren who live on Sample Lane, which is right and reads as wrong.
+                people.SearchBoxForTest.Text = "98515";
+                people.SelectForTest("person-15");
+                return Task.FromResult(Stage.Shoot(people));
+            }),
+
+        // M88's second tab. No existing shot can show it, and it is the whole of the milestone:
+        // what the lodge's own member system holds, in the app rather than in another program.
+        new("people-address", ShotKind.Dialog, "M88",
+            "Everything the lodge already knows about a brother, in one place.",
+            "The second tab of the person form, showing his lodge member number, the letters after "
+            + "his name, his postal address, his home, mobile and work telephone numbers, his "
+            + "wife's name and contact details, and a box for notes.",
+            stage =>
+            {
+                PeopleWindow people = stage.OpenDialog(
+                    new PeopleWindow(Fixtures.FictionalRoster(stage.StateRoot)),
+                    width: 1180,
+                    height: 840);
+                people.SelectForTest("person-1");
+                people.SelectedTabForTest = 1;
                 return Task.FromResult(Stage.Shoot(people));
             }),
 
@@ -442,12 +486,34 @@ internal static class ShotList
         new("import-columns", ShotKind.Dialog, "M12",
             "Importing asks one question per lodge field, not one per column.",
             "The import window asking which column of the spreadsheet holds each piece of "
-            + "information — name, birthday, telephone — with the guesses already filled in.",
+            + "information — name, birthday, telephone, and under a second heading the postal "
+            + "address and the rest — with the guesses already filled in.",
             async stage =>
             {
                 RosterImportWindow import = stage.OpenDialog(
                     new RosterImportWindow(RosterBook.Empty));
                 import.ChooseFileForTest(Fixtures.MembersCsv());
+                await import.NextForTest().ConfigureAwait(true);
+                return Stage.Shoot(import);
+            }),
+
+        // The screen before anything is written — the one that makes the import safe to press. It
+        // is shot over the shape a lodge's own member system exports (M88), because that file is
+        // where the counts stop being obvious: the same man appears on several rows, and wives are
+        // in the sheet beside their husbands.
+        new("import-review", ShotKind.Dialog, "M88",
+            "Nothing is written until this screen says what it is about to do.",
+            "The review screen of the import, listing in plain sentences how many people are new, "
+            + "how many rows are spouses rather than members, and the first few people as they will "
+            + "be stored — each with the telephone number and town read from their own row.",
+            async stage =>
+            {
+                RosterImportWindow import = stage.OpenDialog(
+                    new RosterImportWindow(RosterBook.Empty),
+                    width: 1000,
+                    height: 780);
+                import.ChooseFileForTest(Fixtures.MembersFullCsv());
+                await import.NextForTest().ConfigureAwait(true);
                 await import.NextForTest().ConfigureAwait(true);
                 return Stage.Shoot(import);
             }),

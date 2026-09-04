@@ -88,6 +88,10 @@ with the screenshots.
 `PLAN.md` is the full architecture and milestone plan; `docs/M*-spec.md` is one document per
 milestone explaining what was built and what was deliberately left out.
 
+For the parts a committee actually operates: [docs/ADDRESS-BOOK.md](docs/ADDRESS-BOOK.md) — what the
+lodge's member list holds, how a spreadsheet is brought into it, and what fills itself in from it —
+[docs/INSTALL.md](docs/INSTALL.md) and [docs/FONTS.md](docs/FONTS.md).
+
 ## Building
 
 Requires the .NET 10 SDK (pinned in `global.json`).

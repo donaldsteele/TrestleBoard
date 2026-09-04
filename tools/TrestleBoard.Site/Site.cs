@@ -92,8 +92,9 @@ internal static class Site
             Title: "The address book",
             Heading: "The address book",
             Description:
-                "Type a brother's name once. Where the birthday list and the officers table get "
-                + "their names from.",
+                "Type a brother's name once. What the lodge list holds, bringing one in from a "
+                + "spreadsheet, and where the birthday list and the officers table get their names "
+                + "from.",
             Parent: "help",
             ContentFile: "help-address-book.html"),
 

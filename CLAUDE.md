@@ -19,8 +19,10 @@ The `Examples/*.pdf` files contain **real people's names, phone numbers, and ema
 3. llm-wiki (`wiki/`, `raw/`) and graphify (`graphify-out/`) outputs absorb real data from
    the example PDFs — they are local development aids, never repo artifacts.
 4. Before pushing: confirm `git log -p` for new commits contains no real names/phones.
-5. **The roster file is real personal data (from M12).** `%AppData%/TrestleBoard/roster.json` and
-   its `roster-backups/` ring hold real member names, birthdays, phone numbers and emails. Never
+5. **The roster file is real personal data (from M12; more of it from M88).**
+   `%AppData%/TrestleBoard/roster.json` and its `roster-backups/` ring hold real member names,
+   birthdays (**with the year, from M88**), postal addresses, home/mobile/work phone numbers,
+   emails, lodge member numbers and **spouses' names, emails and phone numbers**. Never
    paste its contents into a commit, a test, a fixture, an issue, or a graphify/llm-wiki run.
    Roster fixtures exist **only** in `tests/Roster.Tests` and are fictional — never in
    `assets-src/`, templates, or `docs/`. `roster*.json`, `roster*.xlsx` and `*.roster.bak.json`

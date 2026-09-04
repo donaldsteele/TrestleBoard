@@ -18,7 +18,7 @@ regeneration adds a full copy to the repository's history:
 dotnet run --project tools/TrestleBoard.Screenshots -- --only font-picker
 ```
 
-Last regenerated: **2026-09-01**, TrestleBoard **0.1.0**.
+Last regenerated: **2026-09-04**, TrestleBoard **0.1.0**.
 That date covers the run that last touched this file; a `--only` run rewrites it
 while leaving the other images as they were, which is the honest reading of it.
 
@@ -214,7 +214,23 @@ The address book: type three letters and there they are. (one dialog on its own)
 
 `dotnet run --project tools/TrestleBoard.Screenshots -- --only people-window`
 
-![The people window, listing members of the lodge with their office and birthday, a large search box above them and a form on the right for correcting a detail.](people-window.png)
+![The people window, listing members of the lodge with their office and birthday, a large search box above them and, on the right, the first of two tabs holding the details somebody looks up in a hurry — name, birthday, telephone, email and office. The year he was born is stored beside the birthday and is never printed in the newsletter.](people-window.png)
+
+### `people-search.png`
+
+Look somebody up by whatever you happen to have. (one dialog on its own)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only people-search`
+
+![The people window with a lodge member number typed into the search box, one brother found by it, and his card open on the right — showing that the search looks at more than the name: a member number, a telephone number, a street or a town all find him.](people-search.png)
+
+### `people-address.png`
+
+Everything the lodge already knows about a brother, in one place. (one dialog on its own)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only people-address`
+
+![The second tab of the person form, showing his lodge member number, the letters after his name, his postal address, his home, mobile and work telephone numbers, his wife's name and contact details, and a box for notes.](people-address.png)
 
 ### `import-columns.png`
 
@@ -222,7 +238,15 @@ Importing asks one question per lodge field, not one per column. (one dialog on 
 
 `dotnet run --project tools/TrestleBoard.Screenshots -- --only import-columns`
 
-![The import window asking which column of the spreadsheet holds each piece of information — name, birthday, telephone — with the guesses already filled in.](import-columns.png)
+![The import window asking which column of the spreadsheet holds each piece of information — name, birthday, telephone, and under a second heading the postal address and the rest — with the guesses already filled in.](import-columns.png)
+
+### `import-review.png`
+
+Nothing is written until this screen says what it is about to do. (one dialog on its own)
+
+`dotnet run --project tools/TrestleBoard.Screenshots -- --only import-review`
+
+![The review screen of the import, listing in plain sentences how many people are new, how many rows are spouses rather than members, and the first few people as they will be stored — each with the telephone number and town read from their own row.](import-review.png)
 
 ### `notice-border-and-rule.png`
 
