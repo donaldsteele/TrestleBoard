@@ -360,6 +360,49 @@ public sealed class PeopleShellTests
     }
 
     /// <summary>
+    /// The same walk over the shape the lodge's own member system exports (M88): repeated rows,
+    /// spouses in the same sheet as members, and three telephone columns with no plain "Phone".
+    ///
+    /// <para>The window is what is driven, not the session, because the mapping screen is where this
+    /// milestone can fail invisibly — twenty-six questions, all guessed, and a wrong guess looks
+    /// exactly like a right one until somebody reads a card.</para>
+    /// </summary>
+    [Fact]
+    public async Task TheImportWindowHandlesTheLodgesOwnFile()
+    {
+        await HeadlessSession.DispatchAsync(async () =>
+        {
+            var window = new RosterImportWindow(RosterBook.Empty);
+            window.Show();
+
+            window.ChooseFileForTest(Fixture("members-full.csv"));
+            await window.NextForTest();
+            Assert.Equal(ImportStep.MapColumns, window.SessionForTest.Step);
+
+            await window.NextForTest();
+            Assert.Equal(ImportStep.Review, window.SessionForTest.Step);
+
+            MergePlan plan = window.SessionForTest.Plan();
+            Assert.Equal(10, plan.NewCount);
+            Assert.Equal(2, plan.SpouseCount);
+            Assert.Contains(
+                plan.Summary(),
+                line => line.Contains("spouses, not members", StringComparison.Ordinal));
+
+            await window.NextForTest();
+            Assert.Equal(ImportStep.Done, window.SessionForTest.Step);
+            Assert.Equal(10, window.Result!.Count);
+
+            // The father and the son are two cards, not one (M88's member-number guard).
+            Assert.Equal(
+                2,
+                window.Result!.Members.Count(m => m.DisplayName.StartsWith("Gideon", StringComparison.Ordinal)));
+
+            window.Close();
+        }, TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
     /// M73(b1): "Stop the import" — automation name "Stop importing and change nothing" — was still
     /// on the screen after the import had been committed, and the shell reads <c>Result</c> however
     /// the window closed. Pressing it, or pressing Escape, imported everybody into the real address

@@ -22,6 +22,16 @@ public enum RowOutcome
 
     /// <summary>Close to somebody already in the book. A question, never an action.</summary>
     Question,
+
+    /// <summary>
+    /// A row for somebody's wife rather than for a member (M88).
+    ///
+    /// <para>The lodge's own export puts spouses in the same sheet, marked "Spouse of &lt;name&gt;
+    /// #&lt;number&gt;". They are never added as people — a spouse is fields on her husband's card —
+    /// and they are never silently dropped either: the review screen counts them out loud, and where
+    /// the row names a member number we already have, her details land on his card.</para>
+    /// </summary>
+    Spouse,
 }
 
 /// <summary>One row of the file and what the import will do with it.</summary>
@@ -60,6 +70,9 @@ public sealed record MergePlan(
 
     public IReadOnlyList<PlannedRow> Unusable => Rows.Where(r => r.Outcome == RowOutcome.Unusable).ToList();
 
+    /// <summary>Rows that were somebody's wife rather than a member (M88).</summary>
+    public int SpouseCount => Rows.Count(r => r.Outcome == RowOutcome.Spouse);
+
     /// <summary>Would committing this change anything at all? The idempotence property, as a question.</summary>
     public bool ChangesAnything => NewCount > 0 || UpdatedCount > 0;
 
@@ -96,6 +109,14 @@ public sealed record MergePlan(
             lines.Add(LeftAloneCount == 1
                 ? "1 is already in your list and will be left alone."
                 : $"{LeftAloneCount} are already in your list and will be left alone.");
+        }
+
+        if (SpouseCount > 0)
+        {
+            lines.Add(SpouseCount == 1
+                ? "1 row is a spouse, not a member. We'll put her details on her husband's card."
+                : $"{SpouseCount} rows are spouses, not members. We'll put their details on their "
+                    + "husbands' cards.");
         }
 
         if (Unusable.Count > 0)
@@ -201,10 +222,28 @@ public static class RosterMerge
                 continue;
             }
 
+            // M88. A spouse row is never a member. It is handled before matching, because matching
+            // it at all is the mistake: her name would find her husband by surname and overwrite
+            // him, or fail to and put her on the lodge's roll.
+            if (IsSpouseRow(sheet, row, mapping))
+            {
+                (RosterBook afterSpouse, string note) = ApplySpouse(result, sheet, row, mapping, name);
+                bool landed = !ReferenceEquals(afterSpouse, result) && afterSpouse != result;
+                result = afterSpouse;
+                rows.Add(new PlannedRow(
+                    row + 1,
+                    landed ? RowOutcome.Spouse : RowOutcome.Unusable,
+                    new Member { DisplayName = name },
+                    null,
+                    note));
+                continue;
+            }
+
             Member? match = FindMatch(result, sheet, row, headerRow, mapping, name);
             if (match is null)
             {
-                Member? near = FindNearMatch(result, name);
+                Member? near = FindNearMatch(
+                    result, name, Read(sheet, row, mapping, RosterField.MemberNumber));
                 DuplicateAnswer answer = near is null
                     ? DuplicateAnswer.Unanswered
                     : options.Answers.GetValueOrDefault(row + 1, DuplicateAnswer.Unanswered);
@@ -280,6 +319,23 @@ public static class RosterMerge
             return byId;
         }
 
+        // M88: the lodge's own member number, second only to our own id.
+        //
+        // It is above email deliberately. An email address can be shared — a husband and wife on one
+        // account, a father and son on the family address — while a member number is issued once,
+        // to one man. It only matches when exactly one member carries it: a book where two people
+        // somehow hold the same number falls through to the slower keys rather than picking one.
+        string number = Read(sheet, row, mapping, RosterField.MemberNumber).Trim();
+        if (number.Length > 0)
+        {
+            List<Member> byNumber = [.. book.Members.Where(
+                m => string.Equals(m.MemberNumber?.Trim(), number, StringComparison.OrdinalIgnoreCase))];
+            if (byNumber.Count == 1)
+            {
+                return byNumber[0];
+            }
+        }
+
         string email = NameMatching.NormaliseEmail(Read(sheet, row, mapping, RosterField.Email));
         if (email.Length > 0)
         {
@@ -291,12 +347,36 @@ public static class RosterMerge
             }
         }
 
+        // The name key, with M88's guard on it.
+        //
+        // NameMatching.Normalise strips Jr, Sr, II and III — right for deciding that "Placeholder,
+        // A." and "A. Placeholder" are one man, and catastrophic for a father and a son who share
+        // every other part of their name. Two such pairs sit in this lodge's own list: before the
+        // guard, the son's row matched the father exactly and overwrote him, and the book came out
+        // two men short with nothing said. The member number settles it — when both sides carry one
+        // and they differ, these are two people, whatever the names do.
         string normalised = NameMatching.Normalise(name);
-        return book.Members.FirstOrDefault(m => NameMatching.Normalise(m.DisplayName) == normalised);
+        return book.Members.FirstOrDefault(m =>
+            NameMatching.Normalise(m.DisplayName) == normalised && !NumbersDisagree(m, number));
     }
 
-    private static Member? FindNearMatch(RosterBook book, string name) =>
-        book.Members.FirstOrDefault(m => NameMatching.CouldBeTheSamePerson(m.DisplayName, name));
+    private static Member? FindNearMatch(RosterBook book, string name, string incomingNumber) =>
+        book.Members.FirstOrDefault(m =>
+            NameMatching.CouldBeTheSamePerson(m.DisplayName, name) && !NumbersDisagree(m, incomingNumber));
+
+    /// <summary>
+    /// Two non-empty member numbers that are not the same number (M88) — the one fact that can say
+    /// "these are different men" about two people whose names cannot be told apart. Silent when
+    /// either side has no number, which is every lodge that has not imported one yet.
+    /// </summary>
+    private static bool NumbersDisagree(Member member, string incomingNumber)
+    {
+        string mine = member.MemberNumber?.Trim() ?? string.Empty;
+        string theirs = incomingNumber.Trim();
+        return mine.Length > 0
+            && theirs.Length > 0
+            && !string.Equals(mine, theirs, StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>
     /// Writes the mapped columns onto a member. Unmapped fields, and mapped columns whose cell is
@@ -381,7 +461,104 @@ public static class RosterMerge
             result = result with { Groups = FieldValues.ReadGroups(groups) };
         }
 
+        // ---- M88 -------------------------------------------------------------------------------
+        // Every one of these follows the same rule as the fields above it: a column that was not
+        // mapped, and a mapped column whose cell is empty, leave what the book already holds alone.
+        result = Text(result, sheet, row, mapping, RosterField.MemberNumber, (m, v) => m with { MemberNumber = v });
+        result = Text(result, sheet, row, mapping, RosterField.MasonicTitle, (m, v) => m with { MasonicTitle = v });
+        result = Text(result, sheet, row, mapping, RosterField.AddressLine1, (m, v) => m with { AddressLine1 = v });
+        result = Text(result, sheet, row, mapping, RosterField.AddressLine2, (m, v) => m with { AddressLine2 = v });
+        result = Text(result, sheet, row, mapping, RosterField.City, (m, v) => m with { City = v });
+        result = Text(result, sheet, row, mapping, RosterField.State, (m, v) => m with { State = v });
+        result = Text(result, sheet, row, mapping, RosterField.Zip, (m, v) => m with { Zip = v });
+        result = Text(result, sheet, row, mapping, RosterField.SpouseName, (m, v) => m with { SpouseName = v });
+        result = Text(result, sheet, row, mapping, RosterField.SpouseEmail, (m, v) => m with { SpouseEmail = v });
+        result = Text(result, sheet, row, mapping, RosterField.Notes, (m, v) => m with { Notes = v });
+
+        result = Phone(result, sheet, row, mapping, RosterField.HomePhone, (m, v) => m with { HomePhone = v });
+        result = Phone(result, sheet, row, mapping, RosterField.MobilePhone, (m, v) => m with { MobilePhone = v });
+        result = Phone(result, sheet, row, mapping, RosterField.WorkPhone, (m, v) => m with { WorkPhone = v });
+        result = Phone(result, sheet, row, mapping, RosterField.SpousePhone, (m, v) => m with { SpousePhone = v });
+
+        string degree = Read(sheet, row, mapping, RosterField.Degree);
+        if (degree.Length > 0 && FieldValues.ReadDegree(degree) is { } held)
+        {
+            result = result with { Degree = held };
+        }
+
+        string undeliverable = Read(sheet, row, mapping, RosterField.AddressUndeliverable);
+        if (undeliverable.Length > 0 && FieldValues.ReadYesNo(undeliverable) is { } comesBack)
+        {
+            result = result with { AddressUndeliverable = comesBack };
+        }
+
+        // The year, taken from the birthday column itself rather than asked for separately (M88).
+        if (birthday.Length > 0
+            && FieldValues.TryReadBirthday(birthday, out _, out _, out int birthYear)
+            && birthYear > 0)
+        {
+            result = result with { BirthYear = birthYear };
+        }
+
+        // A year in a column of its own wins over one read out of the birthday cell: the file said
+        // it twice, and the column that exists to hold it is the one that meant to.
+        string year = Read(sheet, row, mapping, RosterField.BirthYear);
+        if (year.Length > 0
+            && int.TryParse(
+                year.Trim(),
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out int typedYear))
+        {
+            result = result with { BirthYear = typedYear };
+        }
+
+        // The printed telephone number, when the lodge's file has no column for it (M88).
+        //
+        // The secretary's export has Home, Mobile and Work and no plain "Phone" at all, so without
+        // this every one of 112 members would import with nothing to print in the officers table.
+        // It fills an EMPTY Phone only — a number already in the book is never overwritten by this
+        // rule — and Describe() names it, so the review screen counts it out loud rather than the
+        // app quietly deciding which of a man's numbers is public.
+        if (string.IsNullOrWhiteSpace(result.Phone))
+        {
+            string? carried = result.MobilePhone ?? result.HomePhone;
+            if (!string.IsNullOrWhiteSpace(carried))
+            {
+                result = result with { Phone = carried };
+            }
+        }
+
         return result.Normalised();
+    }
+
+    /// <summary>One mapped text column onto one field, or nothing at all when it is empty (M88).</summary>
+    private static Member Text(
+        Member member,
+        TableSheet sheet,
+        int row,
+        IReadOnlyDictionary<RosterField, int> mapping,
+        RosterField field,
+        Func<Member, string, Member> set)
+    {
+        string value = Read(sheet, row, mapping, field);
+        return value.Length > 0 ? set(member, value.Trim()) : member;
+    }
+
+    /// <summary>As <see cref="Text"/>, through the telephone reader — which is what rescues a number
+    /// a spreadsheet turned into 8.03555E+09.</summary>
+    private static Member Phone(
+        Member member,
+        TableSheet sheet,
+        int row,
+        IReadOnlyDictionary<RosterField, int> mapping,
+        RosterField field,
+        Func<Member, string, Member> set)
+    {
+        string value = Read(sheet, row, mapping, field);
+        return value.Length > 0 && FieldValues.ReadPhone(value) is { } number
+            ? set(member, number)
+            : member;
     }
 
     private static string Describe(Member before, Member after)
@@ -435,8 +612,139 @@ public static class RosterMerge
             changes.Add("groups");
         }
 
+        // ---- M88. Every new field says its own name, in the words the form uses ----------------
+        Say(before.MemberNumber, after.MemberNumber, "member number");
+        Say(before.Degree, after.Degree, "highest degree");
+        Say(before.MasonicTitle, after.MasonicTitle, "letters after his name");
+        Say(before.HomePhone, after.HomePhone, "home telephone");
+        Say(before.MobilePhone, after.MobilePhone, "mobile telephone");
+        Say(before.WorkPhone, after.WorkPhone, "work telephone");
+        Say(before.SpouseName, after.SpouseName, "spouse's name");
+        Say(before.SpouseEmail, after.SpouseEmail, "spouse's email");
+        Say(before.SpousePhone, after.SpousePhone, "spouse's telephone");
+        Say(before.Notes, after.Notes, "notes");
+
+        if (before.BirthYear != after.BirthYear)
+        {
+            changes.Add("year he was born");
+        }
+
+        // The five address fields are one fact to the reader, and five lines about a house move
+        // would bury the one line that says somebody died.
+        if (before.AddressLine1 != after.AddressLine1
+            || before.AddressLine2 != after.AddressLine2
+            || before.City != after.City
+            || before.State != after.State
+            || before.Zip != after.Zip)
+        {
+            changes.Add("postal address");
+        }
+
+        if (before.AddressUndeliverable != after.AddressUndeliverable)
+        {
+            changes.Add(after.AddressUndeliverable
+                ? "him to post that comes back undelivered"
+                : "him back to post that arrives");
+        }
+
         return changes.Count == 0 ? string.Empty : "Changes the " + string.Join(", ", changes) + ".";
+
+        void Say(string? before2, string? after2, string word)
+        {
+            if (before2 != after2)
+            {
+                changes.Add(word);
+            }
+        }
     }
+
+    /// <summary>
+    /// Is this row somebody's wife rather than a member? (M88)
+    ///
+    /// <para>Read from whichever column the user pointed at as "which says which a row is" — in the
+    /// lodge's own export, a cell reading "Spouse of Placeholder, A. #98506". No column mapped means
+    /// every row is a member, which is what every ordinary lodge list is.</para>
+    /// </summary>
+    private static bool IsSpouseRow(
+        TableSheet sheet, int row, IReadOnlyDictionary<RosterField, int> mapping)
+    {
+        string kind = Read(sheet, row, mapping, RosterField.RowKind).Trim();
+        return kind.Contains("spouse", StringComparison.OrdinalIgnoreCase)
+            || kind.Contains("wife", StringComparison.OrdinalIgnoreCase)
+            || kind.Contains("husband", StringComparison.OrdinalIgnoreCase)
+            || kind.Contains("widow", StringComparison.OrdinalIgnoreCase)
+            || kind.Contains("partner", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Puts a spouse row's details onto her husband's card, and says what happened (M88).
+    ///
+    /// <para>She is found by the member number in her own row — the lodge's export writes "Spouse of
+    /// &lt;his name&gt; #&lt;his number&gt;" — or by her own member-number column where the file has
+    /// one. If neither names a member we hold, nothing is written and the row is reported as one we
+    /// could not use, with a sentence saying why: a wife filed against the wrong husband would be a
+    /// worse outcome than a row the secretary has to look at.</para>
+    /// </summary>
+    private static (RosterBook Book, string Note) ApplySpouse(
+        RosterBook book,
+        TableSheet sheet,
+        int row,
+        IReadOnlyDictionary<RosterField, int> mapping,
+        string name)
+    {
+        string kindCell = Read(sheet, row, mapping, RosterField.RowKind);
+        string number = HusbandsNumber(kindCell, Read(sheet, row, mapping, RosterField.MemberNumber));
+
+        if (number.Length == 0)
+        {
+            return (book, $"\"{name}\" is a spouse, and this row does not say whose. Nothing was "
+                + "changed for her.");
+        }
+
+        List<Member> husbands = [.. book.Members.Where(
+            m => string.Equals(m.MemberNumber?.Trim(), number, StringComparison.OrdinalIgnoreCase))];
+        if (husbands.Count != 1)
+        {
+            return (book, $"\"{name}\" is a spouse of member number {number}, who is not in your "
+                + "list. Nothing was changed for her.");
+        }
+
+        Member husband = husbands[0];
+        Member updated = husband with
+        {
+            SpouseName = name.Trim(),
+            SpouseEmail = Blank(Read(sheet, row, mapping, RosterField.Email)) ?? husband.SpouseEmail,
+            SpousePhone = Blank(Read(sheet, row, mapping, RosterField.MobilePhone))
+                ?? Blank(Read(sheet, row, mapping, RosterField.HomePhone))
+                ?? Blank(Read(sheet, row, mapping, RosterField.Phone))
+                ?? husband.SpousePhone,
+        };
+
+        return (book.With(updated.Normalised()),
+            $"\"{name}\" is {husband.DisplayName}'s spouse. Her details go on his card.");
+    }
+
+    /// <summary>
+    /// The member number a spouse row points at: the "#98506" the lodge writes after her husband's
+    /// name, or failing that whatever her own member-number column holds.
+    /// </summary>
+    private static string HusbandsNumber(string kindCell, string ownNumber)
+    {
+        int hash = kindCell.LastIndexOf('#');
+        if (hash >= 0)
+        {
+            string tail = new([.. kindCell[(hash + 1)..].TakeWhile(char.IsAsciiLetterOrDigit)]);
+            if (tail.Length > 0)
+            {
+                return tail;
+            }
+        }
+
+        return ownNumber.Trim();
+    }
+
+    private static string? Blank(string value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static string Read(
         TableSheet sheet,

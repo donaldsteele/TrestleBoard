@@ -101,6 +101,62 @@ public sealed class RosterStoreTests : IDisposable
         Assert.Contains("somethingNewer", written, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The other half of the forward-compatibility promise (M88). The test above proves the unknown
+    /// property is written back; this proves its <em>value</em> is unchanged and that the file still
+    /// says which version wrote it — so a book that has been opened on the older laptop can go home
+    /// to the newer one intact.
+    /// </summary>
+    [Fact]
+    public void ABookFromANewerTrestleBoardComesBackUnharmed()
+    {
+        File.WriteAllText(
+            RosterPath,
+            """
+            {
+              "schemaVersion": 99,
+              "members": [
+                {
+                  "id": "person-1",
+                  "displayName": "A Placeholder",
+                  "city": "Anytown",
+                  "somethingThisBuildHasNeverHeardOf": { "kept": [1, 2, 3] }
+                }
+              ]
+            }
+            """);
+
+        var store = new RosterStore(RosterPath);
+        RosterBook book = store.Load(out RosterLoadState state);
+
+        Assert.Equal(RosterLoadState.MadeByANewerTrestleBoard, state);
+        Assert.Equal("Anytown", book.Find("person-1")!.City);
+
+        store.Save(book);
+        string written = File.ReadAllText(RosterPath);
+
+        Assert.Contains("\"schemaVersion\": 99", written, StringComparison.Ordinal);
+        Assert.Contains("somethingThisBuildHasNeverHeardOf", written, StringComparison.Ordinal);
+        Assert.Contains("\"kept\"", written, StringComparison.Ordinal);
+    }
+
+    /// <summary>An ordinary M12-era book is not "from the future", and nothing about it is refused.</summary>
+    [Fact]
+    public void AnOlderBookIsJustABook()
+    {
+        File.WriteAllText(
+            RosterPath,
+            """
+            { "schemaVersion": 1, "members": [ { "id": "person-1", "displayName": "A Placeholder" } ] }
+            """);
+
+        RosterBook book = new RosterStore(RosterPath).Load(out RosterLoadState state);
+
+        Assert.Equal(RosterLoadState.Loaded, state);
+        Assert.Equal(1, book.Count);
+        Assert.Null(book.Find("person-1")!.City);
+    }
+
     [Fact]
     public void EverySaveKeepsTheVersionItReplaced()
     {

@@ -22,10 +22,15 @@ public static class MemberGroups
     /// <summary>
     /// M56 counts these, so the user is told how many copies to run off.
     ///
-    /// <para>It is a count and nothing more. M62 would have addressed their envelopes; it was
-    /// dropped on 2026-08-08 because the roster holds no postal address and this is not a
-    /// membership management tool. The group still earns its place — knowing "eleven printed" is
-    /// what the committee needs at the copier — but the app will not be addressing them.</para>
+    /// <para>It is a count and nothing more. M62 would have addressed their envelopes and was
+    /// dropped on 2026-08-08, for two reasons: the roster held no postal address, and this is not a
+    /// membership management tool.</para>
+    ///
+    /// <para><b>The first of those reasons stopped being true in M88</b>, which stores a postal
+    /// address for every member because the lodge's own system already holds one and keeping it in
+    /// two places is what the app exists to stop. The second reason stands, and so does the
+    /// decision: printing labels is still not something this app does. Knowing "eleven printed" is
+    /// what the committee needs at the copier.</para>
     /// </summary>
     public const string Printed = "Gets a printed copy";
 

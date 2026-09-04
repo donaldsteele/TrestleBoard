@@ -348,6 +348,13 @@ public sealed class AccessibilityTests
         // in-memory; the suite's app-state root is a temporary folder, so none of this can reach a
         // real address book (PLAN.md §0 rule 5).
         yield return (nameof(PeopleWindow), new PeopleWindow(FictionalRoster()));
+
+        // M88's second tab, walked in its own right. This audit — and the icon and contrast walks
+        // built on it — only ever sees the visual tree of the tab that is SHOWING, so without this
+        // entry the fifteen controls the milestone added would ship without a single one of them
+        // being checked for a name, a size or a readable colour.
+        var addressTab = new PeopleWindow(FictionalRoster()) { SelectedTabForTest = 1 };
+        yield return (nameof(PeopleWindow) + ".AddressAndMore", addressTab);
         yield return (nameof(RosterImportWindow), new RosterImportWindow(RosterBook.Empty));
         yield return (nameof(RosterRestoreDialog), new RosterRestoreDialog(
         [

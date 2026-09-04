@@ -106,18 +106,36 @@ public static class ColumnGuesser
         var mapping = new Dictionary<RosterField, int>();
         var taken = new HashSet<int>();
 
-        foreach (RosterFieldInfo field in RosterFieldInfo.All)
+        // The longest matching hint wins (M88), and the order of RosterFieldInfo.All breaks ties.
+        //
+        // Until M88 this was first-field-wins, which was right while there were ten fields and no
+        // two of them could plausibly claim the same header. It stopped being right the moment the
+        // lodge's own export arrived: "Mobile Phone" matched the telephone's hint "mobile" before
+        // the mobile field was ever reached, "Address Undeliverable" matched "address", and — a
+        // misfire that predates M88 entirely — "Highest Degree Date" matched "degree" and became
+        // the degree KIND. Scoring by how much of the header the hint actually accounts for settles
+        // all three without reordering the list into something nobody can read.
+        List<(int Score, int Order, RosterField Field, int Column)> candidates = [];
+        for (int order = 0; order < RosterFieldInfo.All.Count; order++)
         {
+            RosterFieldInfo field = RosterFieldInfo.All[order];
             foreach (TableColumn column in columns)
             {
-                if (taken.Contains(column.Index) || !Matches(column.Header, field))
+                int score = BestHintLength(column.Header, field);
+                if (score > 0)
                 {
-                    continue;
+                    candidates.Add((score, order, field.Field, column.Index));
                 }
+            }
+        }
 
-                mapping[field.Field] = column.Index;
-                taken.Add(column.Index);
-                break;
+        foreach ((int _, int _, RosterField field, int column) in candidates
+            .OrderByDescending(c => c.Score)
+            .ThenBy(c => c.Order))
+        {
+            if (!mapping.ContainsKey(field) && taken.Add(column))
+            {
+                mapping[field] = column;
             }
         }
 
@@ -154,15 +172,32 @@ public static class ColumnGuesser
     /// "Member Name", "e-mail" and "Phone#" all still match while "Member Number" no longer claims
     /// to be a name.</para>
     /// </summary>
-    private static bool Matches(string header, RosterFieldInfo field)
+    private static bool Matches(string header, RosterFieldInfo field) =>
+        BestHintLength(header, field) > 0;
+
+    /// <summary>
+    /// How much of this header the field's best hint accounts for, or 0 for no match (M88). This is
+    /// the score <see cref="GuessMapping"/> sorts on: a header two fields both recognise belongs to
+    /// the one that recognises more of it.
+    /// </summary>
+    private static int BestHintLength(string header, RosterFieldInfo field)
     {
         if (string.IsNullOrWhiteSpace(header))
         {
-            return false;
+            return 0;
         }
 
         string value = header.Trim().ToLowerInvariant();
-        return field.HeaderHints.Any(hint => ContainsWord(value, hint));
+        int best = 0;
+        foreach (string hint in field.HeaderHints)
+        {
+            if (hint.Length > best && ContainsWord(value, hint))
+            {
+                best = hint.Length;
+            }
+        }
+
+        return best;
     }
 
     private static bool ContainsWord(string haystack, string needle)

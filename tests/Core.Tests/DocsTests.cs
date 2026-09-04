@@ -123,9 +123,28 @@ public sealed class DocsTests
     }
 
     /// <summary>
-    /// The harness builds a small address book in code for the People window shot. Every name in it
-    /// must be obviously fictional (PLAN.md §0 rule 2) — this reads the source, because a
-    /// screenshot cannot be read back and a rule nobody checks is a rule that drifts.
+    /// The five surnames this project gives invented people, and the only ones a screenshot may
+    /// show (PLAN.md §0 rule 2).
+    ///
+    /// <para>The same list <c>RosterPrivacyTests</c> holds the roster fixtures to. It is written out
+    /// twice rather than shared because the two projects do not reference each other — and if a
+    /// sixth surname is ever wanted, both copies have to be edited, which is the right amount of
+    /// friction for widening the definition of "obviously fictional".</para>
+    /// </summary>
+    private static readonly string[] FictionalSurnames =
+        ["Placeholder", "Sample", "Fictitious", "Testcase", "Anonymous"];
+
+    /// <summary>
+    /// The harness builds the address book for the People window shots in code. Every name in it
+    /// must be obviously fictional — this reads the source, because a screenshot cannot be read back
+    /// and a rule nobody checks is a rule that drifts.
+    ///
+    /// <para>Two changes at M88, both because the sample grew from ten men to a lodge of
+    /// twenty-four. It accepts all five sanctioned surnames rather than "Placeholder" alone: a list
+    /// where every brother shares one surname photographs as a fixture rather than as a lodge, and
+    /// the point of the shot is that a committee recognises their own address book in it. And it now
+    /// also checks the <b>wives</b>, who arrived with M88 and were not covered by a rule written when
+    /// the only names in the file were members'.</para>
     /// </summary>
     [Fact]
     public void TheScreenshotHarnessUsesFictionalNamesOnly()
@@ -133,19 +152,33 @@ public sealed class DocsTests
         string source = Path.Combine(Root, "tools", "TrestleBoard.Screenshots", "Fixtures.cs");
         Assert.True(File.Exists(source), source + " is missing — was the harness moved?");
 
-        var names = Regex.Matches(
-            File.ReadAllText(source),
+        string text = File.ReadAllText(source);
+
+        var members = Regex.Matches(
+            text,
             @"Person\(""person-\d+"",\s*""(?<name>[^""]+)""",
             RegexOptions.None,
             TimeSpan.FromSeconds(5));
+        var spouses = Regex.Matches(
+            text,
+            @"SpouseName\s*=\s*""(?<name>[^""]+)""",
+            RegexOptions.None,
+            TimeSpan.FromSeconds(5));
 
-        Assert.NotEmpty(names);
-        foreach (Match name in names)
+        Assert.NotEmpty(members);
+
+        // Both halves are asserted non-empty on purpose. A regex that matches nothing passes a
+        // foreach loop in silence, and a guard that cannot fail is the thing this project keeps
+        // catching itself writing.
+        Assert.NotEmpty(spouses);
+
+        foreach (Match name in members.Concat(spouses))
         {
-            Assert.EndsWith(
-                "Placeholder",
-                name.Groups["name"].Value,
-                StringComparison.Ordinal);
+            string person = name.Groups["name"].Value;
+            Assert.True(
+                FictionalSurnames.Any(s => person.EndsWith(s, StringComparison.Ordinal)),
+                $"\"{person}\" is in a screenshot and is not obviously fictional. The surnames this "
+                + "project uses for invented people are: " + string.Join(", ", FictionalSurnames));
         }
     }
 

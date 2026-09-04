@@ -8,6 +8,14 @@ public enum RosterField
     Phone,
     Email,
     Office,
+
+    /// <summary>
+    /// Which ceremony <see cref="DegreeDate"/> records — raised or initiated (M12).
+    ///
+    /// <para>M88 added <see cref="Degree"/> beside it for the different question of how far a man
+    /// has come. This one is kept because a lodge's older spreadsheet, and TrestleBoard's own export
+    /// before M88, both have a column headed exactly this.</para>
+    /// </summary>
     DegreeKind,
     DegreeDate,
 
@@ -19,6 +27,68 @@ public enum RosterField
 
     /// <summary>M55: which mailing lists this person is on, separated by semicolons.</summary>
     Groups,
+
+    // ---- M88: what the lodge's own member system holds -----------------------------------------
+
+    /// <summary>The number the lodge gave him. Also the merge's second match key.</summary>
+    MemberNumber,
+
+    /// <summary>How far he has come: Entered Apprentice, Fellowcraft or Master Mason.</summary>
+    Degree,
+
+    /// <summary>The letters after his name — "PM".</summary>
+    MasonicTitle,
+
+    AddressLine1,
+    AddressLine2,
+    City,
+    State,
+    Zip,
+    AddressUndeliverable,
+    HomePhone,
+    MobilePhone,
+    WorkPhone,
+    SpouseName,
+    SpouseEmail,
+    SpousePhone,
+
+    /// <summary>
+    /// Which column says whether a row is a member or somebody's wife (M88).
+    ///
+    /// <para>The lodge's export puts spouses in the same sheet as members, one row each, marked
+    /// "Spouse of &lt;name&gt; #&lt;number&gt;". Without this the import would add sixteen women to the
+    /// lodge's roll.</para>
+    /// </summary>
+    RowKind,
+
+    /// <summary>
+    /// The year, where the file keeps it in a column of its own rather than inside the birthday
+    /// (M88) — which is exactly what TrestleBoard's own export does.
+    ///
+    /// <para>A birthday cell carrying "1957-02-02" still needs no second question: the birthday
+    /// parser hands the year back with the month and day. This exists for the other shape, and the
+    /// round-trip test is what found it — the year was written to the file and had no way home.</para>
+    /// </summary>
+    BirthYear,
+
+    /// <summary>
+    /// Whatever the committee wrote about this person (M88).
+    ///
+    /// <para>Stored since M12 and, until now, neither exported nor importable nor shown anywhere —
+    /// a field the user could not reach. M88 gives it a box on the form, a column in the export and
+    /// this row on the mapping screen, which is what it takes for a field to be real.</para>
+    /// </summary>
+    Notes,
+}
+
+/// <summary>Which half of the mapping screen — and of the People window — a field belongs to (M88).</summary>
+public enum RosterFieldSection
+{
+    /// <summary>What somebody looking up a phone number came for.</summary>
+    TheBasics,
+
+    /// <summary>Everything the lodge's own system holds beside it.</summary>
+    AddressAndMore,
 }
 
 /// <summary>
@@ -35,7 +105,8 @@ public sealed record RosterFieldInfo(
     string Question,
     string PlainName,
     bool Required,
-    string[] HeaderHints)
+    string[] HeaderHints,
+    RosterFieldSection Section = RosterFieldSection.TheBasics)
 {
     public static IReadOnlyList<RosterFieldInfo> All { get; } =
     [
@@ -74,6 +145,78 @@ public sealed record RosterFieldInfo(
             ["passed on", "passed", "deceased", "died", "date of death", "celestial lodge"]),
         new(RosterField.Groups, "Groups — which column lists them?", "Groups", false,
             ["groups", "group", "mailing list", "lists", "distribution"]),
+
+        // ---- M88 ---------------------------------------------------------------------------
+        // Every hint below is either multi-word or a word no existing field claims, because the
+        // guesser now prefers the LONGEST matching hint: "Mobile Phone" is a mobile number rather
+        // than the printed telephone, "Address Undeliverable" is the flag rather than the street,
+        // and "Highest Degree Date" is a date rather than a degree. The three collisions M12 and
+        // M25 recorded stay shut — "member", "number", "mail" and "status" are still not hints of
+        // anybody's.
+        new(RosterField.Degree, "Highest degree — which column says it?", "Highest degree", false,
+            ["highest degree", "degree held", "current degree"]),
+        new(RosterField.MemberNumber, "Lodge member number — which column has it?", "Member number", false,
+            ["member number", "membership number", "member no", "member #", "lodge number"],
+            RosterFieldSection.AddressAndMore),
+        new(RosterField.MasonicTitle, "Letters after his name, like PM — which column has them?",
+            "Letters after his name", false,
+            ["masonic suffix", "masonic title", "post nominal", "letters after"],
+            RosterFieldSection.AddressAndMore),
+        new(RosterField.AddressLine1, "Street address — which column has it?", "Street address", false,
+            ["address", "street", "mailing address", "address 1", "address line 1", "street address"],
+            RosterFieldSection.AddressAndMore),
+        new(RosterField.AddressLine2, "Flat, unit or second address line — which column has it?",
+            "Address line 2", false,
+            ["address 2", "address2", "address line 2", "apartment", "unit", "suite"],
+            RosterFieldSection.AddressAndMore),
+        new(RosterField.City, "Town or city — which column has it?", "City", false,
+            ["city", "town"], RosterFieldSection.AddressAndMore),
+        new(RosterField.State, "State — which column has it?", "State", false,
+            ["state", "province"], RosterFieldSection.AddressAndMore),
+        new(RosterField.Zip, "ZIP code — which column has it?", "ZIP code", false,
+            ["zip", "zip code", "postcode", "postal code"], RosterFieldSection.AddressAndMore),
+        new(RosterField.AddressUndeliverable, "Post that comes back — which column says so?",
+            "Post comes back undelivered", false,
+            ["undeliverable", "address undeliverable", "comes back undelivered", "undelivered",
+             "bad address", "returned mail", "no mail"],
+            RosterFieldSection.AddressAndMore),
+        // Not "office phone": "office" has belonged to the lodge office since M12, and a hint that
+        // long would win the column headed "Office" itself away from it.
+        new(RosterField.HomePhone, "Home telephone — which column has it?", "Home telephone", false,
+            ["home phone", "home telephone", "house phone", "home number"],
+            RosterFieldSection.AddressAndMore),
+        new(RosterField.MobilePhone, "Mobile telephone — which column has it?", "Mobile telephone", false,
+            // "mobile telephone" is here because it is what our OWN export writes. Without it that
+            // header matched the printed telephone's older hint "mobile" — six letters — and the
+            // lodge's real Phone column was left unmapped on a re-import of our own file. The same
+            // shape of bug M12 recorded for "Raised or initiated", found the same way: a round trip.
+            ["mobile telephone", "mobile phone", "cell telephone", "cell phone", "cellular",
+             "mobile number", "cell number"],
+            RosterFieldSection.AddressAndMore),
+        new(RosterField.WorkPhone, "Work telephone — which column has it?", "Work telephone", false,
+            ["work phone", "work telephone", "business phone", "work number"],
+            RosterFieldSection.AddressAndMore),
+        new(RosterField.SpouseName, "His wife's name — which column has it?", "Spouse's name", false,
+            ["spouse's name", "spouse name", "spouse", "wife", "husband", "partner"],
+            RosterFieldSection.AddressAndMore),
+        new(RosterField.SpouseEmail, "His wife's email — which column has it?", "Spouse's email", false,
+            ["spouse's email", "spouse email", "wife email", "partner email"],
+            RosterFieldSection.AddressAndMore),
+        new(RosterField.SpousePhone, "His wife's telephone — which column has it?", "Spouse's telephone", false,
+            ["spouse's telephone", "spouse's phone", "spouse telephone", "spouse phone",
+             "wife phone"],
+            RosterFieldSection.AddressAndMore),
+        new(RosterField.BirthYear, "The year he was born — which column has it?", "Birth year", false,
+            // "birth year" beats Birthday's "birth" on length, which is what keeps a file with both
+            // columns from putting the year where the birthday goes.
+            ["birth year", "year of birth", "year born", "birth yr"]),
+        new(RosterField.Notes, "Notes — which column has them?", "Notes", false,
+            ["notes", "note", "remarks", "comments"],
+            RosterFieldSection.AddressAndMore),
+        new(RosterField.RowKind, "Members and spouses — which column says which a row is?",
+            "Member or spouse", false,
+            ["item type", "record type", "row type", "type"],
+            RosterFieldSection.AddressAndMore),
     ];
 
     public static RosterFieldInfo For(RosterField field) => All.First(f => f.Field == field);

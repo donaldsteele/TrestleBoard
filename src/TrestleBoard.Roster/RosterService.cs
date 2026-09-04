@@ -24,12 +24,15 @@ public sealed class RosterService
     private bool _hasEarlierVersions;
     private bool _unreadable;
 
+    private bool _madeByANewerTrestleBoard;
+
     public RosterService(RosterStore store)
     {
         ArgumentNullException.ThrowIfNull(store);
         _store = store;
         _book = store.Load(out RosterLoadState state);
         _unreadable = state == RosterLoadState.CouldNotBeRead;
+        _madeByANewerTrestleBoard = state == RosterLoadState.MadeByANewerTrestleBoard;
         _hasEarlierVersions = store.Backups().Count > 0;
     }
 
@@ -101,7 +104,10 @@ public sealed class RosterService
     {
         ArgumentNullException.ThrowIfNull(backup);
         RosterBook book = RosterStore.ReadBackup(backup.Path, out RosterLoadState state);
-        if (state != RosterLoadState.Loaded)
+
+        // M88: a copy written by a newer TrestleBoard was READ — it is a real address book, carried
+        // through this build untouched. Refusing it would tell somebody their own backup is damaged.
+        if (state is not (RosterLoadState.Loaded or RosterLoadState.MadeByANewerTrestleBoard))
         {
             return false;
         }
@@ -115,6 +121,7 @@ public sealed class RosterService
     {
         _book = _store.Load(out RosterLoadState state);
         _unreadable = state == RosterLoadState.CouldNotBeRead;
+        _madeByANewerTrestleBoard = state == RosterLoadState.MadeByANewerTrestleBoard;
         _undo = null;
         _undoDescription = null;
         Changed?.Invoke(this, EventArgs.Empty);
@@ -127,6 +134,20 @@ public sealed class RosterService
     /// out of the app's hands (close the program holding the file, then use "Try again").
     /// </summary>
     public bool CouldNotBeRead => _unreadable;
+
+    /// <summary>
+    /// This address book was written by a newer TrestleBoard (M88). Nothing is refused: the book is
+    /// real, and whatever the newer version knows that this one does not is carried through
+    /// untouched by <c>ExtraProperties</c>. The People window says so in one sentence, because the
+    /// alternative is a committee member deciding a column went missing.
+    /// </summary>
+    public bool MadeByANewerTrestleBoard => _madeByANewerTrestleBoard;
+
+    /// <summary>The sentence the People window shows for it. Plain language, no version numbers —
+    /// a number here would be a fact the reader can do nothing with.</summary>
+    public static string NewerVersionNotice =>
+        "This address book was made by a newer TrestleBoard. Anything it knows that this one does "
+        + "not is kept, but not shown here.";
 
     /// <summary>
     /// What the user is told when a change is refused because the file could not be read. One

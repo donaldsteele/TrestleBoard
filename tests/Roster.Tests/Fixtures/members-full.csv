@@ -1,0 +1,15 @@
+Member Number,Item Type,FullName,Birthday,Address,Address2,City,State,Zip,Address Undeliverable,Email,Home Phone,Mobile Phone,Work Phone,Current Office,Highest Degree,Highest Degree Date,Masonic Suffix
+98501,Member,Aaron Placeholder,1957-02-02,1 Example Street,,Anytown,SC,29999,No,aaron.placeholder@example.invalid,555-0101,555-0201,,Worshipful Master,Master Mason,1995-05-01,PM
+98502,Member,Bertram Sample,1962-03-03,2 Example Street,Apartment 4,Anytown,SC,29999,No,bertram.sample@example.invalid,,555-0202,555-0302,Senior Warden,Master Mason,1998-06-02,
+98503,Member,Cedric Fictitious,1971-04-04,3 Example Street,,Anytown,SC,29999,Yes,,555-0103,,,Junior Warden,Master Mason,2003-07-03,
+98504,Member,Desmond Testcase,1948-05-05,4 Example Street,,Nexttown,NC,28888,No,desmond.testcase@example.invalid,,555-0204,,Treasurer,Master Mason,1975-08-04,
+98505,Member,Ewan Anonymous,1983-06-06,5 Example Street,,Anytown,SC,29999,No,ewan.anonymous@example.invalid,555-0105,,,Secretary,Entered Apprentice,2024-09-05,
+98506,Member,Fergus Placeholder,1990-07-07,6 Example Street,,Anytown,SC,29999,No,fergus.placeholder@example.invalid,,555-0206,,,Fellowcraft,2025-10-06,
+98507,Member,Gideon Sample Jr.,1994-08-08,7 Example Street,,Anytown,SC,29999,No,gideon.sample.jr@example.invalid,,555-0207,,,Master Mason,2020-11-07,
+98508,Member,Gideon Sample Sr.,1955-09-09,7 Example Street,,Anytown,SC,29999,No,gideon.sample.sr@example.invalid,555-0108,,,,Master Mason,1980-12-08,
+98509,Member,Hollis Fictitious,1968-10-10,9 Example Street,,Anytown,SC,29999,No,hollis.fictitious@example.invalid,,555-0209,,Chaplain,Master Mason,1993-01-09,
+98510,Member,Ivor Testcase,1976-11-11,10 Example Street,,Anytown,SC,29999,No,,555-0110,,,Tyler,Master Mason,2001-02-10,
+,Spouse of Placeholder Aaron #98501,Alice Placeholder,1959-12-12,1 Example Street,,Anytown,SC,29999,No,alice.placeholder@example.invalid,,555-0801,,,,,
+,Spouse of Sample Bertram #98502,Bridget Sample,1964-01-13,2 Example Street,Apartment 4,Anytown,SC,29999,No,bridget.sample@example.invalid,555-0802,,,,,,
+,Spouse of Nobody Atall #90000,Clara Anonymous,1970-02-14,99 Example Street,,Faraway,SC,29999,No,,,555-0803,,,,,
+98501,Member,Aaron Placeholder,1957-02-02,1 Example Street,,Anytown,SC,29999,No,aaron.placeholder@example.invalid,555-0101,555-0201,,Worshipful Master,Master Mason,1995-05-01,PM

@@ -175,6 +175,14 @@ public sealed class MemberStatusAndGroupsTests
             nameof(Member.Email), nameof(Member.Office), nameof(Member.DegreeDate),
             nameof(Member.DegreeKind), nameof(Member.IsActive), nameof(Member.PassedOn),
             nameof(Member.Notes), nameof(Member.Groups), nameof(Member.ExtraProperties),
+
+            // M88.
+            nameof(Member.MemberNumber), nameof(Member.BirthYear), nameof(Member.Degree),
+            nameof(Member.MasonicTitle), nameof(Member.AddressLine1), nameof(Member.AddressLine2),
+            nameof(Member.City), nameof(Member.State), nameof(Member.Zip),
+            nameof(Member.AddressUndeliverable), nameof(Member.HomePhone),
+            nameof(Member.MobilePhone), nameof(Member.WorkPhone), nameof(Member.SpouseName),
+            nameof(Member.SpouseEmail), nameof(Member.SpousePhone),
         ];
 
         string[] stored = [.. typeof(Member).GetProperties()
@@ -183,6 +191,107 @@ public sealed class MemberStatusAndGroupsTests
 
         Assert.Equal([.. stored.OrderBy(n => n, StringComparer.Ordinal)],
             [.. compared.OrderBy(n => n, StringComparer.Ordinal)]);
+    }
+
+    /// <summary>
+    /// A spouse is fields on her husband's card and never a person in the book (M88), so a mailing
+    /// group counts one recipient here, not two.
+    ///
+    /// <para>The guarantee is structural — there is no <see cref="Member"/> row for her, so there is
+    /// nothing for a group, a projection or M56's BCC line to find — and this test is the corollary
+    /// written down. The failure it guards against is the one that would be noticed last: a wife
+    /// quietly receiving the newsletter twice, or appearing in the lodge's birthday list.</para>
+    /// </summary>
+    [Fact]
+    public void ASpouseIsNotAPersonInTheBook()
+    {
+        Member married = Someone() with
+        {
+            Groups = [MemberGroups.ByEmail],
+            Email = "a.placeholder@example.invalid",
+            SpouseName = "B. Fictitious",
+            SpouseEmail = "b.fictitious@example.invalid",
+            SpousePhone = "555-0904",
+        };
+
+        IReadOnlyList<Member> recipients = MemberGroups.Members([married], MemberGroups.ByEmail);
+
+        Assert.Single(recipients);
+        Assert.Equal("a.placeholder@example.invalid", recipients[0].Email);
+    }
+
+    /// <summary>
+    /// The census above checks that every property is <em>named</em> in the list beside it. This
+    /// checks that every property is actually <em>compared</em> — by changing one at a time and
+    /// insisting the two members stop being equal (M88).
+    ///
+    /// <para>The two are different failures. A property can be added to the list and forgotten in
+    /// <c>Member.Equals</c>, and the symptom is the quiet one M12 fears most: an import that reports
+    /// "nothing changed" for a row that changed something, and drops the edit on the floor
+    /// (<c>RosterMerge.Plan</c> writes the member only when <c>changed</c>). With thirty properties
+    /// and a hand-written comparison, a name-only census is no longer enough.</para>
+    ///
+    /// <para><c>bool</c> and <c>int?</c> properties are set to a value the fixture does not have;
+    /// strings to a distinctive one. Nothing here needs to be a plausible person — it needs to be
+    /// different.</para>
+    /// </summary>
+    [Fact]
+    public void ChangingAnyOneStoredPropertyMakesADifferentMember()
+    {
+        Member original = Someone();
+
+        foreach (System.Reflection.PropertyInfo property in typeof(Member).GetProperties())
+        {
+            if (Attribute.IsDefined(property, typeof(System.Text.Json.Serialization.JsonIgnoreAttribute))
+                || property.Name == nameof(Member.ExtraProperties)
+                || property.Name == nameof(Member.Groups))
+            {
+                // ExtraProperties and Groups are compared by their own rules, each with a test of
+                // its own above; what is being hunted here is a plain field left out of Equals.
+                continue;
+            }
+
+            object? changed = property.PropertyType switch
+            {
+                Type t when t == typeof(string) => "different",
+                Type t when t == typeof(bool) => !(bool)property.GetValue(original)!,
+                Type t when t == typeof(int?) => Different((int?)property.GetValue(original)),
+                _ => throw new Xunit.Sdk.XunitException(
+                    $"{property.Name} is a {property.PropertyType.Name}, which this test does not "
+                    + "know how to change. Teach it, rather than skipping the property."),
+            };
+
+            Member mutated = Rebuild(original, property.Name, changed);
+
+            Assert.False(
+                original.Equals(mutated),
+                $"changing {property.Name} left two members comparing equal — it is missing from "
+                + "Member.Equals, and an import will silently drop edits to it");
+        }
+    }
+
+    /// <summary>A value the original does not have, for the nullable-int properties.</summary>
+    private static int? Different(int? current) => current == 7 ? 8 : 7;
+
+    /// <summary>
+    /// A copy with one property changed. <c>with</c> needs the property name at compile time, which
+    /// is the one thing a census like this does not have, so the copy is made property by property
+    /// through reflection — <c>init</c> only binds the C# compiler's hands, not the runtime's.
+    /// </summary>
+    private static Member Rebuild(Member original, string property, object? value)
+    {
+        var mutated = new Member();
+        foreach (System.Reflection.PropertyInfo p in typeof(Member).GetProperties())
+        {
+            if (!p.CanWrite)
+            {
+                continue;
+            }
+
+            p.SetValue(mutated, p.Name == property ? value : p.GetValue(original));
+        }
+
+        return mutated;
     }
 
     /// <summary>A newer TrestleBoard's unknown fields count towards sameness, or a plain round trip

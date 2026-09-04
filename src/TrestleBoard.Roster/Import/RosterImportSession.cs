@@ -229,6 +229,18 @@ public sealed class RosterImportSession
         : $"Your address book now has {count} people.";
 
     /// <summary>
+    /// The way back, said on the last screen (M88).
+    ///
+    /// <para>An import used to move about five fields per person; from M88 it moves twenty, so a
+    /// mapping that was wrong in one row is wrong across the whole book. Nothing about the safety net
+    /// changed — the previous book is still kept, and the ring still holds ten — but a net nobody
+    /// has been told about is not one they will reach for at the moment they need it.</para>
+    /// </summary>
+    public const string WayBackMessage =
+        "Your previous address book was kept. If this does not look right, use People, then "
+        + "\"Restore an earlier version\", and it comes back.";
+
+    /// <summary>
     /// The rows that could not be used, one line each, ready to be written to a file — nothing is
     /// silently lost (PLAN.md §11 M12, screen 5).
     /// </summary>

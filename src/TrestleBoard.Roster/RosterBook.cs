@@ -10,7 +10,17 @@ namespace TrestleBoard.Roster;
 /// </summary>
 public sealed record RosterBook
 {
-    public const int CurrentSchemaVersion = 1;
+    /// <summary>
+    /// 2 since M88, which widened <see cref="Member"/> from seven typed fields to what the lodge's
+    /// own member system holds.
+    ///
+    /// <para>There is still no migration switch, and there should not be: a version-1 file loads
+    /// into a version-2 build with its new fields simply absent, which is the truth about that book.
+    /// What the number buys is the other direction — <see cref="RosterStore.Load(out RosterLoadState)"/>
+    /// can tell a committee running two versions which laptop is behind, instead of leaving them to
+    /// notice a column that looks empty.</para>
+    /// </summary>
+    public const int CurrentSchemaVersion = 2;
 
     public static readonly RosterBook Empty = new();
 

@@ -25,11 +25,55 @@ public static class RosterExport
 {
     public const string SheetName = "People";
 
-    internal static readonly string[] Headers =
+    /// <summary>
+    /// Every column, each header sitting beside the value under it (M88).
+    ///
+    /// <para><b>One table rather than two parallel lists.</b> M12 kept the headers in an array and
+    /// wrote the values by literal column index — workable at eleven columns, a certainty of drift
+    /// at twenty-eight. Here a column cannot be renamed without moving its value with it.</para>
+    ///
+    /// <para><b>Append-only.</b> The first eleven keep their exact headers and positions: a lodge's
+    /// older TrestleBoard reads this file by header, and gate 9's test edits cells by index.</para>
+    /// </summary>
+    internal static readonly (string Header, Func<Member, string> Value)[] Columns =
     [
-        "TrestleBoard ID", "Name", "Birthday", "Phone", "Email", "Office", "Raised or initiated",
-        "Date", "Still a member", "Passed on", "Groups",
+        ("TrestleBoard ID", m => m.Id),
+        ("Name", m => m.DisplayName),
+        ("Birthday", m => m.BirthdayText),
+        ("Phone", m => m.Phone ?? string.Empty),
+        ("Email", m => m.Email ?? string.Empty),
+        ("Office", m => m.Office ?? string.Empty),
+        ("Raised or initiated", m => DegreeKindText(m.DegreeKind)),
+        ("Date", m => m.DegreeDate ?? string.Empty),
+        ("Still a member", m => m.IsActive ? "Yes" : "No"),
+        ("Passed on", m => m.PassedOn ?? string.Empty),
+
+        // Semicolons rather than commas (M55): a CSV round trip through Excel would quote a
+        // comma-separated cell inconsistently, and a group name with a comma in it is likelier
+        // than one with a semicolon.
+        ("Groups", m => string.Join("; ", m.Groups)),
+
+        // ---- M88, in the order the People window's two tabs ask for them --------------------
+        ("Birth year", m => m.BirthYear?.ToString(CultureInfo.InvariantCulture) ?? string.Empty),
+        ("Highest degree", m => DegreeText(m.Degree)),
+        ("Lodge member number", m => m.MemberNumber ?? string.Empty),
+        ("Letters after his name", m => m.MasonicTitle ?? string.Empty),
+        ("Street address", m => m.AddressLine1 ?? string.Empty),
+        ("Address line 2", m => m.AddressLine2 ?? string.Empty),
+        ("City", m => m.City ?? string.Empty),
+        ("State", m => m.State ?? string.Empty),
+        ("ZIP code", m => m.Zip ?? string.Empty),
+        ("Post comes back undelivered", m => m.AddressUndeliverable ? "Yes" : "No"),
+        ("Home telephone", m => m.HomePhone ?? string.Empty),
+        ("Mobile telephone", m => m.MobilePhone ?? string.Empty),
+        ("Work telephone", m => m.WorkPhone ?? string.Empty),
+        ("Spouse's name", m => m.SpouseName ?? string.Empty),
+        ("Spouse's email", m => m.SpouseEmail ?? string.Empty),
+        ("Spouse's telephone", m => m.SpousePhone ?? string.Empty),
+        ("Notes", m => m.Notes ?? string.Empty),
     ];
+
+    internal static readonly string[] Headers = [.. Columns.Select(c => c.Header)];
 
     /// <summary>"Lodge-address-book-2026-07-27.xlsx" — dated, because a lodge keeps the old ones.</summary>
     public static string SuggestedFileName(DateTimeOffset today) =>
@@ -53,21 +97,11 @@ public static class RosterExport
         int row = 2;
         foreach (Member member in book.InListOrder())
         {
-            Write(sheet, row, 1, member.Id);
-            Write(sheet, row, 2, member.DisplayName);
-            Write(sheet, row, 3, member.BirthdayText);
-            Write(sheet, row, 4, member.Phone ?? string.Empty);
-            Write(sheet, row, 5, member.Email ?? string.Empty);
-            Write(sheet, row, 6, member.Office ?? string.Empty);
-            Write(sheet, row, 7, DegreeKindText(member.DegreeKind));
-            Write(sheet, row, 8, member.DegreeDate ?? string.Empty);
-            Write(sheet, row, 9, member.IsActive ? "Yes" : "No");
+            for (int column = 0; column < Columns.Length; column++)
+            {
+                Write(sheet, row, column + 1, Columns[column].Value(member));
+            }
 
-            // M55. Semicolons rather than commas: a CSV round trip through Excel would quote a
-            // comma-separated cell inconsistently, and a group name with a comma in it is likelier
-            // than one with a semicolon.
-            Write(sheet, row, 10, member.PassedOn ?? string.Empty);
-            Write(sheet, row, 11, string.Join("; ", member.Groups));
             row++;
         }
 
@@ -92,6 +126,22 @@ public static class RosterExport
     {
         DegreeKind.Raised => "Raised",
         DegreeKind.Initiated => "Initiated",
+        _ => string.Empty,
+    };
+
+    /// <summary>
+    /// The degree, written the way a lodge writes it (M88).
+    ///
+    /// <para>This column will be empty for a member whose book predates M88 and who was only ever
+    /// recorded as "initiated" — deliberately. See <c>Member.Normalised</c>: "raised" is the Master
+    /// Mason degree and migrates, "initiated" says nothing about how far a man has come since, and
+    /// the app does not guess on a real brother's behalf.</para>
+    /// </summary>
+    private static string DegreeText(string? degree) => degree switch
+    {
+        Roster.Degree.EnteredApprentice => "Entered Apprentice",
+        Roster.Degree.Fellowcraft => "Fellowcraft",
+        Roster.Degree.MasterMason => "Master Mason",
         _ => string.Empty,
     };
 }

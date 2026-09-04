@@ -23,6 +23,17 @@ public enum RosterLoadState
 
     /// <summary>A file is there and could not be read. The empty book is a placeholder, NOT the data.</summary>
     CouldNotBeRead,
+
+    /// <summary>
+    /// The file was read, and it was written by a TrestleBoard newer than this one (M88).
+    ///
+    /// <para>The book is real and every field this build knows about is in it; anything a newer
+    /// version added is being carried unread in <c>ExtraProperties</c> and written back untouched.
+    /// So this is <b>not</b> a refusal — it is a sentence the People window says out loud, because a
+    /// committee running two versions on two laptops deserves to know which one is behind rather
+    /// than discovering it when a column looks empty.</para>
+    /// </summary>
+    MadeByANewerTrestleBoard,
 }
 
 /// <summary>One kept copy of the address book, as the "Restore an earlier version…" list shows it.</summary>
@@ -94,7 +105,9 @@ public sealed class RosterStore
             RosterBook book =
                 (JsonSerializer.Deserialize(File.ReadAllBytes(Path), RosterJsonContext.Default.RosterBook)
                     ?? RosterBook.Empty).Normalised();
-            state = RosterLoadState.Loaded;
+            state = book.SchemaVersion > RosterBook.CurrentSchemaVersion
+                ? RosterLoadState.MadeByANewerTrestleBoard
+                : RosterLoadState.Loaded;
             return book;
         }
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException

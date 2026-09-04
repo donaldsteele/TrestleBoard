@@ -67,7 +67,24 @@ public static class FieldValues
     /// Reads a birthday as month and day, from any of the shapes a real list uses: "7/4", "7/4/1968",
     /// "July 4", "1968-07-04", or the bare serial number "45123".
     /// </summary>
-    public static bool TryReadBirthday(string? text, out int month, out int day)
+    public static bool TryReadBirthday(string? text, out int month, out int day) =>
+        TryReadBirthday(text, out month, out day, out _);
+
+    /// <summary>
+    /// The same reading, and the year as well where the cell carried one (M88).
+    ///
+    /// <para><b>One question, not two.</b> A birthday column that says "1968-07-04" holds the year
+    /// already; asking the mapping screen a separate "and which column has the year?" would be a
+    /// question about a column that does not exist. <paramref name="year"/> is 0 for the shapes with
+    /// no year in them — "7/4", "July 4" — which is most lodge lists.</para>
+    /// </summary>
+    public static bool TryReadBirthday(string? text, out int month, out int day, out int year)
+    {
+        year = 0;
+        return TryRead(text, out month, out day, ref year);
+    }
+
+    private static bool TryRead(string? text, out int month, out int day, ref int year)
     {
         month = 0;
         day = 0;
@@ -90,6 +107,7 @@ public static class FieldValues
             DateTime fromSerial = FromExcelSerial(serial);
             month = fromSerial.Month;
             day = fromSerial.Day;
+            year = fromSerial.Year;
             return true;
         }
 
@@ -110,6 +128,7 @@ public static class FieldValues
         {
             month = parsed.Month;
             day = parsed.Day;
+            year = parsed.Year;
             return true;
         }
 
@@ -255,6 +274,56 @@ public static class FieldValues
 
         return value.Contains("init", StringComparison.OrdinalIgnoreCase) ? DegreeKind.Initiated : null;
     }
+
+    /// <summary>
+    /// Which degree a column value names, or null (M88). Generous in the same way
+    /// <see cref="ReadDegreeKind"/> is: a lodge writes "Master Mason", "MM", "3rd degree", "EA",
+    /// "Entered Apprentice" and everything between.
+    ///
+    /// <para>Order matters here and is tested. "Raised MM" must read as Master Mason rather than
+    /// stopping at the initiation words, and "EA" must not be found inside another word — which is
+    /// why the short forms are matched as whole words rather than by <c>Contains</c>.</para>
+    /// </summary>
+    public static string? ReadDegree(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        string value = text.Trim().ToLowerInvariant();
+
+        if (value.Contains("master", StringComparison.Ordinal)
+            || value.Contains("rais", StringComparison.Ordinal)
+            || HasWord(value, "mm")
+            || HasWord(value, "3"))
+        {
+            return Degree.MasterMason;
+        }
+
+        if (value.Contains("fellow", StringComparison.Ordinal)
+            || HasWord(value, "fc")
+            || HasWord(value, "2"))
+        {
+            return Degree.Fellowcraft;
+        }
+
+        return value.Contains("entered", StringComparison.Ordinal)
+            || value.Contains("apprentice", StringComparison.Ordinal)
+            || value.Contains("init", StringComparison.Ordinal)
+            || HasWord(value, "ea")
+            || HasWord(value, "1")
+            ? Degree.EnteredApprentice
+            : null;
+    }
+
+    /// <summary>
+    /// Whole-word match, so "ea" finds "EA" and "EA degree" but not "Deacon" or "Fellowcraft".
+    /// Short degree abbreviations are exactly the shape that a substring search gets wrong.
+    /// </summary>
+    private static bool HasWord(string value, string word) =>
+        value.Split([' ', '-', '/', ',', '.', '(', ')'], StringSplitOptions.RemoveEmptyEntries)
+            .Any(part => string.Equals(part, word, StringComparison.Ordinal));
 
     /// <summary>
     /// A yes/no column as a person would fill one in (M55). Returns null when the cell says

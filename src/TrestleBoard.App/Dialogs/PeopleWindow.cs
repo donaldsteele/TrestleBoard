@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -33,6 +34,39 @@ public sealed class PeopleWindow : Window
     private readonly TextBox _office;
     private readonly ComboBox _degreeKind;
     private readonly TextBox _degreeDate;
+
+    // ---- M88 ------------------------------------------------------------------------------------
+    private readonly TextBox _birthYear;
+    private readonly TextBox _memberNumber;
+    private readonly TextBox _masonicTitle;
+    private readonly TextBox _addressLine1;
+    private readonly TextBox _addressLine2;
+    private readonly TextBox _city;
+    private readonly TextBox _state;
+    private readonly TextBox _zip;
+    private readonly TextBox _homePhone;
+    private readonly TextBox _mobilePhone;
+    private readonly TextBox _workPhone;
+    private readonly TextBox _spouseName;
+    private readonly TextBox _spouseEmail;
+    private readonly TextBox _spousePhone;
+    private readonly TextBox _notes;
+    private readonly CheckBox _undeliverable;
+    private readonly TabControl _tabs;
+
+    /// <summary>
+    /// Every plain text box on this form, once (M88).
+    ///
+    /// <para><b>This table exists because the alternative had seven copies of the same list.</b> A
+    /// field used to be declared, laid out, searched, signed for dirty-tracking, loaded, cleared and
+    /// saved in seven separate places, none of them checked by anything. That was survivable at
+    /// seven fields; at twenty-two it is a promise nobody can keep, and the failure is silent — a
+    /// box the user types in that quietly is not saved. Everything below reads this list, and
+    /// <c>PeopleFormTests</c> fails if a stored text property on <see cref="Member"/> is not in it.
+    /// </para>
+    /// </summary>
+    private readonly List<FormField> _fields = [];
+
     private readonly CheckBox _active;
     private readonly CheckBox _passed;
     private readonly TextBox _passedOn;
@@ -77,11 +111,23 @@ public sealed class PeopleWindow : Window
     /// <summary>M40: the close has already asked about a pending edit and been answered.</summary>
     private bool _closeAgreed;
 
+    /// <summary>
+    /// The degrees the combo offers (M88).
+    ///
+    /// <para>M12 offered "Raised" and "Initiated" — which ceremony the date beside it records. The
+    /// lodge's own list answers a different question, and the one it actually keeps: how far a man
+    /// has come. A Fellowcraft had nowhere to sit in the old pair, and this lodge has one.</para>
+    ///
+    /// <para>The older field is not shown anywhere. It is still stored and still exported, so a book
+    /// written before M88 loses nothing, and a man recorded as "raised" reads as a Master Mason the
+    /// first time his card is normalised.</para>
+    /// </summary>
     private static readonly (string? Kind, string Label)[] DegreeKinds =
     [
         (null, "Not said"),
-        (DegreeKind.Raised, "Raised"),
-        (DegreeKind.Initiated, "Initiated"),
+        (Degree.EnteredApprentice, "Entered Apprentice"),
+        (Degree.Fellowcraft, "Fellowcraft"),
+        (Degree.MasterMason, "Master Mason"),
     ];
 
     public PeopleWindow(RosterService roster, Func<bool>? canWriteAMemorial = null)
@@ -91,8 +137,15 @@ public sealed class PeopleWindow : Window
         _canWriteAMemorial = canWriteAMemorial ?? (static () => true);
 
         Title = "People";
-        Width = 1080;
-        Height = 720;
+
+        // Grown for M88's second tab, with floors under it. The form column used to hold seven
+        // fields; it now holds a tab strip, up to fifteen rows and the button row below them, and at
+        // the 200% scale the settings offer, a window that can be dragged smaller than its own
+        // buttons is a window somebody can lose the Save button in.
+        Width = 1160;
+        Height = 820;
+        MinWidth = 900;
+        MinHeight = 620;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         AutomationProperties.SetName(this, "Your lodge address book");
 
@@ -126,6 +179,32 @@ public sealed class PeopleWindow : Window
         _phone = Field("Telephone number");
         _email = Field("Email address");
         _office = Field("Lodge office");
+
+        // M88's boxes. The year sits under the birthday and says out loud what it is for, because
+        // "why does it want my age?" is the question M12 refused the field over.
+        _birthYear = Field("Year he was born, like 1957 — never printed in the newsletter");
+        _memberNumber = Field("Lodge member number");
+        _masonicTitle = Field("Letters after his name, like PM");
+        _addressLine1 = Field("Street address");
+        _addressLine2 = Field("Flat, unit or second line");
+        _city = Field("Town or city");
+        _state = Field("State");
+        _zip = Field("ZIP code");
+        _homePhone = Field("Home telephone");
+        _mobilePhone = Field("Mobile telephone");
+        _workPhone = Field("Work telephone");
+        _spouseName = Field("His wife's name");
+        _spouseEmail = Field("Her email address");
+        _spousePhone = Field("Her telephone number");
+        _notes = Field("Notes");
+
+        _undeliverable = new CheckBox
+        {
+            Content = "Post to this address comes back undelivered",
+            FontSize = 20,
+            MinHeight = 44,
+        };
+        AutomationProperties.SetName(_undeliverable, "Post to this address comes back undelivered");
         // M40: the birthday field has carried an example since M12 and this one never did, though
         // it is the harder of the two to guess - a date with a year in it, in a window where the
         // other date deliberately has none.
@@ -174,6 +253,52 @@ public sealed class PeopleWindow : Window
         _status = new TextBlock { FontSize = 18, TextWrapping = TextWrapping.Wrap };
         AutomationProperties.SetName(_status, "What just happened");
         AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
+
+        // The one list of fields (M88). Searchable is what somebody types into the box above the
+        // list expecting to find a person by: a name, a number they can read off a card, a place.
+        _fields =
+        [
+            Text(_name, nameof(Member.DisplayName), Basics, searchable: true,
+                m => m.DisplayName, (m, v) => m with { DisplayName = v ?? string.Empty }),
+            Text(_phone, nameof(Member.Phone), Basics, searchable: true,
+                m => m.Phone, (m, v) => m with { Phone = v }),
+            Text(_email, nameof(Member.Email), Basics, searchable: true,
+                m => m.Email, (m, v) => m with { Email = v }),
+            Text(_office, nameof(Member.Office), Basics, searchable: true,
+                m => m.Office, (m, v) => m with { Office = v }),
+
+            Text(_memberNumber, nameof(Member.MemberNumber), More, searchable: true,
+                m => m.MemberNumber, (m, v) => m with { MemberNumber = v }),
+            Text(_masonicTitle, nameof(Member.MasonicTitle), More, searchable: false,
+                m => m.MasonicTitle, (m, v) => m with { MasonicTitle = v }),
+            Text(_addressLine1, nameof(Member.AddressLine1), More, searchable: true,
+                m => m.AddressLine1, (m, v) => m with { AddressLine1 = v }),
+            Text(_addressLine2, nameof(Member.AddressLine2), More, searchable: false,
+                m => m.AddressLine2, (m, v) => m with { AddressLine2 = v }),
+            Text(_city, nameof(Member.City), More, searchable: true,
+                m => m.City, (m, v) => m with { City = v }),
+            Text(_state, nameof(Member.State), More, searchable: false,
+                m => m.State, (m, v) => m with { State = v }),
+            Text(_zip, nameof(Member.Zip), More, searchable: false,
+                m => m.Zip, (m, v) => m with { Zip = v }),
+            Text(_homePhone, nameof(Member.HomePhone), More, searchable: true,
+                m => m.HomePhone, (m, v) => m with { HomePhone = v }),
+            Text(_mobilePhone, nameof(Member.MobilePhone), More, searchable: true,
+                m => m.MobilePhone, (m, v) => m with { MobilePhone = v }),
+            Text(_workPhone, nameof(Member.WorkPhone), More, searchable: true,
+                m => m.WorkPhone, (m, v) => m with { WorkPhone = v }),
+            Text(_spouseName, nameof(Member.SpouseName), More, searchable: true,
+                m => m.SpouseName, (m, v) => m with { SpouseName = v }),
+            Text(_spouseEmail, nameof(Member.SpouseEmail), More, searchable: false,
+                m => m.SpouseEmail, (m, v) => m with { SpouseEmail = v }),
+            Text(_spousePhone, nameof(Member.SpousePhone), More, searchable: false,
+                m => m.SpousePhone, (m, v) => m with { SpousePhone = v }),
+            Text(_notes, nameof(Member.Notes), More, searchable: false,
+                m => m.Notes, (m, v) => m with { Notes = v }),
+        ];
+
+        _tabs = new TabControl { FontSize = 20 };
+        AutomationProperties.SetName(_tabs, "Which part of this person's details");
 
         var add = Action("Add a person", "Add a person to your address book");
         add.Click += async (_, _) => await BeginAddAsync();
@@ -334,6 +459,31 @@ public sealed class PeopleWindow : Window
 
     internal TextBox SearchBoxForTest => _search;
 
+    // ---- M88's two tabs, as the tests reach them -------------------------------------------------
+
+    /// <summary>Which tab is showing: 0 "The basics", 1 "Address and more".</summary>
+    internal int SelectedTabForTest
+    {
+        get => _tabs.SelectedIndex;
+        set => _tabs.SelectedIndex = value;
+    }
+
+    /// <summary>Types into one of the boxes on the second tab, by the member property it edits.</summary>
+    internal void TypeForTest(string property, string text)
+    {
+        FormField field = _fields.First(f => f.Property == property);
+        field.Box.Text = text;
+    }
+
+    internal string TextForTest(string property) =>
+        _fields.First(f => f.Property == property).Box.Text ?? string.Empty;
+
+    internal TextBox BoxForTest(string property) => _fields.First(f => f.Property == property).Box;
+
+    internal TextBox BirthYearBoxForTest => _birthYear;
+
+    internal bool SaveForTest() => Save();
+
     /// <summary>Types into the form and saves, as a person would. Used by the headless tests.</summary>
     internal void AddForTest(string name, string birthday, string phone)
     {
@@ -404,41 +554,152 @@ public sealed class PeopleWindow : Window
         Children = { _search, _count },
     };
 
-    private ScrollViewer FormPanel()
+    /// <summary>
+    /// The form, in two tabs (M88).
+    ///
+    /// <para><b>The first tab is M12's form, unmoved.</b> Somebody who opened this window to correct
+    /// a telephone number sees exactly what they saw before, in the same order — that was the whole
+    /// argument for a single screen, and it is kept. What the second tab holds is everything the
+    /// lodge's own member system knows, which used to mean keeping a second list in another program.
+    /// </para>
+    ///
+    /// <para>The status line and the buttons sit <em>outside</em> the tabs, so a refusal is readable
+    /// whichever tab is showing — and a refusal about a field on the other tab switches to it before
+    /// it takes the focus, because focusing a control the reader cannot see is worse than silence.
+    /// </para>
+    /// </summary>
+    private Grid FormPanel()
     {
-        var panel = new StackPanel { Spacing = 10, Margin = new Avalonia.Thickness(16, 0, 0, 12) };
-        foreach (TextBox box in new[] { _name, _birthday, _phone, _email, _office })
+        _tabs.ItemsSource = new[]
         {
-            panel.Children.Add(Label((string)box.Tag!));
-            AutomationProperties.SetName(box, (string)box.Tag!);
-            panel.Children.Add(box);
-        }
+            Tab("The basics", BasicsPanel()),
+            Tab("Address and more", MorePanel()),
+        };
+        _tabs.SelectedIndex = 0;
 
-        panel.Children.Add(Label("Raised or initiated"));
+        // A grid rather than a stack, so the tabs take the height that is left over and the two
+        // things below them keep theirs. Stacked, the tab body took only its natural height and the
+        // fields past it were cut off with empty window underneath them.
+        var footnote = new TextBlock
+        {
+            FontSize = 16,
+            TextWrapping = TextWrapping.Wrap,
+
+            // A lodge on two laptops has two address books and no way to merge them; saying so here
+            // is the only place the user will ever read it (PLAN.md flagged uncertainties, M12).
+            Text = "This address book is kept on this computer only. To share it with somebody else "
+                + "on the committee, use People, then Save as a spreadsheet, and send them the file.",
+            Margin = new Avalonia.Thickness(0, 8, 0, 0),
+        };
+
+        var grid = new Grid
+        {
+            Margin = new Avalonia.Thickness(16, 0, 0, 12),
+            RowDefinitions = new RowDefinitions("*,Auto,Auto"),
+        };
+        grid.Children.Add(Place(_tabs, 0, 0));
+        grid.Children.Add(Place(_status, 0, 1));
+        grid.Children.Add(Place(footnote, 0, 2));
+        return grid;
+    }
+
+    private static TabItem Tab(string header, Control body)
+    {
+        var item = new TabItem
+        {
+            Header = header,
+            FontSize = 20,
+            MinHeight = 44,
+            Content = new ScrollViewer { Content = body },
+        };
+        AutomationProperties.SetName(item, header);
+        return item;
+    }
+
+    private StackPanel BasicsPanel()
+    {
+        var panel = new StackPanel { Spacing = 10, Margin = new Avalonia.Thickness(8) };
+        AddField(panel, _name);
+        AddField(panel, _birthday);
+        AddField(panel, _birthYear);
+        AddField(panel, _phone);
+
+        // M88: three numbers are stored now, and exactly one of them is printed. Saying which, here,
+        // is cheaper than a committee wondering why the officers table shows the wrong one.
+        panel.Children.Add(new TextBlock
+        {
+            FontSize = 16,
+            TextWrapping = TextWrapping.Wrap,
+            Text = "This is the number printed in the newsletter. His home, mobile and work numbers "
+                + "are on the next tab.",
+        });
+
+        AddField(panel, _email);
+        AddField(panel, _office);
+
+        panel.Children.Add(Label("Highest degree"));
         panel.Children.Add(_degreeKind);
-        panel.Children.Add(Label((string)_degreeDate.Tag!));
-        AutomationProperties.SetName(_degreeDate, (string)_degreeDate.Tag!);
-        panel.Children.Add(_degreeDate);
+        AddField(panel, _degreeDate);
         panel.Children.Add(_active);
         panel.Children.Add(_passed);
         panel.Children.Add(_passedOnLabel);
         panel.Children.Add(_passedOn);
         panel.Children.Add(Label("Groups"));
         panel.Children.Add(_groupsPanel);
-        panel.Children.Add(_status);
-
-        // A lodge on two laptops has two address books and no way to merge them; saying so here is
-        // the only place the user will ever read it (PLAN.md flagged uncertainties, M12).
-        panel.Children.Add(new TextBlock
-        {
-            FontSize = 16,
-            TextWrapping = TextWrapping.Wrap,
-            Text = "This address book is kept on this computer only. To share it with somebody else "
-                + "on the committee, use People, then Save as a spreadsheet, and send them the file.",
-        });
-
-        return new ScrollViewer { Content = panel };
+        return panel;
     }
+
+    private StackPanel MorePanel()
+    {
+        var panel = new StackPanel { Spacing = 10, Margin = new Avalonia.Thickness(8) };
+        foreach (FormField field in _fields.Where(f => f.Section == More))
+        {
+            AddField(panel, field.Box);
+            if (field.Box == _zip)
+            {
+                panel.Children.Add(_undeliverable);
+            }
+        }
+
+        return panel;
+    }
+
+    /// <summary>One labelled box, with the label's words repeated onto the box for a screen reader.</summary>
+    private static void AddField(StackPanel panel, TextBox box)
+    {
+        panel.Children.Add(Label((string)box.Tag!));
+        AutomationProperties.SetName(box, (string)box.Tag!);
+        panel.Children.Add(box);
+    }
+
+    private const RosterFieldSection Basics = RosterFieldSection.TheBasics;
+
+    private const RosterFieldSection More = RosterFieldSection.AddressAndMore;
+
+    /// <summary>
+    /// One plain text box and everything the window needs to know about it (M88): which member
+    /// property it is (by name, so a test can hold the form to the model), which tab it lives on,
+    /// whether the search box looks at it, and how to read and write it.
+    /// </summary>
+    private sealed record FormField(
+        string Property,
+        RosterFieldSection Section,
+        bool Searchable,
+        Func<Member, string?> Read,
+        Func<Member, string?, Member> Write,
+        TextBox Box);
+
+    private static FormField Text(
+        TextBox box,
+        string property,
+        RosterFieldSection section,
+        bool searchable,
+        Func<Member, string?> read,
+        Func<Member, string?, Member> write) =>
+        new(property, section, searchable, read, write, box);
+
+    /// <summary>Which member properties this form can edit — the completeness test reads it.</summary>
+    internal IReadOnlyList<string> FormFieldsForTest => [.. _fields.Select(f => f.Property)];
 
     private static TextBlock Label(string text) => new()
     {
@@ -493,13 +754,18 @@ public sealed class PeopleWindow : Window
     /// Matched on the normalised name as well as the written one, so typing "placeholder a" finds
     /// "A. Placeholder" — the same comparison the importer uses, for the same reason.
     /// </summary>
-    private static bool Matches(Member member, string search) =>
+    /// <summary>
+    /// What the search box looks at: the name, however it is written, and every field marked
+    /// searchable in <see cref="_fields"/> — which from M88 includes his member number, his other
+    /// telephone numbers, his street and his town, because those are things a committee member
+    /// genuinely searches by ("who lives on Example Street?").
+    /// </summary>
+    private bool Matches(Member member, string search) =>
         member.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase)
         || NameMatching.Normalise(member.DisplayName)
             .Contains(NameMatching.Normalise(search), StringComparison.Ordinal)
-        || (member.Office?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)
-        || (member.Phone?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)
-        || (member.Email?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
+        || _fields.Any(f => f.Searchable
+            && (f.Read(member)?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false));
 
     /// <summary>"A. Placeholder — Worshipful Master — 7/4". The facts worth seeing without clicking.</summary>
     private static string Describe(Member member)
@@ -948,15 +1214,14 @@ public sealed class PeopleWindow : Window
     /// </summary>
     private string FormSignature() => string.Join(
         "\u001f",
-        (_name.Text ?? string.Empty).Trim(),
+        string.Join("\u001f", _fields.Select(f => (f.Box.Text ?? string.Empty).Trim())),
         (_birthday.Text ?? string.Empty).Trim(),
-        (_phone.Text ?? string.Empty).Trim(),
-        (_email.Text ?? string.Empty).Trim(),
-        (_office.Text ?? string.Empty).Trim(),
+        (_birthYear.Text ?? string.Empty).Trim(),
         (_degreeDate.Text ?? string.Empty).Trim(),
         DegreeKinds[Math.Max(0, _degreeKind.SelectedIndex)].Kind ?? string.Empty,
         (_active.IsChecked ?? true) ? "1" : "0",
         (_passed.IsChecked ?? false) ? "1" : "0",
+        (_undeliverable.IsChecked ?? false) ? "1" : "0",
         (_passedOn.Text ?? string.Empty).Trim(),
         string.Join(",", CheckedGroups()));
 
@@ -966,13 +1231,16 @@ public sealed class PeopleWindow : Window
     private void Show(Member member)
     {
         _selectedId = member.Id;
-        _name.Text = member.DisplayName;
+        foreach (FormField field in _fields)
+        {
+            field.Box.Text = field.Read(member) ?? string.Empty;
+        }
+
         _birthday.Text = member.BirthdayText;
-        _phone.Text = member.Phone ?? string.Empty;
-        _email.Text = member.Email ?? string.Empty;
-        _office.Text = member.Office ?? string.Empty;
+        _birthYear.Text = member.BirthYear?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
         _degreeDate.Text = member.DegreeDate ?? string.Empty;
-        _degreeKind.SelectedIndex = Math.Max(0, Array.FindIndex(DegreeKinds, k => k.Kind == member.DegreeKind));
+        _degreeKind.SelectedIndex = Math.Max(0, Array.FindIndex(DegreeKinds, k => k.Kind == member.Degree));
+        _undeliverable.IsChecked = member.AddressUndeliverable;
         _active.IsChecked = member.IsActive;
         _passed.IsChecked = member.HasPassed;
         _passedOn.Text = member.PassedOn ?? string.Empty;
@@ -986,12 +1254,18 @@ public sealed class PeopleWindow : Window
     private void Clear()
     {
         _selectedId = null;
-        foreach (TextBox box in new[] { _name, _birthday, _phone, _email, _office, _degreeDate })
+        foreach (FormField field in _fields)
+        {
+            field.Box.Text = string.Empty;
+        }
+
+        foreach (TextBox box in new[] { _birthday, _birthYear, _degreeDate })
         {
             box.Text = string.Empty;
         }
 
         _degreeKind.SelectedIndex = 0;
+        _undeliverable.IsChecked = false;
         _active.IsChecked = true;
         _passed.IsChecked = false;
         _passedOn.Text = string.Empty;
@@ -1057,7 +1331,7 @@ public sealed class PeopleWindow : Window
         if (name.Length == 0)
         {
             _status.Text = "Type a name first. Everything else is optional.";
-            _name.Focus();
+            FocusOn(_name);
             return false;
         }
 
@@ -1070,7 +1344,7 @@ public sealed class PeopleWindow : Window
             {
                 // Refused in words, with an example — never a red box and nothing else (PLAN.md §6).
                 _status.Text = "That birthday could not be read. Write it as a month and a day, like 7/4.";
-                _birthday.Focus();
+                FocusOn(_birthday);
                 return false;
             }
 
@@ -1078,22 +1352,41 @@ public sealed class PeopleWindow : Window
             day = d;
         }
 
+        // M88. Four digits, and refused in words like the birthday above it rather than silently
+        // dropped — a year the app quietly ignored would be retyped by somebody who watched it go.
+        string yearText = (_birthYear.Text ?? string.Empty).Trim();
+        int? birthYear = null;
+        if (yearText.Length > 0)
+        {
+            if (!int.TryParse(yearText, System.Globalization.NumberStyles.None, CultureInfo.InvariantCulture, out int y)
+                || y is < 1850 or > 2100)
+            {
+                _status.Text = "That year could not be read. Write it as four digits, like 1957.";
+                FocusOn(_birthYear);
+                return false;
+            }
+
+            birthYear = y;
+        }
+
         Member existing = (_selectedId is not null ? _roster.Book.Find(_selectedId) : null) ?? new Member();
         var member = existing with
         {
             Id = _adding || _selectedId is null ? _roster.NextMemberId() : _selectedId,
-            DisplayName = name,
             BirthMonth = month,
             BirthDay = day,
-            Phone = Empty(_phone),
-            Email = Empty(_email),
-            Office = Empty(_office),
+            BirthYear = birthYear,
             DegreeDate = Empty(_degreeDate),
-            DegreeKind = DegreeKinds[Math.Max(0, _degreeKind.SelectedIndex)].Kind,
+            Degree = DegreeKinds[Math.Max(0, _degreeKind.SelectedIndex)].Kind,
+            AddressUndeliverable = _undeliverable.IsChecked ?? false,
             IsActive = _active.IsChecked ?? true,
             PassedOn = (_passed.IsChecked ?? false) ? PassedOnOrToday() : null,
             Groups = CheckedGroups(),
         };
+
+        // Every plain box, from the one table — including the ones on the second tab, whichever tab
+        // is showing. A form that saved only what was visible would be the M88 defect.
+        member = _fields.Aggregate(member, (m, f) => f.Write(m, Empty(f.Box)));
 
         bool adding = _adding || _selectedId is null;
         bool newlyPassed = member.HasPassed && existing is { HasPassed: false };
@@ -1140,6 +1433,21 @@ public sealed class PeopleWindow : Window
 
     private static string? Empty(TextBox box) =>
         string.IsNullOrWhiteSpace(box.Text) ? null : box.Text.Trim();
+
+    /// <summary>
+    /// Puts the focus on a box, showing the tab it lives on first (M88).
+    ///
+    /// <para>Every refusal in this window names the field it is about and then focuses it. With two
+    /// tabs that is not enough on its own: focusing a control on the tab that is not showing moves
+    /// the caret somewhere the reader cannot see, and a screen reader then reads out a field its
+    /// user has no way to find. So the tab comes first, always.</para>
+    /// </summary>
+    private void FocusOn(TextBox box)
+    {
+        FormField? field = _fields.FirstOrDefault(f => f.Box == box);
+        _tabs.SelectedIndex = field?.Section == RosterFieldSection.AddressAndMore ? 1 : 0;
+        box.Focus();
+    }
 
     /// <summary>
     /// Deletion is the one destructive act in this window, so it asks — and the confirm answers the

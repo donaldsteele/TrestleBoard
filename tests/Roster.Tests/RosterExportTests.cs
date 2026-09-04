@@ -33,6 +33,8 @@ public sealed class RosterExportTests : IDisposable
             Phone = "555-0100",
             Email = "aaron@example.invalid",
             Office = "Worshipful Master",
+            // Written the way M12 wrote it, deliberately: the book below is normalised, so this
+            // fixture also exercises M88's migration of "raised" into the Master Mason degree.
             DegreeKind = DegreeKind.Raised,
             DegreeDate = "1995-05-01",
         })
@@ -43,7 +45,11 @@ public sealed class RosterExportTests : IDisposable
             BirthMonth = 12,
             BirthDay = 25,
             Phone = "555-0101",
-        });
+        })
+
+        // Every book the app holds has been through this — the store normalises on load and the
+        // service on save — and the round trip below is only honest against a book of that shape.
+        .Normalised();
 
     [Fact]
     public void TheFileIsNamedForTheDayItWasMade() =>
@@ -97,6 +103,70 @@ public sealed class RosterExportTests : IDisposable
         Assert.False(plan.ChangesAnything);
         Assert.Equal(book.Members, plan.Result.Members);
     }
+
+    /// <summary>
+    /// Every column this file writes comes back to the field it came from (M88).
+    ///
+    /// <para>The export grew from eleven columns to twenty-eight, and a written column that nothing
+    /// can read back is worse than a column that was never written: the secretary would edit a ZIP
+    /// code in Excel, bring the file back, and be told nothing changed. So this fills <em>every</em>
+    /// field on a member, writes the file, reads it with nothing but the guesser, and demands the
+    /// merge see no change at all — which can only happen if each header still finds its own field
+    /// and each value still parses back to what it was.</para>
+    /// </summary>
+    [Fact]
+    public void EveryExportedColumnComesBackToTheSameField()
+    {
+        string path = Path.Combine(_folder, "book.xlsx");
+        RosterBook book = RosterBook.Empty.With(Everything()).Normalised();
+        RosterExport.Save(book, path);
+
+        TableSheet sheet = TableFileReader.Read(path).Sheets[0];
+        MergePlan plan = RosterMerge.Plan(book, sheet, 0, ColumnGuesser.GuessMapping(sheet, 0));
+
+        Assert.False(plan.ChangesAnything, plan.Rows.Count > 0 ? plan.Rows[0].Note ?? "something changed" : "no rows");
+        Assert.Equal(book.Members, plan.Result.Members);
+
+        // …and into an empty book, the same man arrives whole rather than merely equal to himself.
+        MergePlan fresh = RosterMerge.Plan(
+            RosterBook.Empty, sheet, 0, ColumnGuesser.GuessMapping(sheet, 0));
+        Member arrived = fresh.Result.Members.Single();
+        Member original = book.Members.Single();
+
+        Assert.Equal(original with { Id = arrived.Id }, arrived);
+    }
+
+    /// <summary>One member with every single field set, M12's and M88's alike.</summary>
+    private static Member Everything() => new()
+    {
+        Id = "person-1",
+        DisplayName = "Aaron Placeholder",
+        BirthMonth = 7,
+        BirthDay = 4,
+        BirthYear = 1957,
+        Phone = "555-0100",
+        Email = "aaron@example.invalid",
+        Office = "Worshipful Master",
+        DegreeDate = "1995-05-01",
+        Degree = Degree.MasterMason,
+        IsActive = true,
+        Groups = [MemberGroups.ByEmail, "Committee"],
+        Notes = "Prefers to be telephoned in the evening.",
+        MemberNumber = "98501",
+        MasonicTitle = "PM",
+        AddressLine1 = "1 Example Street",
+        AddressLine2 = "Apartment 2",
+        City = "Anytown",
+        State = "SC",
+        Zip = "29999",
+        AddressUndeliverable = true,
+        HomePhone = "555-0901",
+        MobilePhone = "555-0902",
+        WorkPhone = "555-0903",
+        SpouseName = "Alice Placeholder",
+        SpouseEmail = "alice@example.invalid",
+        SpousePhone = "555-0904",
+    };
 
     /// <summary>
     /// PLAN §12 gate 9: edit one cell in Excel, re-import, and <em>only</em> that field moves —

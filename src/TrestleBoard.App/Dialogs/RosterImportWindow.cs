@@ -324,8 +324,27 @@ public sealed class RosterImportWindow : Window
         var panel = new StackPanel { Spacing = 12 };
         IReadOnlyList<TableColumn> columns = _session.Columns;
 
-        foreach (RosterFieldInfo field in RosterFieldInfo.All)
+        RosterFieldSection? sectionShown = null;
+        foreach (RosterFieldInfo field in RosterFieldInfo.All.OrderBy(f => f.Section))
         {
+            // M88: twenty-six questions rather than ten, so they are grouped under the same two
+            // headings the People window's tabs use. The same words in both places is the point —
+            // somebody who mapped "Address and more" here knows where to find it afterwards.
+            if (sectionShown != field.Section)
+            {
+                sectionShown = field.Section;
+                panel.Children.Add(new TextBlock
+                {
+                    Text = field.Section == RosterFieldSection.TheBasics
+                        ? "The basics"
+                        : "Address and more",
+                    FontSize = 24,
+                    FontWeight = FontWeight.Bold,
+                    Margin = new Avalonia.Thickness(0, sectionShown == RosterFieldSection.TheBasics ? 0 : 16, 0, 0),
+                    TextWrapping = TextWrapping.Wrap,
+                });
+            }
+
             var items = new List<string> { "Not in this file" };
             items.AddRange(columns.Select(c => c.Describe()));
 
@@ -334,7 +353,10 @@ public sealed class RosterImportWindow : Window
             {
                 FontSize = 18,
                 MinHeight = 44,
-                Width = 640,
+
+                // A ceiling rather than a fixed width (M88): at the 200% scale the settings offer,
+                // 640 fixed pixels put the right-hand end of every one of these off the window.
+                MaxWidth = 640,
                 ItemsSource = items,
                 SelectedIndex = selected,
                 HorizontalAlignment = HorizontalAlignment.Left,
@@ -407,13 +429,47 @@ public sealed class RosterImportWindow : Window
             ItemsSource = plan.Rows
                 .Where(r => r.Outcome is RowOutcome.New or RowOutcome.Updated)
                 .Take(20)
-                .Select(r => $"{r.Result.DisplayName} — {r.Result.BirthdayText} — {r.Result.Phone}")
+                .Select(PreviewLine)
                 .ToList(),
         };
         AutomationProperties.SetName(preview, "The first few people, as they will be stored");
         panel.Children.Add(preview);
 
         return panel;
+    }
+
+    /// <summary>
+    /// One person as the review screen shows them (M88).
+    ///
+    /// <para>It used to read <c>name — birthday — Phone</c>. Against the lodge's own file that line
+    /// showed a blank where the telephone goes for all 112 of them — the file has Home, Mobile and
+    /// Work columns and no plain "Phone" — and a preview full of blanks reads as data about to be
+    /// lost. It shows whatever number the row actually carries, and the town, which is how somebody
+    /// recognises a man they know from a list of names that repeat.</para>
+    /// </summary>
+    private static string PreviewLine(PlannedRow row)
+    {
+        Member member = row.Result;
+        var parts = new List<string> { member.DisplayName };
+        if (member.HasBirthday)
+        {
+            parts.Add(member.BirthdayText);
+        }
+
+        if (!string.IsNullOrWhiteSpace(member.AnyPhone))
+        {
+            parts.Add(member.AnyPhone!);
+        }
+
+        string where = string.Join(
+            ", ",
+            new[] { member.City, member.State }.Where(p => !string.IsNullOrWhiteSpace(p)));
+        if (where.Length > 0)
+        {
+            parts.Add(where);
+        }
+
+        return string.Join(" — ", parts);
     }
 
     private StackPanel QuestionRow(DuplicateQuestion question)
@@ -509,10 +565,25 @@ public sealed class RosterImportWindow : Window
         }
     }
 
-    private TextBlock DonePanel() => new TextBlock
+    private StackPanel DonePanel() => new StackPanel
     {
-        FontSize = 22,
-        TextWrapping = TextWrapping.Wrap,
-        Text = RosterImportSession.DoneMessage(Result?.Count ?? 0),
+        Spacing = 12,
+        Children =
+        {
+            new TextBlock
+            {
+                FontSize = 22,
+                TextWrapping = TextWrapping.Wrap,
+                Text = RosterImportSession.DoneMessage(Result?.Count ?? 0),
+            },
+
+            // M88: the way back, on the screen where somebody first sees what the import did.
+            new TextBlock
+            {
+                FontSize = 18,
+                TextWrapping = TextWrapping.Wrap,
+                Text = RosterImportSession.WayBackMessage,
+            },
+        },
     };
 }

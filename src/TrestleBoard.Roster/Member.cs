@@ -14,17 +14,48 @@ public static class DegreeKind
 }
 
 /// <summary>
-/// One person in the lodge address book (PLAN.md §11 M12).
+/// How far a brother has come (PLAN.md §11 M88).
 ///
-/// Seven fields the user ever types, and three deliberate absences:
+/// <para><b>This is a different question from <see cref="DegreeKind"/>, which is why it is a
+/// different field.</b> "Raised or initiated" says which ceremony <see cref="Member.DegreeDate"/>
+/// records; this says which degree he holds today. The lodge's own export carries the second for
+/// every member — 103 Master Masons, 8 Entered Apprentices and one Fellowcraft — and a Fellowcraft
+/// had nowhere to sit in the old pair at all.</para>
+/// </summary>
+public static class Degree
+{
+    public const string EnteredApprentice = "enteredApprentice";
+    public const string Fellowcraft = "fellowcraft";
+    public const string MasterMason = "masterMason";
+
+    public static bool IsKnown(string? degree) =>
+        degree is null || degree == EnteredApprentice || degree == Fellowcraft || degree == MasterMason;
+}
+
+/// <summary>
+/// One person in the lodge address book (PLAN.md §11 M12, widened by M88).
+///
+/// <para><b>M12 stored seven fields and argued for the absence of the rest; the owner reversed that
+/// on 2026-09-04.</b> The lodge's member system already holds a postal address for every brother,
+/// three telephone numbers, a member number, his degree and his spouse — and a book that drops them
+/// makes the secretary keep a second list, which is the thing this app exists to stop. What M12's
+/// reasoning was actually protecting was the <em>form</em>, not the record: that is now two tabs, and
+/// the seven fields a person edits in a hurry are still the first thing they see.</para>
+///
+/// One M12 absence survives, and one is deliberately narrowed:
 /// <list type="bullet">
-/// <item><description><b>No birth year.</b> The newsletter prints month and day, and asking a man
-/// his age to print his birthday is a question the app has no business asking.</description></item>
-/// <item><description><b>One date plus a kind</b> rather than separate raised/initiated fields,
-/// which is what keeps the add-a-person form to a single screen.</description></item>
+/// <item><description><b><see cref="BirthYear"/> is stored and never printed (M88).</b> The
+/// newsletter still prints month and day only — <see cref="BirthdayText"/> cannot say otherwise —
+/// and a source test keeps the year's name out of every project that can reach a page.</description></item>
+/// <item><description><b>One date plus a kind</b> rather than separate raised/initiated fields.
+/// M88 adds <see cref="Degree"/> beside them for the different question of how far he has
+/// come.</description></item>
 /// <item><description><b><see cref="Office"/> is free text, not an enum.</b> Titles drift, lodges
 /// abbreviate differently, and a value the app refuses to store is a value the user retypes
-/// somewhere worse.</description></item>
+/// somewhere worse. <see cref="State"/> and <see cref="MasonicTitle"/> follow it.</description></item>
+/// <item><description><b>No first/middle/last/suffix.</b> Splitting a name is a different product;
+/// the father-and-son problem it would have solved is solved by
+/// <see cref="MemberNumber"/> instead.</description></item>
 /// </list>
 ///
 /// <see cref="Id"/> is stable and never reused, so a person survives being renamed — that is what
@@ -90,6 +121,84 @@ public sealed record Member
 
     public string? Notes { get; init; }
 
+    // ---- M88: what the lodge's own member system holds ------------------------------------------
+
+    /// <summary>
+    /// The number the lodge gave him, as text (M88).
+    ///
+    /// <para>Text and never a number, though every one of them looks like one: it is an identifier,
+    /// the app never does arithmetic on it, and a leading zero that a numeric type would eat is
+    /// somebody's real member number. It is also the merge's second match key, which is what stops a
+    /// father and a son sharing a card.</para>
+    /// </summary>
+    public string? MemberNumber { get; init; }
+
+    /// <summary>
+    /// The year he was born, stored and <b>never printed</b> (M88).
+    ///
+    /// <para>M12 refused the year outright, on the ground that asking a man his age to print his
+    /// birthday is a question the app has no business asking. The question is not asked here either:
+    /// the secretary's system already knows it, the app only keeps what it is handed, and the
+    /// newsletter still gets month and day. <see cref="BirthdayText"/> is unchanged, so "never
+    /// printed" holds by construction rather than by care — and a source test keeps this property's
+    /// name out of Widgets, Editing, Rendering and PdfPages entirely.</para>
+    /// </summary>
+    public int? BirthYear { get; init; }
+
+    /// <summary>One of <see cref="Roster.Degree"/>, or null (M88).</summary>
+    public string? Degree { get; init; }
+
+    /// <summary>The letters after his name — "PM", "PDDGM". Free text (M88).</summary>
+    public string? MasonicTitle { get; init; }
+
+    public string? AddressLine1 { get; init; }
+
+    public string? AddressLine2 { get; init; }
+
+    public string? City { get; init; }
+
+    /// <summary>Free text, like <see cref="Office"/>: a lodge with a member in another country
+    /// should not meet a list of American states.</summary>
+    public string? State { get; init; }
+
+    /// <summary>Named for the word the audience says, not "postal code" (M88).</summary>
+    public string? Zip { get; init; }
+
+    /// <summary>Post to this address comes back (M88). A fact the secretary already tracks, and the
+    /// difference between a printed copy that arrives and one nobody reads.</summary>
+    public bool AddressUndeliverable { get; init; }
+
+    /// <summary>
+    /// The other numbers (M88). <see cref="Phone"/> stays "the one printed in the newsletter" and is
+    /// the only number anything generated ever reads; these three are the book's own record.
+    ///
+    /// <para>Three fields rather than one, because 24 of the lodge's 112 members have both a home
+    /// and a mobile number and a single field silently drops one of them.</para>
+    /// </summary>
+    public string? HomePhone { get; init; }
+
+    /// <inheritdoc cref="HomePhone"/>
+    public string? MobilePhone { get; init; }
+
+    /// <inheritdoc cref="HomePhone"/>
+    public string? WorkPhone { get; init; }
+
+    /// <summary>
+    /// His wife's name, and how to reach her (M88).
+    ///
+    /// <para><b>Fields on his card, and deliberately not people in the book.</b> A spouse is not a
+    /// member: giving her a <see cref="Member"/> row would put her one un-ticked box away from the
+    /// birthday list, the officers table and a mailing count. There is no row, so there is nothing
+    /// for a projection to find.</para>
+    /// </summary>
+    public string? SpouseName { get; init; }
+
+    /// <inheritdoc cref="SpouseName"/>
+    public string? SpouseEmail { get; init; }
+
+    /// <inheritdoc cref="SpouseName"/>
+    public string? SpousePhone { get; init; }
+
     /// <summary>
     /// Anything a newer TrestleBoard wrote that this one does not know about, preserved verbatim —
     /// the same forward-compatibility contract the document model keeps (PLAN.md §2).
@@ -114,6 +223,28 @@ public sealed record Member
     /// <summary>True when this brother has been recorded as passed (M55).</summary>
     [JsonIgnore]
     public bool HasPassed => !string.IsNullOrWhiteSpace(PassedOn);
+
+    /// <summary>
+    /// Any number we hold for him, the printed one first (M88).
+    ///
+    /// <para><b>For showing a person their own data, and nothing else.</b> The import review screen
+    /// uses it so a row does not read as blank when the lodge's file has only a mobile column. It
+    /// must never reach a projection: the officers table's stored fingerprint hashes
+    /// <see cref="Phone"/>, and widening what that hash sees would make every synced table in every
+    /// saved newsletter report itself stale. A test asserts this property's name appears nowhere in
+    /// TrestleBoard.Widgets.</para>
+    /// </summary>
+    [JsonIgnore]
+    public string? AnyPhone => Phone ?? MobilePhone ?? HomePhone ?? WorkPhone;
+
+    /// <summary>Have we somewhere to post to? (M88)</summary>
+    [JsonIgnore]
+    public bool HasMailingAddress =>
+        !string.IsNullOrWhiteSpace(AddressLine1) || !string.IsNullOrWhiteSpace(City);
+
+    /// <summary>Do we know his wife's name? (M88)</summary>
+    [JsonIgnore]
+    public bool HasSpouse => !string.IsNullOrWhiteSpace(SpouseName);
 
     /// <summary>
     /// Whether anything the app generates should mention this person — the birthday list, the
@@ -157,6 +288,22 @@ public sealed record Member
         && IsActive == other.IsActive
         && PassedOn == other.PassedOn
         && Notes == other.Notes
+        && MemberNumber == other.MemberNumber
+        && BirthYear == other.BirthYear
+        && Degree == other.Degree
+        && MasonicTitle == other.MasonicTitle
+        && AddressLine1 == other.AddressLine1
+        && AddressLine2 == other.AddressLine2
+        && City == other.City
+        && State == other.State
+        && Zip == other.Zip
+        && AddressUndeliverable == other.AddressUndeliverable
+        && HomePhone == other.HomePhone
+        && MobilePhone == other.MobilePhone
+        && WorkPhone == other.WorkPhone
+        && SpouseName == other.SpouseName
+        && SpouseEmail == other.SpouseEmail
+        && SpousePhone == other.SpousePhone
         && Groups.SequenceEqual(other.Groups, StringComparer.Ordinal)
         && SameExtras(ExtraProperties, other.ExtraProperties);
 
@@ -176,6 +323,22 @@ public sealed record Member
         hash.Add(IsActive);
         hash.Add(PassedOn);
         hash.Add(Notes);
+        hash.Add(MemberNumber);
+        hash.Add(BirthYear);
+        hash.Add(Degree);
+        hash.Add(MasonicTitle);
+        hash.Add(AddressLine1);
+        hash.Add(AddressLine2);
+        hash.Add(City);
+        hash.Add(State);
+        hash.Add(Zip);
+        hash.Add(AddressUndeliverable);
+        hash.Add(HomePhone);
+        hash.Add(MobilePhone);
+        hash.Add(WorkPhone);
+        hash.Add(SpouseName);
+        hash.Add(SpouseEmail);
+        hash.Add(SpousePhone);
         foreach (string group in Groups)
         {
             hash.Add(group);
@@ -226,17 +389,58 @@ public sealed record Member
         // M55: the two cannot be allowed to disagree. A brother recorded as passed is off the
         // rolls, whatever a hand-edited file or an older TrestleBoard left in the other field.
         bool passed = HasPassed;
+
+        // M88. "Raised" IS the Master Mason degree, so a book written before this milestone can say
+        // so without inventing anything, and the old field is emptied so the two can never disagree.
+        //
+        // "Initiated" is deliberately NOT migrated. A man initiated in 1998 is almost certainly a
+        // Master Mason today, and writing "Entered Apprentice" on his card would be the app making a
+        // claim about a real brother that nobody ever made. It stays as it was and corrects itself
+        // the first time the lodge imports its own list, which carries the degree for everybody.
+        string? kind = Roster.DegreeKind.IsKnown(DegreeKind) ? DegreeKind : null;
+        string? degree = Roster.Degree.IsKnown(Degree) ? Degree : null;
+        if (kind == Roster.DegreeKind.Raised)
+        {
+            degree ??= Roster.Degree.MasterMason;
+            kind = null;
+        }
+
         return this with
         {
             DisplayName = (DisplayName ?? string.Empty).Trim(),
             BirthMonth = monthOk && dayOk ? BirthMonth : null,
             BirthDay = monthOk && dayOk ? BirthDay : null,
-            DegreeKind = Roster.DegreeKind.IsKnown(DegreeKind) ? DegreeKind : null,
+            DegreeKind = kind,
             IsActive = IsActive && !passed,
             PassedOn = passed ? PassedOn!.Trim() : null,
             Groups = TidyGroups(Groups),
+
+            // M88. A fixed range rather than "this year": Normalised must give the same answer on
+            // every machine and in every year, or two committee members' books disagree.
+            BirthYear = BirthYear is >= 1850 and <= 2100 ? BirthYear : null,
+            Degree = degree,
+            MemberNumber = Tidy(MemberNumber),
+            MasonicTitle = Tidy(MasonicTitle),
+            AddressLine1 = Tidy(AddressLine1),
+            AddressLine2 = Tidy(AddressLine2),
+            City = Tidy(City),
+            State = Tidy(State),
+            Zip = Tidy(Zip),
+            HomePhone = Tidy(HomePhone),
+            MobilePhone = Tidy(MobilePhone),
+            WorkPhone = Tidy(WorkPhone),
+            SpouseName = Tidy(SpouseName),
+            SpouseEmail = Tidy(SpouseEmail),
+            SpousePhone = Tidy(SpousePhone),
         };
     }
+
+    /// <summary>
+    /// Trimmed, and empty is null (M88). A field the user cleared and a field they never filled in
+    /// are the same fact, and storing them differently would report an edit where there was none.
+    /// </summary>
+    private static string? Tidy(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     /// <summary>
     /// Trimmed, de-duplicated case-insensitively, empties dropped, original order kept. A group
