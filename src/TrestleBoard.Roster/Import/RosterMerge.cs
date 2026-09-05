@@ -203,6 +203,10 @@ public static class RosterMerge
         var rows = new List<PlannedRow>();
         var questions = new List<DuplicateQuestion>();
 
+        // Rows that are somebody's wife or somebody's child, kept until every member has been read
+        // (M89). See the note where they are collected.
+        var heldBack = new List<(int Row, string Name, RowKind Kind)>();
+
         for (int row = headerRow + 1; row < sheet.RowCount; row++)
         {
             string name = Read(sheet, row, mapping, RosterField.Name);
@@ -222,20 +226,15 @@ public static class RosterMerge
                 continue;
             }
 
-            // M88. A spouse row is never a member. It is handled before matching, because matching
-            // it at all is the mistake: her name would find her husband by surname and overwrite
-            // him, or fail to and put her on the lodge's roll.
-            if (IsSpouseRow(sheet, row, mapping))
+            // M88. A row that is not a member is never matched against one: her name would find her
+            // husband by surname and overwrite him, or fail to and put her on the lodge's roll.
+            //
+            // M89: the wives are held back and applied AFTER every member row, because a wife
+            // whose husband sits lower down the sheet cannot be filed against a man the book does
+            // not have yet. Ten of the lodge's fifteen wives failed exactly that way.
+            if (KindOfRow(sheet, row, mapping) is { } kind)
             {
-                (RosterBook afterSpouse, string note) = ApplySpouse(result, sheet, row, mapping, name);
-                bool landed = !ReferenceEquals(afterSpouse, result) && afterSpouse != result;
-                result = afterSpouse;
-                rows.Add(new PlannedRow(
-                    row + 1,
-                    landed ? RowOutcome.Spouse : RowOutcome.Unusable,
-                    new Member { DisplayName = name },
-                    null,
-                    note));
+                heldBack.Add((row, name, kind));
                 continue;
             }
 
@@ -295,6 +294,35 @@ public static class RosterMerge
                 match.Id,
                 changed ? Describe(match, updated) : null));
         }
+
+        // The wives and the children, now that every member the file carries is in the book (M89).
+        foreach ((int row, string name, RowKind kind) in heldBack)
+        {
+            if (kind == RowKind.Dependant)
+            {
+                rows.Add(new PlannedRow(
+                    row + 1,
+                    RowOutcome.Unusable,
+                    new Member { DisplayName = name },
+                    null,
+                    $"\"{name}\" is recorded as somebody's child. The address book holds the lodge's "
+                    + "members and their wives, so this row was not added."));
+                continue;
+            }
+
+            (RosterBook afterSpouse, string note) = ApplySpouse(result, sheet, row, mapping, name);
+            bool landed = afterSpouse != result;
+            result = afterSpouse;
+            rows.Add(new PlannedRow(
+                row + 1,
+                landed ? RowOutcome.Spouse : RowOutcome.Unusable,
+                new Member { DisplayName = name },
+                null,
+                note));
+        }
+
+        // Back into the order they sit in the file, so the review screen reads down the sheet.
+        rows.Sort((a, b) => a.RowNumber.CompareTo(b.RowNumber));
 
         return new MergePlan(result, rows, questions);
     }
@@ -665,15 +693,46 @@ public static class RosterMerge
     /// lodge's own export, a cell reading "Spouse of Placeholder, A. #98506". No column mapped means
     /// every row is a member, which is what every ordinary lodge list is.</para>
     /// </summary>
-    private static bool IsSpouseRow(
+    /// <summary>Who a row is about, when it is not about a member (M88, widened at M89).</summary>
+    private enum RowKind
+    {
+        /// <summary>Somebody's wife. Her details belong on his card.</summary>
+        Spouse,
+
+        /// <summary>
+        /// Somebody's child (M89). The lodge's export carries one, and before this it imported as a
+        /// member of the lodge. The address book has nowhere to put a child and does not invent one:
+        /// the row is reported in a sentence rather than added, and rather than silently dropped.
+        /// </summary>
+        Dependant,
+    }
+
+    /// <summary>
+    /// What this row is, or null for an ordinary member.
+    ///
+    /// <para>Read from whichever column the user pointed at as "which says which a row is" — in the
+    /// lodge's export, a cell reading "Spouse of Placeholder, A. #98506". No column mapped means
+    /// every row is a member, which is what every ordinary lodge list is.</para>
+    /// </summary>
+    private static RowKind? KindOfRow(
         TableSheet sheet, int row, IReadOnlyDictionary<RosterField, int> mapping)
     {
         string kind = Read(sheet, row, mapping, RosterField.RowKind).Trim();
-        return kind.Contains("spouse", StringComparison.OrdinalIgnoreCase)
-            || kind.Contains("wife", StringComparison.OrdinalIgnoreCase)
-            || kind.Contains("husband", StringComparison.OrdinalIgnoreCase)
-            || kind.Contains("widow", StringComparison.OrdinalIgnoreCase)
-            || kind.Contains("partner", StringComparison.OrdinalIgnoreCase);
+        if (kind.Length == 0)
+        {
+            return null;
+        }
+
+        if (Says("spouse") || Says("wife") || Says("husband") || Says("widow") || Says("partner"))
+        {
+            return RowKind.Spouse;
+        }
+
+        return Says("child") || Says("son of") || Says("daughter") || Says("dependent") || Says("dependant")
+            ? RowKind.Dependant
+            : null;
+
+        bool Says(string word) => kind.Contains(word, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

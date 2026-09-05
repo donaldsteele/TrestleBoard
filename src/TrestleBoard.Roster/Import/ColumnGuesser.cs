@@ -191,9 +191,23 @@ public static class ColumnGuesser
         int best = 0;
         foreach (string hint in field.HeaderHints)
         {
-            if (hint.Length > best && ContainsWord(value, hint))
+            if (!ContainsWord(value, hint))
             {
-                best = hint.Length;
+                continue;
+            }
+
+            // A hint that accounts for the WHOLE header beats one that accounts for part of it, and
+            // it beats a longer partial match too (M89). The lodge's own export has a column headed
+            // "Type" carrying "Member" or "Spouse of …", and another headed "Item Type" carrying a
+            // sentence about a birthday. Scored on length alone, "item type" is the longer match and
+            // took the field — so every spouse in the file imported as a member of the lodge.
+            //
+            // The doubling is what makes this a rule rather than a nudge: no partial hint can be
+            // twice the length of the whole header it sits inside.
+            int score = string.Equals(value, hint, StringComparison.Ordinal) ? hint.Length * 2 : hint.Length;
+            if (score > best)
+            {
+                best = score;
             }
         }
 

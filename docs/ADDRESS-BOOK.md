@@ -88,6 +88,11 @@ the button on that screen**.
 - **Three telephone columns and no plain one.** If the file has Home, Mobile and Work but no single
   "Phone", the newsletter's telephone number is filled from the mobile (or the home number), and the
   review screen counts that as a change rather than doing it quietly.
+- **A workbook with a pivot table in it.** Membership systems often export one. If the spreadsheet
+  reader refuses such a file, TrestleBoard reads it a second, simpler way rather than telling you to
+  repair a file that is not broken.
+- **Rows that are somebody's child.** They are not members and there is nowhere to put them, so they
+  are reported rather than added to the roll.
 - **Anything it cannot use.** Every unusable row is listed, one plain sentence each, and can be saved
   to a file. Nothing is dropped in silence.
 

@@ -384,7 +384,7 @@ public sealed class PeopleShellTests
 
             MergePlan plan = window.SessionForTest.Plan();
             Assert.Equal(10, plan.NewCount);
-            Assert.Equal(2, plan.SpouseCount);
+            Assert.Equal(3, plan.SpouseCount);
             Assert.Contains(
                 plan.Summary(),
                 line => line.Contains("spouses, not members", StringComparison.Ordinal));

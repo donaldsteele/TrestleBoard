@@ -136,10 +136,20 @@ public sealed class RosterStore
         // rename can reach the disk while the bytes are still in flight, and a power cut leaves a
         // present-but-empty roster.json — the exact corruption temp-then-rename exists to prevent
         // (M24). The cost is one fsync on a file measured in kilobytes.
+        // The version says who WROTE the file, so this build stamps its own — but never lowers one
+        // (M89). A book loaded from a version-1 file and saved with M88's fields in it went on
+        // calling itself version 1, which is a file describing itself wrongly; and a book from a
+        // NEWER TrestleBoard must keep its higher number, or reopening it here would erase the one
+        // marker that tells a committee which of their two laptops is behind.
+        RosterBook stamped = book.Normalised();
+        if (stamped.SchemaVersion < RosterBook.CurrentSchemaVersion)
+        {
+            stamped = stamped with { SchemaVersion = RosterBook.CurrentSchemaVersion };
+        }
+
         using (var fs = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
         {
-            fs.Write(JsonSerializer.SerializeToUtf8Bytes(
-                book.Normalised(), RosterJsonContext.Default.RosterBook));
+            fs.Write(JsonSerializer.SerializeToUtf8Bytes(stamped, RosterJsonContext.Default.RosterBook));
             fs.Flush(flushToDisk: true);
         }
 

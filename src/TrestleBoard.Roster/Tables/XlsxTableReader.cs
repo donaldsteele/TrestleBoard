@@ -51,6 +51,19 @@ public static class XlsxTableReader
         }
         catch (Exception e) when (e is not TableReadException)
         {
+            // M89: before telling somebody their own file is wrong, try reading it the incurious way.
+            //
+            // ClosedXML reads every part of a workbook and refuses the file if any of them surprises
+            // it. The lodge's own member export carries a pivot table, and its cache threw before a
+            // single row was read — on a file that opens perfectly in Excel. The advice below would
+            // then have been wrong AND unhelpful: it asks the reader to fix a file that is not broken.
+            // <see cref="XlsxRawReader"/> opens only the four parts a list of members lives in.
+            TableWorkbook? rescued = XlsxRawReader.TryRead(path);
+            if (rescued is not null)
+            {
+                return rescued;
+            }
+
             throw new TableReadException(
                 "TrestleBoard could not read that spreadsheet. If it opens in Excel, try File, then "
                 + "Save As, then Excel Workbook (.xlsx), and use that copy.",

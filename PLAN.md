@@ -4619,6 +4619,34 @@ this app exists to stop.
 **Acceptance.** No snapshot baseline moves, and no `.tboard` widget reports itself stale.
 `people-address` is the new screenshot; `people-window` and `import-columns` were re-shot.
 
+### M89 — What the real file taught (S/M) — **delivered 2026-09-04, `docs/M89-spec.md`**
+
+M88 was built against the lodge's own export and a fixture written in its shape. Running the actual
+file through the app produced **five defects in one attempt**, four of which no test could have
+caught, because the fixture had been written from a *summary* of the file rather than from the file.
+
+- **The app could not read it at all.** The workbook has a pivot table; ClosedXML threw on the cache
+  before a row was read, and the committee was told to re-save a file that opens perfectly in Excel.
+  `XlsxRawReader` is a second attempt over four parts only, used when the first reader has failed.
+- **The name column was "First Name"** — the hint `name` cannot match `FullName` across a word
+  boundary — so 112 brethren imported under their first names. `fullname` is a hint now, and a hint
+  matching the whole header beats a longer partial one.
+- **Every wife imported as a member**, because `RowKind` matched "Item Type" (birthday sentences)
+  over the column actually headed "Type".
+- **Ten of fifteen wives were filed against nobody**, their husbands being further down the sheet.
+  Non-member rows are held back until every member is read.
+- **A child joined the lodge.** A "Child of …" row is now reported, not added.
+- And, found in the written result: a book saved from a version-1 file **kept calling itself version
+  1** while holding M88's fields. `Save` stamps the current version and never lowers a higher one.
+
+**The lesson, recorded:** a fixture written from a description of a file is a description, not a
+file. `members-full.csv` is now shaped from the export itself — both `Type` and `Item Type`, a wife
+above her husband, a child, an orphaned spouse, a repeated member row and a Jr./Sr. pair.
+
+**Also recorded:** the fallback reader's test was vacuous twice — passing with the fallback disabled
+— before a third fabrication finally reproduced ClosedXML's refusal. Each version was checked by
+turning the thing under test off. That check is the only reason the emptiness was found.
+
 ### Sizing & sequencing notes (M77–M87, added 2026-09-01)
 
 - **Order: M77 → M78 → M79 → M86 → M80 → M81 → M87 → M82 → M83 → M84 → M85.** Safety first and

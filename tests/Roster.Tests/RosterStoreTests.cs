@@ -140,6 +140,47 @@ public sealed class RosterStoreTests : IDisposable
         Assert.Contains("\"kept\"", written, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A book read from an older file and saved by this build says which build wrote it (M89).
+    ///
+    /// <para>Found by importing a real lodge's list: the file came back holding every M88 field and
+    /// still calling itself version 1 — a file describing itself wrongly, and the one number another
+    /// copy of TrestleBoard would use to work out which laptop is behind.</para>
+    /// </summary>
+    [Fact]
+    public void SavingAnOlderBookStampsThisVersionOnIt()
+    {
+        File.WriteAllText(
+            RosterPath,
+            """
+            { "schemaVersion": 1, "members": [ { "id": "person-1", "displayName": "A Placeholder" } ] }
+            """);
+
+        var store = new RosterStore(RosterPath);
+        RosterBook book = store.Load();
+        store.Save(book.With(book.Members[0] with { City = "Anytown" }));
+
+        Assert.Equal(RosterBook.CurrentSchemaVersion, store.Load().SchemaVersion);
+    }
+
+    /// <summary>…and a newer one keeps its own, because lowering it would erase the only marker
+    /// saying a newer TrestleBoard has been here (M89).</summary>
+    [Fact]
+    public void SavingANewerBookNeverLowersItsVersion()
+    {
+        File.WriteAllText(
+            RosterPath,
+            """
+            { "schemaVersion": 99, "members": [ { "id": "person-1", "displayName": "A Placeholder" } ] }
+            """);
+
+        var store = new RosterStore(RosterPath);
+        store.Save(store.Load());
+
+        Assert.Equal(99, store.Load(out RosterLoadState state).SchemaVersion);
+        Assert.Equal(RosterLoadState.MadeByANewerTrestleBoard, state);
+    }
+
     /// <summary>An ordinary M12-era book is not "from the future", and nothing about it is refused.</summary>
     [Fact]
     public void AnOlderBookIsJustABook()

@@ -40,7 +40,7 @@ public sealed class SecretarysFileTests
     /// </summary>
     [Theory]
     [InlineData("Member Number", RosterField.MemberNumber)]
-    [InlineData("Item Type", RosterField.RowKind)]
+    [InlineData("Type", RosterField.RowKind)]
     [InlineData("FullName", RosterField.Name)]
     [InlineData("Birthday", RosterField.Birthday)]
     [InlineData("Address", RosterField.AddressLine1)]
@@ -104,15 +104,15 @@ public sealed class SecretarysFileTests
     }
 
     /// <summary>
-    /// Spouses are never people in the book (M88). Two of the three land on their husbands' cards;
-    /// the third names a member number the lodge does not have, and is reported rather than dropped.
+    /// Spouses are never people in the book (M88). Three of the four land on their husbands' cards;
+    /// the fourth names a member number the lodge does not have, and is reported rather than dropped.
     /// </summary>
     [Fact]
     public void SpouseRowsLandOnTheirHusbandsCardsAndNeverOnTheRoll()
     {
         (MergePlan plan, _) = Import(RosterBook.Empty);
 
-        Assert.Equal(2, plan.SpouseCount);
+        Assert.Equal(3, plan.SpouseCount);
         Assert.DoesNotContain(plan.Result.Members, m => m.DisplayName.StartsWith("Alice", StringComparison.Ordinal));
 
         Member aaron = plan.Result.Members.First(m => m.MemberNumber == "98501");
@@ -120,9 +120,85 @@ public sealed class SecretarysFileTests
         Assert.Equal("alice.placeholder@example.invalid", aaron.SpouseEmail);
         Assert.Equal("555-0801", aaron.SpousePhone);
 
-        PlannedRow orphan = plan.Unusable.Single();
+        PlannedRow orphan = plan.Unusable.Single(r =>
+            r.Note!.Contains("not in your list", StringComparison.Ordinal));
         Assert.Contains("Clara Anonymous", orphan.Note!, StringComparison.Ordinal);
-        Assert.Contains("not in your list", orphan.Note!, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>A wife listed above her husband still reaches his card (M89).</b>
+    ///
+    /// <para>The first version of this filed each wife the moment her row was read, which works only
+    /// while every husband happens to sit higher up the sheet than his wife. Against the lodge's real
+    /// export that assumption failed for ten of fifteen wives — their husbands were further down, so
+    /// the import reported "member number …, who is not in your list" for women whose husbands were
+    /// in the very same file. Every row that is not a member is now held back until every member has
+    /// been read.</para>
+    ///
+    /// <para>Alice is the first data row in the fixture, above her husband, for this reason alone.</para>
+    /// </summary>
+    [Fact]
+    public void AWifeListedAboveHerHusbandStillReachesHisCard()
+    {
+        TableSheet sheet = Sheet();
+        int aliceRow = -1;
+        int aaronRow = -1;
+        for (int row = 1; row < sheet.RowCount; row++)
+        {
+            if (sheet.Cell(row, 7).StartsWith("Alice", StringComparison.Ordinal))
+            {
+                aliceRow = row;
+            }
+            else if (sheet.Cell(row, 7).StartsWith("Aaron", StringComparison.Ordinal) && aaronRow < 0)
+            {
+                aaronRow = row;
+            }
+        }
+
+        Assert.True(aliceRow >= 0 && aaronRow > aliceRow, "the fixture must list Alice above her husband");
+
+        (MergePlan plan, _) = Import(RosterBook.Empty);
+        Assert.Equal("Alice Placeholder", plan.Result.Members.First(m => m.MemberNumber == "98501").SpouseName);
+    }
+
+    /// <summary>
+    /// <b>A child is not a member of the lodge, and is not added as one (M89).</b>
+    ///
+    /// <para>The lodge's export carries a row marked "Child of …" beside the wives, and it imported
+    /// as a brother: a boy on the roll, in the birthday list, and offered as an officer. The address
+    /// book has nowhere to put a child and does not invent one — so the row is reported in a
+    /// sentence, which is the same treatment every other row it cannot use gets.</para>
+    /// </summary>
+    [Fact]
+    public void AChildIsNeverAddedToTheLodgesRoll()
+    {
+        (MergePlan plan, _) = Import(RosterBook.Empty);
+
+        Assert.DoesNotContain(plan.Result.Members, m => m.DisplayName.StartsWith("Peter", StringComparison.Ordinal));
+        Assert.DoesNotContain(plan.Result.Members, m => m.SpouseName?.StartsWith("Peter", StringComparison.Ordinal) ?? false);
+
+        PlannedRow child = plan.Unusable.Single(r =>
+            r.Note!.Contains("child", StringComparison.Ordinal));
+        Assert.Contains("Peter Placeholder", child.Note!, StringComparison.Ordinal);
+        Assert.Contains("was not added", child.Note!, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The name column is the one holding whole names, not the one holding first names (M89).
+    ///
+    /// <para>Word-boundary matching means the hint "name" does not find "FullName" — the N is flanked
+    /// by a letter — so "First Name" won the field, and against the real export a hundred and twelve
+    /// brethren imported under their first names alone. Sixteen of them then shared a name with
+    /// somebody else, which the duplicate machinery had opinions about.</para>
+    /// </summary>
+    [Fact]
+    public void TheNameColumnIsTheWholeNameNotTheFirstName()
+    {
+        (MergePlan plan, Dictionary<RosterField, int> mapping) = Import(RosterBook.Empty);
+
+        Assert.Equal("FullName", Sheet().Cell(0, mapping[RosterField.Name]));
+        Assert.Contains(plan.Result.Members, m => m.DisplayName == "Aaron Placeholder");
+        Assert.DoesNotContain(plan.Result.Members, m => m.DisplayName == "Aaron");
     }
 
     /// <summary>

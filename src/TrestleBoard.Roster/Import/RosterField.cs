@@ -115,8 +115,12 @@ public sealed record RosterFieldInfo(
         // a membership number, not a name and not a telephone — and a bare hint for either claimed
         // that column for the wrong field (review §14.2). Word-boundary matching does not help:
         // "member" really is a whole word there. The hint has to be the thing itself.
+        // "fullname" with no space is here because that is what the lodge member system writes, and
+        // word-boundary matching means the hint "name" does NOT find it — the N is flanked by a
+        // letter. Without this the column headed "First Name" won the field and a hundred and
+        // twelve brethren imported under their first names alone (M89).
         new(RosterField.Name, "Name — which column has it?", "Name", true,
-            ["name", "member name", "brother", "person", "full name"]),
+            ["name", "fullname", "member name", "brother", "person", "full name"]),
         new(RosterField.Birthday, "Birthday — which column has it?", "Birthday", false,
             ["birthday", "birth", "dob", "bday", "born"]),
         new(RosterField.Phone, "Telephone number — which column has it?", "Telephone", false,
@@ -215,7 +219,9 @@ public sealed record RosterFieldInfo(
             RosterFieldSection.AddressAndMore),
         new(RosterField.RowKind, "Members and spouses — which column says which a row is?",
             "Member or spouse", false,
-            ["item type", "record type", "row type", "type"],
+            // NOT "item type": the lodge export has a column of that name holding a sentence about
+            // a birthday, beside the column headed "Type" that actually says member or spouse.
+            ["type", "record type", "row type", "member or spouse"],
             RosterFieldSection.AddressAndMore),
     ];
 
