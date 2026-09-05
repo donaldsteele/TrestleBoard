@@ -4718,6 +4718,34 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M99 - What colour the writing is (S/M) - **delivered 2026-09-05, `docs/M99-spec.md`**
+
+**M86's third deliverable.** `CharacterStyleDef.ColorArgb` has been plumbed end to end since M1 -
+resolver, layout adapter, HarfBuzz shaper, `PositionedGlyphRun`, and both the canvas renderer and
+the PDF exporter, which paints with it at `PageRenderer.cs:93` - and nothing could set it. Every
+piece of writing in every newsletter has been black because no command existed, not because anybody
+chose black.
+
+`text.colour` over seven named colours, riding the `~` convention exactly as M14's "just here" font
+does (`body~ink-8c2a2a`). Two properties fall out free and both have tests: `BaseName` strips only
+`-bold`/`-italic`, so **bold keeps working inside coloured text**; and the name carries the colour,
+so two colours cannot share a style. **Black names the ROLE again**, so it is the way back rather
+than a fourth command - M96's rule for left.
+
+> **A change to what M86 planned, on the record.** M86 asked for a palette PLUS Avalonia's
+> `ColorPicker` with a contrast sentence under 4.5:1. This ships the palette alone: **every colour
+> offered already clears 4.5:1 against white**, asserted by a test using M16's own WCAG formula, so
+> there is no warning to give and no argument to have with a user about their own choice. A picker
+> also adds a package and a control M86 itself calls "the first in the app whose meaning is not in
+> words", needing its own screen-reader pass. If the committee asks for a colour that is not there,
+> the picker is a small addition on top; shipping a picker and retro-fitting a floor is not.
+
+> **M86's underline is NOT done, and is the last piece.** It needs `CharacterStyleDef.Underline`, a
+> fourth dimension in the resolver's variant machinery, and the renderer drawing from the font's
+> `post` table on canvas and in the PDF from shared code - a change to Layout and Rendering, which
+> M86 budgets a new `text-decorations` fixture **baked on all three OSes**. Only Windows baselines
+> can be baked on a maintainer's machine, so it is left named rather than half-done.
+
 ### M98 - Three everyday verbs (S) - **delivered 2026-09-05, `docs/M98-spec.md`**
 
 Change case, word count and a character the keyboard has no key for: three things every word

@@ -1158,6 +1158,57 @@ public sealed class TextEditorController
     }
 
     /// <summary>
+    /// Writes the highlighted words in a colour (PLAN.md §11 M99 — M86's third deliverable).
+    ///
+    /// <para><b><see cref="CharacterStyleDef.ColorArgb"/> has been plumbed end to end since M1</b> —
+    /// through the resolver, the layout adapter, the shaper and both renderers — and nothing could
+    /// set it. Every piece of writing in every newsletter has been black because no command existed
+    /// to make it anything else, not because anybody chose black.</para>
+    ///
+    /// <para>It rides on a derived style under the <c>~</c> convention, exactly as the "just here"
+    /// font does, so bold and italic keep working inside coloured text and nothing carries direct
+    /// formatting.</para>
+    ///
+    /// <para><b>Black is the way out</b>, not a fourth command: choosing it names the role again,
+    /// which is what puts the writing back the way it was.</para>
+    /// </summary>
+    /// <returns>False when nothing is highlighted, or it is already that colour.</returns>
+    public bool UseColourJustHere(uint argb)
+    {
+        return RetargetSpans(
+            "Change the colour of the writing",
+            (sheet, effectiveRef) =>
+            {
+                CharacterStyleDef from = sheet.GetCharacterStyle(effectiveRef);
+                string roleName = StyleOverrides.RoleOf(effectiveRef);
+                CharacterStyleDef role = sheet.CharacterStyles.Find(s => s.Name == roleName) ?? from;
+
+                // Asking for the role's own colour puts the writing back on the role rather than
+                // minting an override that says "the same as the role" — the rule the alignment
+                // verbs follow for left, and what keeps the canonical form small.
+                string overrideBase = argb == role.ColorArgb
+                    ? roleName
+                    : StyleOverrides.ColourNameFor(roleName, argb);
+
+                string name = CharacterStyleResolver.VariantName(overrideBase, from.Weight, from.Slant);
+                CharacterStyleDef? existing = sheet.CharacterStyles.Find(s => s.Name == name);
+                if (existing is not null)
+                {
+                    return (name, null);
+                }
+
+                CharacterStyleDef derived =
+                    CharacterStyleResolver.Derive(from, name, from.Weight, from.Slant);
+                derived.ColorArgb = argb;
+                return (name, derived);
+            });
+    }
+
+    /// <summary>The colour the writing at the caret is, or null when not typing.</summary>
+    public uint? CurrentTextColour => CurrentCharacterStyle?.ColorArgb;
+
+    /// <summary>
+    /// Puts overridden text back on its role's own font, leaving bold and italic alone.    /// <summary>
     /// Puts overridden text back on its role's own font, leaving bold and italic alone.
     /// False when nothing was using a font of its own, so nothing was put back.
     /// </summary>

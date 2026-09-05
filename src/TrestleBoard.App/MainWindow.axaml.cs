@@ -5504,6 +5504,37 @@ public partial class MainWindow : Window
         return true;
     }
 
+    /// <summary>M99: what colour the highlighted writing is.</summary>
+    internal async Task<bool> ChangeTextColourAsync()
+    {
+        if (_editor is not { IsActive: true } editor || editor.SelectedText is not { Length: > 0 } words)
+        {
+            Announce("No words are highlighted. Drag across some words first.");
+            return false;
+        }
+
+        var dialog = new TextColourDialog(editor.CurrentTextColour, words);
+        await dialog.ShowDialog(this);
+
+        if (!dialog.Confirmed)
+        {
+            return false;
+        }
+
+        if (!editor.UseColourJustHere(dialog.Chosen))
+        {
+            Announce("Those words are already that colour, so nothing has changed.");
+            return false;
+        }
+
+        _source?.Invalidate(new ChangeScope(ChangeKind.Text));
+        _rail.ForgetEveryThumbnail();
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+        Announce("Recoloured. Press Ctrl+Z to undo.");
+        return true;
+    }
+
     /// <summary>M98: capitals, small letters, or one capital per word.</summary>
     internal async Task<bool> ChangeCaseAsync()
     {

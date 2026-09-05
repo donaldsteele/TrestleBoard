@@ -49,6 +49,34 @@ public static class StyleOverrides
         return name;
     }
 
+    /// <summary>
+    /// The derived style name for writing in a colour (M99): <c>body~ink-8c2a2a</c>.
+    ///
+    /// <para>The same <c>~</c> convention the font override uses, and for the same reasons it was
+    /// chosen: <see cref="CharacterStyleResolver.BaseName"/> strips only <c>-bold</c>/<c>-italic</c>,
+    /// so <c>body~ink-8c2a2a-bold</c> bases to <c>body~ink-8c2a2a</c> and bolding a word inside
+    /// coloured text keeps working; and the resolver's attribute scan matches on colour, so a
+    /// coloured group cannot cross-match the black one. Both fall out of the existing convention
+    /// for free.</para>
+    ///
+    /// <para>The <c>ink-</c> prefix keeps a colour override from ever colliding with a font one: a
+    /// family slug cannot begin with it, because <see cref="Slug"/> strips the hyphen.</para>
+    /// </summary>
+    public static string ColourNameFor(string baseStyleName, uint argb)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(baseStyleName);
+        return $"{RoleOf(baseStyleName)}{Separator}ink-{argb & 0xFFFFFF:x6}";
+    }
+
+    /// <summary>True when the style name was minted as a colour override (M99).</summary>
+    public static bool IsColourOverride(string styleName)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(styleName);
+        int cut = styleName.IndexOf(Separator, StringComparison.Ordinal);
+        return cut >= 0
+            && styleName[(cut + 1)..].StartsWith("ink-", StringComparison.Ordinal);
+    }
+
     /// <summary>True when the style name was minted as a text-level override.</summary>
     public static bool IsOverride(string styleName)
     {

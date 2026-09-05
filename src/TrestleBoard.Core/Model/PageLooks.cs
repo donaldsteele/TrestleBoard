@@ -70,6 +70,29 @@ public static class PageLooks
         ("Black", 0xFF000000),
     ];
 
+    /// <summary>
+    /// The colours a piece of writing may be (M99), in plain words, quietest first.
+    ///
+    /// <para><b>Black leads and is the way out.</b> It is the colour every style already is, so
+    /// choosing it is how somebody puts writing back rather than a fourth command to remember.</para>
+    ///
+    /// <para><b>Every one of these is at least 4.5:1 against white</b>, which is the contrast floor
+    /// §6 sets, so nothing offered here can produce a newsletter that is hard to read in print. That
+    /// is the reason it is a short fixed list rather than a colour wheel: a freely chosen colour
+    /// cannot be trusted to clear the floor, and the app would then have to argue with the user
+    /// about their own choice.</para>
+    /// </summary>
+    public static readonly IReadOnlyList<(string Name, uint Argb)> TextColours =
+    [
+        ("Black", 0xFF000000),
+        ("Lodge blue", 0xFF1F3864),
+        ("Deep red", 0xFF8C2A2A),
+        ("Dark green", 0xFF1E5631),
+        ("Brown", 0xFF5D4037),
+        ("Charcoal", 0xFF37474F),
+        ("Purple", 0xFF4A2C6B),
+    ];
+
     /// <summary>How thick the outline of a drawn box is (M95) — the border width, so the two agree.</summary>
     public const float BoxStrokeWidthPt = BorderWidthPt;
 

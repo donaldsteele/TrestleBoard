@@ -146,6 +146,12 @@ public static class ActionId
 
     public const string AlignTextRight = "text.alignRight";
 
+    /// <summary>
+    /// M99: what colour the writing is. `CharacterStyleDef.ColorArgb` has been plumbed end to end
+    /// since M1 — resolver, adapter, shaper, both renderers — and nothing could set it.
+    /// </summary>
+    public const string TextColour = "text.colour";
+
     /// <summary>M98: capitals, small letters, or one capital per word.</summary>
     public const string ChangeCase = "text.changeCase";
 

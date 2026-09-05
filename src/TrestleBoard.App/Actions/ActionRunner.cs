@@ -95,6 +95,7 @@ internal sealed class ActionRunner
             [ActionId.AlignTextCentre] = Sync(() => window.AlignText(Core.Model.TextAlignment.Center)),
             [ActionId.AlignTextRight] = Sync(() => window.AlignText(Core.Model.TextAlignment.Right)),
             [ActionId.PageSetup] = Async(() => window.ChangeThePaperAsync()),
+            [ActionId.TextColour] = Async(() => window.ChangeTextColourAsync()),
             [ActionId.ChangeCase] = Async(() => window.ChangeCaseAsync()),
             [ActionId.WordCount] = Sync(window.SayHowManyWords),
             [ActionId.InsertSymbol] = Async(() => window.InsertSymbolAsync()),

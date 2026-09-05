@@ -164,6 +164,10 @@ internal static class ActionIcons
         // M98. "Aa" is a letterform, which is what every glyph in the Text group already is; a
         // numeral for the count would read as a step in a numbered list; and Omega for the symbol
         // picker is the one convention this audience has certainly never met.
+        // M99. Every colour glyph is a coloured shape, and the one thing an icon here must not do
+        // is pick one of the seven to be the icon - that colour would read as the current one.
+        [ActionId.TextColour] = "any coloured glyph would read as the colour currently chosen",
+
         [ActionId.ChangeCase] = "a letterform, which every glyph in the Text group already is",
         [ActionId.WordCount] = "a numeral, which reads as a step in a numbered list",
         [ActionId.InsertSymbol] = "Omega, a convention this audience has never met",

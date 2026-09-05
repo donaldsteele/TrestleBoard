@@ -50,6 +50,10 @@ public static class HelpSearchWords
             ["paper", "margins", "A4", "letter", "legal", "page size", "edges", "white space round "
              + "the edge", "landscape", "wider"],
 
+        // M99. Again not the bare word "colours", which the appearance settings have owned since M16.
+        [ActionId.TextColour] =
+            ["colour the writing", "red text", "coloured heading", "ink", "make it blue"],
+
         // M98. Somebody describes the state of the words, not the name of the command.
         [ActionId.ChangeCase] =
             ["capitals", "caps", "shouting", "all in capitals", "lower case", "upper case",

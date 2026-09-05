@@ -221,6 +221,11 @@ public static class ActionCatalog
         new(ActionId.AlignTextRight, "Line it up on the right",
             "Ends every line of the chosen paragraphs at the right edge.",
             ActionGroup.Text, "Ctrl+R"),
+        // M99. M86's third deliverable. Not "colour" alone: the app's own appearance has owned
+        // that word in the search box since M16.
+        new(ActionId.TextColour, "What colour the writing is…",
+            "Puts the highlighted words in another colour. Every colour offered prints clearly.",
+            ActionGroup.Text),
         // M98. Three everyday verbs every word processor has and this had none of.
         new(ActionId.ChangeCase, "Change capitals…",
             "Turns the highlighted words into capitals, into small letters, or one capital per word.",
@@ -853,7 +858,8 @@ public static class ActionCatalog
             // controller returns false so the shell says nothing changed.
             // M98. Changing capitals acts on the HIGHLIGHT, so it refuses with the same sentence
             // Cut and Copy use, and offers the same remedy.
-            ActionId.ChangeCase => !context.IsEditingText
+            // M99. Acts on the highlight, so the same refusal and the same remedy as Cut and Copy.
+            ActionId.TextColour or ActionId.ChangeCase => !context.IsEditingText
                 ? ActionAvailability.NotApplicable(NeedsText)
                 : context.HasTextSelection
                     ? ActionAvailability.Available

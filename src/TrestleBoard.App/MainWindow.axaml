@@ -184,6 +184,9 @@
         <!-- M98: three everyday verbs, in a submenu because Format has six access keys left and
              these belong together anyway. -->
         <MenuItem Header="More about the te_xt" AutomationProperties.Name="More about the text">
+          <MenuItem Header="What colour the writin_g is…" Tag="text.colour"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="What colour the writing is" />
           <MenuItem Header="Change _capitals…" Tag="text.changeCase"
                     Click="OnActionClicked" AutomationProperties.Name="Change capitals" />
           <MenuItem Header="How many _words…" Tag="text.wordCount"
