@@ -135,6 +135,10 @@ internal static class ActionIcons
         // this page earlier, this page later. A fifth and sixth pointing the same two directions
         // while meaning something else entirely would take discrimination AWAY from the four that
         // are there, which is the opposite of what an icon is for.
+        // M93. Every glyph for line spacing is a stack of horizontal bars with arrows, which at
+        // 20px is indistinguishable from the alignment and list glyphs that mean other things.
+        [ActionId.WritingLook] = "a stack of bars, which every other text glyph already is",
+
         [ActionId.MoveToNextPage] = "an arrow, and the page arrows already mean something else",
         [ActionId.MoveToPreviousPage] = "an arrow, and the page arrows already mean something else",
 

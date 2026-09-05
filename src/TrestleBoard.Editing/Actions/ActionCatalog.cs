@@ -208,6 +208,11 @@ public static class ActionCatalog
             ActionGroup.Text, "Ctrl+Shift+."),
         new(ActionId.SmallerText, "− Smaller", "Makes this kind of writing one step smaller everywhere.",
             ActionGroup.Text, "Ctrl+Shift+,"),
+        // M93. "Spaced out" is what the committee says; "leading" and "paragraph spacing" are what
+        // the trade says, and the jargon test would refuse them anyway.
+        new(ActionId.WritingLook, "How spaced out the writing is…",
+            "Choose closer together or more spread out, and whether each paragraph starts pushed in.",
+            ActionGroup.Text),
         new(ActionId.FontJustHere, "Use a different font just here…",
             "Changes the typeface of the highlighted words only, leaving the rest alone.",
             ActionGroup.Text),
@@ -795,6 +800,10 @@ public static class ActionCatalog
             // caret but not a highlight. The font picker itself only needs a newsletter, because it
             // is a whole-document sheet the user can open to look at.
             ActionId.FontsAndStyles => RequiresDocument(context),
+
+            // M93. A whole-newsletter sheet like the font picker, so it needs a newsletter and not
+            // a caret: somebody deciding the pages look cramped is looking at the pages, not typing.
+            ActionId.WritingLook => RequiresDocument(context),
             ActionId.BiggerText or ActionId.SmallerText or ActionId.FontJustHere =>
                 context.IsEditingText
                     ? ActionAvailability.Available

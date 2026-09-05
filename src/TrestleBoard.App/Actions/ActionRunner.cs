@@ -91,6 +91,7 @@ internal sealed class ActionRunner
             // ---- Putting things on the page --------------------------------------------------------
             [ActionId.AddTextFrame] = Sync(window.AddTextFrame),
             [ActionId.AddRule] = Sync(window.AddRuleAcrossThePage),
+            [ActionId.WritingLook] = Async(() => window.ChangeWritingLookAsync()),
             [ActionId.Duplicate] = Sync(window.DuplicateSelected),
             [ActionId.MoveToNextPage] = Sync(window.MoveSelectionToNextPage),
             [ActionId.MoveToPreviousPage] = Sync(window.MoveSelectionToPreviousPage),

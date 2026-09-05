@@ -38,6 +38,11 @@ public static class HelpSearchWords
 
         // M81. "Duplicate" is a word from another program; what people say is "another one".
         [ActionId.Duplicate] = ["copy", "duplicate", "another one", "same again", "second one"],
+        // M93. Nobody types "leading" or "paragraph spacing". They describe the page.
+        [ActionId.WritingLook] =
+            ["spacing", "line spacing", "cramped", "squashed", "spread out", "double space",
+             "more air", "indent", "tab the first line", "too tight"],
+
         [ActionId.ToggleLocked] = ["lock", "keep it still", "stop it moving", "pin", "fix in place"],
 
         // M91. Nobody searches for "move to page". They describe the mistake they have made.

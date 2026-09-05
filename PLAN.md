@@ -4718,6 +4718,31 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M93 - How spaced out the writing is (S) - **delivered 2026-09-05, `docs/M93-spec.md`**
+
+`ParagraphStyleDef.LineSpacing`, `.SpaceBeforePt`, `.SpaceAfterPt` and `.FirstLineIndentPt` have been
+honoured by `TextLayoutEngine` since M1, are set by every template, serialize, round-trip and are
+covered by the golden LineBox tests - and **no command in the application could change any of them**.
+That is the register's "built, working, unreachable" category, and the easiest kind of gap to miss
+because every layer reports itself as done. Twelve more are on the register.
+
+`text.writingLook` opens a small window with three named choices (Closer together / Normal / More
+spread out) and one tick box for the first-line indent. Three names rather than four numbers because
+§6 refuses to make this audience operate spinners over a multiplier and three point values to say a
+thing they say in a word; each choice draws three lines of real text at its own line height and
+paragraph gap, so it is guessable by looking. **Normal is exactly what `StandardStyles` ships**, so
+wandering through the three and coming back needs no Ctrl+Z - a test pins the two together so a
+future default change cannot make "Normal" mean something the templates do not do.
+
+Deliberately NOT added to the fonts window: its own doc comment says it is "not a general style
+editor - that is a scope trap", and the boundary is worth more than one more control.
+
+> **`SetParagraphSpacingCommand` takes four nullable floats where null means leave-alone**, the
+> `SetCharacterStyleFontCommand` shape. Not decoration: the dialog carries two independent decisions,
+> and a command restoring all four from one snapshot would look correct while resetting the three the
+> caller never asked about. Mutating null-means-leave-alone into null-means-reset failed exactly one
+> test, which is what the two identity-coverage entries exist for.
+
 ### M92 - Choosing several things, and the commands meaning it (S/M) - **delivered 2026-09-05, `docs/M92-spec.md`**
 
 The app has offered four ways to choose more than one thing since M21 - Shift+click, a marquee,

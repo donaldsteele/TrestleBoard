@@ -177,6 +177,10 @@
              item, and this one is the whole milestone. -->
         <MenuItem Header="_Fonts and text styles…" Tag="text.fontsAndStyles" InputGesture="Ctrl+Shift+D"
                   Click="OnActionClicked" AutomationProperties.Name="Fonts and text styles" />
+        <!-- M93: four paragraph fields the layout engine has honoured since M1 with no way in. -->
+        <MenuItem Header="How sp_aced out the writing is…" Tag="text.writingLook"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="How spaced out the writing is" />
         <MenuItem Header="Make text bi_gger" Tag="text.bigger" InputGesture="Ctrl+Shift+OemPeriod"
                   Click="OnActionClicked" AutomationProperties.Name="Make text bigger" />
         <MenuItem Header="Make text small_er" Tag="text.smaller" InputGesture="Ctrl+Shift+OemComma"

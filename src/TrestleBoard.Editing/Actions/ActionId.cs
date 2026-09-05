@@ -150,6 +150,13 @@ public static class ActionId
     public const string FontsAndStyles = "text.fontsAndStyles";
     public const string BiggerText = "text.bigger";
     public const string SmallerText = "text.smaller";
+    /// <summary>
+    /// M93: how spaced out the writing is, and whether paragraphs start pushed in.
+    ///
+    /// <para>Four fields the layout engine has honoured since M1 that no command could reach.</para>
+    /// </summary>
+    public const string WritingLook = "text.writingLook";
+
     public const string FontJustHere = "text.fontJustHere";
     public const string ClearFontOverride = "text.clearFontOverride";
 

@@ -113,6 +113,9 @@ public partial class MainWindow : Window
     private PhotoController? _photos;
     private WidgetController? _widgets;
     private PageFlowController? _pages;
+
+    /// <summary>M93: how spaced out the writing is. Built beside the others, per newsletter.</summary>
+    private WritingLookController? _writingLook;
     private RecoveryService? _recovery;
     private IRecoveryStore? _recoveryStore;
     private DispatcherTimer? _recoveryTimer;
@@ -5271,6 +5274,55 @@ public partial class MainWindow : Window
         return true;
     }
 
+    /// <summary>
+    /// M93: "How spaced out the writing is…" — the four paragraph fields the layout engine has
+    /// honoured since M1 and no command could reach.
+    /// </summary>
+    internal async Task<bool> ChangeWritingLookAsync()
+    {
+        if (_writingLook is not { CanChangeTheWritingsLook: true } look)
+        {
+            Announce("There is no writing to space out yet. Start a newsletter first.");
+            return false;
+        }
+
+        _editor?.End();
+        var dialog = new WritingLookDialog(look.CurrentSpacing, look.FirstLineIsIndented);
+        await dialog.ShowDialog(this);
+
+        if (!dialog.Confirmed)
+        {
+            return false;
+        }
+
+        // Two separate decisions on one window, so both are asked and both are reported. Either
+        // may be a no-op — the user opened it, looked, and pressed Use this — and the sentence has
+        // to say that rather than claim a change that did not happen (M70(c)).
+        bool spacingChanged = dialog.ChosenSpacing is { } chosen && look.SetSpacing(chosen);
+        bool indentChanged = look.SetFirstLineIndent(dialog.IndentFirstLine);
+
+        if (!spacingChanged && !indentChanged)
+        {
+            Announce("The writing is already like that, so nothing has changed.");
+            return false;
+        }
+
+        // A style change reflows every page, so nothing narrower than the whole document will do.
+        _source?.Invalidate(new ChangeScope(ChangeKind.Metadata));
+        _rail.ForgetEveryThumbnail();
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+
+        Announce(spacingChanged && indentChanged
+            ? "The writing is respaced and the paragraphs now start differently. Press Ctrl+Z to undo."
+            : spacingChanged
+                ? "The writing through the newsletter is respaced. Press Ctrl+Z to undo."
+                : dialog.IndentFirstLine
+                    ? "Each paragraph now starts pushed in. Press Ctrl+Z to undo."
+                    : "Paragraphs no longer start pushed in. Press Ctrl+Z to undo.");
+        return true;
+    }
+
     /// <summary>M81: keeps the chosen thing where it is, or lets it move again.</summary>
     internal void ToggleLocked()
     {
@@ -8008,6 +8060,7 @@ public partial class MainWindow : Window
         _photos = photos;
         _widgets = widgets;
         _pages = pages;
+        _writingLook = new WritingLookController(session);
         _package = package;
         _pageIndex = 0;
         _exportedThisSession = false;

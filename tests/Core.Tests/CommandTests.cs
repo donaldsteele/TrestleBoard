@@ -106,6 +106,15 @@ public sealed class CommandTests
         // M83. Geometry rather than content: nothing about the words changed, only the shape they
         // flow in.
         ["SetColumnCount"] = _ => new SetColumnCountCommand("text-1", 2),
+
+        // M93. Four fields the layout engine has honoured since M1 with no command able to reach
+        // them. Two entries because the nullable fields mean "leave this one alone", and a revert
+        // that restored all four from one snapshot would look correct while quietly resetting the
+        // three the caller never asked about.
+        ["SetParagraphSpacing.Spacing"] =
+            _ => new SetParagraphSpacingCommand("body", 1.5f, null, 10f, null),
+        ["SetParagraphSpacing.IndentOnly"] =
+            _ => new SetParagraphSpacingCommand("body", null, null, null, 18f),
     };
 
     [Theory]
