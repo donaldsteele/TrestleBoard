@@ -5428,6 +5428,36 @@ public partial class MainWindow : Window
         return true;
     }
 
+    /// <summary>M96: lines the chosen paragraphs up left, centred or right.</summary>
+    internal bool AlignText(Core.Model.TextAlignment alignment)
+    {
+        if (_editor is not { IsActive: true } editor)
+        {
+            Announce("Click into some writing first, then choose how to line it up.");
+            return false;
+        }
+
+        if (!editor.SetAlignment(alignment))
+        {
+            Announce("It is already lined up that way, so nothing has changed.");
+            return false;
+        }
+
+        // A paragraph style change relays the story it is in, and the frames after it in the chain.
+        _source?.Invalidate(new ChangeScope(ChangeKind.Text));
+        _rail.ForgetEveryThumbnail();
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+
+        Announce(alignment switch
+        {
+            Core.Model.TextAlignment.Center => "Lined up down the middle. Press Ctrl+Z to undo.",
+            Core.Model.TextAlignment.Right => "Lined up on the right. Press Ctrl+Z to undo.",
+            _ => "Lined up on the left. Press Ctrl+Z to undo.",
+        });
+        return true;
+    }
+
     /// <summary>M81: keeps the chosen thing where it is, or lets it move again.</summary>
     internal void ToggleLocked()
     {

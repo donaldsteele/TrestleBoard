@@ -113,6 +113,15 @@ internal static class KeyboardMap
         // to the caret inside a story.
         new(Key.PageDown, CtrlShift, ActionId.MoveToNextPage, KeyScope.WhileNotTyping),
         new(Key.PageUp, CtrlShift, ActionId.MoveToPreviousPage, KeyScope.WhileNotTyping),
+        // M96. Ctrl+L / Ctrl+E / Ctrl+R are what every editor uses for lining writing up, and all
+        // three were free. WhileTyping, because that is when the catalog offers them.
+        new(Key.L, Ctrl, ActionId.AlignTextLeft, KeyScope.WhileTyping),
+        // NOT Ctrl+E, which every other editor uses for centring and which this app has spent on
+        // "Make the PDF…" since M8 — an export is the more important command and it was there
+        // first. Ctrl+Shift+C for centre instead: C is the letter of the word.
+        new(Key.C, CtrlShift, ActionId.AlignTextCentre, KeyScope.WhileTyping),
+        new(Key.R, Ctrl, ActionId.AlignTextRight, KeyScope.WhileTyping),
+
         new(Key.E, CtrlShift, ActionId.EditWidget),
         new(Key.G, CtrlShift, ActionId.EditWidgetList),
         new(Key.Y, CtrlShift, ActionId.FitToContents),

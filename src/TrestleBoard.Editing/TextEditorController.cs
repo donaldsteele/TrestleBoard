@@ -755,6 +755,111 @@ public sealed class TextEditorController
         activeDescription: "Remove italic",
         inactiveDescription: "Italic text");
 
+    // ---- Lining the writing up (PLAN.md §11 M96) ----------------------------------------------
+
+    /// <summary>
+    /// Which way the paragraph the caret is in is lined up, or null when not typing.
+    ///
+    /// <para>Read off the style rather than kept in a field, so the pressed button and the page can
+    /// never disagree — the M55 rule.</para>
+    /// </summary>
+    public TextAlignment? CurrentAlignment
+    {
+        get
+        {
+            if (!IsActive || CurrentParagraphStyle() is not { } style)
+            {
+                return null;
+            }
+
+            return style.Align;
+        }
+    }
+
+    /// <summary>
+    /// Lines the chosen paragraphs up left, centred or right (M96).
+    ///
+    /// <para><b>Alignment has been in the model and honoured by the layout engine since M1</b> —
+    /// <c>TextAlignment</c>, <c>ParagraphStyleDef.Align</c> and the shift arithmetic in
+    /// <c>TextLayoutEngine</c> are all live and exercised by two sample styles — and no command
+    /// could reach it. A committee wanting a centred heading had to mint a style by hand.</para>
+    ///
+    /// <para>It rides on a DERIVED paragraph style, minted once per role and reused, exactly as
+    /// bold and italic ride on derived character styles. Nothing carries direct formatting, so the
+    /// resolver, the serialiser and the canonicaliser learn nothing new.</para>
+    ///
+    /// <para><b>Justified is not offered.</b> §1 rules it out for v1, and rivers in a two-column
+    /// frame are what it would give this audience.</para>
+    /// </summary>
+    /// <returns>False when there is no caret, or the paragraphs are already lined up that way.</returns>
+    public bool SetAlignment(TextAlignment alignment)
+    {
+        if (!IsActive)
+        {
+            return false;
+        }
+
+        Story story = CurrentStory();
+        StyleSheet sheet = _session.Document.StyleSheet;
+        TextRange range = _selection.Range;
+
+        var children = new List<IDocumentCommand>();
+        var ensured = new HashSet<string>(StringComparer.Ordinal);
+
+        for (int p = range.Start.ParagraphIndex; p <= range.End.ParagraphIndex; p++)
+        {
+            StoryParagraph paragraph = story.Paragraphs[p];
+            string role = ParagraphAlignmentNames.RoleOf(paragraph.ParagraphStyleRef);
+            string wanted = ParagraphAlignmentNames.NameFor(role, alignment);
+            if (string.Equals(wanted, paragraph.ParagraphStyleRef, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (sheet.ParagraphStyles.TrueForAll(s => s.Name != wanted) && ensured.Add(wanted))
+            {
+                // Derived from the ROLE, so a centred heading keeps the heading's spacing and its
+                // character style — centring must not quietly restyle anything else.
+                children.Insert(
+                    0,
+                    new EnsureParagraphStyleCommand(
+                        ParagraphAlignmentNames.Derive(sheet.GetParagraphStyle(role), alignment)));
+            }
+
+            children.Add(new ApplyParagraphStyleCommand(story.Id, p, wanted));
+        }
+
+        if (children.Count == 0)
+        {
+            return false;
+        }
+
+        _session.Execute(new CompositeCommand(
+            alignment switch
+            {
+                TextAlignment.Center => "Line it up down the middle",
+                TextAlignment.Right => "Line it up on the right",
+                _ => "Line it up on the left",
+            },
+            new ChangeScope(ChangeKind.Text, StoryId: story.Id),
+            children));
+        RaiseChanged();
+        return true;
+    }
+
+    private ParagraphStyleDef? CurrentParagraphStyle()
+    {
+        Story story = CurrentStory();
+        int index = _selection.Caret.ParagraphIndex;
+        if (index < 0 || index >= story.Paragraphs.Count)
+        {
+            return null;
+        }
+
+        string name = story.Paragraphs[index].ParagraphStyleRef;
+        return _session.Document.StyleSheet.ParagraphStyles.Find(s => s.Name == name);
+    }
+
     public IReadOnlyList<string> AvailableParagraphStyles =>
         _session.Document.StyleSheet.ParagraphStyles.Select(s => s.Name).ToList();
 

@@ -113,6 +113,15 @@ public sealed class CommandTests
         // three the caller never asked about.
         // M95. A shape's colours live on the block, so no style is minted and the revert has to
         // put all three fields back — including a null, which "no outline" legitimately is.
+        // M96. Alignment rides on a DERIVED paragraph style, so the ensure command is what mints
+        // it - and its revert must take the style away again only if it was the one that added it.
+        ["EnsureParagraphStyle"] = _ => new EnsureParagraphStyleCommand(new ParagraphStyleDef
+        {
+            Name = "body~centred",
+            CharacterStyleRef = "body",
+            Align = TextAlignment.Center,
+        }),
+
         ["SetShapeLook"] = _ => new SetShapeLookCommand("rule-1", 0xFF8C2A2A, 2f, 0xFFFBF3E0),
 
         ["SetParagraphSpacing.Spacing"] =

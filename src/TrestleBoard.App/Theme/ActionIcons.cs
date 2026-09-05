@@ -150,6 +150,13 @@ internal static class ActionIcons
         [ActionId.AddBox] = "a rectangle, which is the shape everything on the canvas already is",
         [ActionId.ShapeColours] = "the Item group carries no icons; one alone would read as rank",
 
+        // M96. Three stacks of bars differing only in which end is ragged - the one family of
+        // glyph where the difference IS the meaning, and at 20px the difference is two pixels.
+        // The three sit together in a group with the pressed one shown, which carries it instead.
+        [ActionId.AlignTextLeft] = "three stacks of bars differing by two pixels at 20px",
+        [ActionId.AlignTextCentre] = "three stacks of bars differing by two pixels at 20px",
+        [ActionId.AlignTextRight] = "three stacks of bars differing by two pixels at 20px",
+
         [ActionId.MoveToNextPage] = "an arrow, and the page arrows already mean something else",
         [ActionId.MoveToPreviousPage] = "an arrow, and the page arrows already mean something else",
 

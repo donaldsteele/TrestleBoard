@@ -314,3 +314,47 @@ public sealed class EnsureCharacterStyleCommand(CharacterStyleDef style) : IDocu
 
     public bool TryMerge(IDocumentCommand newer) => false;
 }
+
+/// <summary>
+/// Adds a paragraph style to the sheet if it is not already there (PLAN.md §11 M96) — the
+/// paragraph-level twin of <see cref="EnsureCharacterStyleCommand"/>.
+///
+/// <para>Alignment is carried the way bold and italic are: by minting a DERIVED style and applying
+/// it by reference, never by putting direct formatting on a paragraph. That constraint is locked
+/// (§1, M14) and this is what keeps it — the resolver, the serialiser and the canonicaliser learn
+/// nothing new, because a derived paragraph style is an ordinary paragraph style.</para>
+///
+/// <para>Idempotent, and remembers whether it was the one that added the style, so undoing a
+/// centring does not take away a style another paragraph has since started using.</para>
+/// </summary>
+public sealed class EnsureParagraphStyleCommand(ParagraphStyleDef style) : IDocumentCommand
+{
+    private bool _added;
+
+    public ParagraphStyleDef Style { get; } = style;
+
+    public string Description => "Add paragraph style";
+
+    public ChangeScope Scope => new(ChangeKind.Metadata);
+
+    public void Apply(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        _added = document.StyleSheet.ParagraphStyles.TrueForAll(s => s.Name != Style.Name);
+        if (_added)
+        {
+            document.StyleSheet.ParagraphStyles.Add(Style);
+        }
+    }
+
+    public void Revert(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        if (_added)
+        {
+            document.StyleSheet.ParagraphStyles.RemoveAll(s => s.Name == Style.Name);
+        }
+    }
+
+    public bool TryMerge(IDocumentCommand newer) => false;
+}

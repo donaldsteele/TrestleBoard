@@ -181,6 +181,18 @@
         <!-- M95: a box's colours live on the block, so any colour is already expressible. It sits
              here rather than in Arrange, which had no access key left, and beside the Picture
              submenu that already makes this menu about more than words. -->
+        <!-- M96: TextAlignment has been honoured by the layout engine since M1 with no way in.
+             A submenu, like Picture, because Format had one free access key left and these are
+             three items that belong together anyway - a submenu gets its own key namespace. -->
+        <MenuItem Header="Which wa_y it lines up" AutomationProperties.Name="Which way it lines up">
+          <MenuItem Header="On the _left" Tag="text.alignLeft" InputGesture="Ctrl+L"
+                    Click="OnActionClicked" AutomationProperties.Name="Line it up on the left" />
+          <MenuItem Header="Down the _middle" Tag="text.alignCentre" InputGesture="Ctrl+Shift+C"
+                    Click="OnActionClicked" AutomationProperties.Name="Line it up down the middle" />
+          <MenuItem Header="On the _right" Tag="text.alignRight" InputGesture="Ctrl+R"
+                    Click="OnActionClicked" AutomationProperties.Name="Line it up on the right" />
+        </MenuItem>
+        <Separator />
         <MenuItem Header="Change wha_t colour the box is…" Tag="item.shapeColours"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Change what colour the box is" />

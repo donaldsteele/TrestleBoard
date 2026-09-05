@@ -39,6 +39,12 @@ public static class HelpSearchWords
         // M81. "Duplicate" is a word from another program; what people say is "another one".
         [ActionId.Duplicate] = ["copy", "duplicate", "another one", "same again", "second one"],
         // M93. Nobody types "leading" or "paragraph spacing". They describe the page.
+        // M96. "Align" is the trade word; "centre" is the one that gets typed, spelled both ways.
+        [ActionId.AlignTextCentre] =
+            ["centre", "center", "middle", "align", "centred heading", "in the middle"],
+        [ActionId.AlignTextLeft] = ["align", "back to normal", "left edge"],
+        [ActionId.AlignTextRight] = ["align", "right edge", "against the right"],
+
         [ActionId.WritingLook] =
             ["spacing", "line spacing", "cramped", "squashed", "spread out", "double space",
              "more air", "indent", "tab the first line", "too tight"],

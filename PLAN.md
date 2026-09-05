@@ -4718,6 +4718,28 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M96 - Which way it lines up (S/M) - **delivered 2026-09-05, `docs/M96-spec.md`**
+
+**The first of M86's three deliverables.** `TextAlignment`, `ParagraphStyleDef.Align` and the shift
+arithmetic in `TextLayoutEngine` have been live since M1 and two sample styles use them - and no
+command could reach any of it. Underline and colour, M86's other two, remain.
+
+`text.alignLeft` (Ctrl+L), `text.alignCentre` (Ctrl+Shift+C) and `text.alignRight` (Ctrl+R), carried
+on a DERIVED paragraph style minted once per role - `body~centred`, reusing M14's `~` convention -
+so nothing carries direct formatting and the resolver, serialiser and canonicaliser learn nothing
+new. Three properties fall out and each has a test: centring one paragraph leaves the ROLE alone;
+the derived style carries the role's character style, spacing and indent across, so centring a
+heading does not change the air round it; and **left is the absence of an override, not an override
+to left**, so a document that centres nothing stays byte-identical to one written before this.
+
+Still no justify: §1 rules it out and M86 reaffirmed it.
+
+> **Two clashes, both caught by the invariant tests.** Ctrl+E - which every other editor uses for
+> centring - has been "Make the PDF…" since M8, so centre took Ctrl+Shift+C; the export was there
+> first and matters more. And Format had one access key left, so the three moved into a **submenu**,
+> which gets its own key namespace (the Picture submenu is the precedent). The compiler caught a
+> third: `ActionId.AlignLeft`/`AlignRight` already meant lining up FRAMES.
+
 ### M95 - A box to set something apart (S/M) - **delivered 2026-09-05, `docs/M95-spec.md`**
 
 `ShapeKind.Box` has been in the model since M2 and `RenderShape` has always drawn a filled, stroked

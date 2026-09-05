@@ -123,3 +123,67 @@ public static class StyleOverrides
         return slug.Length == 0 ? "x" : slug.ToString();
     }
 }
+
+/// <summary>
+/// Naming for a paragraph style that differs from its role only in which way the writing is lined
+/// up (PLAN.md §11 M96).
+///
+/// <para>The same <c>~</c> convention <see cref="StyleOverrides"/> uses for fonts, and for the same
+/// reason: alignment rides on a DERIVED style applied by reference, so nothing carries direct
+/// formatting and "Paragraph style ▸" still tells the truth about what a paragraph is based on.</para>
+///
+/// <para><b>Left is the absence of an override, not an override to left.</b> Every style in the
+/// templates is already left-aligned, so a paragraph put back to left goes back to naming its role
+/// — which keeps the canonical form small and means a document that never centres anything looks
+/// exactly as it did before this existed.</para>
+/// </summary>
+public static class ParagraphAlignmentNames
+{
+    /// <summary>The style name for a role lined up this way, or the role itself for left.</summary>
+    public static string NameFor(string roleName, TextAlignment alignment)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(roleName);
+
+        string role = RoleOf(roleName);
+        return alignment switch
+        {
+            TextAlignment.Left => role,
+            TextAlignment.Center => $"{role}{StyleOverrides.Separator}centred",
+            TextAlignment.Right => $"{role}{StyleOverrides.Separator}right",
+            _ => throw new ArgumentOutOfRangeException(nameof(alignment)),
+        };
+    }
+
+    /// <summary>The role a possibly-aligned paragraph style derives from.</summary>
+    public static string RoleOf(string styleName)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(styleName);
+
+        int cut = styleName.IndexOf(StyleOverrides.Separator, StringComparison.Ordinal);
+        return cut < 0 ? styleName : styleName[..cut];
+    }
+
+    /// <summary>
+    /// A copy of <paramref name="role"/> lined up the other way, under its derived name. Everything
+    /// else — the character style it points at, its spacing, its indent — is carried across, so
+    /// centring a heading does not quietly change how much air is around it.
+    /// </summary>
+    public static ParagraphStyleDef Derive(ParagraphStyleDef role, TextAlignment alignment)
+    {
+        ArgumentNullException.ThrowIfNull(role);
+
+        return new ParagraphStyleDef
+        {
+            Name = NameFor(role.Name, alignment),
+            CharacterStyleRef = role.CharacterStyleRef,
+            LineSpacing = role.LineSpacing,
+            SpaceBeforePt = role.SpaceBeforePt,
+            SpaceAfterPt = role.SpaceAfterPt,
+            FirstLineIndentPt = role.FirstLineIndentPt,
+            Align = alignment,
+            ExtraProperties = role.ExtraProperties is null
+                ? null
+                : new Dictionary<string, System.Text.Json.JsonElement>(role.ExtraProperties),
+        };
+    }
+}

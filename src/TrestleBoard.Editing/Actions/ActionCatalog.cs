@@ -210,6 +210,17 @@ public static class ActionCatalog
             ActionGroup.Text, "Ctrl+Shift+,"),
         // M93. "Spaced out" is what the committee says; "leading" and "paragraph spacing" are what
         // the trade says, and the jargon test would refuse them anyway.
+        // M96. Three verbs, one group, and no "justify": §1 rules it out for v1, and rivers in a
+        // two-column frame are what it would give this audience.
+        new(ActionId.AlignTextLeft, "Line it up on the left",
+            "Starts every line of the chosen paragraphs at the left edge. This is the usual way.",
+            ActionGroup.Text, "Ctrl+L"),
+        new(ActionId.AlignTextCentre, "Line it up down the middle",
+            "Puts the chosen paragraphs in the middle — what a heading over a notice usually wants.",
+            ActionGroup.Text, "Ctrl+Shift+C"),
+        new(ActionId.AlignTextRight, "Line it up on the right",
+            "Ends every line of the chosen paragraphs at the right edge.",
+            ActionGroup.Text, "Ctrl+R"),
         new(ActionId.WritingLook, "How spaced out the writing is…",
             "Choose closer together or more spread out, and whether each paragraph starts pushed in.",
             ActionGroup.Text),
@@ -820,6 +831,14 @@ public static class ActionCatalog
             // M93. A whole-newsletter sheet like the font picker, so it needs a newsletter and not
             // a caret: somebody deciding the pages look cramped is looking at the pages, not typing.
             ActionId.WritingLook => RequiresDocument(context),
+            // M96. A caret, like every other verb that acts on the writing. Never blocked for
+            // "it is already like that" — a pressed button that refuses reads as broken, and the
+            // controller returns false so the shell says nothing changed.
+            ActionId.AlignTextLeft or ActionId.AlignTextCentre or ActionId.AlignTextRight =>
+                context.IsEditingText
+                    ? ActionAvailability.Available
+                    : ActionAvailability.NotApplicable(NeedsText),
+
             ActionId.BiggerText or ActionId.SmallerText or ActionId.FontJustHere =>
                 context.IsEditingText
                     ? ActionAvailability.Available

@@ -136,6 +136,16 @@ public static class ActionId
     // ---- Text ---------------------------------------------------------------------------------
     public const string Bold = "text.bold";
     public const string Italic = "text.italic";
+    /// <summary>
+    /// M96: which way the writing is lined up. `TextAlignment` and the shift arithmetic in the
+    /// layout engine have been live since M1 with no command able to reach them.
+    /// </summary>
+    public const string AlignTextLeft = "text.alignLeft";
+
+    public const string AlignTextCentre = "text.alignCentre";
+
+    public const string AlignTextRight = "text.alignRight";
+
     public const string ParagraphStyle = "text.paragraphStyle";
 
     /// <summary>

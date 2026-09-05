@@ -91,6 +91,9 @@ internal sealed class ActionRunner
             // ---- Putting things on the page --------------------------------------------------------
             [ActionId.AddTextFrame] = Sync(window.AddTextFrame),
             [ActionId.AddRule] = Sync(window.AddRuleAcrossThePage),
+            [ActionId.AlignTextLeft] = Sync(() => window.AlignText(Core.Model.TextAlignment.Left)),
+            [ActionId.AlignTextCentre] = Sync(() => window.AlignText(Core.Model.TextAlignment.Center)),
+            [ActionId.AlignTextRight] = Sync(() => window.AlignText(Core.Model.TextAlignment.Right)),
             [ActionId.WritingLook] = Async(() => window.ChangeWritingLookAsync()),
             [ActionId.AddBox] = Async(() => window.AddBoxAsync()),
             [ActionId.ShapeColours] = Async(() => window.ChangeShapeColoursAsync()),
