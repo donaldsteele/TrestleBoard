@@ -99,11 +99,20 @@ public sealed class IssueExportTests
     }
 
     /// <summary>
-    /// What the photo actually costs in the exported file. Recorded as a test rather than an
-    /// assumption: the M8 spec originally claimed a 4× saving from handing Skia encoded images
-    /// instead of rasters, and that number came from comparing a whole document against a bare
-    /// one-image PDF. At the pixel budget the pipeline already applies, Skia's own compression of
-    /// the downsampled raster is as good — so there is no lever here, and no mechanism.
+    /// What the photo actually costs in the exported file.
+    ///
+    /// <para><b>This test used to be evidence for the bug it was standing next to (M90).</b> It
+    /// asserted the photo cost under 100 KB and recorded, approvingly, that it had been "under 2 KB
+    /// when this was written" — and drew the conclusion that Skia's compression of the downsampled
+    /// raster was as good as anything the pipeline could do. It was not: every picture was being
+    /// re-encoded as a JPEG at quality ZERO, because <c>SKDocumentPdfMetadata</c> is a struct and the
+    /// exporter built one with an object initializer, leaving <c>EncodingQuality</c> at 0. Two
+    /// kilobytes was the sound of a photograph being destroyed.</para>
+    ///
+    /// <para>So the ceiling is now what it should always have been: high enough that a faithful
+    /// picture passes, low enough that a whole issue stays inside the 2.5 MB budget with room for
+    /// the four or five pictures a real newsletter carries. What it is really guarding is that
+    /// nothing has started embedding pictures at their full undownsampled size.</para>
     /// </summary>
     [Fact]
     public void ThePhotoIsASmallFractionOfTheExportedFile()
@@ -112,13 +121,12 @@ public sealed class IssueExportTests
         long withPhoto = ExportedSize(withPhoto: true);
         long cost = withPhoto - withoutPhoto;
 
-        // A concrete ceiling, not a ratio: an embedded lossless raster of the same photo runs to
-        // hundreds of KB, so this fails long before the file gets anywhere near the 2.5 MB budget.
         Assert.True(cost > 0, "the photo should cost something");
         Assert.True(
-            cost < 100_000,
-            $"the photo costs {cost / 1024} KB in the exported file — it was under 2 KB when this was "
-            + "written, so something has started embedding it uncompressed");
+            cost < 400_000,
+            $"the photo costs {cost / 1024} KB in the exported file, which is more than a "
+            + "downsampled picture should ever need — check the pixel budget rather than the "
+            + "encoding quality");
     }
 
     private static long ExportedSize(bool withPhoto)

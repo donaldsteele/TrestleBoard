@@ -4647,6 +4647,36 @@ above her husband, a child, an orphaned spouse, a repeated member row and a Jr./
 — before a third fabrication finally reproduced ClosedXML's refusal. Each version was checked by
 turning the thing under test off. That check is the only reason the emptiness was found.
 
+### M90 — Every picture in every PDF, at quality zero (S) — **delivered 2026-09-05, `docs/M90-spec.md`**
+
+The owner exported an October newsletter and the cover banner came out in coloured blocks and bands.
+
+`SKDocumentPdfMetadata` is a **struct**, and both exporters built one with an object initializer —
+which leaves every unmentioned field at zero, including `EncodingQuality`, where **0 means "re-encode
+every picture as a JPEG at quality nought"**. Skia's default is 101, "do not re-encode at all", and
+it is reachable only through `SKDocumentPdfMetadata.Default`. Measured on the owner's file: a
+625 × 253 banner in 3,057 bytes. **Every image in every PDF this program has ever exported.**
+
+**Why nothing caught it: text is vector.** `PdfParityTests` box-downsamples 4× at a channel threshold
+of 64 — a tolerance for two rasterizers' antialiasing, which amounts to "you may destroy a photograph
+provided you leave the letters alone" — and runs on Linux CI only. The font and text-extraction
+checks look at text. The PNG snapshot suite never reaches `SKDocument` at all.
+
+**And one test was evidence FOR the bug.** `ThePhotoIsASmallFractionOfTheExportedFile` asserted the
+photo cost under 100 KB, recorded that it had been "under 2 KB when this was written", and concluded
+Skia's compression was as good as the pipeline's. Two kilobytes was the sound of a photograph being
+destroyed. Rewritten to say what it is for, with the old reading kept in its comment as a warning.
+
+New `PdfPictureFidelityTests` reads the exported PDF's own image objects — no poppler, so it runs on
+all three operating systems — and both of its tests fail against the old code, which was checked by
+putting the bug back. A third was written and deleted: a bytes-per-pixel floor failed the *fixed*
+code too, because lossless encoding of a flat fixture is smaller than the quality-zero JPEG it was
+meant to catch. **A size floor measures compressibility, not survival.**
+
+Lossless was chosen over a high-quality JPEG on the record: the picture that exposed this is a banner
+with lettering in it, and sharp text over flat colour is where JPEG ringing shows. Files get bigger;
+that is M87's problem, not this one's.
+
 ### Sizing & sequencing notes (M77–M87, added 2026-09-01)
 
 - **Order: M77 → M78 → M79 → M86 → M80 → M81 → M87 → M82 → M83 → M84 → M85.** Safety first and
