@@ -4718,6 +4718,35 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M98 - Three everyday verbs (S) - **delivered 2026-09-05, `docs/M98-spec.md`**
+
+Change case, word count and a character the keyboard has no key for: three things every word
+processor has had for thirty years and this had none of. A count existed for IMPORTED files and for
+OVERSET text and never for what is on the page.
+
+`text.changeCase` and `text.wordCount` in a new "More about the te_xt" submenu; `insert.symbol`.
+
+**Change case keeps the styling** - the words are replaced run by run with each run's own character
+style put back, walked back to front so earlier edits do not shift later offsets. **Title case is
+NOT `TextInfo.ToTitleCase`**, which leaves a word already in capitals alone: a heading pasted in from
+Word IN CAPITALS is exactly the input somebody reaches for this to fix. An apostrophe does not start
+a new word, or O'Brien becomes O'brien, and both spellings of apostrophe are handled because the
+symbol picker inserts the curly one. **"About N words" is honest rather than modest** - a count is a
+count of whitespace runs and every program disagrees about hyphens and "St.".
+
+The symbol picker is **a short named list, not a Unicode table**: about a dozen marks, each named in
+words, every one present in the bundled fonts because a picker that could insert a missing glyph
+would produce a box in the PDF with no warning.
+
+> **Paste-special was on the register and is NOT a gap.** Paste here is always plain -
+> `ITextClipboard` is a string interface - so a keep-or-discard choice would offer a decision with
+> one real answer. The FILE route already maps Word's paragraph styles, which is the case where the
+> choice means something. **Format painter and the soft line break stay open**; the second needs
+> `LineBreakAnalyzer` to learn a within-paragraph break and wants its own milestone.
+
+> **Third submenu of the session.** Format and Insert are nearly out of access keys, which is a
+> finding about the menus rather than about these commands.
+
 ### M97 - The paper and the margins (S/M) - **delivered 2026-09-05, `docs/M97-spec.md`**
 
 `PageMaster.Size` and the four margins are read in eight places and **written nowhere**. US Letter

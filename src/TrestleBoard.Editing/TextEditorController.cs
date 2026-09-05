@@ -755,6 +755,160 @@ public sealed class TextEditorController
         activeDescription: "Remove italic",
         inactiveDescription: "Italic text");
 
+    // ---- Everyday verbs (PLAN.md §11 M98) -----------------------------------------------------
+
+    /// <summary>How a run of words should be re-cased.</summary>
+    public enum LetterCase
+    {
+        /// <summary>THE WHOLE THING IN CAPITALS.</summary>
+        Upper,
+
+        /// <summary>all of it in small letters.</summary>
+        Lower,
+
+        /// <summary>The First Letter Of Each Word.</summary>
+        Title,
+    }
+
+    /// <summary>
+    /// Changes the highlighted words to capitals, small letters, or one capital per word (M98).
+    ///
+    /// <para><b>Why it is a command and not a matter of retyping.</b> A heading arrives from a Word
+    /// document IN CAPITALS, or a name is typed in lower case at half past ten at night. Retyping
+    /// it loses the styling on it, and this audience types slowly.</para>
+    ///
+    /// <para><b>The styling is kept</b> because the words are replaced run by run, each with its own
+    /// character style put back, rather than deleted and retyped as one plain string.</para>
+    /// </summary>
+    /// <returns>False when nothing is highlighted, or the words are already like that.</returns>
+    public bool ChangeCase(LetterCase letterCase)
+    {
+        if (!IsActive || _selection.IsEmpty)
+        {
+            return false;
+        }
+
+        Story story = CurrentStory();
+        TextRange range = _selection.Range;
+        string before = StoryNavigator.GetRangeText(story, range);
+        string after = Recase(before, letterCase);
+        if (string.Equals(before, after, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        // Run by run, so a bold word inside the highlight stays bold. Walked back to front, because
+        // every edit before a run would shift the offsets of the ones after it.
+        var children = new List<IDocumentCommand>();
+        List<(int Paragraph, int Offset, int Length, string EffectiveRef)> spans =
+            EnumerateStyleSpans(range);
+
+        for (int i = spans.Count - 1; i >= 0; i--)
+        {
+            (int paragraph, int offset, int length, _) = spans[i];
+            string text = StoryNavigator.GetRangeText(
+                story,
+                new TextRange(
+                    new TextPosition(story.Id, paragraph, offset),
+                    new TextPosition(story.Id, paragraph, offset + length)));
+
+            string recased = Recase(text, letterCase);
+            if (string.Equals(text, recased, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            children.Add(new DeleteTextCommand(story.Id, paragraph, offset, length));
+            children.Add(new InsertTextCommand(story.Id, paragraph, offset, recased));
+        }
+
+        if (children.Count == 0)
+        {
+            return false;
+        }
+
+        _session.Execute(new CompositeCommand(
+            letterCase switch
+            {
+                LetterCase.Upper => "Make it capitals",
+                LetterCase.Lower => "Make it small letters",
+                _ => "Capitalise each word",
+            },
+            new ChangeScope(ChangeKind.Text, StoryId: story.Id),
+            children));
+        RaiseChanged();
+        return true;
+    }
+
+    /// <summary>
+    /// About how many words are in this piece of writing, and how many are highlighted.
+    ///
+    /// <para><b>"About" is honest rather than modest.</b> A word count is a count of whitespace
+    /// runs, and every program disagrees about hyphens, ampersands and "St." — the app says about
+    /// so nobody has to wonder why it differs from the one Word gave them.</para>
+    /// </summary>
+    /// <returns>Null when there is no caret in a piece of writing.</returns>
+    public (int Words, int Characters, int? HighlightedWords)? CountWords()
+    {
+        if (!IsActive)
+        {
+            return null;
+        }
+
+        Story story = CurrentStory();
+        string all = string.Join(
+            Environment.NewLine, story.Paragraphs.Select(StoryNavigator.GetParagraphText));
+
+        int? highlighted = _selection.IsEmpty
+            ? null
+            : WordsIn(StoryNavigator.GetRangeText(story, _selection.Range));
+
+        // Characters counts what is written, not the paragraph breaks between: those are structure,
+        // and nobody counting the length of an article means to count them.
+        int characters = story.Paragraphs.Sum(p => StoryNavigator.GetParagraphText(p).Length);
+        return (WordsIn(all), characters, highlighted);
+    }
+
+    /// <summary>Whitespace-separated runs. The one definition, used for every number the app says.</summary>
+    public static int WordsIn(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        return text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+
+    private static string Recase(string text, LetterCase letterCase) => letterCase switch
+    {
+        LetterCase.Upper => text.ToUpper(System.Globalization.CultureInfo.CurrentCulture),
+        LetterCase.Lower => text.ToLower(System.Globalization.CultureInfo.CurrentCulture),
+        _ => TitleCase(text),
+    };
+
+    /// <summary>
+    /// One capital per word, and small letters after it.
+    ///
+    /// <para><b>Not <c>TextInfo.ToTitleCase</c>.</b> That leaves a word already in capitals alone —
+    /// "THE STATED COMMUNICATION" comes back unchanged — which is the one input somebody reaches
+    /// for this command to fix.</para>
+    /// </summary>
+    private static string TitleCase(string text)
+    {
+        var built = new System.Text.StringBuilder(text.Length);
+        bool startOfWord = true;
+        foreach (char c in text)
+        {
+            built.Append(startOfWord
+                ? char.ToUpper(c, System.Globalization.CultureInfo.CurrentCulture)
+                : char.ToLower(c, System.Globalization.CultureInfo.CurrentCulture));
+
+            // An apostrophe does NOT start a new word, or "O'Brien" becomes "O'brien" — but
+            // "brother's" must not become "Brother'S" either, so the letter after one is left as
+            // the lower-case branch above.
+            startOfWord = !char.IsLetterOrDigit(c) && c != '\'' && c != '’';
+        }
+
+        return built.ToString();
+    }
+
     // ---- Lining the writing up (PLAN.md §11 M96) ----------------------------------------------
 
     /// <summary>

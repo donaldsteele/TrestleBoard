@@ -146,6 +146,15 @@ public static class ActionId
 
     public const string AlignTextRight = "text.alignRight";
 
+    /// <summary>M98: capitals, small letters, or one capital per word.</summary>
+    public const string ChangeCase = "text.changeCase";
+
+    /// <summary>M98: how many words are in this piece of writing.</summary>
+    public const string WordCount = "text.wordCount";
+
+    /// <summary>M98: a character the keyboard has no key for — a dash, a degree sign, a fraction.</summary>
+    public const string InsertSymbol = "insert.symbol";
+
     public const string ParagraphStyle = "text.paragraphStyle";
 
     /// <summary>

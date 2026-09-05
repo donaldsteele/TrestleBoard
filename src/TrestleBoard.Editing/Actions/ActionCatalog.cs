@@ -221,6 +221,13 @@ public static class ActionCatalog
         new(ActionId.AlignTextRight, "Line it up on the right",
             "Ends every line of the chosen paragraphs at the right edge.",
             ActionGroup.Text, "Ctrl+R"),
+        // M98. Three everyday verbs every word processor has and this had none of.
+        new(ActionId.ChangeCase, "Change capitals…",
+            "Turns the highlighted words into capitals, into small letters, or one capital per word.",
+            ActionGroup.Text),
+        new(ActionId.WordCount, "How many words…",
+            "Counts the words in this piece of writing, and in whatever you have highlighted.",
+            ActionGroup.Text),
         new(ActionId.WritingLook, "How spaced out the writing is…",
             "Choose closer together or more spread out, and whether each paragraph starts pushed in.",
             ActionGroup.Text),
@@ -241,6 +248,11 @@ public static class ActionCatalog
         // M76 (f): a box for writing leads the Insert group and a picture follows it. A trestle
         // board is mostly words — the pictures go into the frames the template already ships — so
         // the standing answer to "what are you here to add" is somewhere to write.
+        // M98. A dash, a degree sign, a fraction: characters the keyboard has no key for and
+        // this audience currently pastes in from somewhere else or does without.
+        new(ActionId.InsertSymbol, "A character you cannot type…",
+            "Puts in a dash, a fraction, a degree sign or another mark the keyboard has no key for.",
+            ActionGroup.Insert),
         new(ActionId.AddRule, "A line across the page",
             "Puts a straight line right across, under whatever you have chosen.", ActionGroup.Insert),
         // M95. "Shape" and "rectangle" are trade words; what this is for is setting a notice apart.
@@ -839,6 +851,23 @@ public static class ActionCatalog
             // M96. A caret, like every other verb that acts on the writing. Never blocked for
             // "it is already like that" — a pressed button that refuses reads as broken, and the
             // controller returns false so the shell says nothing changed.
+            // M98. Changing capitals acts on the HIGHLIGHT, so it refuses with the same sentence
+            // Cut and Copy use, and offers the same remedy.
+            ActionId.ChangeCase => !context.IsEditingText
+                ? ActionAvailability.NotApplicable(NeedsText)
+                : context.HasTextSelection
+                    ? ActionAvailability.Available
+                    : ActionAvailability.Blocked(
+                        "No words are highlighted. Drag across some words first, or press Ctrl+A to take them all.",
+                        ActionId.SelectAll),
+
+            // Counting needs only a caret: the question is about the whole piece of writing, and a
+            // highlight only adds a second number to the answer.
+            ActionId.WordCount or ActionId.InsertSymbol =>
+                context.IsEditingText
+                    ? ActionAvailability.Available
+                    : ActionAvailability.NotApplicable(NeedsText),
+
             ActionId.AlignTextLeft or ActionId.AlignTextCentre or ActionId.AlignTextRight =>
                 context.IsEditingText
                     ? ActionAvailability.Available

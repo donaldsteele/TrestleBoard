@@ -161,6 +161,13 @@ internal static class ActionIcons
         // is navigation arrows, where a static shape would read as a fifth direction.
         [ActionId.PageSetup] = "a rectangle with a dashed inset, which at 20px is a rectangle",
 
+        // M98. "Aa" is a letterform, which is what every glyph in the Text group already is; a
+        // numeral for the count would read as a step in a numbered list; and Omega for the symbol
+        // picker is the one convention this audience has certainly never met.
+        [ActionId.ChangeCase] = "a letterform, which every glyph in the Text group already is",
+        [ActionId.WordCount] = "a numeral, which reads as a step in a numbered list",
+        [ActionId.InsertSymbol] = "Omega, a convention this audience has never met",
+
         [ActionId.MoveToNextPage] = "an arrow, and the page arrows already mean something else",
         [ActionId.MoveToPreviousPage] = "an arrow, and the page arrows already mean something else",
 

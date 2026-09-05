@@ -5504,6 +5504,84 @@ public partial class MainWindow : Window
         return true;
     }
 
+    /// <summary>M98: capitals, small letters, or one capital per word.</summary>
+    internal async Task<bool> ChangeCaseAsync()
+    {
+        if (_editor is not { IsActive: true } editor || editor.SelectedText is not { Length: > 0 } words)
+        {
+            Announce("No words are highlighted. Drag across some words first.");
+            return false;
+        }
+
+        var dialog = new ChangeCaseDialog(words);
+        await dialog.ShowDialog(this);
+
+        if (!dialog.Confirmed)
+        {
+            return false;
+        }
+
+        if (!editor.ChangeCase(dialog.Chosen))
+        {
+            Announce("Those words are already like that, so nothing has changed.");
+            return false;
+        }
+
+        _source?.Invalidate(new ChangeScope(ChangeKind.Text));
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+        Announce("Changed. Press Ctrl+Z to undo.");
+        return true;
+    }
+
+    /// <summary>M98: how many words are in this piece of writing.</summary>
+    internal bool SayHowManyWords()
+    {
+        if (_editor?.CountWords() is not { } count)
+        {
+            Announce("Click into some writing first, then ask how many words it has.");
+            return false;
+        }
+
+        // "About" is honest rather than modest: a word count is a count of whitespace runs, and
+        // every program disagrees about hyphens and "St." — saying about means nobody has to
+        // wonder why this number differs from the one Word gave them.
+        Announce(count.HighlightedWords is { } highlighted
+            ? $"About {count.Words} words in this piece of writing, and about {highlighted} of them "
+              + "highlighted."
+            : $"About {count.Words} words in this piece of writing, and {count.Characters} letters "
+              + "and spaces.");
+        return true;
+    }
+
+    /// <summary>M98: a character the keyboard has no key for.</summary>
+    internal async Task<bool> InsertSymbolAsync()
+    {
+        if (_editor is not { IsActive: true } editor)
+        {
+            Announce("Click into some writing first, then choose a character to put in.");
+            return false;
+        }
+
+        var dialog = new SymbolPickerDialog();
+        await dialog.ShowDialog(this);
+
+        if (!dialog.Confirmed)
+        {
+            return false;
+        }
+
+        // Straight through InsertText, so it is one ordinary typed character as far as everything
+        // downstream is concerned — undo, coalescing, styling and the spell checker included.
+        editor.InsertText(dialog.Chosen);
+
+        _source?.Invalidate(new ChangeScope(ChangeKind.Text));
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+        Announce("Put in. Press Ctrl+Z to undo.");
+        return true;
+    }
+
     /// <summary>M81: keeps the chosen thing where it is, or lets it move again.</summary>
     internal void ToggleLocked()
     {

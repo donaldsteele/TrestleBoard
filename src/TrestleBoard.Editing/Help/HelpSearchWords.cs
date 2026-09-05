@@ -50,6 +50,15 @@ public static class HelpSearchWords
             ["paper", "margins", "A4", "letter", "legal", "page size", "edges", "white space round "
              + "the edge", "landscape", "wider"],
 
+        // M98. Somebody describes the state of the words, not the name of the command.
+        [ActionId.ChangeCase] =
+            ["capitals", "caps", "shouting", "all in capitals", "lower case", "upper case",
+             "title case", "wrong case"],
+        [ActionId.WordCount] = ["how long", "how many words", "count", "length", "word count"],
+        [ActionId.InsertSymbol] =
+            ["dash", "em dash", "degree", "fraction", "half", "copyright", "bullet point",
+             "special character", "symbol", "not on the keyboard"],
+
         [ActionId.WritingLook] =
             ["spacing", "line spacing", "cramped", "squashed", "spread out", "double space",
              "more air", "indent", "tab the first line", "too tight"],

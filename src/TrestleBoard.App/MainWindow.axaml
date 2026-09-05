@@ -181,6 +181,14 @@
         <!-- M95: a box's colours live on the block, so any colour is already expressible. It sits
              here rather than in Arrange, which had no access key left, and beside the Picture
              submenu that already makes this menu about more than words. -->
+        <!-- M98: three everyday verbs, in a submenu because Format has six access keys left and
+             these belong together anyway. -->
+        <MenuItem Header="More about the te_xt" AutomationProperties.Name="More about the text">
+          <MenuItem Header="Change _capitals…" Tag="text.changeCase"
+                    Click="OnActionClicked" AutomationProperties.Name="Change capitals" />
+          <MenuItem Header="How many _words…" Tag="text.wordCount"
+                    Click="OnActionClicked" AutomationProperties.Name="How many words" />
+        </MenuItem>
         <!-- M96: TextAlignment has been honoured by the layout engine since M1 with no way in.
              A submenu, like Picture, because Format had one free access key left and these are
              three items that belong together anyway - a submenu gets its own key namespace. -->
@@ -253,6 +261,10 @@
         <MenuItem Header="A _picture…" Tag="insert.photo" InputGesture="Ctrl+Shift+P"
                   Click="OnActionClicked" AutomationProperties.Name="Insert a picture" />
         <!-- M79: the model has carried ShapeBlock since M1 with no command to reach it. -->
+        <!-- M98: a dash, a fraction, a degree sign - marks with no key, and no way in until now. -->
+        <MenuItem Header="A character yo_u cannot type…" Tag="insert.symbol"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="A character you cannot type" />
         <!-- M95: ShapeKind.Box has rendered since M2 and nothing could make one. -->
         <MenuItem Header="A box to _set something apart" Tag="insert.box"
                   Click="OnActionClicked"
