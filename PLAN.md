@@ -4718,6 +4718,25 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M97 - The paper and the margins (S/M) - **delivered 2026-09-05, `docs/M97-spec.md`**
+
+`PageMaster.Size` and the four margins are read in eight places and **written nowhere**. US Letter
+was hardwired by a property default and the string "A4" did not appear anywhere in the source;
+M47's `view.showMargins` only DREW them, its own note recording that the master "has had four
+margins since M2 and nothing drew them".
+
+`page.setup`: three named papers (Letter, A4, Legal), landscape as a tick box rather than a fourth
+paper, four margins typed in inches with M94's validation. Every master at once, like
+`ShowPageFooterCommand` - the paper is a fact about the newsletter - but the revert restores each
+master to what IT was, so a document that arrived with a mixture keeps it, and a two-master test
+holds that.
+
+> **Nothing is moved to fit.** Smaller paper can leave a frame hanging off the edge and the
+> committee's layout is NOT shuffled to prevent it: a dozen frames quietly moving is a bigger
+> surprise than one that needs dragging. `BlocksOffThePaper()` counts them afterwards and the
+> sentence says how many, so Ctrl+Z is an informed choice rather than a guess. Margins that meet in
+> the middle are refused with the arithmetic spelled out.
+
 ### M96 - Which way it lines up (S/M) - **delivered 2026-09-05, `docs/M96-spec.md`**
 
 **The first of M86's three deliverables.** `TextAlignment`, `ParagraphStyleDef.Align` and the shift

@@ -461,6 +461,10 @@
                   InputGesture="Ctrl+Shift+PageUp"
                   Click="OnActionClicked" AutomationProperties.Name="Move it to the page before" />
         <Separator />
+        <!-- M97: five fields with eight readers and, until now, no writer anywhere. -->
+        <MenuItem Header="The paper and the _margins…" Tag="page.setup"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="The paper and the margins" />
         <!-- M78: every issue from the old tool had one. One wording, editable nowhere. -->
         <MenuItem Header="Show page num_bers at the bottom" Tag="page.footer"
                   Click="OnActionClicked"

@@ -45,6 +45,11 @@ public static class HelpSearchWords
         [ActionId.AlignTextLeft] = ["align", "back to normal", "left edge"],
         [ActionId.AlignTextRight] = ["align", "right edge", "against the right"],
 
+        // M97. Nobody types "page setup" until they have failed to find it another way.
+        [ActionId.PageSetup] =
+            ["paper", "margins", "A4", "letter", "legal", "page size", "edges", "white space round "
+             + "the edge", "landscape", "wider"],
+
         [ActionId.WritingLook] =
             ["spacing", "line spacing", "cramped", "squashed", "spread out", "double space",
              "more air", "indent", "tab the first line", "too tight"],

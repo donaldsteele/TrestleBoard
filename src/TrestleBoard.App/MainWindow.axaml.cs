@@ -5458,6 +5458,52 @@ public partial class MainWindow : Window
         return true;
     }
 
+    /// <summary>M97: the paper the newsletter is printed on, and the margins round it.</summary>
+    internal async Task<bool> ChangeThePaperAsync()
+    {
+        if (_pages is null || _source is null)
+        {
+            Announce("There is no newsletter open, so there is no paper to change.");
+            return false;
+        }
+
+        _editor?.End();
+        (Core.Model.SizePt size, float left, float top, float right, float bottom) = _pages.PageSetup;
+        var dialog = new PageSetupDialog(size, left, top, right, bottom);
+        await dialog.ShowDialog(this);
+
+        if (!dialog.Confirmed)
+        {
+            return false;
+        }
+
+        if (!_pages.SetPageSetup(
+                dialog.Size, dialog.LeftPt, dialog.TopPt, dialog.RightPt, dialog.BottomPt))
+        {
+            Announce("The newsletter is already on that paper, so nothing has changed.");
+            return false;
+        }
+
+        _source.Invalidate(new ChangeScope(ChangeKind.PageStructure));
+        _rail.ForgetEveryThumbnail();
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+
+        // Asked AFTER the change, and said out loud. Making the paper smaller can leave frames
+        // hanging off it, and nothing is moved for the user — a dozen frames quietly shuffling is
+        // a bigger surprise than one that needs dragging. The count is what makes undo an informed
+        // choice rather than a guess.
+        int off = _pages.BlocksOffThePaper();
+        Announce(off == 0
+            ? "The paper is changed and every page has been laid out again. Press Ctrl+Z to undo."
+            : off == 1
+                ? "The paper is changed. One thing now hangs off the edge of a page — drag it back "
+                  + "on, or press Ctrl+Z to put the paper back."
+                : $"The paper is changed. {off} things now hang off the edge of a page — drag them "
+                  + "back on, or press Ctrl+Z to put the paper back.");
+        return true;
+    }
+
     /// <summary>M81: keeps the chosen thing where it is, or lets it move again.</summary>
     internal void ToggleLocked()
     {

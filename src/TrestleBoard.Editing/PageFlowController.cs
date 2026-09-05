@@ -98,6 +98,82 @@ public sealed class PageFlowController
         return true;
     }
 
+    // ---- The paper itself (PLAN.md §11 M97) ---------------------------------------------------
+
+    /// <summary>The papers a lodge newsletter is printed on, in the order they are offered.</summary>
+    public static readonly IReadOnlyList<(string Name, SizePt Size)> Papers =
+    [
+        ("Letter (8.5 by 11 inches)", new SizePt(612f, 792f)),
+        ("A4 (210 by 297 mm)", new SizePt(595.28f, 841.89f)),
+        ("Legal (8.5 by 14 inches)", new SizePt(612f, 1008f)),
+    ];
+
+    /// <summary>The size and margins every page is currently using.</summary>
+    public (SizePt Size, float Left, float Top, float Right, float Bottom) PageSetup
+    {
+        get
+        {
+            PageMaster master = _session.Document.PageMasters[0];
+            return (master.Size, master.MarginLeftPt, master.MarginTopPt,
+                master.MarginRightPt, master.MarginBottomPt);
+        }
+    }
+
+    /// <summary>
+    /// Changes the paper and the margins for the whole newsletter (M97).
+    ///
+    /// <para><b>Nothing is moved to fit.</b> Making the paper smaller can leave a frame hanging off
+    /// the edge, and this deliberately does not shuffle the committee's layout to prevent it: a
+    /// dozen frames quietly moving is a bigger surprise than one that needs dragging, and the shell
+    /// says how many are off so the choice to undo is an informed one.</para>
+    /// </summary>
+    /// <returns>False when the paper is already exactly that.</returns>
+    public bool SetPageSetup(SizePt size, float leftPt, float topPt, float rightPt, float bottomPt)
+    {
+        (SizePt current, float left, float top, float right, float bottom) = PageSetup;
+        if (Near(current.Width, size.Width) && Near(current.Height, size.Height)
+            && Near(left, leftPt) && Near(top, topPt)
+            && Near(right, rightPt) && Near(bottom, bottomPt))
+        {
+            StatusMessage = null;
+            Raise();
+            return false;
+        }
+
+        _session.Execute(new SetPageSetupCommand(size, leftPt, topPt, rightPt, bottomPt));
+        StatusMessage = null;
+        Raise();
+        return true;
+    }
+
+    /// <summary>
+    /// How many blocks now hang off the paper — asked AFTER a change so the shell can say so.
+    /// Zero on every newsletter that has not been made smaller.
+    /// </summary>
+    public int BlocksOffThePaper()
+    {
+        Document document = _session.Document;
+        int count = 0;
+        foreach (Page page in document.Pages)
+        {
+            PageMaster master = document.GetMaster(page.MasterRef);
+            foreach (Block block in page.Blocks)
+            {
+                RectPt rect = block.FrameRect;
+                if (rect.X < -0.001f || rect.Y < -0.001f
+                    || rect.X + rect.Width > master.Size.Width + 0.001f
+                    || rect.Y + rect.Height > master.Size.Height + 0.001f)
+                {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    private static bool Near(float a, float b) => Math.Abs(a - b) < 0.01f;
+
     // ---- auto-flow ---------------------------------------------------------------------------
 
     /// <summary>True when this frame's story has run out of room and can be flowed onward.</summary>

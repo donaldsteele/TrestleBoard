@@ -122,6 +122,10 @@ public sealed class CommandTests
             Align = TextAlignment.Center,
         }),
 
+        // M97. Five fields on every master, and the revert has to put each master back to what IT
+        // was rather than to one answer for all of them.
+        ["SetPageSetup"] = _ => new SetPageSetupCommand(new SizePt(595.28f, 841.89f), 40f, 50f, 40f, 60f),
+
         ["SetShapeLook"] = _ => new SetShapeLookCommand("rule-1", 0xFF8C2A2A, 2f, 0xFFFBF3E0),
 
         ["SetParagraphSpacing.Spacing"] =

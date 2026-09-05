@@ -326,6 +326,12 @@ public static class ActionId
     /// and inside pages without one looks like a mistake, and nobody asked for the two to differ.
     /// Every fact it prints is already known, so there is nothing to fill in.</para>
     /// </summary>
+    /// <summary>
+    /// M97: the paper itself — its size and its four margins. Five fields with eight readers and,
+    /// until now, no writer anywhere in the application.
+    /// </summary>
+    public const string PageSetup = "page.setup";
+
     public const string ShowPageFooter = "page.footer";
 
     // ---- Looking at it ------------------------------------------------------------------------

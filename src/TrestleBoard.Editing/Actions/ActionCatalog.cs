@@ -416,6 +416,11 @@ public static class ActionCatalog
         // "Next page" three times to reach page four. No shortcut — the target is a page number and
         // a chord cannot carry one; the rail's own arrow keys are the keyboard path, and the menu
         // item below opens the rail and stands on the page you are on (docs/M76-spec.md §6).
+        // M97. "Page setup" is what other programs call it; what this asks about is the paper.
+        new(ActionId.PageSetup, "The paper and the margins…",
+            "Choose what size paper the newsletter is printed on, and how much white space is left "
+            + "round the edges.",
+            ActionGroup.Page),
         new(ActionId.GoToPage, "Go to a page", "Shows whichever page you pick out of the row down the side.",
             ActionGroup.Page),
 
@@ -1062,6 +1067,9 @@ public static class ActionCatalog
             // The line needs a newsletter and nothing else: with nothing chosen it goes near the
             // top of the page, which is somewhere the user can see it and move it.
             ActionId.AddRule or ActionId.AddBox => RequiresDocument(context),
+
+            // M97. A whole-newsletter sheet, so it needs a newsletter and nothing else.
+            ActionId.PageSetup => RequiresDocument(context),
 
             // ---- How text flows -------------------------------------------------------------------
             // M83. A box of writing, like every other command in this group.

@@ -233,3 +233,85 @@ public sealed class SetMetadataCommand(DocumentMetadata newMetadata) : IDocument
 
     public bool TryMerge(IDocumentCommand newer) => false;
 }
+
+/// <summary>
+/// The paper every page is printed on: its size and its four margins (PLAN.md §11 M97).
+///
+/// <para><b>Nothing in the application has ever written any of these five fields.</b>
+/// <see cref="PageMaster.Size"/> and the four margins are read by the layout engine, the snap
+/// engine, the renderer, frame placement, picture placement and widget placement — eight readers,
+/// no writer. US Letter was hardwired by a property default, and the word "A4" did not appear
+/// anywhere in the source.</para>
+///
+/// <para><b>Every master at once</b>, like <see cref="ShowPageFooterCommand"/> and for the same
+/// reason: the paper is a fact about the newsletter, not about one page of it, and a document whose
+/// pages were different sizes is not something this app can produce or the committee can print.</para>
+/// </summary>
+public sealed class SetPageSetupCommand(SizePt size, float leftPt, float topPt, float rightPt, float bottomPt)
+    : IDocumentCommand
+{
+    private readonly List<(string Id, SizePt Size, float Left, float Top, float Right, float Bottom)> _before = [];
+
+    public SizePt Size { get; } = size;
+
+    public float LeftPt { get; } = leftPt;
+
+    public float TopPt { get; } = topPt;
+
+    public float RightPt { get; } = rightPt;
+
+    public float BottomPt { get; } = bottomPt;
+
+    public string Description => "Change the paper";
+
+    /// <summary>
+    /// Page structure: every frame on every page has to be laid out again, because the area they
+    /// live in has changed shape.
+    /// </summary>
+    public ChangeScope Scope => new(ChangeKind.PageStructure);
+
+    public void Apply(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        _before.Clear();
+        foreach (PageMaster master in document.PageMasters)
+        {
+            _before.Add((master.Id, master.Size, master.MarginLeftPt, master.MarginTopPt,
+                master.MarginRightPt, master.MarginBottomPt));
+
+            master.Size = Size;
+            master.MarginLeftPt = LeftPt;
+            master.MarginTopPt = TopPt;
+            master.MarginRightPt = RightPt;
+            master.MarginBottomPt = BottomPt;
+        }
+    }
+
+    public void Revert(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        // Each master back to what IT was, not to one answer for all of them — a document that
+        // arrived with a mixture keeps its mixture on undo. The same rule ShowPageFooterCommand
+        // follows, and the reason both capture per-master rather than one snapshot.
+        foreach ((string id, SizePt size, float left, float top, float right, float bottom) in _before)
+        {
+            PageMaster? master = document.PageMasters.Find(m => m.Id == id);
+            if (master is null)
+            {
+                continue;
+            }
+
+            master.Size = size;
+            master.MarginLeftPt = left;
+            master.MarginTopPt = top;
+            master.MarginRightPt = right;
+            master.MarginBottomPt = bottom;
+        }
+
+        _before.Clear();
+    }
+
+    public bool TryMerge(IDocumentCommand newer) => false;
+}
