@@ -4718,6 +4718,41 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M101 - The menu taxonomy pass (S/M) - **delivered 2026-09-05, `docs/M101-spec.md`**
+
+M91-M100 hit the same wall three times: **Format, Insert and Arrange had run out of access keys.**
+Three milestones used an ad-hoc submenu and two commands were renamed after a collision. The
+invariant tests caught every one - the M11 surface working as designed - but a test that keeps
+saying no is telling you about the structure, not about the command being added. Arrange had **three
+free letters** left.
+
+Still nine top-level menus (a tenth wraps the bar at 200%, which is the worse trade). Seven new
+submenus, each answering one question in words a committee member would use: File - Check it over /
+My templates / Handing over; Format - How the writing looks / Which way it lines up; Insert - A
+lodge list / Something from elsewhere; Arrange - How the writing flows / Front to back / Line them
+up. Bold, italic, the list verbs, Make the PDF, Print and Send stay at the top level, because they
+are pressed more often than everything nested put together.
+
+**Free access keys: Arrange 3 -> 17, Insert 6 -> 19, Format 6 -> 20**, and no menu has more than
+fourteen direct rows.
+
+> **Two items were in the wrong menu because of the shortage, which is the argument for the pass.**
+> "Change what colour the box is" was in Format though it is an object property (M95 put it there
+> because Arrange was full), and "Move what is chosen to the next page" was in Page though it acts
+> on the selection (M91, same reason). Both are now in Arrange.
+
+> **The generator found a defect the XAML could not show.** Four menu items have their `Header`
+> REWRITTEN at run time by `RefreshActions` with an access key chosen in C# - Undo/Redo grow a
+> description, Save grows an ellipsis (M24), the two picture commands change wording (M18) - so the
+> generator was handing those letters to a neighbour and the two collided only once the app was
+> running. It now reserves them, and `picture.replace` reserves BOTH P and S because its title
+> switches between "Put a picture here" and "Swap this picture". Original access keys are kept
+> wherever the letter is still free, so learned mnemonics survive.
+
+> **`MenuPaths` needed no edit at all.** It reads the menu bar rather than hard-coding paths (M63),
+> so every help topic's "where to find it" line re-derived itself through a whole-bar restructure.
+> The payoff for a decision made two dozen milestones earlier.
+
 ### M100 - Make another page like this one (S) - **delivered 2026-09-05, `docs/M100-spec.md`**
 
 A trestle board repeats its own shape - a photo page this month is a photo page next month with

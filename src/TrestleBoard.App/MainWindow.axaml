@@ -22,93 +22,81 @@
                   Click="OnActionClicked"
                   AutomationProperties.Name="Open the sample newsletter" />
         <Separator />
-        <MenuItem Header="Start from a _template…" Tag="newsletter.newFromTemplate"
+        <MenuItem Header="S_tart from a template…" Tag="newsletter.newFromTemplate"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Start from a template" />
         <MenuItem Header="Start from _last month" Tag="newsletter.startFromLastMonth"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Start this month from last month's newsletter" />
-        <!-- M75: with the two commands that start an issue, because it is the question both of
-             them ask, and the way back to it when the answer was wrong. -->
         <MenuItem Header="Whi_ch issue is this?…" Tag="newsletter.issueDate"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Say which month and year this newsletter is for" />
         <Separator />
-        <!-- M24: the two commands the app shipped without. Save sits above Export because saving
-             the newsletter and making the PDF are different jobs, and the user reaches for this
-             one far more often. -->
-        <MenuItem x:Name="SaveMenuItem" Header="Sa_ve this newsletter" Tag="newsletter.save"
+        <MenuItem x:Name="SaveMenuItem" Header="S_ave this newsletter" Tag="newsletter.save"
                   InputGesture="Ctrl+S" Click="OnActionClicked"
                   AutomationProperties.Name="Save this newsletter" />
         <MenuItem Header="Save it as a ne_w file…" Tag="newsletter.saveAs"
                   InputGesture="Ctrl+Shift+S" Click="OnActionClicked"
                   AutomationProperties.Name="Save this newsletter as a new file" />
-        <!-- M39: the other half of the rotating .bak ring PLAN.md §4 asked for. It sits with Save
-             because it is about the same file, and below it because it only means anything once
-             that file has been saved over at least once. -->
         <MenuItem Header="_Go back to an earlier version…" Tag="newsletter.restore"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Go back to an earlier version of this newsletter" />
-        <!-- M57: with the other two ways of keeping work, and above the separator that begins the
-             end-of-month run of commands. -->
-        <MenuItem Header="Save this as one of my te_mplates…" Tag="newsletter.saveAsTemplate"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Save this newsletter as one of my templates" />
-        <MenuItem Header="My templ_ates…" Tag="newsletter.myTemplates"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Rename, remove or hand on my templates" />
+        <MenuItem Header="_My templates" AutomationProperties.Name="My templates">
+          <MenuItem Header="Save this as one of _my templates…" Tag="newsletter.saveAsTemplate"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Save this newsletter as one of my templates" />
+          <MenuItem Header="My templ_ates…" Tag="newsletter.myTemplates"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Rename, remove or hand on my templates" />
+        </MenuItem>
         <Separator />
-        <!-- M51: above "Make the PDF" because that is the order of the month, and never in its way. -->
-        <MenuItem Header="Loo_k it over with me…" Tag="newsletter.review"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Look the newsletter over with me" />
-        <MenuItem Header="Check my spelli_ng…" Tag="newsletter.checkSpelling"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Check my spelling" />
-        <!-- M59: beside the reviewing commands, because looking at last year is part of writing. -->
-        <MenuItem Header="Show me last _year's…" Tag="newsletter.lastYear"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Show me the same month from last year" />
-        <!-- M58: the last of the three ways to look it over, beside the other two. -->
-        <MenuItem Header="_Read it back to me…" Tag="newsletter.readAloud"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Read the newsletter back to me" />
+        <!-- M101: four ways of checking the newsletter, which is one job done four ways and was four rows between Save and Make the PDF. -->
+        <MenuItem Header="C_heck it over" AutomationProperties.Name="Check it over">
+          <MenuItem Header="Loo_k it over with me…" Tag="newsletter.review"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Look the newsletter over with me" />
+          <MenuItem Header="Check my spelli_ng…" Tag="newsletter.checkSpelling"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Check my spelling" />
+          <MenuItem Header="Show me last _year's…" Tag="newsletter.lastYear"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Show me the same month from last year" />
+          <MenuItem Header="_Read it back to me…" Tag="newsletter.readAloud"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Read the newsletter back to me" />
+        </MenuItem>
         <MenuItem Header="Make the _PDF…" Tag="newsletter.exportPdf"
                   InputGesture="Ctrl+E" Click="OnActionClicked"
                   AutomationProperties.Name="Make the PDF to email" />
-        <!-- M53: below the real thing, because the real thing is what most months need. -->
         <MenuItem Header="Make a _draft copy…" Tag="newsletter.exportDraft"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Make a draft copy for the Master to read" />
-        <!-- M81: the lodge's Facebook group and a text message are how half the lodge sees it. -->
-        <MenuItem Header="Save a page to s_hare…" Tag="newsletter.exportPicture"
+        <MenuItem Header="Sav_e a page to share…" Tag="newsletter.exportPicture"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Save a page to share as a picture" />
         <MenuItem Header="Pr_int it" Tag="newsletter.print"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Print the PDF you just made" />
-        <!-- M56: the end of the month's work, and the last thing that used to happen outside the app. -->
-        <MenuItem Header="Now s_end it…" Tag="newsletter.send"
+        <MenuItem Header="_Now send it…" Tag="newsletter.send"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Send the newsletter to the brethren" />
         <Separator />
-        <!-- M64: the handover pair, in their own group at the bottom of File. They are about the
-             whole computer rather than this newsletter, and they are reached about twice a decade —
-             once by the person leaving, once by the person arriving. -->
-        <MenuItem Header="Pack everything up for my s_uccessor…" Tag="everything.packUp"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Pack everything up for my successor" />
-        <MenuItem Header="_Bring in a predecessor's pack…" Tag="everything.bringInAPack"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Bring in a predecessor's pack" />
+        <MenuItem Header="Handing ove_r" AutomationProperties.Name="Handing over">
+          <MenuItem Header="Pack everything _up for my successor…" Tag="everything.packUp"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Pack everything up for my successor" />
+          <MenuItem Header="_Bring in a predecessor's pack…" Tag="everything.bringInAPack"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Bring in a predecessor's pack" />
+        </MenuItem>
         <Separator />
         <MenuItem Header="E_xit" Tag="newsletter.exit" Click="OnActionClicked"
                   AutomationProperties.Name="Exit TrestleBoard" />
       </MenuItem>
       <MenuItem Header="_Edit" AutomationProperties.Name="Edit menu">
-        <MenuItem x:Name="UndoMenuItem" Header="_Undo" Tag="edit.undo"
+        <MenuItem x:Name="UndoMenuItem" Header="U_ndo" Tag="edit.undo"
                   InputGesture="Ctrl+Z" Click="OnActionClicked" AutomationProperties.Name="Undo" />
-        <MenuItem x:Name="RedoMenuItem" Header="_Redo" Tag="edit.redo"
+        <MenuItem x:Name="RedoMenuItem" Header="R_edo" Tag="edit.redo"
                   InputGesture="Ctrl+Y" Click="OnActionClicked" AutomationProperties.Name="Redo" />
         <Separator />
         <MenuItem Header="Cu_t" Tag="edit.cut" InputGesture="Ctrl+X"
@@ -120,49 +108,35 @@
         <Separator />
         <MenuItem Header="Select _all" Tag="edit.selectAll" InputGesture="Ctrl+A"
                   Click="OnActionClicked" AutomationProperties.Name="Select all" />
-        <!-- M49: the keyboard's answer to the marquee, which can only ever be drawn with a mouse.
-             No chord: Ctrl+A already means "all the words" and two menu rows advertising one
-             gesture is the confusion this review is about. Alt+E then E reaches it. -->
-        <!-- M50: the keyboard's answer to Shift+click. Ctrl+Tab keeps what is chosen and adds
-             the next thing, so three presses give you four things to line up. -->
+        <MenuItem Header="C_hoose everything on this page" Tag="edit.selectAllFrames"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Choose everything on this page" />
         <MenuItem Header="Also choose the ne_xt one" Tag="edit.alsoChooseNext"
                   InputGesture="Ctrl+Tab" Click="OnActionClicked"
                   AutomationProperties.Name="Also choose the next one" />
         <MenuItem Header="Also choose the one _before" Tag="edit.alsoChoosePrevious"
                   InputGesture="Ctrl+Shift+Tab" Click="OnActionClicked"
                   AutomationProperties.Name="Also choose the one before" />
-        <MenuItem Header="Choose _everything on this page" Tag="edit.selectAllFrames"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Choose everything on this page" />
         <Separator />
-        <!-- M21: the two gestures every other publishing program uses, in the menu every user
-             looks in for them. -->
         <MenuItem Header="_Find…" Tag="edit.find" InputGesture="Ctrl+F"
                   Click="OnActionClicked" AutomationProperties.Name="Find words in this newsletter" />
-        <MenuItem Header="Fi_nd and replace…" Tag="edit.replace" InputGesture="Ctrl+H"
+        <MenuItem Header="F_ind and replace…" Tag="edit.replace" InputGesture="Ctrl+H"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Find words and replace them with different ones" />
         <Separator />
-        <!-- M17: the three commands that change or remove the thing you have chosen. They used to
-             live under "This item", a top-level menu named after a model concept; a user looking
-             for "delete" looks under Edit. -->
         <MenuItem Header="_Delete this" Tag="item.delete" InputGesture="Delete"
                   Click="OnActionClicked" AutomationProperties.Name="Delete this" />
-        <MenuItem Header="C_hange what this says…" Tag="item.edit" InputGesture="Ctrl+Shift+E"
+        <MenuItem Header="Chan_ge what this says…" Tag="item.edit" InputGesture="Ctrl+Shift+E"
                   Click="OnActionClicked" AutomationProperties.Name="Change what this item says" />
         <MenuItem Header="Edit the _list…" Tag="item.editList" InputGesture="Ctrl+Shift+G"
                   Click="OnActionClicked" AutomationProperties.Name="Edit this list" />
       </MenuItem>
-      <!-- Paragraph style used to be a toolbar combo with no menu path at all — the one command
-           in the app that a keyboard-only user could not reach (M11). -->
       <MenuItem Header="F_ormat" AutomationProperties.Name="Format menu">
         <MenuItem Header="_Bold" Tag="text.bold" InputGesture="Ctrl+B"
                   Click="OnActionClicked" AutomationProperties.Name="Bold" />
         <MenuItem Header="_Italic" Tag="text.italic" InputGesture="Ctrl+I"
                   Click="OnActionClicked" AutomationProperties.Name="Italic" />
         <Separator />
-        <!-- M61: reached the way Bold is reached — on the paragraph, no wizard. §6 forbids
-             "ordered" and "unordered"; these say what they do. -->
         <MenuItem Header="Make this a list of poi_nts" Tag="text.bulletList"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Make this a list of points" />
@@ -172,30 +146,8 @@
         <Separator />
         <MenuItem x:Name="ParagraphStyleMenu" Header="Paragraph _style" Tag="text.paragraphStyle"
                   AutomationProperties.Name="Paragraph style" />
-        <Separator />
-        <!-- M14. The primary path to the font picker: §6 requires every command to have a menu
-             item, and this one is the whole milestone. -->
-        <MenuItem Header="_Fonts and text styles…" Tag="text.fontsAndStyles" InputGesture="Ctrl+Shift+D"
-                  Click="OnActionClicked" AutomationProperties.Name="Fonts and text styles" />
-        <!-- M93: four paragraph fields the layout engine has honoured since M1 with no way in. -->
-        <!-- M95: a box's colours live on the block, so any colour is already expressible. It sits
-             here rather than in Arrange, which had no access key left, and beside the Picture
-             submenu that already makes this menu about more than words. -->
-        <!-- M98: three everyday verbs, in a submenu because Format has six access keys left and
-             these belong together anyway. -->
-        <MenuItem Header="More about the te_xt" AutomationProperties.Name="More about the text">
-          <MenuItem Header="What colour the writin_g is…" Tag="text.colour"
-                    Click="OnActionClicked"
-                    AutomationProperties.Name="What colour the writing is" />
-          <MenuItem Header="Change _capitals…" Tag="text.changeCase"
-                    Click="OnActionClicked" AutomationProperties.Name="Change capitals" />
-          <MenuItem Header="How many _words…" Tag="text.wordCount"
-                    Click="OnActionClicked" AutomationProperties.Name="How many words" />
-        </MenuItem>
-        <!-- M96: TextAlignment has been honoured by the layout engine since M1 with no way in.
-             A submenu, like Picture, because Format had one free access key left and these are
-             three items that belong together anyway - a submenu gets its own key namespace. -->
-        <MenuItem Header="Which wa_y it lines up" AutomationProperties.Name="Which way it lines up">
+        <!-- M96, regrouped by M101: three verbs that answer one question. -->
+        <MenuItem Header="_Which way it lines up" AutomationProperties.Name="Which way it lines up">
           <MenuItem Header="On the _left" Tag="text.alignLeft" InputGesture="Ctrl+L"
                     Click="OnActionClicked" AutomationProperties.Name="Line it up on the left" />
           <MenuItem Header="Down the _middle" Tag="text.alignCentre" InputGesture="Ctrl+Shift+C"
@@ -203,41 +155,38 @@
           <MenuItem Header="On the _right" Tag="text.alignRight" InputGesture="Ctrl+R"
                     Click="OnActionClicked" AutomationProperties.Name="Line it up on the right" />
         </MenuItem>
+        <!-- M101: everything that changes the appearance of writing, in one place. Bold, italic and the two list verbs stay outside it because they are pressed far more often than everything here put together. -->
+        <MenuItem Header="_How the writing looks" AutomationProperties.Name="How the writing looks">
+          <MenuItem Header="What colour the writin_g is…" Tag="text.colour"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="What colour the writing is" />
+          <MenuItem Header="_Make text bigger" Tag="text.bigger" InputGesture="Ctrl+Shift+OemPeriod"
+                    Click="OnActionClicked" AutomationProperties.Name="Make text bigger" />
+          <MenuItem Header="Mak_e text smaller" Tag="text.smaller" InputGesture="Ctrl+Shift+OemComma"
+                    Click="OnActionClicked" AutomationProperties.Name="Make text smaller" />
+          <MenuItem Header="How sp_aced out the writing is…" Tag="text.writingLook"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="How spaced out the writing is" />
+          <MenuItem Header="_Change capitals…" Tag="text.changeCase"
+                    Click="OnActionClicked" AutomationProperties.Name="Change capitals" />
+          <Separator />
+          <MenuItem Header="Use a different font just _here…" Tag="text.fontJustHere"
+                    Click="OnActionClicked" AutomationProperties.Name="Use a different font just here" />
+          <MenuItem Header="P_ut it back to the usual font" Tag="text.clearFontOverride"
+                    Click="OnActionClicked" AutomationProperties.Name="Put it back to the usual font" />
+          <MenuItem Header="_Fonts and text styles…" Tag="text.fontsAndStyles" InputGesture="Ctrl+Shift+D"
+                    Click="OnActionClicked" AutomationProperties.Name="Fonts and text styles" />
+        </MenuItem>
+        <MenuItem Header="H_ow many words…" Tag="text.wordCount"
+                  Click="OnActionClicked" AutomationProperties.Name="How many words" />
         <Separator />
-        <MenuItem Header="Change wha_t colour the box is…" Tag="item.shapeColours"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Change what colour the box is" />
-        <MenuItem Header="How sp_aced out the writing is…" Tag="text.writingLook"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="How spaced out the writing is" />
-        <MenuItem Header="Make text bi_gger" Tag="text.bigger" InputGesture="Ctrl+Shift+OemPeriod"
-                  Click="OnActionClicked" AutomationProperties.Name="Make text bigger" />
-        <MenuItem Header="Make text small_er" Tag="text.smaller" InputGesture="Ctrl+Shift+OemComma"
-                  Click="OnActionClicked" AutomationProperties.Name="Make text smaller" />
-        <Separator />
-        <MenuItem Header="Use a different font just _here…" Tag="text.fontJustHere"
-                  Click="OnActionClicked" AutomationProperties.Name="Use a different font just here" />
-        <MenuItem Header="Put it back to the _usual font" Tag="text.clearFontOverride"
-                  Click="OnActionClicked" AutomationProperties.Name="Put it back to the usual font" />
-        <Separator />
-        <!-- M17: formatting a picture is formatting. A top-level Picture menu was rejected — ten
-             top-level menus at 200% UI scale for two items. M18 adds more items here. -->
-        <MenuItem Header="Pi_cture" AutomationProperties.Name="Picture submenu">
-          <!-- M18 puts replace first and gives it a name that changes with the frame: an empty
-               frame is asked to take a picture, a full one to swap the one it has. The header is
-               rewritten in RefreshActions; the XAML wording is the empty-frame case. -->
-          <MenuItem x:Name="ReplacePictureMenuItem" Header="_Put a picture here…" Tag="picture.replace"
+        <MenuItem Header="_Picture" AutomationProperties.Name="Picture">
+          <MenuItem x:Name="ReplacePictureMenuItem" Header="P_ut a picture here…" Tag="picture.replace"
                     InputGesture="Ctrl+Shift+O" Click="OnActionClicked"
                     AutomationProperties.Name="Put a picture here" />
           <Separator />
           <MenuItem Header="_Fix this picture" Tag="picture.fix" InputGesture="Ctrl+Shift+F"
                     Click="OnActionClicked" AutomationProperties.Name="Fix this picture" />
-          <!-- M38: two entries, not three. "Trim the edges…" opened the SAME window as
-               "Adjust the picture…" — a second door with a different name — and the trim sliders
-               still carry their own heading inside it. The two survivors are named for what the
-               user gets rather than for the operation: "Fix" does it for you, "Change how it
-               looks" lets you do it, and "Choose which part shows" is the one that moves the
-               picture rather than altering it. -->
           <MenuItem Header="Change how it _looks…" Tag="picture.adjust" InputGesture="Ctrl+Shift+A"
                     Click="OnActionClicked" AutomationProperties.Name="Change how the picture looks" />
           <MenuItem Header="Choose _which part shows…" Tag="picture.position"
@@ -245,36 +194,27 @@
           <MenuItem Header="Dis_miss this note" Tag="picture.dismissCropNotice"
                     Click="OnActionClicked" AutomationProperties.Name="Dismiss the stretched-picture note" />
           <Separator />
-          <MenuItem x:Name="CaptionPictureMenuItem" Header="Write a _caption…" Tag="picture.caption"
+          <MenuItem x:Name="CaptionPictureMenuItem" Header="W_rite a caption…" Tag="picture.caption"
                     Click="OnActionClicked" AutomationProperties.Name="Write a caption for the picture" />
           <MenuItem Header="_Describe this picture…" Tag="picture.altText"
                     Click="OnActionClicked"
                     AutomationProperties.Name="Describe this picture for people who cannot see it" />
         </MenuItem>
       </MenuItem>
-      <!-- Insert menu: the six widgets each get their own item so a keyboard user never has to
-           go through a picker (docs/M7-spec.md §8.1).
-
-           M17 puts the two things a first-time user actually looks for — a box to write in and a
-           photograph — at the top, above the separator. "Insert a picture…" used to hide at
-           This item ▸ Picture ▸ Insert a picture…, which is not where anybody looks for it. -->
       <MenuItem Header="_Insert" AutomationProperties.Name="Insert menu">
         <MenuItem Header="A box for _writing" Tag="insert.textFrame" InputGesture="Ctrl+Shift+T"
                   Click="OnActionClicked" AutomationProperties.Name="Add a box for writing" />
         <MenuItem Header="A _picture…" Tag="insert.photo" InputGesture="Ctrl+Shift+P"
                   Click="OnActionClicked" AutomationProperties.Name="Insert a picture" />
-        <!-- M79: the model has carried ShapeBlock since M1 with no command to reach it. -->
-        <!-- M98: a dash, a fraction, a degree sign - marks with no key, and no way in until now. -->
-        <MenuItem Header="A character yo_u cannot type…" Tag="insert.symbol"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="A character you cannot type" />
-        <!-- M95: ShapeKind.Box has rendered since M2 and nothing could make one. -->
         <MenuItem Header="A box to _set something apart" Tag="insert.box"
                   Click="OnActionClicked"
                   AutomationProperties.Name="A box to set something apart" />
         <MenuItem Header="A li_ne across the page" Tag="insert.rule"
                   Click="OnActionClicked" AutomationProperties.Name="A line across the page" />
-        <!-- M54: with the other two things you put into the writing itself, above the widgets. -->
+        <MenuItem Header="A character yo_u cannot type…" Tag="insert.symbol"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="A character you cannot type" />
+        <Separator />
         <MenuItem Header="W_ords for hard news…" Tag="insert.phrase"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Words for hard news, such as a memorial" />
@@ -282,130 +222,134 @@
                   Click="OnActionClicked"
                   AutomationProperties.Name="Keep the highlighted words for next time" />
         <Separator />
-        <MenuItem Header="_Lodge officers" Tag="insert.officersTable"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Insert the lodge officers table" />
-        <!-- M19 takes the slot M17 reserved: the address book fills the officers table in, and the
-             item sits directly under "Lodge officers" exactly as the birthday sync sits under
-             "Birthdays". One item added, no menu restructured. -->
-        <MenuItem Header="_Fill in the officers from the address book…" Tag="item.syncOfficers"
-                  InputGesture="Ctrl+Shift+B" Click="OnActionClicked"
-                  AutomationProperties.Name="Fill in the officers from the address book" />
-        <MenuItem Header="_Birthdays" Tag="insert.birthdayList"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Insert the birthday list" />
-        <!-- M13: the address book fills the birthday list in. It sits beside "Birthdays" because
-             that is where a user looks for it; the panel offers it beside the selected list. -->
-        <MenuItem Header="Brin_g in birthdays from the address book…" Tag="item.syncBirthdays"
-                  InputGesture="Ctrl+Shift+U" Click="OnActionClicked"
-                  AutomationProperties.Name="Bring in birthdays from the address book" />
-        <MenuItem Header="_Committees" Tag="insert.committeeList"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Insert the committee list" />
-        <MenuItem Header="_District calendar" Tag="insert.districtCalendar"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Insert the district calendar" />
-        <!-- M84: the other calendar — this lodge's month, on a grid. -->
-        <MenuItem Header="This mon_th&apos;s calendar" Tag="insert.monthCalendar"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Insert this month&apos;s calendar" />
-        <MenuItem Header="_Announcement box" Tag="insert.eventCard"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Insert an announcement box" />
-        <MenuItem Header="Cover _heading" Tag="insert.coverBanner"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Insert the cover heading" />
-        <!-- M60: last in the Insert menu, because it is the one to reach for when none of the six
-             above fits. -->
-        <MenuItem Header="A list of m_y own" Tag="insert.simpleList"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Add a list of my own" />
-        <Separator />
-        <!-- M65: below the widgets and beside the picture, because that is what it is — a picture,
-             from the app's own shelf rather than from a folder. -->
-        <!-- M66: beside the emblem, because both are "something from outside goes on the page". -->
-        <MenuItem Header="Writing from a fil_e…" Tag="insert.writingFromFile"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Bring in writing from a Word document or a text file" />
-        <MenuItem Header="A page f_rom a PDF…" Tag="insert.pdfPage"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Bring in a page from a PDF as a picture" />
-        <MenuItem Header="An e_mblem…" Tag="insert.emblem"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Add one of the craft's emblems" />
+        <!-- M101: the eight built-in lists and the two commands that fill two of them from the address book. Ten rows that were half the Insert menu. -->
+        <MenuItem Header="_A lodge list" AutomationProperties.Name="A lodge list">
+          <MenuItem Header="_Lodge officers" Tag="insert.officersTable"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Insert the lodge officers table" />
+          <MenuItem Header="_Fill in the officers from the address book…" Tag="item.syncOfficers"
+                    InputGesture="Ctrl+Shift+B" Click="OnActionClicked"
+                    AutomationProperties.Name="Fill in the officers from the address book" />
+          <Separator />
+          <MenuItem Header="_Birthdays" Tag="insert.birthdayList"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Insert the birthday list" />
+          <MenuItem Header="Brin_g in birthdays from the address book…" Tag="item.syncBirthdays"
+                    InputGesture="Ctrl+Shift+U" Click="OnActionClicked"
+                    AutomationProperties.Name="Bring in birthdays from the address book" />
+          <Separator />
+          <MenuItem Header="_Committees" Tag="insert.committeeList"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Insert the committee list" />
+          <MenuItem Header="_District calendar" Tag="insert.districtCalendar"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Insert the district calendar" />
+          <MenuItem Header="_This month&apos;s calendar" Tag="insert.monthCalendar"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Insert this month&apos;s calendar" />
+          <MenuItem Header="_Announcement box" Tag="insert.eventCard"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Insert an announcement box" />
+          <MenuItem Header="Cover _heading" Tag="insert.coverBanner"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Insert the cover heading" />
+          <MenuItem Header="A list of m_y own" Tag="insert.simpleList"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Add a list of my own" />
+        </MenuItem>
+        <!-- M101: three ways of bringing in something that already exists. -->
+        <MenuItem Header="So_mething from elsewhere" AutomationProperties.Name="Something from elsewhere">
+          <MenuItem Header="Writing from a fil_e…" Tag="insert.writingFromFile"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Bring in writing from a Word document or a text file" />
+          <MenuItem Header="A page f_rom a PDF…" Tag="insert.pdfPage"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Bring in a page from a PDF as a picture" />
+          <MenuItem Header="An e_mblem…" Tag="insert.emblem"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Add one of the craft's emblems" />
+        </MenuItem>
       </MenuItem>
-      <!-- M17 dissolves "This item". It was named after a model concept, and its own submenus put
-           four of the app's commands three levels deep. Every command it held kept a menu home:
-           the two Insert entries went to Insert, the three change-or-remove ones to Edit, the two
-           picture ones to Format, and everything about WHERE a thing sits on the page is here.
-           Nine top-level menus before, nine after — the chrome budget at 200% is the reason. -->
       <MenuItem Header="A_rrange" AutomationProperties.Name="Arrange menu">
-        <MenuItem Header="Make the _writing flow around it" Tag="flow.wrap" InputGesture="Ctrl+Shift+W"
-                  Click="OnActionClicked" AutomationProperties.Name="Make the writing flow around it" />
-        <MenuItem Header="_Continue this text in another frame…" Tag="flow.link" InputGesture="Ctrl+Shift+L"
-                  Click="OnActionClicked" AutomationProperties.Name="Continue this text in another frame" />
-        <MenuItem Header="_Stop continuing into the next frame" Tag="flow.unlink" InputGesture="Ctrl+Shift+K"
-                  Click="OnActionClicked" AutomationProperties.Name="Stop continuing into the next frame" />
-        <!-- M83: ColumnCount has been in the model since M1 with nothing to set it. -->
-        <MenuItem Header="Split i_nto two columns" Tag="flow.twoColumns"
-                  Click="OnActionClicked" AutomationProperties.Name="Split into two columns" />
-        <!-- M82: the two verbs the overset card offers, side by side. -->
-        <MenuItem Header="Make the bo_x taller" Tag="flow.growToFit"
-                  Click="OnActionClicked" AutomationProperties.Name="Make the box taller" />
-        <MenuItem Header="_Make the rest fit" Tag="flow.auto" InputGesture="Ctrl+Shift+M"
-                  Click="OnActionClicked" AutomationProperties.Name="Make the rest of this text fit" />
-        <Separator />
         <MenuItem Header="Make it _fit what is in it" Tag="item.fitToContents" InputGesture="Ctrl+Shift+Y"
                   Click="OnActionClicked" AutomationProperties.Name="Make it fit what is in it" />
-        <!-- M79: the two sentences a committee says out loud about a notice. -->
-        <MenuItem Header="Make _another like this" Tag="item.duplicate" InputGesture="Ctrl+D"
+        <MenuItem Header="M_ake another like this" Tag="item.duplicate" InputGesture="Ctrl+D"
                   Click="OnActionClicked" AutomationProperties.Name="Make another like this" />
-        <!-- M94: the accessible route to geometry — drag and arrow keys were the only ways in. -->
         <MenuItem Header="Si_ze and place it exactly…" Tag="item.positionAndSize"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Size and place it exactly" />
+        <Separator />
         <MenuItem Header="Kee_p it where it is" Tag="item.lock"
                   Click="OnActionClicked" AutomationProperties.Name="Keep it where it is" />
         <MenuItem Header="P_ut a border round it" Tag="item.border"
                   Click="OnActionClicked" AutomationProperties.Name="Put a border round it" />
         <MenuItem Header="S_hade it" Tag="item.shade"
                   Click="OnActionClicked" AutomationProperties.Name="Shade it" />
-        <Separator />
-        <MenuItem Header="Move it f_orward" Tag="arrange.bringForward" InputGesture="Ctrl+OemCloseBrackets"
-                  Click="OnActionClicked" AutomationProperties.Name="Move it forward" />
-        <MenuItem Header="Move it _back" Tag="arrange.sendBackward" InputGesture="Ctrl+OemOpenBrackets"
-                  Click="OnActionClicked" AutomationProperties.Name="Move it back" />
-        <MenuItem Header="Move it to the f_ront" Tag="arrange.bringToFront" InputGesture="Ctrl+Shift+OemCloseBrackets"
-                  Click="OnActionClicked" AutomationProperties.Name="Move it to the front" />
-        <MenuItem Header="Move it to the bac_k" Tag="arrange.sendToBack" InputGesture="Ctrl+Shift+OemOpenBrackets"
-                  Click="OnActionClicked" AutomationProperties.Name="Move it to the back" />
-        <Separator />
-        <!-- M21: the eight commands that act on MORE than one thing. They live flat rather than in
-             a submenu — M17's ruling on three-deep menus — and they carry no shortcuts: eight
-             unmemorable chords would buy nothing, and these menu mnemonics are the keyboard path. -->
-        <MenuItem Header="_Line up the left edges" Tag="arrange.alignLeft"
-                  Click="OnActionClicked" AutomationProperties.Name="Line up the left edges" />
-        <MenuItem Header="Line up the c_entres, side to side" Tag="arrange.alignCentres"
-                  Click="OnActionClicked" AutomationProperties.Name="Line up the centres, side to side" />
-        <MenuItem Header="Line up the r_ight edges" Tag="arrange.alignRight"
-                  Click="OnActionClicked" AutomationProperties.Name="Line up the right edges" />
-        <MenuItem Header="Line up the _top edges" Tag="arrange.alignTop"
-                  Click="OnActionClicked" AutomationProperties.Name="Line up the top edges" />
-        <MenuItem Header="Line up the mi_ddles, top to bottom" Tag="arrange.alignMiddles"
-                  Click="OnActionClicked" AutomationProperties.Name="Line up the middles, top to bottom" />
-        <MenuItem Header="Line up the bottom ed_ges" Tag="arrange.alignBottom"
-                  Click="OnActionClicked" AutomationProperties.Name="Line up the bottom edges" />
-        <MenuItem Header="Space them out e_venly, side to side" Tag="arrange.distributeAcross"
+        <MenuItem Header="Change wha_t colour the box is…" Tag="item.shapeColours"
                   Click="OnActionClicked"
-                  AutomationProperties.Name="Space them out evenly, side to side" />
-        <MenuItem Header="Space them out evenl_y, top to bottom" Tag="arrange.distributeDown"
-                  Click="OnActionClicked"
-                  AutomationProperties.Name="Space them out evenly, top to bottom" />
+                  AutomationProperties.Name="Change what colour the box is" />
+        <Separator />
+        <MenuItem Header="Move what is chosen to the ne_xt page" Tag="item.moveToNextPage"
+                  InputGesture="Ctrl+Shift+PageDown"
+                  Click="OnActionClicked" AutomationProperties.Name="Move it to the next page" />
+        <MenuItem Header="_Move what is chosen to the page before" Tag="item.moveToPreviousPage"
+                  InputGesture="Ctrl+Shift+PageUp"
+                  Click="OnActionClicked" AutomationProperties.Name="Move it to the page before" />
+        <Separator />
+        <!-- M101: six commands about how words move through frames, which is one subject and was the first six rows of Arrange. -->
+        <MenuItem Header="H_ow the writing flows" AutomationProperties.Name="How the writing flows">
+          <MenuItem Header="Make the _writing flow around it" Tag="flow.wrap" InputGesture="Ctrl+Shift+W"
+                    Click="OnActionClicked" AutomationProperties.Name="Make the writing flow around it" />
+          <MenuItem Header="Split i_nto two columns" Tag="flow.twoColumns"
+                    Click="OnActionClicked" AutomationProperties.Name="Split into two columns" />
+          <MenuItem Header="Make the bo_x taller" Tag="flow.growToFit"
+                    Click="OnActionClicked" AutomationProperties.Name="Make the box taller" />
+          <Separator />
+          <MenuItem Header="_Continue this text in another frame…" Tag="flow.link" InputGesture="Ctrl+Shift+L"
+                    Click="OnActionClicked" AutomationProperties.Name="Continue this text in another frame" />
+          <MenuItem Header="_Stop continuing into the next frame" Tag="flow.unlink" InputGesture="Ctrl+Shift+K"
+                    Click="OnActionClicked" AutomationProperties.Name="Stop continuing into the next frame" />
+          <MenuItem Header="_Make the rest fit" Tag="flow.auto" InputGesture="Ctrl+Shift+M"
+                    Click="OnActionClicked" AutomationProperties.Name="Make the rest of this text fit" />
+        </MenuItem>
+        <MenuItem Header="F_ront to back" AutomationProperties.Name="Front to back">
+          <MenuItem Header="M_ove it forward" Tag="arrange.bringForward" InputGesture="Ctrl+OemCloseBrackets"
+                    Click="OnActionClicked" AutomationProperties.Name="Move it forward" />
+          <MenuItem Header="Move it _back" Tag="arrange.sendBackward" InputGesture="Ctrl+OemOpenBrackets"
+                    Click="OnActionClicked" AutomationProperties.Name="Move it back" />
+          <MenuItem Header="Move it to the f_ront" Tag="arrange.bringToFront" InputGesture="Ctrl+Shift+OemCloseBrackets"
+                    Click="OnActionClicked" AutomationProperties.Name="Move it to the front" />
+          <MenuItem Header="Move it to the bac_k" Tag="arrange.sendToBack" InputGesture="Ctrl+Shift+OemOpenBrackets"
+                    Click="OnActionClicked" AutomationProperties.Name="Move it to the back" />
+        </MenuItem>
+        <!-- M101: eight rows that were a third of the Arrange menu and are one idea. -->
+        <MenuItem Header="_Line them up" AutomationProperties.Name="Line them up">
+          <MenuItem Header="_Line up the left edges" Tag="arrange.alignLeft"
+                    Click="OnActionClicked" AutomationProperties.Name="Line up the left edges" />
+          <MenuItem Header="Lin_e up the centres, side to side" Tag="arrange.alignCentres"
+                    Click="OnActionClicked" AutomationProperties.Name="Line up the centres, side to side" />
+          <MenuItem Header="L_ine up the right edges" Tag="arrange.alignRight"
+                    Click="OnActionClicked" AutomationProperties.Name="Line up the right edges" />
+          <Separator />
+          <MenuItem Header="Line up _the top edges" Tag="arrange.alignTop"
+                    Click="OnActionClicked" AutomationProperties.Name="Line up the top edges" />
+          <MenuItem Header="Line up the mi_ddles, top to bottom" Tag="arrange.alignMiddles"
+                    Click="OnActionClicked" AutomationProperties.Name="Line up the middles, top to bottom" />
+          <MenuItem Header="Line up the bottom ed_ges" Tag="arrange.alignBottom"
+                    Click="OnActionClicked" AutomationProperties.Name="Line up the bottom edges" />
+          <Separator />
+          <MenuItem Header="Space them out e_venly, side to side" Tag="arrange.distributeAcross"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Space them out evenly, side to side" />
+          <MenuItem Header="Space them out evenl_y, top to bottom" Tag="arrange.distributeDown"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Space them out evenly, top to bottom" />
+        </MenuItem>
       </MenuItem>
       <MenuItem Header="_View" AutomationProperties.Name="View menu">
         <MenuItem Header="Zoom _in" Tag="view.zoomIn" InputGesture="Ctrl+OemPlus"
                   Click="OnActionClicked" AutomationProperties.Name="Zoom in" />
-        <MenuItem Header="Zoom _out" Tag="view.zoomOut" InputGesture="Ctrl+OemMinus"
+        <MenuItem Header="Z_oom out" Tag="view.zoomOut" InputGesture="Ctrl+OemMinus"
                   Click="OnActionClicked" AutomationProperties.Name="Zoom out" />
         <MenuItem Header="_Actual size" Tag="view.actualSize" InputGesture="Ctrl+D0"
                   Click="OnActionClicked" AutomationProperties.Name="Actual size" />
@@ -414,27 +358,22 @@
         <Separator />
         <MenuItem Header="Show what I can _do" Tag="view.toggleActionPanel"
                   Click="OnActionClicked" AutomationProperties.Name="Show or hide the panel of things you can do" />
-        <!-- M76(g): beside the panel's switch, because it is the same promise about the same kind of
-             thing — a strip of chrome the user is allowed to put away, which folds itself away below
-             the same window width rather than squeezing the page out (docs/M76-spec.md §6). -->
         <MenuItem Header="_Show the pages down the side" Tag="view.togglePageRail"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Show or hide the pages down the side" />
-        <!-- M47: the page has had margins in its model since M2 and has never drawn them. -->
+        <Separator />
         <MenuItem Header="Show the ed_ge to keep inside" Tag="view.showMargins"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Show the edge to keep inside" />
-        <MenuItem Header="Show _where fonts were changed" Tag="view.showFontChanges"
+        <MenuItem Header="Sho_w where fonts were changed" Tag="view.showFontChanges"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Show where fonts were changed" />
-        <!-- M52: on by default, unlike the two above. -->
         <MenuItem Header="Show my spelling mista_kes" Tag="view.showSpelling"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Show my spelling mistakes" />
+        <Separator />
         <MenuItem Header="Move to the _next part of the window" Tag="view.nextRegion" InputGesture="F6"
                   Click="OnActionClicked" AutomationProperties.Name="Move to the next part of the window" />
-        <!-- M17: Shift+F6 has worked since M11 and was the one ActionId in the whole app with no
-             menu item anywhere — a shortcut nobody could discover. -->
         <MenuItem Header="Move to the _previous part of the window" Tag="view.previousRegion"
                   InputGesture="Shift+F6" Click="OnActionClicked"
                   AutomationProperties.Name="Move to the previous part of the window" />
@@ -443,15 +382,10 @@
                   AutomationProperties.Name="Change how things look" />
       </MenuItem>
       <MenuItem Header="_Page" AutomationProperties.Name="Page menu">
-        <!-- Ctrl+PageUp/Down: bare PageUp/Down belongs to the caret while editing (M4 spec §4.3). -->
         <MenuItem Header="_Next page" Tag="page.next" InputGesture="Ctrl+PageDown"
                   Click="OnActionClicked" AutomationProperties.Name="Next page" />
         <MenuItem Header="_Previous page" Tag="page.previous" InputGesture="Ctrl+PageUp"
                   Click="OnActionClicked" AutomationProperties.Name="Previous page" />
-        <!-- M76(g). The menu's half of page.goTo, and the reason the command carries its page in the
-             pressed control's Tag rather than in its id: a menu item cannot know which page you
-             want, so this one opens the row of pages and stands the keyboard on the page you are
-             already looking at, where the arrows walk and Enter goes (docs/M76-spec.md §6). -->
         <MenuItem Header="_Go to a page" Tag="page.goTo"
                   Click="OnActionClicked" AutomationProperties.Name="Go to a page" />
         <Separator />
@@ -462,34 +396,19 @@
                   AutomationProperties.Name="Make another page like this one" />
         <MenuItem Header="_Delete this page" Tag="page.remove"
                   Click="OnActionClicked" AutomationProperties.Name="Delete this page" />
-        <MenuItem Header="Move this page _earlier" Tag="page.moveEarlier"
+        <Separator />
+        <MenuItem Header="Mov_e this page earlier" Tag="page.moveEarlier"
                   Click="OnActionClicked" AutomationProperties.Name="Move this page earlier" />
         <MenuItem Header="Move this page _later" Tag="page.moveLater"
                   Click="OnActionClicked" AutomationProperties.Name="Move this page later" />
         <Separator />
-        <!-- M91. In the Page menu rather than beside "Make another like this", because Arrange had
-             no access key left and because somebody hunting for this is thinking about pages. The
-             wording says WHAT CHOSEN so it can never be read as moving the page itself, which is
-             the item directly above. Both also reach the action panel and the right-click list on
-             their own, from ActionGroup.Item. -->
-        <MenuItem Header="Move what is chosen to the ne_xt page" Tag="item.moveToNextPage"
-                  InputGesture="Ctrl+Shift+PageDown"
-                  Click="OnActionClicked" AutomationProperties.Name="Move it to the next page" />
-        <MenuItem Header="Move what is chosen to the page be_fore" Tag="item.moveToPreviousPage"
-                  InputGesture="Ctrl+Shift+PageUp"
-                  Click="OnActionClicked" AutomationProperties.Name="Move it to the page before" />
-        <Separator />
-        <!-- M97: five fields with eight readers and, until now, no writer anywhere. -->
         <MenuItem Header="The paper and the _margins…" Tag="page.setup"
                   Click="OnActionClicked"
                   AutomationProperties.Name="The paper and the margins" />
-        <!-- M78: every issue from the old tool had one. One wording, editable nowhere. -->
         <MenuItem Header="Show page num_bers at the bottom" Tag="page.footer"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Show page numbers at the bottom" />
       </MenuItem>
-      <!-- Top-level rather than buried in File (M12): the address book becomes one of the five
-           things this app does, and the whole point of it is that a name is typed once. -->
       <MenuItem Header="Peop_le" AutomationProperties.Name="People menu">
         <MenuItem Header="_People…" Tag="people.show" InputGesture="Ctrl+Shift+R"
                   Click="OnActionClicked"
@@ -509,10 +428,7 @@
                   Click="OnActionClicked"
                   AutomationProperties.Name="Restore an earlier version of your address book" />
       </MenuItem>
-      <!-- Updates are automatic and quiet (docs/M10-spec.md §2); this item exists so someone who
-           wonders "am I on the newest one?" gets an answer instead of having to wonder. -->
       <MenuItem Header="_Help" AutomationProperties.Name="Help menu">
-        <!-- M63: first in the menu and on F1, because it is the way to everything else in it. -->
         <MenuItem Header="_How do I…?" Tag="help.howDoI"
                   Click="OnActionClicked" InputGesture="F1"
                   AutomationProperties.Name="How do I…?" />
@@ -523,17 +439,13 @@
         <MenuItem Header="_Check for an update" Tag="help.checkForUpdates"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Check for an update" />
-        <!-- M77: the non-crash half of the problem report. A crash offers it by itself. -->
         <MenuItem Header="Save a re_port of a problem…" Tag="help.problemReport"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Save a report of a problem" />
-        <!-- M15: the five-page example issue used to be a fixture only the tests could reach. -->
         <MenuItem Header="_Show me an example newsletter" Tag="help.exampleIssue"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Show me an example newsletter" />
         <Separator />
-        <!-- M68: the app's own licence sits above the fonts', because it is the one that says what
-             the reader may do with TrestleBoard. The fonts' terms are somebody else's. -->
         <MenuItem Header="_Licence" Tag="help.licence"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Licence" />
