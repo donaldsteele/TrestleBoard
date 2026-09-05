@@ -23,7 +23,19 @@ public sealed record FrameOverlay(
     IReadOnlyList<RectPt> OversetRects,
     IReadOnlyList<RectPt> LinkedRects,
     IReadOnlyList<RectPt> LinkTargetRects,
-    RectPt? LinkTargetRect = null)
+    RectPt? LinkTargetRect = null,
+
+    /// <summary>
+    /// M92: everything chosen ALONGSIDE the primary one, so a multi-selection can be seen.
+    ///
+    /// <para>Until now the overlay carried one rect, so choosing five things drew one outline and
+    /// the user had no way to tell what the app thought was chosen — which matters most for the two
+    /// commands that have always used the whole selection, lining up and spreading out.</para>
+    ///
+    /// <para>Outlined but never handled: handles mean "drag this edge", and an edge drag acts on the
+    /// primary frame alone.</para>
+    /// </summary>
+    IReadOnlyList<RectPt>? AlsoSelectedRects = null)
 {
     public static readonly FrameOverlay Empty = new(null, false, [], [], [], []);
 }
@@ -100,6 +112,24 @@ public static class FrameOverlayRenderer
         foreach (RectPt overset in overlay.OversetRects)
         {
             DrawOversetBadge(canvas, overset, overlayScale, palette, labelTypeface);
+        }
+
+        // M92: drawn BEFORE the primary, so where two chosen frames overlap the one carrying the
+        // handles is the one on top.
+        if (overlay.AlsoSelectedRects is { Count: > 0 } alsoSelected)
+        {
+            using var companion = new SKPaint
+            {
+                Color = new SKColor(palette.Selection),
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = overlayScale,
+                IsAntialias = true,
+            };
+
+            foreach (RectPt also in alsoSelected)
+            {
+                canvas.DrawRect(ToRect(also), companion);
+            }
         }
 
         if (overlay.SelectedRect is not { } rect)

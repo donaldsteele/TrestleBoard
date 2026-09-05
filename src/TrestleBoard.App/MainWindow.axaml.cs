@@ -5172,6 +5172,7 @@ public partial class MainWindow : Window
         }
 
         bool wasLinked = _frames.SelectionWasLinked;
+        int howMany = _frames.SelectionCount;
         _editor?.End();
         if (_frames.DuplicateSelected() is null)
         {
@@ -5187,10 +5188,15 @@ public partial class MainWindow : Window
         // A copy of a frame that continued its writing elsewhere is NOT a continuation, and the
         // user is told rather than left to discover it: two frames claiming to continue one story
         // is not a thing the flow model can mean.
+        // M92: the sentence counts, because the command does. Saying "a copy" after making four
+        // is the same defect as a label promising less than the command does.
         Announce(wasLinked
             ? "There is now a copy just below it, holding the same writing. The copy does not "
               + "continue into the next frame — it is a page of its own."
-            : "There is now a copy just below it. Drag it where you want it, or press Ctrl+Z to undo.");
+            : howMany > 1
+                ? $"There are now {howMany} copies, just below the originals. Drag them where you "
+                  + "want them, or press Ctrl+Z to undo."
+                : "There is now a copy just below it. Drag it where you want it, or press Ctrl+Z to undo.");
     }
 
     /// <summary>
@@ -5480,8 +5486,12 @@ public partial class MainWindow : Window
             return;
         }
 
+        // M92: counted before the delete, because afterwards there is nothing left to count.
+        int howMany = _frames.SelectionCount;
         Announce(_frames.DeleteSelected()
-            ? "Taken off the page. Press Ctrl+Z to put it back."
+            ? howMany > 1
+                ? $"All {howMany} taken off the page. Press Ctrl+Z to put them back."
+                : "Taken off the page. Press Ctrl+Z to put it back."
             : "Nothing is chosen, so there is nothing to take off the page.");
     }
 

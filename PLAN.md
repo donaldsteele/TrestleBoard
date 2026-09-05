@@ -4718,6 +4718,36 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M92 - Choosing several things, and the commands meaning it (S/M) - **delivered 2026-09-05, `docs/M92-spec.md`**
+
+The app has offered four ways to choose more than one thing since M21 - Shift+click, a marquee,
+"Choose everything on this page", "Also choose the next one" - and of the commands that act on a
+selection, exactly two used it: lining up and spreading out. Duplicate, lock, border, shade, wrap,
+all four z-order commands, nudge and drag every one read the primary alone, and `BuildOverlay`
+returned a single rect, so the rest were **not even drawn as chosen**. Never a missing feature: a
+promise the app made four times and kept twice.
+
+All of them now act on the whole selection, each in one undo step, and every chosen thing is
+outlined. Four rules settle the awkward cases: **a toggle is decided by the primary** and the rest
+follow, so a mixed set agrees after one press rather than needing two; **a resize handle stays with
+the primary**, because handles are one frame's edges and five frames do not share a corner; **a frame
+kept in place stays put while the others move**, since pinning one thing down should not stop
+everything else; and **restacking moves the group as a run**, because doing it one block at a time
+shuffles the chosen blocks against each other and two frames sent to the back come out in the
+opposite order from the one on screen. Companions follow the delta taken AFTER snapping, so the
+frame being dragged pulls the rest into line with it.
+
+`TitleFor` varies seven commands in the plural and the announcements count, because a label
+promising less than the command does is the M55 defect - and doing MORE than you said is as alarming
+here as doing less. The catalog's own Title stays singular (M18's rule).
+
+> **The overlay change is additive and no baseline moved.** `FrameOverlay.AlsoSelectedRects` is a
+> trailing optional list drawn before the primary, so the frame carrying the handles stays on top
+> where two overlap. Failing-first was done by REVERTING rather than by hope: the controller was
+> checked out back to M91 with the new tests in place, and nine of twelve failed. The three that
+> passed are the guards - delete (already widened at M91), the single-selection overlay, and resize
+> touching only the primary.
+
 ### Sizing & sequencing notes (M77–M87, added 2026-09-01)
 
 - **Order: M77 → M78 → M79 → M86 → M80 → M81 → M87 → M82 → M83 → M84 → M85.** Safety first and

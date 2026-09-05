@@ -37,6 +37,14 @@ public sealed class FrameEditorController
     /// </summary>
     private readonly List<string> _alsoSelected = [];
 
+    /// <summary>
+    /// M92: where each companion frame started, and where it is being shown right now, while a
+    /// multi-selection is dragged as one. Empty for a single drag and for every resize — handles
+    /// belong to the primary frame's edges, and there is no sense in which five frames share one.
+    /// </summary>
+    private readonly Dictionary<string, RectPt> _dragStartRects = [];
+    private readonly Dictionary<string, RectPt> _dragPreviews = [];
+
     private string? _selectedBlockId;
     private FrameHandle _dragHandle = FrameHandle.None;
     private RectPt _dragStartRect;
@@ -424,6 +432,23 @@ public sealed class FrameEditorController
         _dragStartXPt = xPt;
         _dragStartYPt = yPt;
         _snapGuides.Clear();
+        _dragStartRects.Clear();
+        _dragPreviews.Clear();
+
+        // M92: everything else chosen travels with it, but only on a MOVE. A resize handle is an
+        // edge of the primary frame, and "drag five frames by one frame's corner" means nothing.
+        // A companion that is kept in place stays put rather than blocking the whole gesture — the
+        // point of pinning one thing down is that the others still move.
+        if (handle is FrameHandle.Body)
+        {
+            foreach (string id in _alsoSelected)
+            {
+                if (_session.Document.TryFindBlock(id, out _, out Block? companion) && !companion.Locked)
+                {
+                    _dragStartRects[id] = _layout.GetEffectiveRect(id);
+                }
+            }
+        }
 
         // M44, review §14.3: snapping has been suppressible with Alt since M5 and was advertised
         // nowhere at all. It is said at the one moment it can be acted on — while a drag is
@@ -486,6 +511,18 @@ public sealed class FrameEditorController
 
         _previewRect = candidate;
         _layout.SetGeometryPreview(_selectedBlockId, candidate);
+
+        // M92: the companions follow by the SAME delta, taken after snapping, so the whole
+        // selection keeps its shape and the one frame that snapped pulls the rest into line with it.
+        float dx = candidate.X - _dragStartRect.X;
+        float dy = candidate.Y - _dragStartRect.Y;
+        foreach ((string id, RectPt start) in _dragStartRects)
+        {
+            var moved = new RectPt(start.X + dx, start.Y + dy, start.Width, start.Height);
+            _dragPreviews[id] = moved;
+            _layout.SetGeometryPreview(id, moved);
+        }
+
         Raise();
     }
 
@@ -507,11 +544,30 @@ public sealed class FrameEditorController
         _snapGuides.Clear();
         _layout.SetGeometryPreview(blockId, null);
 
+        var companions = new List<(string Id, RectPt Rect)>();
+        foreach ((string id, RectPt rect) in _dragPreviews)
+        {
+            _layout.SetGeometryPreview(id, null);
+            companions.Add((id, rect));
+        }
+
+        _dragStartRects.Clear();
+        _dragPreviews.Clear();
+
         if (commit && finalRect != startRect)
         {
-            _session.Execute(handle is FrameHandle.Body
+            IDocumentCommand primary = handle is FrameHandle.Body
                 ? new MoveBlockCommand(blockId, finalRect)
-                : new ResizeBlockCommand(blockId, finalRect));
+                : new ResizeBlockCommand(blockId, finalRect);
+
+            // M92: one undo step for the whole gesture. Dragging four frames and having to press
+            // Ctrl+Z four times to put them back is not undoing what the user did.
+            _session.Execute(companions.Count == 0
+                ? primary
+                : new CompositeCommand(
+                    "Move what was chosen",
+                    new ChangeScope(ChangeKind.BlockGeometry, BlockId: blockId),
+                    [primary, .. companions.Select(c => new MoveBlockCommand(c.Id, c.Rect))]));
         }
 
         Raise();
@@ -545,8 +601,33 @@ public sealed class FrameEditorController
         }
 
         float step = large ? LargeNudgeStepPt : NudgeStepPt;
-        _session.Execute(new MoveBlockCommand(
-            _selectedBlockId, FrameGeometry.Translate(rect, dxSteps * step, dySteps * step)));
+        float dx = dxSteps * step;
+        float dy = dySteps * step;
+
+        // M92: the whole selection moves, in one undo step. A companion kept in place stays put
+        // rather than refusing the gesture for everything else — the same rule the mouse drag uses.
+        var children = new List<IDocumentCommand>
+        {
+            new MoveBlockCommand(_selectedBlockId, FrameGeometry.Translate(rect, dx, dy)),
+        };
+
+        foreach (string companionId in _alsoSelected)
+        {
+            if (_session.Document.TryFindBlock(companionId, out _, out Block? companion)
+                && !companion.Locked)
+            {
+                children.Add(new MoveBlockCommand(
+                    companionId,
+                    FrameGeometry.Translate(_layout.GetEffectiveRect(companionId), dx, dy)));
+            }
+        }
+
+        _session.Execute(children.Count == 1
+            ? children[0]
+            : new CompositeCommand(
+                "Move what was chosen",
+                new ChangeScope(ChangeKind.BlockGeometry, BlockId: _selectedBlockId),
+                children));
         return true;
     }
 
@@ -809,7 +890,27 @@ public sealed class FrameEditorController
             return false;
         }
 
-        _session.Execute(new SetBlockLockedCommand(blockId, !block.Locked));
+        // M92: the primary decides which way the whole selection goes, so a mixed set ends up all
+        // the same rather than each item flipping to its own opposite — a toggle that left things
+        // disagreeing would need pressing twice to mean anything.
+        bool locked = !block.Locked;
+        var children = new List<IDocumentCommand> { new SetBlockLockedCommand(blockId, locked) };
+
+        foreach (string companionId in _alsoSelected)
+        {
+            if (_session.Document.TryFindBlock(companionId, out _, out Block? companion)
+                && companion.Locked != locked)
+            {
+                children.Add(new SetBlockLockedCommand(companionId, locked));
+            }
+        }
+
+        _session.Execute(children.Count == 1
+            ? children[0]
+            : new CompositeCommand(
+                locked ? "Keep them where they are" : "Let them move again",
+                new ChangeScope(ChangeKind.BlockContent, BlockId: blockId),
+                children));
         return true;
     }
 
@@ -843,19 +944,36 @@ public sealed class FrameEditorController
         Document document = _session.Document;
         var taken = new HashSet<string>(StringComparer.Ordinal);
         var children = new List<IDocumentCommand>();
+        var copies = new List<string>();
 
-        if (CopyOnto(document, original, page, OffsetOnThePage(document, page, original.FrameRect), taken, children)
-            is not { } copyId)
+        // M92: everything chosen is copied, in one undo step. The primary is done first so that its
+        // copy is the one returned and chosen, which is what every caller since M81 has relied on.
+        foreach (string id in SelectedBlockIds)
+        {
+            if (!document.TryFindBlock(id, out Page? from, out Block? source) || from.Id != page.Id)
+            {
+                continue;
+            }
+
+            if (CopyOnto(document, source, page, OffsetOnThePage(document, page, source.FrameRect), taken, children)
+                is { } id2)
+            {
+                copies.Add(id2);
+            }
+        }
+
+        if (copies.Count == 0)
         {
             return null;
         }
 
+        string copyId = copies[0];
         _session.Execute(new CompositeCommand(
-            "Make another like this",
+            copies.Count == 1 ? "Make another like this" : "Make another of each",
             new ChangeScope(ChangeKind.PageStructure, PageId: page.Id, BlockId: copyId),
             children));
 
-        Select(copyId);
+        SelectAll(copies);
         return copyId;
     }
 
@@ -1245,7 +1363,23 @@ public sealed class FrameEditorController
             return false;
         }
 
-        _session.Execute(new SetFrameLookCommand(blockId, border, shade));
+        // M92: same rule as the lock — the primary decides, and everything chosen follows it.
+        var children = new List<IDocumentCommand> { new SetFrameLookCommand(blockId, border, shade) };
+
+        foreach (string companionId in _alsoSelected)
+        {
+            if (_session.Document.TryFindBlock(companionId, out _, out _))
+            {
+                children.Add(new SetFrameLookCommand(companionId, border, shade));
+            }
+        }
+
+        _session.Execute(children.Count == 1
+            ? children[0]
+            : new CompositeCommand(
+                "Change how they look",
+                new ChangeScope(ChangeKind.BlockContent, BlockId: blockId),
+                children));
         return true;
     }
 
@@ -1421,16 +1555,38 @@ public sealed class FrameEditorController
 
         (_, Block block) = _session.Document.FindBlock(blockId);
         bool turningOn = block.WrapMode is WrapMode.None;
-        _session.Execute(new SetWrapModeCommand(
-            blockId,
-            turningOn ? WrapMode.Rectangle : WrapMode.None,
-            turningOn ? (block.WrapMarginPt > 0f ? block.WrapMarginPt : DefaultWrapMarginPt) : block.WrapMarginPt));
+
+        // M92: the primary decides, and everything chosen follows — each block keeping its own
+        // wrap margin, which is a property of that frame and not of the decision being made.
+        var children = new List<IDocumentCommand> { WrapCommandFor(block, turningOn) };
+        foreach (string companionId in _alsoSelected)
+        {
+            if (_session.Document.TryFindBlock(companionId, out _, out Block? companion))
+            {
+                children.Add(WrapCommandFor(companion, turningOn));
+            }
+        }
+
+        _session.Execute(children.Count == 1
+            ? children[0]
+            : new CompositeCommand(
+                turningOn ? "Flow the writing around them" : "Stop the writing flowing around them",
+                new ChangeScope(ChangeKind.BlockGeometry, BlockId: blockId),
+                children));
+
         StatusMessage = turningOn
             ? "The writing on the page now flows around this. Press Ctrl+Z to undo."
             : "The writing on the page no longer flows around this. Press Ctrl+Z to undo.";
         Raise();
         return true;
     }
+
+    private static SetWrapModeCommand WrapCommandFor(Block block, bool turningOn) => new(
+        block.Id,
+        turningOn ? WrapMode.Rectangle : WrapMode.None,
+        turningOn
+            ? (block.WrapMarginPt > 0f ? block.WrapMarginPt : DefaultWrapMarginPt)
+            : block.WrapMarginPt);
 
     // ---- Z-order (docs/M5-spec.md §5) --------------------------------------------------------
 
@@ -1450,25 +1606,39 @@ public sealed class FrameEditorController
         }
 
         List<Block> ordered = PageBlocksInZOrder(SelectedPageIndex);
-        int index = ordered.FindIndex(b => b.Id == blockId);
-        int target = delta switch
-        {
-            int.MaxValue => ordered.Count - 1,
-            int.MinValue => 0,
-            _ => index + delta,
-        };
-        target = Math.Clamp(target, 0, ordered.Count - 1);
 
-        // M70(c): target == index is the commonest no-op in the app — the thing is already at that
-        // end of the pile. The false is no longer discarded: the shell says so (MainWindow.Restack).
-        if (index < 0 || target == index)
+        // M92: the whole selection restacks as one GROUP, keeping its own front-to-back order and
+        // moving relative to everything that is not chosen. Restacking each chosen block in turn
+        // would shuffle them against each other, so two frames sent to the back would come out in
+        // the opposite order from the one the user was looking at.
+        var chosen = new HashSet<string>(SelectedBlockIds, StringComparer.Ordinal);
+        List<Block> moving = [.. ordered.Where(b => chosen.Contains(b.Id))];
+        if (moving.Count == 0)
         {
             return false;
         }
 
-        Block moving = ordered[index];
-        ordered.RemoveAt(index);
-        ordered.Insert(target, moving);
+        List<Block> rest = [.. ordered.Where(b => !chosen.Contains(b.Id))];
+        int anchor = ordered.IndexOf(moving[0]);
+        int index = ordered.Take(anchor).Count(b => !chosen.Contains(b.Id));
+
+        int target = delta switch
+        {
+            int.MaxValue => rest.Count,
+            int.MinValue => 0,
+            _ => index + delta,
+        };
+        target = Math.Clamp(target, 0, rest.Count);
+
+        // M70(c): target == index is the commonest no-op in the app — the thing is already at that
+        // end of the pile. The false is no longer discarded: the shell says so (MainWindow.Restack).
+        if (target == index)
+        {
+            return false;
+        }
+
+        rest.InsertRange(target, moving);
+        ordered = rest;
 
         // Dense renumbering keeps repeated bring-forward well defined and the saved file tidy.
         var children = new List<IDocumentCommand>();
@@ -1757,8 +1927,24 @@ public sealed class FrameEditorController
                 ? _layout.GetEffectiveRect(targetId)
                 : null;
 
+        // M92: the other chosen frames, so a multi-selection is visible. Off-page ids cannot occur
+        // — AddToSelection refuses to cross a page — but the filter is kept because SelectAll drops
+        // them silently, and an overlay drawn from a stale list is exactly the kind of confident
+        // wrong answer this app keeps finding.
+        var alsoSelected = new List<RectPt>();
+        foreach (string companionId in _alsoSelected)
+        {
+            if (page.Blocks.Any(b => b.Id == companionId))
+            {
+                alsoSelected.Add(IsDragging && _dragPreviews.TryGetValue(companionId, out RectPt preview)
+                    ? preview
+                    : _layout.GetEffectiveRect(companionId));
+            }
+        }
+
         return new FrameOverlay(
-            selected, !IsDragging, [.. _snapGuides], overset, linked, candidates, linkTarget);
+            selected, !IsDragging, [.. _snapGuides], overset, linked, candidates, linkTarget,
+            alsoSelected);
     }
 
     // ---- Internals ---------------------------------------------------------------------------

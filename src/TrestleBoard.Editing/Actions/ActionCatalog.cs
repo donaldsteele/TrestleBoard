@@ -570,6 +570,20 @@ public static class ActionCatalog
             // will ask where to put it — and the ellipsis is how every other program on the
             // machine promises that a question is coming.
             ActionId.Save when !context.DocumentHasFile => "Save this newsletter…",
+
+            // M92: these act on the WHOLE selection, so with several things chosen the singular
+            // wording was a label promising less than the command does — the M55 defect, in the one
+            // place where doing more than you said is as alarming as doing less. The catalog's own
+            // Title stays singular, which is the M18 rule: a surface that has not been taught about
+            // this reads correctly rather than wrongly.
+            ActionId.Duplicate when context.SelectionCount > 1 => "Make another of each",
+            ActionId.DeleteFrame when context.SelectionCount > 1 => "Delete these",
+            ActionId.ToggleLocked when context.SelectionCount > 1 => "Keep them where they are",
+            ActionId.ToggleBorder when context.SelectionCount > 1 => "Put a border round them",
+            ActionId.ToggleShade when context.SelectionCount > 1 => "Shade them",
+            ActionId.MoveToNextPage when context.SelectionCount > 1 => "Move them to the next page",
+            ActionId.MoveToPreviousPage when context.SelectionCount > 1 => "Move them to the page before",
+
             _ => Get(actionId).Title,
         };
     }
