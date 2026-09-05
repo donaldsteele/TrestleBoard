@@ -178,6 +178,12 @@
         <MenuItem Header="_Fonts and text styles…" Tag="text.fontsAndStyles" InputGesture="Ctrl+Shift+D"
                   Click="OnActionClicked" AutomationProperties.Name="Fonts and text styles" />
         <!-- M93: four paragraph fields the layout engine has honoured since M1 with no way in. -->
+        <!-- M95: a box's colours live on the block, so any colour is already expressible. It sits
+             here rather than in Arrange, which had no access key left, and beside the Picture
+             submenu that already makes this menu about more than words. -->
+        <MenuItem Header="Change wha_t colour the box is…" Tag="item.shapeColours"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Change what colour the box is" />
         <MenuItem Header="How sp_aced out the writing is…" Tag="text.writingLook"
                   Click="OnActionClicked"
                   AutomationProperties.Name="How spaced out the writing is" />
@@ -235,6 +241,10 @@
         <MenuItem Header="A _picture…" Tag="insert.photo" InputGesture="Ctrl+Shift+P"
                   Click="OnActionClicked" AutomationProperties.Name="Insert a picture" />
         <!-- M79: the model has carried ShapeBlock since M1 with no command to reach it. -->
+        <!-- M95: ShapeKind.Box has rendered since M2 and nothing could make one. -->
+        <MenuItem Header="A box to _set something apart" Tag="insert.box"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="A box to set something apart" />
         <MenuItem Header="A li_ne across the page" Tag="insert.rule"
                   Click="OnActionClicked" AutomationProperties.Name="A line across the page" />
         <!-- M54: with the other two things you put into the writing itself, above the widgets. -->

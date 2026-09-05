@@ -143,6 +143,13 @@ internal static class ActionIcons
         // align glyph all at once — three things it is not.
         [ActionId.PositionAndSize] = "a box with arrows, which already means move, resize and align",
 
+        // M95. A rectangle is the shape every frame on the canvas already is, so a rectangle glyph
+        // in the Insert group says "a thing on the page" and not "a box". The colours one is a
+        // paint-pot, which nothing else in this app looks like — but the Item group has no icons
+        // at all, and one lone glyph there would read as importance rather than as a category.
+        [ActionId.AddBox] = "a rectangle, which is the shape everything on the canvas already is",
+        [ActionId.ShapeColours] = "the Item group carries no icons; one alone would read as rank",
+
         [ActionId.MoveToNextPage] = "an arrow, and the page arrows already mean something else",
         [ActionId.MoveToPreviousPage] = "an arrow, and the page arrows already mean something else",
 

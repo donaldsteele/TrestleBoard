@@ -1452,6 +1452,97 @@ public sealed class FrameEditorController
     }
 
     /// <summary>
+    /// Puts a plain box on the page (PLAN.md §11 M95).
+    ///
+    /// <para><b><see cref=ShapeKind.Box/> has rendered since M2 and nothing could make one.</b>
+    /// The renderer draws a filled and stroked rectangle from the block's own colours; the only
+    /// producer of a <see cref=ShapeBlock/> in the whole app was the rule, which hardcodes
+    /// <see cref=ShapeKind.Rule/>. So a committee wanting a shaded panel to set a notice apart had
+    /// to shade a box of writing instead, and got the three fixed looks whether they suited or not.</para>
+    ///
+    /// <para>It arrives under whatever is chosen, like the rule, and BEHIND everything else on the
+    /// page — a panel is something other things sit on top of, and one that landed in front would
+    /// hide the notice it was drawn for.</para>
+    /// </summary>
+    /// <returns>The new block's id.</returns>
+    public string AddBox(int pageIndex, uint? fillArgb, uint? strokeArgb)
+    {
+        Document document = _session.Document;
+        Page page = document.Pages[pageIndex];
+        PageMaster master = document.GetMaster(page.MasterRef);
+
+        float left = master.MarginLeftPt;
+        float top = master.MarginTopPt + 24f;
+        if (_selectedBlockId is { } chosen
+            && document.TryFindBlock(chosen, out Page? owner, out Block? block)
+            && owner.Id == page.Id)
+        {
+            left = block.FrameRect.X;
+            top = block.FrameRect.Bottom + 6f;
+        }
+
+        var rect = ClampOntoThePage(
+            document, page, new RectPt(left, top, PageLooks.BoxWidthPt, PageLooks.BoxHeightPt));
+
+        string blockId = NextId("box", id => document.Pages.Any(p => p.Blocks.Any(b => b.Id == id)));
+        var box = new ShapeBlock
+        {
+            Id = blockId,
+            Kind = ShapeKind.Box,
+            FrameRect = rect,
+            FillArgb = fillArgb,
+            StrokeArgb = strokeArgb,
+            StrokeWidthPt = strokeArgb is null ? 0f : PageLooks.BoxStrokeWidthPt,
+
+            // Behind everything: a panel is a thing other things sit on.
+            ZOrder = page.Blocks.Count == 0 ? 0 : page.Blocks.Min(b => b.ZOrder) - 1,
+        };
+
+        _session.Execute(new AddBlockCommand(page.Id, box));
+        Select(blockId);
+        return blockId;
+    }
+
+    /// <summary>Whether what is chosen is a box or a line, whose colours can be changed (M95).</summary>
+    public bool SelectionIsAShape =>
+        _selectedBlockId is { } id
+        && _session.Document.TryFindBlock(id, out _, out Block? block)
+        && block is ShapeBlock;
+
+    /// <summary>The colours the chosen box has now, so the window can show them chosen.</summary>
+    public (uint? Fill, uint? Stroke)? SelectionShapeColours =>
+        _selectedBlockId is { } id
+        && _session.Document.TryFindBlock(id, out _, out Block? block)
+        && block is ShapeBlock shape
+            ? (shape.FillArgb, shape.StrokeArgb)
+            : null;
+
+    /// <summary>
+    /// Recolours the chosen box or line (M95). False when nothing is chosen, what is chosen is not
+    /// a shape, or the colours are the ones it already has.
+    /// </summary>
+    public bool SetSelectionShapeColours(uint? fillArgb, uint? strokeArgb)
+    {
+        if (_selectedBlockId is not { } blockId
+            || !_session.Document.TryFindBlock(blockId, out _, out Block? block)
+            || block is not ShapeBlock shape)
+        {
+            return false;
+        }
+
+        float width = strokeArgb is null ? 0f : Math.Max(shape.StrokeWidthPt, PageLooks.BoxStrokeWidthPt);
+        if (shape.FillArgb == fillArgb && shape.StrokeArgb == strokeArgb
+            && Math.Abs(shape.StrokeWidthPt - width) < 0.001f)
+        {
+            return false;
+        }
+
+        _session.Execute(new SetShapeLookCommand(blockId, strokeArgb, width, fillArgb));
+        Raise();
+        return true;
+    }
+
+    /// <summary>
     /// Puts a line right across the page, under whatever is chosen (M79).
     ///
     /// <para><b>Not a shape tool.</b> A line the user draws is a line the user drags by accident,

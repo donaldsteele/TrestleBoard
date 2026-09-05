@@ -232,6 +232,11 @@ public static class ActionCatalog
         // the standing answer to "what are you here to add" is somewhere to write.
         new(ActionId.AddRule, "A line across the page",
             "Puts a straight line right across, under whatever you have chosen.", ActionGroup.Insert),
+        // M95. "Shape" and "rectangle" are trade words; what this is for is setting a notice apart.
+        new(ActionId.AddBox, "A box to set something apart",
+            "Puts a coloured panel on the page, behind everything else, for a notice you want to "
+            + "stand out.",
+            ActionGroup.Insert),
         new(ActionId.Duplicate, "Make another like this",
             "Puts a copy of the chosen thing on the page, just below it.",
             ActionGroup.Item, "Ctrl+D"),
@@ -250,6 +255,12 @@ public static class ActionCatalog
             ActionGroup.Item, "Ctrl+Shift+PageUp"),
         new(ActionId.ToggleLocked, "Keep it where it is",
             "Stops it being moved or resized by accident. You can still change what it says.",
+            ActionGroup.Item),
+        // M95. NOT "Change its colours…": bare "colours" has meant the app's own appearance in
+        // the search box since M16, and a document command taking that word away from Settings is
+        // the kind of quiet regression HelpIndexTests exists to catch. It did catch it.
+        new(ActionId.ShapeColours, "Change what colour the box is…",
+            "Choose what the box or line is filled with, and whether it has an outline round it.",
             ActionGroup.Item),
         new(ActionId.ToggleBorder, "Put a border round it",
             "Draws a thin line round the edge of the chosen box.", ActionGroup.Item),
@@ -981,6 +992,18 @@ public static class ActionCatalog
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(ChooseSomething),
 
+            // M95. A box's colours live on the block, so only a box or a line can be recoloured —
+            // a text frame's look is a NAMED style and arbitrary colours there need M86's derived
+            // style machinery. The refusal says which, rather than greying out silently.
+            ActionId.ShapeColours => context.Selection == SelectionKind.Shape
+                ? ActionAvailability.Available
+                : context.HasFrameSelection
+                    ? ActionAvailability.Blocked(
+                        "Colours can only be chosen for a box or a line. For a box of writing, use "
+                        + "Put a border round it or Shade it.",
+                        ActionId.ToggleShade)
+                    : ActionAvailability.NotApplicable(ChooseSomething),
+
             ActionId.Duplicate or ActionId.ToggleLocked => context.HasFrameSelection
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(ChooseSomething),
@@ -1019,7 +1042,7 @@ public static class ActionCatalog
 
             // The line needs a newsletter and nothing else: with nothing chosen it goes near the
             // top of the page, which is somewhere the user can see it and move it.
-            ActionId.AddRule => RequiresDocument(context),
+            ActionId.AddRule or ActionId.AddBox => RequiresDocument(context),
 
             // ---- How text flows -------------------------------------------------------------------
             // M83. A box of writing, like every other command in this group.

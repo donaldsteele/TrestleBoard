@@ -172,6 +172,12 @@ public static class ActionId
     public const string AddRule = "insert.rule";
 
     /// <summary>
+    /// M95: a plain box or panel. <c>ShapeKind.Box</c> has rendered since M2 and nothing could
+    /// make one — the only producer of a shape was the rule.
+    /// </summary>
+    public const string AddBox = "insert.box";
+
+    /// <summary>
     /// M54: a ready-made paragraph for a moment that is hard to write — a memorial, a
     /// sickness-and-distress entry. Blank-page paralysis is worst under grief.
     /// </summary>
@@ -385,6 +391,9 @@ public static class ActionId
 
     /// <summary>M81: the chosen thing stays where it is. Position and size only.</summary>
     public const string ToggleLocked = "item.lock";
+
+    /// <summary>M95: what colour a drawn box or line is.</summary>
+    public const string ShapeColours = "item.shapeColours";
 
     public const string ToggleBorder = "item.border";
 

@@ -111,6 +111,10 @@ public sealed class CommandTests
         // them. Two entries because the nullable fields mean "leave this one alone", and a revert
         // that restored all four from one snapshot would look correct while quietly resetting the
         // three the caller never asked about.
+        // M95. A shape's colours live on the block, so no style is minted and the revert has to
+        // put all three fields back — including a null, which "no outline" legitimately is.
+        ["SetShapeLook"] = _ => new SetShapeLookCommand("rule-1", 0xFF8C2A2A, 2f, 0xFFFBF3E0),
+
         ["SetParagraphSpacing.Spacing"] =
             _ => new SetParagraphSpacingCommand("body", 1.5f, null, 10f, null),
         ["SetParagraphSpacing.IndentOnly"] =

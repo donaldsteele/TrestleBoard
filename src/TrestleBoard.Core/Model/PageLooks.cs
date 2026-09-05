@@ -50,6 +50,35 @@ public static class PageLooks
     public const uint ShadeArgb = 0xFFEDF0F5;
 
     /// <summary>
+    /// The colours a box on the page may be (M95), in plain words.
+    ///
+    /// <para><b>A short fixed list, not a colour wheel.</b> Every one of these prints legibly on
+    /// white and sits with the M16 palette, which a freely chosen colour cannot be trusted to do —
+    /// and §6 would rather this audience picked "pale grey" from six than mixed one from a picker.
+    /// The full picker arrives with M86, for text, where the case for it is stronger.</para>
+    ///
+    /// <para>Order matters: it is the order they are offered in, quietest first.</para>
+    /// </summary>
+    public static readonly IReadOnlyList<(string Name, uint Argb)> BoxColours =
+    [
+        ("Pale grey", 0xFFEDF0F5),
+        ("Grey", 0xFF9AA5B8),
+        ("Cream", 0xFFFBF3E0),
+        ("Lodge blue", 0xFF1F3864),
+        ("Lodge gold", 0xFFB08A2E),
+        ("Deep red", 0xFF8C2A2A),
+        ("Black", 0xFF000000),
+    ];
+
+    /// <summary>How thick the outline of a drawn box is (M95) — the border width, so the two agree.</summary>
+    public const float BoxStrokeWidthPt = BorderWidthPt;
+
+    /// <summary>The size a new box arrives at (M95): big enough to see, small enough to place.</summary>
+    public const float BoxWidthPt = 216f;
+
+    public const float BoxHeightPt = 108f;
+
+    /// <summary>
     /// The lodge's own navy, for a heading that wants to be the lodge's rather than merely dark.
     /// The same value the chrome calls Accent, because it is the same brand colour — but written
     /// here as page ink, since a heading printed in it is not chrome and does not follow a theme.

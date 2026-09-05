@@ -48,6 +48,16 @@ public static class HelpSearchWords
             ["exact", "inches", "measure", "line it up by numbers", "same place as last time",
              "type the size", "nudge it precisely"],
 
+        // M95. "Rectangle" and "shape" are what other programs call it; this audience describes
+        // the job it does on the page.
+        [ActionId.AddBox] =
+            ["box", "panel", "rectangle", "shape", "block of colour", "highlight a notice",
+             "coloured background"],
+        // "colour" alone belongs to the app's own appearance settings and has since M16 — this is
+        // about one box on the page, so it says so.
+        [ActionId.ShapeColours] =
+            ["recolour the box", "fill", "outline", "change the box", "shade the panel"],
+
         [ActionId.ToggleLocked] = ["lock", "keep it still", "stop it moving", "pin", "fix in place"],
 
         // M91. Nobody searches for "move to page". They describe the mistake they have made.

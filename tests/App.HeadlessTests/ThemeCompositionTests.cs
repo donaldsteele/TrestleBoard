@@ -453,6 +453,12 @@ public sealed class ThemeCompositionTests
     /// and invisible to the contrast gate. De-emphasis is <c>Chrome.Muted</c>, which has a measured
     /// ratio.</para>
     /// </summary>
+    /// <summary>
+    /// The per-line opt-out for a literal that paints DOCUMENT content rather than chrome (M95).
+    /// Spelled out in full so it cannot be typed by accident and can be grepped for.
+    /// </summary>
+    private const string DocumentColourMarker = "document colour, not chrome";
+
     [Fact]
     public void NoChromeControlPaintsItselfWithALiteralColour()
     {
@@ -481,6 +487,26 @@ public sealed class ThemeCompositionTests
             {
                 string line = lines[i];
                 if (LiteralColour.Match(line) is not { Success: true } match)
+                {
+                    continue;
+                }
+
+                // M95: a line may opt out by SAYING it is painting the document rather than the
+                // chrome — a colour swatch in a picker shows the colour being chosen, which is
+                // content, and forcing it through a palette token would make it show the wrong
+                // one. Narrow on purpose: the marker is per line and names the reason, so the
+                // next literal in the same file is still caught.
+                bool marked = false;
+                for (int back = i; back >= 0 && back > i - 6; back--)
+                {
+                    if (lines[back].Contains(DocumentColourMarker, StringComparison.Ordinal))
+                    {
+                        marked = true;
+                        break;
+                    }
+                }
+
+                if (marked)
                 {
                     continue;
                 }

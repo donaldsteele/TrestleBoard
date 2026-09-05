@@ -5362,6 +5362,72 @@ public partial class MainWindow : Window
         return true;
     }
 
+    /// <summary>M95: a coloured panel to set a notice apart. ShapeKind.Box, at last reachable.</summary>
+    internal async Task<bool> AddBoxAsync()
+    {
+        if (_frames is null || _source is null)
+        {
+            return false;
+        }
+
+        _editor?.End();
+
+        // Asked BEFORE it is put there rather than after, because a box arrives behind everything
+        // else and a see-through one would be invisible — the user would be recolouring something
+        // they could not find.
+        var dialog = new BoxColoursDialog(
+            "What colour should the box be?", Core.Model.PageLooks.BoxColours[0].Argb, null);
+        await dialog.ShowDialog(this);
+
+        if (!dialog.Confirmed)
+        {
+            return false;
+        }
+
+        string blockId = _frames.AddBox(_pageIndex, dialog.Fill, dialog.Outline);
+
+        _source.Invalidate(new ChangeScope(ChangeKind.PageStructure));
+        _rail.ForgetEveryThumbnail();
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+        Announce("There is now a box on the page, behind everything else. Drag it where you want "
+            + "it, or press Ctrl+Z to undo.");
+        return blockId.Length > 0;
+    }
+
+    /// <summary>M95: recolours a box or a line already on the page.</summary>
+    internal async Task<bool> ChangeShapeColoursAsync()
+    {
+        if (_frames is not { SelectionIsAShape: true } frames
+            || frames.SelectionShapeColours is not { } colours)
+        {
+            Announce("Colours can only be chosen for a box or a line. Click one first.");
+            return false;
+        }
+
+        _editor?.End();
+        var dialog = new BoxColoursDialog("Change what colour the box is", colours.Fill, colours.Stroke);
+        await dialog.ShowDialog(this);
+
+        if (!dialog.Confirmed)
+        {
+            return false;
+        }
+
+        if (!frames.SetSelectionShapeColours(dialog.Fill, dialog.Outline))
+        {
+            Announce("It is already those colours, so nothing has changed.");
+            return false;
+        }
+
+        _source?.Invalidate(new ChangeScope(ChangeKind.BlockContent));
+        _rail.ForgetEveryThumbnail();
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+        Announce("Recoloured. Press Ctrl+Z to undo.");
+        return true;
+    }
+
     /// <summary>M81: keeps the chosen thing where it is, or lets it move again.</summary>
     internal void ToggleLocked()
     {

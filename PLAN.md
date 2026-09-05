@@ -4718,6 +4718,29 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M95 - A box to set something apart (S/M) - **delivered 2026-09-05, `docs/M95-spec.md`**
+
+`ShapeKind.Box` has been in the model since M2 and `RenderShape` has always drawn a filled, stroked
+rectangle from the block's own colours - and the ONLY producer of a `ShapeBlock` in the whole app
+was the rule, which hardcodes `ShapeKind.Rule`. `ShapeKind.Decoration` was constructed nowhere. A
+committee wanting a shaded panel had to shade a box of writing and take one of the three fixed looks.
+
+`insert.box` and `item.shapeColours`, over seven named colours that all print legibly on white and
+sit with the M16 palette. Named as well as shown, because colour is never the only signal. A box
+lands BEHIND everything else - a panel is a thing other things sit on. Fill and outline are asked
+separately and either may be nothing, but not both: a see-through box with no outline cannot be
+found again. Only a box or a line can be recoloured and the refusal says why - a text frame's look
+is a NAMED style and arbitrary colours there need M86's derived-style machinery.
+
+> **Three invariant tests earned their keep.** `NoChromeControlPaintsItselfWithALiteralColour` was
+> right about the swatch's outline and wrong about its fill - a swatch fill IS the document colour
+> being chosen - so the test learned a per-line opt-out that must say `document colour, not chrome`
+> within five lines, narrow enough that the next literal in the same file is still caught. Two
+> access-key clashes moved the item from Arrange (only J and Q left) to Format. And `HelpIndexTests`
+> caught the new title stealing the bare word "colours" from the app's appearance settings, which
+> has owned it since M16 - renamed rather than flipping a documented decision, on the precedent of
+> the same file's note about "mistake".
+
 ### M94 - Size and place it exactly (S) - **delivered 2026-09-05, `docs/M94-spec.md`**
 
 Geometry could be set two ways: drag it, or press an arrow key a point at a time. That is the

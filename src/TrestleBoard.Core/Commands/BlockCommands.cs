@@ -444,3 +444,72 @@ public sealed class SetBlockLockedCommand(string blockId, bool locked) : IDocume
 
     public bool TryMerge(IDocumentCommand newer) => false;
 }
+
+/// <summary>
+/// The colours of a box or a line drawn on the page (PLAN.md §11 M95).
+///
+/// <para><b>Why a shape has its own command and a text frame does not.</b>
+/// <see cref="ShapeBlock"/> carries <see cref="ShapeBlock.StrokeArgb"/>,
+/// <see cref="ShapeBlock.StrokeWidthPt"/> and <see cref="ShapeBlock.FillArgb"/> on the block
+/// itself, so any colour at all is already expressible and the renderer has always drawn it. A
+/// text frame's look lives in a NAMED <c>FrameStyleDef</c> instead, of which the app mints exactly
+/// three, and giving those arbitrary colours means minting derived styles — the machinery M86 is
+/// bringing. This closes the half that needs nothing new.</para>
+///
+/// <para>Null stroke means no outline and null fill means see-through, which is exactly what the
+/// renderer already does with them.</para>
+/// </summary>
+public sealed class SetShapeLookCommand(
+    string blockId, uint? strokeArgb, float strokeWidthPt, uint? fillArgb) : IDocumentCommand
+{
+    private (uint? Stroke, float Width, uint? Fill)? _before;
+
+    public string BlockId { get; } = blockId;
+
+    public uint? StrokeArgb { get; } = strokeArgb;
+
+    public float StrokeWidthPt { get; } = strokeWidthPt;
+
+    public uint? FillArgb { get; } = fillArgb;
+
+    public string Description => "Change its colours";
+
+    /// <summary>
+    /// Content, not geometry: a box that changes colour occupies exactly the same space, so nothing
+    /// around it has to move and no story needs relaying out.
+    /// </summary>
+    public ChangeScope Scope => new(ChangeKind.BlockContent, BlockId: BlockId);
+
+    public void Apply(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        ShapeBlock shape = Find(document);
+        _before = (shape.StrokeArgb, shape.StrokeWidthPt, shape.FillArgb);
+        shape.StrokeArgb = StrokeArgb;
+        shape.StrokeWidthPt = StrokeWidthPt;
+        shape.FillArgb = FillArgb;
+    }
+
+    public void Revert(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        if (_before is not { } was)
+        {
+            throw new InvalidOperationException("Revert before Apply.");
+        }
+
+        ShapeBlock shape = Find(document);
+        shape.StrokeArgb = was.Stroke;
+        shape.StrokeWidthPt = was.Width;
+        shape.FillArgb = was.Fill;
+        _before = null;
+    }
+
+    public bool TryMerge(IDocumentCommand newer) => false;
+
+    private ShapeBlock Find(Document document) =>
+        document.FindBlock(BlockId).Block as ShapeBlock
+            ?? throw new InvalidOperationException($"Not a box or a line: {BlockId}");
+}
