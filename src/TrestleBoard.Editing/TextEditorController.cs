@@ -743,17 +743,36 @@ public sealed class TextEditorController
 
     public bool IsItalicActive => IsFormatActive(def => def.Slant == FontSlantToken.Italic);
 
+    /// <summary>M102: whether the writing here has a line under it.</summary>
+    public bool IsUnderlineActive => IsFormatActive(def => def.Underline);
+
     public void ToggleBold() => ToggleFormat(
         isActive: IsBoldActive,
-        makeTarget: (def, active) => (active ? FontWeightToken.Regular : FontWeightToken.Bold, def.Slant),
+        makeTarget: (def, active) =>
+            (active ? FontWeightToken.Regular : FontWeightToken.Bold, def.Slant, def.Underline),
         activeDescription: "Remove bold",
         inactiveDescription: "Bold text");
 
     public void ToggleItalic() => ToggleFormat(
         isActive: IsItalicActive,
-        makeTarget: (def, active) => (def.Weight, active ? FontSlantToken.Normal : FontSlantToken.Italic),
+        makeTarget: (def, active) =>
+            (def.Weight, active ? FontSlantToken.Normal : FontSlantToken.Italic, def.Underline),
         activeDescription: "Remove italic",
         inactiveDescription: "Italic text");
+
+    /// <summary>
+    /// Puts a line under the highlighted words, or takes it off (PLAN.md §11 M86, delivered M102).
+    ///
+    /// <para>The last of M86's three. It rides the same sibling machinery bold and italic have used
+    /// since M4 — a derived style named <c>body-underline</c>, applied by reference — so nothing
+    /// carries direct formatting and all three compose: <c>body-bold-underline</c> is a real style
+    /// name and an ordinary thing to want.</para>
+    /// </summary>
+    public void ToggleUnderline() => ToggleFormat(
+        isActive: IsUnderlineActive,
+        makeTarget: (def, active) => (def.Weight, def.Slant, !active),
+        activeDescription: "Take the line off",
+        inactiveDescription: "Put a line under it");
 
     // ---- Everyday verbs (PLAN.md §11 M98) -----------------------------------------------------
 
@@ -1452,7 +1471,7 @@ public sealed class TextEditorController
 
     private void ToggleFormat(
         bool isActive,
-        Func<CharacterStyleDef, bool, (FontWeightToken Weight, FontSlantToken Slant)> makeTarget,
+        Func<CharacterStyleDef, bool, (FontWeightToken Weight, FontSlantToken Slant, bool Underline)> makeTarget,
         string activeDescription,
         string inactiveDescription)
     {
@@ -1473,8 +1492,9 @@ public sealed class TextEditorController
             }
 
             CharacterStyleDef def = sheet.GetCharacterStyle(reference);
-            (FontWeightToken w, FontSlantToken s) = makeTarget(def, isActive);
-            _pendingCharacterStyleRef = ResolveOrDeriveVariant(sheet, reference, w, s, out CharacterStyleDef? toEnsure);
+            (FontWeightToken w, FontSlantToken s, bool u) = makeTarget(def, isActive);
+            _pendingCharacterStyleRef =
+                ResolveOrDeriveVariant(sheet, reference, w, s, u, out CharacterStyleDef? toEnsure);
             if (toEnsure is not null)
             {
                 _session.Execute(new EnsureCharacterStyleCommand(toEnsure));
@@ -1496,8 +1516,9 @@ public sealed class TextEditorController
         foreach ((int paragraph, int offset, int length, string effectiveRef) in spans)
         {
             CharacterStyleDef def = sheet.GetCharacterStyle(effectiveRef);
-            (FontWeightToken w, FontSlantToken s) = makeTarget(def, isActive);
-            string target = ResolveOrDeriveVariant(sheet, effectiveRef, w, s, out CharacterStyleDef? toEnsure);
+            (FontWeightToken w, FontSlantToken s, bool u) = makeTarget(def, isActive);
+            string target =
+                ResolveOrDeriveVariant(sheet, effectiveRef, w, s, u, out CharacterStyleDef? toEnsure);
             if (toEnsure is not null && ensured.Add(toEnsure.Name))
             {
                 children.Insert(0, new EnsureCharacterStyleCommand(toEnsure));
@@ -1521,16 +1542,20 @@ public sealed class TextEditorController
         string sourceRef,
         FontWeightToken weight,
         FontSlantToken slant,
+        bool underline,
         out CharacterStyleDef? toEnsure)
     {
         toEnsure = null;
-        if (CharacterStyleResolver.TryResolve(sheet, sourceRef, weight, slant, out CharacterStyleDef existing))
+        if (CharacterStyleResolver.TryResolve(
+                sheet, sourceRef, weight, slant, out CharacterStyleDef existing, underline))
         {
             return existing.Name;
         }
 
-        string name = CharacterStyleResolver.VariantName(CharacterStyleResolver.BaseName(sourceRef), weight, slant);
-        toEnsure = CharacterStyleResolver.Derive(sheet.GetCharacterStyle(sourceRef), name, weight, slant);
+        string name = CharacterStyleResolver.VariantName(
+            CharacterStyleResolver.BaseName(sourceRef), weight, slant, underline);
+        toEnsure = CharacterStyleResolver.Derive(
+            sheet.GetCharacterStyle(sourceRef), name, weight, slant, underline);
         return name;
     }
 

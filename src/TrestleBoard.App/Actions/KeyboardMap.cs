@@ -84,6 +84,10 @@ internal static class KeyboardMap
         new(Key.B, Ctrl, ActionId.Bold, KeyScope.WhileTyping),
         new(Key.I, Ctrl, ActionId.Italic, KeyScope.WhileTyping),
 
+        // M102. Ctrl+U is the gesture every editor uses for underline and it was free — M99's
+        // "put the writing back" is Ctrl+Shift+U, which is birthdays, and neither collides.
+        new(Key.U, Ctrl, ActionId.Underline, KeyScope.WhileTyping),
+
         // ---- Fonts and sizes (M14) ------------------------------------------------------------
         // Ctrl+Shift+T would have been the mnemonic choice, but M11 already gave it to "add a text
         // frame" and a promise the app cannot keep is worse than an unmemorable one.

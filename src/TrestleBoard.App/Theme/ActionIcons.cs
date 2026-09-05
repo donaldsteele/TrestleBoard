@@ -55,6 +55,10 @@ internal static class ActionIcons
         [ActionId.ExportPdf] = "export-pdf",
         [ActionId.Bold] = "bold",
         [ActionId.Italic] = "italic",
+
+        // M102. Bold and italic both carry one, so the third member of the group must: an icon on
+        // two of three reads as those two being the important ones.
+        [ActionId.Underline] = "underline",
         [ActionId.FontsAndStyles] = "font",
         [ActionId.AddTextFrame] = "text-frame",
         [ActionId.InsertPhoto] = "photo",

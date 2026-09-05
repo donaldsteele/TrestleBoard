@@ -24,7 +24,13 @@ public readonly record struct CharacterStyle(
     FontWeight Weight,
     FontStyleSlant Slant,
     float SizePt,
-    uint ColorArgb);
+    uint ColorArgb,
+
+    /// <summary>
+    /// M102: whether a line is drawn under the words. Optional and last, so every existing
+    /// construction of this struct keeps compiling and keeps meaning what it did.
+    /// </summary>
+    bool Underline = false);
 
 /// <param name="MarkerText">
 /// M61: the bullet or number printed before a list paragraph, or empty for ordinary writing.

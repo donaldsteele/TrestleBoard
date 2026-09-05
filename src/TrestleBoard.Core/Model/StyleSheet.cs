@@ -38,6 +38,20 @@ public sealed class CharacterStyleDef
 
     public uint ColorArgb { get; set; } = 0xFF000000;
 
+    /// <summary>
+    /// Whether a line is drawn under the words (PLAN.md §11 M86, delivered M102).
+    ///
+    /// <para><b>Default false, and additive.</b> A newsletter written before this has no such
+    /// property in its file and must open looking exactly as it did yesterday — the same rule
+    /// <see cref="PageMaster.ShowFooter"/> follows.</para>
+    ///
+    /// <para><b>Where the line goes is not stored.</b> Its position under the baseline and its
+    /// thickness come from the font's own <c>post</c> table at render time, so an underline under
+    /// 11pt Source Serif sits where that face's designer put it, and changing the style's font
+    /// moves it without anything here being touched.</para>
+    /// </summary>
+    public bool Underline { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtraProperties { get; set; }
 }

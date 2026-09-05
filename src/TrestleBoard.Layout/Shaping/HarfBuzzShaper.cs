@@ -19,11 +19,13 @@ public sealed class ShapedRun
         uint colorArgb,
         string text,
         int paragraphCharStart,
-        IReadOnlyList<ShapedGlyph> glyphs)
+        IReadOnlyList<ShapedGlyph> glyphs,
+        bool underline = false)
     {
         Font = font;
         SizePt = sizePt;
         ColorArgb = colorArgb;
+        Underline = underline;
         Text = text;
         ParagraphCharStart = paragraphCharStart;
         Glyphs = glyphs;
@@ -34,6 +36,9 @@ public sealed class ShapedRun
     public float SizePt { get; }
 
     public uint ColorArgb { get; }
+
+    /// <summary>M102: whether a line is drawn under these words.</summary>
+    public bool Underline { get; }
 
     public string Text { get; }
 
@@ -92,7 +97,8 @@ public static class HarfBuzzShaper
         string paragraphText,
         int runStart,
         int runLength,
-        ShapeOptions options)
+        ShapeOptions options,
+        bool underline = false)
     {
         ArgumentNullException.ThrowIfNull(font);
         ArgumentNullException.ThrowIfNull(paragraphText);
@@ -129,6 +135,6 @@ public static class HarfBuzzShaper
         }
 
         string runText = paragraphText.Substring(runStart, runLength);
-        return new ShapedRun(font, sizePt, colorArgb, runText, runStart, glyphs);
+        return new ShapedRun(font, sizePt, colorArgb, runText, runStart, glyphs, underline);
     }
 }

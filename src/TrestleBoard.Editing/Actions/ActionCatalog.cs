@@ -193,6 +193,10 @@ public static class ActionCatalog
             PrimaryRank: 1),
         new(ActionId.Italic, "Italic", "Slants the highlighted words.", ActionGroup.Text, "Ctrl+I",
             PrimaryRank: 2),
+        // M102, M86's last. No PrimaryRank: bold and italic hold the two primaries in this group,
+        // and a third would fail NoSetOfOffersTheCatalogCanProduceEverHasTwoPrimariesInAGroup.
+        new(ActionId.Underline, "Underline",
+            "Draws a line under the highlighted words.", ActionGroup.Text, "Ctrl+U"),
         new(ActionId.BulletList, "Make this a list of points",
             "Puts a dot in front of this paragraph, and keeps the wrapped lines lined up under the "
             + "writing.", ActionGroup.Text),
@@ -832,7 +836,7 @@ public static class ActionCatalog
             ActionId.Find or ActionId.Replace => RequiresDocument(context),
 
             // ---- Text ---------------------------------------------------------------------------
-            ActionId.Bold or ActionId.Italic or ActionId.ParagraphStyle
+            ActionId.Bold or ActionId.Italic or ActionId.Underline or ActionId.ParagraphStyle
                 or ActionId.BulletList or ActionId.NumberList => context.IsEditingText
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(NeedsText),

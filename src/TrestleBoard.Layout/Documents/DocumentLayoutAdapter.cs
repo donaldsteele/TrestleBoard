@@ -259,7 +259,8 @@ public static class DocumentLayoutAdapter
         def.Weight == FontWeightToken.Bold ? FontWeight.Bold : FontWeight.Regular,
         def.Slant == FontSlantToken.Italic ? FontStyleSlant.Italic : FontStyleSlant.Normal,
         def.SizePt,
-        def.ColorArgb);
+        def.ColorArgb,
+        def.Underline);
 
     internal static TextAlign MapAlign(TextAlignment align) => align switch
     {

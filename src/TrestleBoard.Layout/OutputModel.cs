@@ -33,7 +33,8 @@ public sealed class PositionedGlyphRun
         IReadOnlyList<int> clusters,
         IReadOnlyList<float> glyphPenXPt,
         SourceSpan source,
-        float advanceWidthPt)
+        float advanceWidthPt,
+        bool underline = false)
     {
         Font = font;
         SizePt = sizePt;
@@ -46,6 +47,7 @@ public sealed class PositionedGlyphRun
         GlyphPenXPt = glyphPenXPt;
         Source = source;
         AdvanceWidthPt = advanceWidthPt;
+        Underline = underline;
     }
 
     public ResolvedFont Font { get; }
@@ -53,6 +55,15 @@ public sealed class PositionedGlyphRun
     public float SizePt { get; }
 
     public uint ColorArgb { get; }
+
+    /// <summary>
+    /// M102: whether a line is drawn under this run.
+    ///
+    /// <para>Where that line goes is NOT here. The renderer asks the face itself, so an underline
+    /// under 11pt Source Serif sits where that designer put it — the plan's rule, and the reason
+    /// no offset is stored anywhere in the document.</para>
+    /// </summary>
+    public bool Underline { get; }
 
     public float OriginX { get; }
 

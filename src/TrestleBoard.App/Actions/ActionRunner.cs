@@ -73,6 +73,7 @@ internal sealed class ActionRunner
             // ---- Text -----------------------------------------------------------------------------
             [ActionId.Bold] = Sync(window.ToggleBold),
             [ActionId.Italic] = Sync(window.ToggleItalic),
+            [ActionId.Underline] = Sync(window.ToggleUnderline),
             [ActionId.BulletList] = Sync(() => window.ToggleList(Core.Model.ListKinds.Bullet)),
             [ActionId.NumberList] = Sync(() => window.ToggleList(Core.Model.ListKinds.Number)),
             [ActionId.ParagraphStyle] = source =>

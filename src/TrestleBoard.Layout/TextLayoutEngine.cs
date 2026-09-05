@@ -323,7 +323,8 @@ public sealed class TextLayoutEngine
             if (run.Text.Length > 0)
             {
                 ShapedRun shaped = HarfBuzzShaper.Shape(
-                    font, run.Style.SizePt, run.Style.ColorArgb, text, offset, run.Text.Length, options);
+                    font, run.Style.SizePt, run.Style.ColorArgb, text, offset, run.Text.Length,
+                    options, run.Style.Underline);
                 foreach (ShapedGlyph g in shaped.Glyphs)
                 {
                     glyphs.Add((g, shaped));
@@ -730,7 +731,8 @@ public sealed class TextLayoutEngine
                 // half of a trailing ligature put the caret in the middle of it (review §14.2).
                 new SourceSpan(
                     para.StoryId, paragraphIndex, clusters[0], currentRun.ClusterEnd(clusters[^1])),
-                advance));
+                advance,
+                currentRun.Underline));
             glyphIds = [];
             offsets = [];
             clusters = [];

@@ -136,6 +136,11 @@ public static class ActionId
     // ---- Text ---------------------------------------------------------------------------------
     public const string Bold = "text.bold";
     public const string Italic = "text.italic";
+
+    /// <summary>
+    /// M102: a line under the words — the last of M86's three deliverables.
+    /// </summary>
+    public const string Underline = "text.underline";
     /// <summary>
     /// M96: which way the writing is lined up. `TextAlignment` and the shift arithmetic in the
     /// layout engine have been live since M1 with no command able to reach them.

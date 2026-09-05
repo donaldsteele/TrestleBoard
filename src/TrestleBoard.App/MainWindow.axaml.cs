@@ -4565,7 +4565,7 @@ public partial class MainWindow : Window
         return window;
     }
 
-    internal void ToggleBold() => ToggleFormat(bold: true);
+    internal void ToggleBold() => ToggleFormat(Emphasis.Bold);
 
     /// <summary>
     /// M70(c): with words highlighted the page answers for itself. With a caret and nothing
@@ -4573,7 +4573,15 @@ public partial class MainWindow : Window
     /// happens, so the user presses Ctrl+B again and undoes what they asked for. The behaviour is
     /// right; the silence was the bug.
     /// </summary>
-    private void ToggleFormat(bool bold)
+    /// <summary>Which of the three glyph-level formats a press means (M102 added the third).</summary>
+    private enum Emphasis
+    {
+        Bold,
+        Italic,
+        Underline,
+    }
+
+    private void ToggleFormat(Emphasis which)
     {
         if (_editor is not { IsActive: true } editor)
         {
@@ -4581,13 +4589,17 @@ public partial class MainWindow : Window
         }
 
         bool caretOnly = editor.SelectedText is null;
-        if (bold)
+        switch (which)
         {
-            editor.ToggleBold();
-        }
-        else
-        {
-            editor.ToggleItalic();
+            case Emphasis.Bold:
+                editor.ToggleBold();
+                break;
+            case Emphasis.Italic:
+                editor.ToggleItalic();
+                break;
+            default:
+                editor.ToggleUnderline();
+                break;
         }
 
         if (!caretOnly)
@@ -4595,8 +4607,21 @@ public partial class MainWindow : Window
             return;
         }
 
-        bool nowOn = bold ? editor.IsBoldActive : editor.IsItalicActive;
-        string what = bold ? "bold" : "italic";
+        bool nowOn = which switch
+        {
+            Emphasis.Bold => editor.IsBoldActive,
+            Emphasis.Italic => editor.IsItalicActive,
+            _ => editor.IsUnderlineActive,
+        };
+
+        // "underlined" rather than "underline", so the sentence reads the same way for all three.
+        string what = which switch
+        {
+            Emphasis.Bold => "bold",
+            Emphasis.Italic => "italic",
+            _ => "underlined",
+        };
+
         Announce(nowOn
             ? $"The next words you type will be {what}."
             : $"The next words you type will not be {what}.");
@@ -4629,7 +4654,10 @@ public partial class MainWindow : Window
         RefreshActions();
     }
 
-    internal void ToggleItalic() => ToggleFormat(bold: false);
+    internal void ToggleItalic() => ToggleFormat(Emphasis.Italic);
+
+    /// <summary>M102: a line under the highlighted words — M86's last deliverable.</summary>
+    internal void ToggleUnderline() => ToggleFormat(Emphasis.Underline);
 
     /// <summary>
     /// The panel's "Paragraph style ▸" opens the same list the Format menu shows, beside the button

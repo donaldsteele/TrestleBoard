@@ -55,6 +55,9 @@ public static class HelpSearchWords
             ["paper", "margins", "A4", "letter", "legal", "page size", "edges", "white space round "
              + "the edge", "landscape", "wider"],
 
+        // M102. "Underline" is the one word everybody has; the others are what they say instead.
+        [ActionId.Underline] = ["line under", "underscore", "underlined heading"],
+
         // M99. Again not the bare word "colours", which the appearance settings have owned since M16.
         [ActionId.TextColour] =
             ["colour the writing", "red text", "coloured heading", "ink", "make it blue"],

@@ -136,6 +136,9 @@
                   Click="OnActionClicked" AutomationProperties.Name="Bold" />
         <MenuItem Header="_Italic" Tag="text.italic" InputGesture="Ctrl+I"
                   Click="OnActionClicked" AutomationProperties.Name="Italic" />
+        <!-- M102: M86's last deliverable, beside the two it belongs with. -->
+        <MenuItem Header="_Underline" Tag="text.underline" InputGesture="Ctrl+U"
+                  Click="OnActionClicked" AutomationProperties.Name="Underline" />
         <Separator />
         <MenuItem Header="Make this a list of poi_nts" Tag="text.bulletList"
                   Click="OnActionClicked"

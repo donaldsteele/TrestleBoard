@@ -55,8 +55,10 @@ public sealed class IconTests
         IReadOnlySet<string> referenced = ActionIcons.EveryGlyphKey;
 
         // 24 through M23; the 25th is M24's save disk; the 26th is M60's list of your own; the
-        // 27th is M84's month on a grid.
-        Assert.Equal(27, declared.Count);
+        // 27th is M84's month on a grid; the 28th is M102's underline, which had to exist because
+        // bold and italic both carry one and an icon on two of three reads as those two being the
+        // important ones.
+        Assert.Equal(28, declared.Count);
         Assert.True(
             declared.SetEquals(referenced),
             $"declared but never referenced: [{string.Join(", ", declared.Except(referenced).Order())}]; "

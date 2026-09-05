@@ -4718,6 +4718,45 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M102 - Underline (S/M) - **delivered 2026-09-05, `docs/M102-spec.md`**
+
+**The last of M86's three, so M86 is COMPLETE**: alignment shipped as M96, colour as M99, underline
+here. `text.underline` (Ctrl+U) beside Bold and Italic, on the same footing.
+
+**Underline is a third DIMENSION, not a `~` override, and that is the whole design decision.** An
+override occupies the one override slot, so underline-as-override could never combine with a colour
+- and a red underlined heading is an ordinary thing to want. As a suffix it composes with bold and
+italic exactly as they compose with each other; `body-bold-underline` is a real style name. Cost:
+one optional parameter on `VariantName`, `TryResolve` and `Derive`, so no existing caller changed.
+
+Two would-be silent bugs: `BaseName` strips suffixes in the REVERSE of the order `VariantName`
+appends them, so every combination unwinds; and **the attribute scan matches on underline**, without
+which asking for the underlined sibling of `body` is answered with `body` itself - same family, size
+and colour - and the line silently never appears.
+
+Where the line goes comes from the face's own `post` table at render time; nothing about it is
+stored. Fallbacks are proportions of the type size (a fixed 1pt line under 30pt type reads as a
+mistake) and the sign is taken rather than trusted (a face storing it the other way round would get
+a strike-through).
+
+> **The test that could not fail, a fourth time.** "The line is under the words, not through them"
+> first counted dark pixels per row and **passed against a deliberate strike-through**, because an
+> underline sits close enough to the baseline that both land in rows with little ink. The fix was a
+> SEAM, not a better heuristic: `UnderlineRectFor` was pulled out of the drawing code and given the
+> two metrics as plain nullable floats (`SKFontMetrics` fields are read-only, so the no-metrics rule
+> was otherwise unreachable from a test). The same mutation now fails FIVE tests where it failed
+> none. Second time this session the answer was to move logic somewhere assertable rather than to
+> assert harder.
+
+> **No golden image, and no baseline moved.** M86 budgeted a three-OS `text-decorations` fixture; a
+> maintainer's machine bakes only its own, so the properties it would have stood in for are asserted
+> directly and every one is rasteriser-independent. Nothing in any fixture is underlined.
+
+> **Found on the way:** `SixtyDragStepsStayInsideTheFrameBudget` failed twice with nothing in the
+> drag path touched. Its comment already reasoned that a contended machine measures its neighbours
+> and widened the budget on CI - but the DETECTION asked whether `CI` was set, and running the whole
+> solution locally starts eleven test projects at once. It now asks whether the machine is busy.
+
 ### M101 - The menu taxonomy pass (S/M) - **delivered 2026-09-05, `docs/M101-spec.md`**
 
 M91-M100 hit the same wall three times: **Format, Insert and Arrange had run out of access keys.**
