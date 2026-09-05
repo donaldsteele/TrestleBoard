@@ -4718,6 +4718,21 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M94 - Size and place it exactly (S) - **delivered 2026-09-05, `docs/M94-spec.md`**
+
+Geometry could be set two ways: drag it, or press an arrow key a point at a time. That is the
+fine-motor task §6 exists to avoid, and it left a real gap for exactly the audience this app is for.
+`PositionPhotoWindow` looks like it fills the hole and does not - it pans the crop INSIDE a picture.
+
+`item.positionAndSize` takes four measurements in inches (the model is in points; the conversion
+lives in the dialog, at the edge, and nowhere else), prints the page size so the numbers have
+something to be relative to, refuses a bad number with a sentence naming the box while keeping
+everything else typed, refuses a frame kept in place with the same sentence the drag gives (M28),
+and clamps numbers that would leave the paper - a typed number can do what a drag cannot.
+
+> **Resize is emitted BEFORE move**, in one composite. A resize anchors on the top-left, so the
+> other order puts the frame where it was asked and then drags it back off that spot.
+
 ### M93 - How spaced out the writing is (S) - **delivered 2026-09-05, `docs/M93-spec.md`**
 
 `ParagraphStyleDef.LineSpacing`, `.SpaceBeforePt`, `.SpaceAfterPt` and `.FirstLineIndentPt` have been

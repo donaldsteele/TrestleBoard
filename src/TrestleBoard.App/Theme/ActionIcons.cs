@@ -139,6 +139,10 @@ internal static class ActionIcons
         // 20px is indistinguishable from the alignment and list glyphs that mean other things.
         [ActionId.WritingLook] = "a stack of bars, which every other text glyph already is",
 
+        // M94. A box with arrows on it, which is the move cursor, the resize handle and the
+        // align glyph all at once — three things it is not.
+        [ActionId.PositionAndSize] = "a box with arrows, which already means move, resize and align",
+
         [ActionId.MoveToNextPage] = "an arrow, and the page arrows already mean something else",
         [ActionId.MoveToPreviousPage] = "an arrow, and the page arrows already mean something else",
 

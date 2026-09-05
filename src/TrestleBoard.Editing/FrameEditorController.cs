@@ -581,6 +581,74 @@ public sealed class FrameEditorController
         }
     }
 
+    /// <summary>
+    /// Puts the chosen frame at an exact place and size (PLAN.md §11 M94).
+    ///
+    /// <para><b>The accessible route to geometry.</b> Until this, position and size could be set
+    /// only by dragging with the mouse or by pressing an arrow key a point at a time — and a long,
+    /// precise drag is the fine-motor task §6 exists to avoid. Somebody with a tremor could not put
+    /// a box exactly where the last issue had it; now they can type it.</para>
+    ///
+    /// <para>One command per changed aspect, joined so that one Ctrl+Z takes the whole thing back,
+    /// and nothing at all runs when the numbers match what is already there.</para>
+    /// </summary>
+    /// <returns>False when nothing is chosen, the frame is kept in place, or nothing would change.</returns>
+    public bool SetSelectionGeometry(RectPt wanted)
+    {
+        if (_selectedBlockId is not { } blockId || SelectedRect is not { } current)
+        {
+            return false;
+        }
+
+        if (SelectionIsLocked)
+        {
+            StatusMessage = LockedMessage;
+            Raise();
+            return false;
+        }
+
+        // Clamped onto the paper for the same reason a paste is: a frame the user cannot see is a
+        // change that appears not to have happened, and a typed number is easier to get wrong than
+        // a drag, which cannot leave the sheet in the first place.
+        Document document = _session.Document;
+        (Page page, _) = document.FindBlock(blockId);
+        RectPt rect = ClampOntoThePage(document, page, wanted);
+
+        bool moved = Math.Abs(rect.X - current.X) > 0.001f || Math.Abs(rect.Y - current.Y) > 0.001f;
+        bool resized = Math.Abs(rect.Width - current.Width) > 0.001f
+            || Math.Abs(rect.Height - current.Height) > 0.001f;
+
+        if (!moved && !resized)
+        {
+            return false;
+        }
+
+        CancelDragIfAny();
+
+        // Resize THEN move, because a resize takes the top-left as its anchor: doing it the other
+        // way puts the frame where it was asked for and then drags it back off that spot.
+        var children = new List<IDocumentCommand>();
+        if (resized)
+        {
+            children.Add(new ResizeBlockCommand(blockId, rect));
+        }
+
+        if (moved)
+        {
+            children.Add(new MoveBlockCommand(blockId, rect));
+        }
+
+        _session.Execute(children.Count == 1
+            ? children[0]
+            : new CompositeCommand(
+                "Put it exactly here",
+                new ChangeScope(ChangeKind.BlockGeometry, BlockId: blockId),
+                children));
+
+        Raise();
+        return true;
+    }
+
     // ---- Keyboard equivalents (docs/M5-spec.md §9) -------------------------------------------
 
     /// <summary>Arrow-key move. Never snaps — a nudge must move exactly what was asked.</summary>

@@ -43,6 +43,11 @@ public static class HelpSearchWords
             ["spacing", "line spacing", "cramped", "squashed", "spread out", "double space",
              "more air", "indent", "tab the first line", "too tight"],
 
+        // M94. Somebody hunting for this is describing a measurement, not a feature.
+        [ActionId.PositionAndSize] =
+            ["exact", "inches", "measure", "line it up by numbers", "same place as last time",
+             "type the size", "nudge it precisely"],
+
         [ActionId.ToggleLocked] = ["lock", "keep it still", "stop it moving", "pin", "fix in place"],
 
         // M91. Nobody searches for "move to page". They describe the mistake they have made.

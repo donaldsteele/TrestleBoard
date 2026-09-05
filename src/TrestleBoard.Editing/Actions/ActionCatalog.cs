@@ -235,6 +235,11 @@ public static class ActionCatalog
         new(ActionId.Duplicate, "Make another like this",
             "Puts a copy of the chosen thing on the page, just below it.",
             ActionGroup.Item, "Ctrl+D"),
+        // M94. "Position and size" is trade wording; what somebody says is where it goes and how
+        // big it is.
+        new(ActionId.PositionAndSize, "Size and place it exactly…",
+            "Type how far in from the left and down from the top it sits, and how big it is.",
+            ActionGroup.Item),
         new(ActionId.MoveToNextPage, "Move it to the next page",
             "Takes what you have chosen off this page, puts it in the same spot on the page after, "
             + "and shows you that page.",
@@ -969,6 +974,13 @@ public static class ActionCatalog
 
             // ---- Make another, and keep it where it is (M81) ---------------------------------------
             // Both act on a chosen block of any kind, for the same reason the two M79 verbs do.
+            // M94. Needs something chosen, and nothing else: a locked frame still opens the window,
+            // which then refuses with the lock sentence — the same answer the drag gives, from the
+            // same place (M28: two ways in, one rule).
+            ActionId.PositionAndSize => context.HasFrameSelection
+                ? ActionAvailability.Available
+                : ActionAvailability.NotApplicable(ChooseSomething),
+
             ActionId.Duplicate or ActionId.ToggleLocked => context.HasFrameSelection
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(ChooseSomething),

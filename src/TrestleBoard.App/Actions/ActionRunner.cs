@@ -92,6 +92,7 @@ internal sealed class ActionRunner
             [ActionId.AddTextFrame] = Sync(window.AddTextFrame),
             [ActionId.AddRule] = Sync(window.AddRuleAcrossThePage),
             [ActionId.WritingLook] = Async(() => window.ChangeWritingLookAsync()),
+            [ActionId.PositionAndSize] = Async(() => window.SayExactlyWhereItGoesAsync()),
             [ActionId.Duplicate] = Sync(window.DuplicateSelected),
             [ActionId.MoveToNextPage] = Sync(window.MoveSelectionToNextPage),
             [ActionId.MoveToPreviousPage] = Sync(window.MoveSelectionToPreviousPage),

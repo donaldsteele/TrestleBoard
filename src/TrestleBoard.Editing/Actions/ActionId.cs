@@ -375,6 +375,14 @@ public static class ActionId
     /// <summary>M91: the same, backwards.</summary>
     public const string MoveToPreviousPage = "item.moveToPreviousPage";
 
+    /// <summary>
+    /// M94: type exactly where the chosen thing goes and how big it is.
+    ///
+    /// <para>The accessible route to geometry — until this it was drag or arrow key only, and a
+    /// long precise drag is what §6 exists to avoid.</para>
+    /// </summary>
+    public const string PositionAndSize = "item.positionAndSize";
+
     /// <summary>M81: the chosen thing stays where it is. Position and size only.</summary>
     public const string ToggleLocked = "item.lock";
 

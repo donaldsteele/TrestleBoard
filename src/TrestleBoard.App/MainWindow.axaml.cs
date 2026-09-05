@@ -5323,6 +5323,45 @@ public partial class MainWindow : Window
         return true;
     }
 
+    /// <summary>M94: type exactly where the chosen thing goes and how big it is.</summary>
+    internal async Task<bool> SayExactlyWhereItGoesAsync()
+    {
+        if (_frames is not { SelectedBlockId: { } blockId } frames
+            || _source is null
+            || frames.SelectedRect is not { } current)
+        {
+            Announce("There is nothing chosen to place. Click something on the page first.");
+            return false;
+        }
+
+        _editor?.End();
+
+        Core.Model.SizePt page = _source.GetPageSize(_pageIndex);
+        var dialog = new PositionAndSizeDialog(current, page);
+        await dialog.ShowDialog(this);
+
+        if (!dialog.Confirmed)
+        {
+            return false;
+        }
+
+        if (!frames.SetSelectionGeometry(dialog.Wanted))
+        {
+            // Either it is kept in place — the controller has already put that sentence in the
+            // status bar — or the numbers were the ones it already had.
+            Announce(frames.StatusMessage
+                ?? "It is already exactly there, so nothing has changed.");
+            return false;
+        }
+
+        _source.Invalidate(new ChangeScope(ChangeKind.BlockGeometry, BlockId: blockId));
+        _rail.ForgetEveryThumbnail();
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+        Announce("Moved to exactly where you asked. Press Ctrl+Z to undo.");
+        return true;
+    }
+
     /// <summary>M81: keeps the chosen thing where it is, or lets it move again.</summary>
     internal void ToggleLocked()
     {

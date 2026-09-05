@@ -323,6 +323,10 @@
         <!-- M79: the two sentences a committee says out loud about a notice. -->
         <MenuItem Header="Make _another like this" Tag="item.duplicate" InputGesture="Ctrl+D"
                   Click="OnActionClicked" AutomationProperties.Name="Make another like this" />
+        <!-- M94: the accessible route to geometry — drag and arrow keys were the only ways in. -->
+        <MenuItem Header="Si_ze and place it exactly…" Tag="item.positionAndSize"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Size and place it exactly" />
         <MenuItem Header="Kee_p it where it is" Tag="item.lock"
                   Click="OnActionClicked" AutomationProperties.Name="Keep it where it is" />
         <MenuItem Header="P_ut a border round it" Tag="item.border"
