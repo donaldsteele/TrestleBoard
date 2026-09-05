@@ -457,6 +457,9 @@
         <Separator />
         <MenuItem Header="_Add a page after this one" Tag="page.add" InputGesture="Ctrl+Shift+N"
                   Click="OnActionClicked" AutomationProperties.Name="Add a page after this one" />
+        <MenuItem Header="Make ano_ther page like this one" Tag="page.duplicate"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Make another page like this one" />
         <MenuItem Header="_Delete this page" Tag="page.remove"
                   Click="OnActionClicked" AutomationProperties.Name="Delete this page" />
         <MenuItem Header="Move this page _earlier" Tag="page.moveEarlier"

@@ -159,6 +159,10 @@ internal static class ActionIcons
 
         // M97. A rectangle with a dashed inset, which at 20px is a rectangle - and the Page group
         // is navigation arrows, where a static shape would read as a fifth direction.
+        // M100. Two overlapping rectangles, which is the duplicate glyph the Item group already
+        // declined for exactly this reason - it says "two of something", not "two PAGES".
+        [ActionId.DuplicatePage] = "two overlapping rectangles, which says two of something",
+
         [ActionId.PageSetup] = "a rectangle with a dashed inset, which at 20px is a rectangle",
 
         // M98. "Aa" is a letterform, which is what every glyph in the Text group already is; a

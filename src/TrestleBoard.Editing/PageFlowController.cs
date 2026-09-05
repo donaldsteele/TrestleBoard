@@ -82,6 +82,83 @@ public sealed class PageFlowController
         return true;
     }
 
+    /// <summary>
+    /// Copies a whole page, with everything on it, and puts the copy after it (PLAN.md §11 M100).
+    ///
+    /// <para><b>Why a whole page and not four duplicates.</b> A trestle board repeats its own shape:
+    /// a photo page this month is a photo page next month with different photographs in it, and the
+    /// committee's way of making the second one was to build it again frame by frame. `item.duplicate`
+    /// has copied ONE thing since M81; nothing has ever copied a page.</para>
+    ///
+    /// <para>Each block is copied by <see cref="BlockCopier"/>, so every rule that milestone settled
+    /// applies unchanged: a piece of writing gets a story of its own holding the same words, a
+    /// picture shares its bytes, and a block kind nobody wired up is refused rather than
+    /// half-copied.</para>
+    ///
+    /// <para><b>Links are dropped, deliberately.</b> `BlockCopier` breaks `LinkNext` because a copy
+    /// continues nothing — two frames claiming to continue one story is not a thing the flow model
+    /// can mean. So the copied page holds the same words, standing on their own.</para>
+    /// </summary>
+    /// <returns>The new page's id, or null when the page does not exist.</returns>
+    public string? DuplicatePage(int pageIndex)
+    {
+        Document document = _session.Document;
+        if (pageIndex < 0 || pageIndex >= document.Pages.Count)
+        {
+            return null;
+        }
+
+        Page source = document.Pages[pageIndex];
+        var page = new Page { Id = NextPageId(document), MasterRef = source.MasterRef };
+
+        var taken = new HashSet<string>(StringComparer.Ordinal);
+        var children = new List<IDocumentCommand> { new AddPageCommand(page, pageIndex + 1) };
+
+        foreach (Block block in source.Blocks.OrderBy(b => b.ZOrder))
+        {
+            string copyId = NextId("copy", id => taken.Contains(id)
+                || document.Pages.Any(p => p.Blocks.Any(b => b.Id == id)));
+            string? storyId = block is TextBlock
+                ? NextId("story", id => taken.Contains(id) || document.Stories.Any(s => s.Id == id))
+                : null;
+
+            if (BlockCopier.Copy(block, copyId, storyId) is not { } copy)
+            {
+                continue;
+            }
+
+            taken.Add(copyId);
+
+            if (block is TextBlock text && storyId is not null)
+            {
+                taken.Add(storyId);
+                var story = new Story { Id = storyId };
+                if (document.TryGetStory(text.StoryRef, out Story? from))
+                {
+                    story.Paragraphs.AddRange(from.Paragraphs.Select(BlockCopier.CopyParagraph));
+                }
+
+                children.Add(new AddStoryCommand(story));
+            }
+
+            // Same place, same stacking: a copied page must look identical to the one it came from,
+            // which is the entire reason for asking for one.
+            copy.FrameRect = block.FrameRect;
+            copy.ZOrder = block.ZOrder;
+            copy.Locked = block.Locked;
+            children.Add(new AddBlockCommand(page.Id, copy));
+        }
+
+        _session.Execute(new CompositeCommand(
+            "Make another page like this",
+            new ChangeScope(ChangeKind.PageStructure, PageId: page.Id),
+            children));
+
+        StatusMessage = null;
+        Raise();
+        return page.Id;
+    }
+
     public bool MovePage(int fromIndex, int toIndex)
     {
         Document document = _session.Document;
@@ -428,6 +505,22 @@ public sealed class PageFlowController
         master.MarginTopPt,
         master.Size.Width - master.MarginLeftPt - master.MarginRightPt,
         master.Size.Height - master.MarginTopPt - master.MarginBottomPt);
+
+    /// <summary>
+    /// Deterministic ids (no clock, no Guid), minted against a running set so a batch cannot claim
+    /// one twice — the M91 defect, which produced several blocks all answering to one id.
+    /// </summary>
+    private static string NextId(string prefix, Func<string, bool> taken)
+    {
+        for (int i = 1; ; i++)
+        {
+            string candidate = $"{prefix}-{i}";
+            if (!taken(candidate))
+            {
+                return candidate;
+            }
+        }
+    }
 
     private static string NextPageId(Document document) =>
         $"page-{HighestOrdinal(document.Pages.Select(p => p.Id), "page") + 1}";

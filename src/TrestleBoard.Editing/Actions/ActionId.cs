@@ -317,6 +317,12 @@ public static class ActionId
     public const string NextPage = "page.next";
     public const string PreviousPage = "page.previous";
     public const string AddPage = "page.add";
+    /// <summary>
+    /// M100: a whole page copied, with everything on it. `item.duplicate` has copied one thing
+    /// since M81; nothing has ever copied a page.
+    /// </summary>
+    public const string DuplicatePage = "page.duplicate";
+
     public const string RemovePage = "page.remove";
     public const string MovePageEarlier = "page.moveEarlier";
     public const string MovePageLater = "page.moveLater";

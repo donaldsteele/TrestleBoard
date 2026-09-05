@@ -4718,6 +4718,30 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M100 - Make another page like this one (S) - **delivered 2026-09-05, `docs/M100-spec.md`**
+
+A trestle board repeats its own shape - a photo page this month is a photo page next month with
+different photographs in it - and nothing in the app has ever copied a page. `item.duplicate` copies
+ONE thing; `page.add` adds a BLANK page. The committee's way of making the second photo page was to
+build it again frame by frame.
+
+`page.duplicate` puts the copy directly after the original AND takes the user to it: the copy is
+what they are about to work on, and leaving them on the original is how a copy goes unnoticed. Every
+block goes through M91's `BlockCopier`, so every rule that milestone settled applies unchanged - own
+story, shared picture bytes, unknown kind refused rather than half-copied - and position, size,
+stacking and the locked flag come across, because a copied page that arrived rearranged defeats the
+reason for asking.
+
+> **The M91 id defect in its natural habitat.** A page of nine blocks mints nine ids and nine
+> stories in ONE command, against a document that has not changed yet; without a running tally every
+> one would be `copy-1`, and since `TryFindBlock` returns the first match eight of the nine would be
+> permanently unreachable. A test asserts every id is distinct.
+
+> **A correction to the register, recorded rather than dropped.** It said the zoom floor was 100% so
+> you could not zoom out. Wrong: `ZoomLadder.cs` is the PHOTOGRAPH window's ladder, where 100% means
+> the picture already fits and there is nothing to zoom out to. The canvas has its own,
+> `MainWindow.ZoomSteps`, starting at 0.5. Fit-width is still genuinely absent.
+
 ### M99 - What colour the writing is (S/M) - **delivered 2026-09-05, `docs/M99-spec.md`**
 
 **M86's third deliverable.** `CharacterStyleDef.ColorArgb` has been plumbed end to end since M1 -

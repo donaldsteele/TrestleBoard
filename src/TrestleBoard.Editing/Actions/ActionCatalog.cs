@@ -434,6 +434,11 @@ public static class ActionCatalog
         // a chord cannot carry one; the rail's own arrow keys are the keyboard path, and the menu
         // item below opens the rail and stands on the page you are on (docs/M76-spec.md §6).
         // M97. "Page setup" is what other programs call it; what this asks about is the paper.
+        // M100. A trestle board repeats its own shape: a photo page this month is a photo page
+        // next month with different photographs in it.
+        new(ActionId.DuplicatePage, "Make another page like this one",
+            "Copies this whole page, with everything on it, and puts the copy after it.",
+            ActionGroup.Page),
         new(ActionId.PageSetup, "The paper and the margins…",
             "Choose what size paper the newsletter is printed on, and how much white space is left "
             + "round the edges.",
@@ -1104,7 +1109,7 @@ public static class ActionCatalog
             ActionId.AddRule or ActionId.AddBox => RequiresDocument(context),
 
             // M97. A whole-newsletter sheet, so it needs a newsletter and nothing else.
-            ActionId.PageSetup => RequiresDocument(context),
+            ActionId.PageSetup or ActionId.DuplicatePage => RequiresDocument(context),
 
             // ---- How text flows -------------------------------------------------------------------
             // M83. A box of writing, like every other command in this group.

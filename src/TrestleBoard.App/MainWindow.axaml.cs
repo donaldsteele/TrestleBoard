@@ -5458,6 +5458,34 @@ public partial class MainWindow : Window
         return true;
     }
 
+    /// <summary>M100: a whole page copied, with everything on it.</summary>
+    internal bool DuplicateThisPage()
+    {
+        if (_pages is null || _source is null)
+        {
+            return false;
+        }
+
+        _editor?.End();
+        if (_pages.DuplicatePage(_pageIndex) is null)
+        {
+            Announce("There is no page to copy.");
+            return false;
+        }
+
+        _source.Invalidate(new ChangeScope(ChangeKind.PageStructure));
+        _rail.ForgetEveryThumbnail();
+
+        // Page first, then the canvas: the copy is the thing the user is about to work on, and
+        // leaving them on the original is the commonest way a copy goes unnoticed.
+        GoToPage(_pageIndex + 1);
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+        Announce($"There is now a copy of that page, and you are looking at it — page "
+            + $"{_pageIndex + 1}. Press Ctrl+Z to undo.");
+        return true;
+    }
+
     /// <summary>M97: the paper the newsletter is printed on, and the margins round it.</summary>
     internal async Task<bool> ChangeThePaperAsync()
     {

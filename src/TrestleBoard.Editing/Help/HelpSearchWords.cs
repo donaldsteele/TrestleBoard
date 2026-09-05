@@ -45,6 +45,11 @@ public static class HelpSearchWords
         [ActionId.AlignTextLeft] = ["align", "back to normal", "left edge"],
         [ActionId.AlignTextRight] = ["align", "right edge", "against the right"],
 
+        // M100. What somebody says is "the same again", never "duplicate page".
+        [ActionId.DuplicatePage] =
+            ["copy the page", "same page again", "another page like this", "repeat the layout",
+             "same layout"],
+
         // M97. Nobody types "page setup" until they have failed to find it another way.
         [ActionId.PageSetup] =
             ["paper", "margins", "A4", "letter", "legal", "page size", "edges", "white space round "
