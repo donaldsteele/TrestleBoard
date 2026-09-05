@@ -92,6 +92,8 @@ internal sealed class ActionRunner
             [ActionId.AddTextFrame] = Sync(window.AddTextFrame),
             [ActionId.AddRule] = Sync(window.AddRuleAcrossThePage),
             [ActionId.Duplicate] = Sync(window.DuplicateSelected),
+            [ActionId.MoveToNextPage] = Sync(window.MoveSelectionToNextPage),
+            [ActionId.MoveToPreviousPage] = Sync(window.MoveSelectionToPreviousPage),
             [ActionId.ToggleLocked] = Sync(window.ToggleLocked),
             [ActionId.ToggleBorder] = Sync(window.ToggleBorder),
             [ActionId.ToggleShade] = Sync(window.ToggleShade),

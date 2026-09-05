@@ -321,6 +321,16 @@ public sealed record ActionContext
     /// <summary>The backup ring holds at least one earlier version to restore.</summary>
     public bool RosterHasEarlierVersions { get; init; }
 
+    /// <summary>
+    /// M91: something has been taken off the page and is waiting to be put down again.
+    ///
+    /// <para><b>This is not the system clipboard.</b> The note beside <c>edit.paste</c> says the
+    /// catalog deliberately does not know what is on the clipboard, and that stands: reading the
+    /// real one is asynchronous and this snapshot is rebuilt after every change. What this asks is
+    /// a field on a controller the context factory already holds, which costs nothing.</para>
+    /// </summary>
+    public bool HasHeldFrames { get; init; }
+
     /// <summary>True when a block of some kind is selected as an object.</summary>
     public bool HasFrameSelection =>
         Selection is SelectionKind.TextFrame or SelectionKind.Photo

@@ -841,122 +841,15 @@ public sealed class FrameEditorController
         }
 
         Document document = _session.Document;
-        string copyId = NextId("copy", id => document.Pages.Any(p => p.Blocks.Any(b => b.Id == id)));
-        PageMaster master = document.GetMaster(page.MasterRef);
-
-        // Kept on the paper. A copy that landed off the edge would be a copy the user cannot see,
-        // and "nothing happened" is the one outcome this command must never produce.
-        RectPt from = original.FrameRect;
-        var rect = new RectPt(
-            Math.Min(from.X + CopyOffsetPt, Math.Max(0f, master.Size.Width - from.Width)),
-            Math.Min(from.Y + CopyOffsetPt, Math.Max(0f, master.Size.Height - from.Height)),
-            from.Width,
-            from.Height);
-
-        int zOrder = page.Blocks.Count == 0 ? 0 : page.Blocks.Max(b => b.ZOrder) + 1;
+        var taken = new HashSet<string>(StringComparer.Ordinal);
         var children = new List<IDocumentCommand>();
-        Block copy;
 
-        switch (original)
+        if (CopyOnto(document, original, page, OffsetOnThePage(document, page, original.FrameRect), taken, children)
+            is not { } copyId)
         {
-            case TextBlock text:
-            {
-                // Its own story, holding the same paragraphs. Never the same story: two blocks on
-                // one story is what a LINK is, and a copy is not a continuation.
-                string storyId = NextId("story", id => document.Stories.Any(s => s.Id == id));
-                var story = new Story { Id = storyId };
-                if (document.TryGetStory(text.StoryRef, out Story? source))
-                {
-                    story.Paragraphs.AddRange(source.Paragraphs.Select(CopyParagraph));
-                }
-
-                children.Add(new AddStoryCommand(story));
-                copy = new TextBlock
-                {
-                    Id = copyId,
-                    StoryRef = storyId,
-                    ColumnCount = text.ColumnCount,
-                    VerticalAlign = text.VerticalAlign,
-
-                    // Deliberately NOT copied: a copy continues nothing.
-                    LinkNext = null,
-                };
-                break;
-            }
-
-            case ImageFrame image:
-                copy = new ImageFrame
-                {
-                    Id = copyId,
-                    AssetRef = image.AssetRef,
-                    Recipe = image.Recipe.Clone(),
-                    Fit = image.Fit,
-                    Caption = image.Caption,
-                    AltText = image.AltText,
-                    SourcePdfAssetRef = image.SourcePdfAssetRef,
-                    SourcePdfPage = image.SourcePdfPage,
-                };
-                break;
-
-            case WidgetBlock widget:
-                copy = new WidgetBlock
-                {
-                    Id = copyId,
-                    WidgetType = widget.WidgetType,
-                    DataVersion = widget.DataVersion,
-                    Data = widget.Data,
-                    TableStyleRef = widget.TableStyleRef,
-                };
-                break;
-
-            case VectorBlock vector:
-                copy = new VectorBlock
-                {
-                    Id = copyId,
-                    ViewBoxWidth = vector.ViewBoxWidth,
-                    ViewBoxHeight = vector.ViewBoxHeight,
-                    Parts = [.. vector.Parts.Select(part => new VectorPart
-                    {
-                        PathData = part.PathData,
-                        StrokeWidth = part.StrokeWidth,
-                    })],
-                    InkArgb = vector.InkArgb,
-                    AltText = vector.AltText,
-                    Caption = vector.Caption,
-                    EmblemId = vector.EmblemId,
-                    EmblemFingerprint = vector.EmblemFingerprint,
-                };
-                break;
-
-            case ShapeBlock shape:
-                copy = new ShapeBlock
-                {
-                    Id = copyId,
-                    Kind = shape.Kind,
-                    StrokeArgb = shape.StrokeArgb,
-                    StrokeWidthPt = shape.StrokeWidthPt,
-                    FillArgb = shape.FillArgb,
-                };
-                break;
-
-            default:
-                // A block kind nobody wired up must not be silently half-copied. M72's lesson: a
-                // new type that "appears to work" while doing the wrong thing is worse than one
-                // that refuses.
-                return null;
+            return null;
         }
 
-        copy.FrameRect = rect;
-        copy.ZOrder = zOrder;
-        copy.WrapMode = original.WrapMode;
-        copy.WrapMarginPt = original.WrapMarginPt;
-        copy.FrameStyleRef = original.FrameStyleRef;
-
-        // Deliberately NOT copied: a copy the user has just asked for is a copy they are about to
-        // move, and one that arrived pinned would refuse the very next thing they do.
-        copy.Locked = false;
-
-        children.Add(new AddBlockCommand(page.Id, copy));
         _session.Execute(new CompositeCommand(
             "Make another like this",
             new ChangeScope(ChangeKind.PageStructure, PageId: page.Id, BlockId: copyId),
@@ -966,6 +859,88 @@ public sealed class FrameEditorController
         return copyId;
     }
 
+    /// <summary>
+    /// Where a copy lands when it is put down on the page it came from: a little below and to the
+    /// right, and never off the paper.
+    ///
+    /// <para>Kept on the paper because a copy the user cannot see is a copy that did not happen,
+    /// and "nothing happened" is the one outcome this command must never produce. Offset because a
+    /// copy laid exactly on top of its original is a page that appears not to have changed.</para>
+    /// </summary>
+    private static RectPt OffsetOnThePage(Document document, Page page, RectPt from)
+    {
+        PageMaster master = document.GetMaster(page.MasterRef);
+        return new RectPt(
+            Math.Min(from.X + CopyOffsetPt, Math.Max(0f, master.Size.Width - from.Width)),
+            Math.Min(from.Y + CopyOffsetPt, Math.Max(0f, master.Size.Height - from.Height)),
+            from.Width,
+            from.Height);
+    }
+
+    /// <summary>
+    /// Puts a copy of <paramref name="original"/> onto <paramref name="page"/> at
+    /// <paramref name="rect"/>, appending the commands that do it to <paramref name="children"/>.
+    /// Returns the copy's id, or null when the block is of a kind the copier refuses.
+    ///
+    /// <para><b><paramref name="taken"/> is why this exists rather than two call sites minting
+    /// their own ids.</b> <see cref="NextId"/> answers "what is free" by looking at the document,
+    /// and the document is not mutated until the composite runs — so pasting three frames at once
+    /// would mint the same id three times and produce three blocks claiming to be one. Every id
+    /// this method mints is added to the set, so the next call round the loop steps over it.</para>
+    /// </summary>
+    private static string? CopyOnto(
+        Document document,
+        Block original,
+        Page page,
+        RectPt rect,
+        HashSet<string> taken,
+        List<IDocumentCommand> children,
+        IReadOnlyList<StoryParagraph>? paragraphs = null)
+    {
+        string copyId = NextId("copy", id => taken.Contains(id) || document.Pages.Any(p => p.Blocks.Any(b => b.Id == id)));
+        string? storyId = null;
+
+        if (original is TextBlock)
+        {
+            storyId = NextId("story", id => taken.Contains(id) || document.Stories.Any(s => s.Id == id));
+        }
+
+        if (BlockCopier.Copy(original, copyId, storyId) is not { } copy)
+        {
+            return null;
+        }
+
+        taken.Add(copyId);
+
+        if (original is TextBlock text && storyId is not null)
+        {
+            taken.Add(storyId);
+            var story = new Story { Id = storyId };
+            if (paragraphs is not null)
+            {
+                story.Paragraphs.AddRange(paragraphs.Select(BlockCopier.CopyParagraph));
+            }
+            else if (document.TryGetStory(text.StoryRef, out Story? source))
+            {
+                story.Paragraphs.AddRange(source.Paragraphs.Select(BlockCopier.CopyParagraph));
+            }
+
+            children.Add(new AddStoryCommand(story));
+        }
+
+        copy.FrameRect = rect;
+        copy.ZOrder = NextZOrder(page, children.Count);
+        children.Add(new AddBlockCommand(page.Id, copy));
+        return copyId;
+    }
+
+    /// <summary>
+    /// The top of a page's stacking order, stepped by <paramref name="offset"/> so a batch of
+    /// copies keeps the order it was copied in instead of all claiming the same rung.
+    /// </summary>
+    private static int NextZOrder(Page page, int offset) =>
+        (page.Blocks.Count == 0 ? 0 : page.Blocks.Max(b => b.ZOrder) + 1) + offset;
+
     /// <summary>Whether the chosen block was continuing its writing somewhere else — which a copy
     /// cannot do, so the shell says so.</summary>
     public bool SelectionWasLinked =>
@@ -973,16 +948,259 @@ public sealed class FrameEditorController
         && _session.Document.TryFindBlock(id, out _, out Block? block)
         && block is TextBlock { LinkNext: not null };
 
-    private static StoryParagraph CopyParagraph(StoryParagraph paragraph) => new()
+    // ---- Copy, cut, paste and moving between pages (PLAN.md §11 M91) --------------------------
+
+    /// <summary>
+    /// Something taken off the page and kept, ready to be put down again.
+    ///
+    /// <para><b>The block is a COPY taken at the moment of copying</b>, never a reference to the
+    /// one on the page. Two reasons, each a bug if it were the other way: changing the original
+    /// afterwards must not change what comes out of the clipboard, and after a CUT the original is
+    /// gone. The paragraphs come out of the story for the same reason.</para>
+    /// </summary>
+    private sealed record HeldFrame(Block Prototype, IReadOnlyList<StoryParagraph> Paragraphs);
+
+    private List<HeldFrame>? _held;
+    private string? _heldFromPageId;
+    private bool _heldWasLinked;
+
+    /// <summary>
+    /// Whether anything is waiting to be put down.
+    ///
+    /// <para><b>What is held dies with this controller, and that is on purpose.</b> A held picture
+    /// names bytes in ONE newsletter's package, so it must never outlive that newsletter — and the
+    /// shell builds a new controller for every newsletter it opens, which makes the guarantee
+    /// structural rather than something a close handler has to remember.</para>
+    /// </summary>
+    public bool HasHeldFrames => _held is { Count: > 0 };
+
+    /// <summary>
+    /// Whether what is being held was continuing its writing somewhere else — which a copy cannot
+    /// do, so the shell says so, exactly as it does for <see cref="SelectionWasLinked"/>.
+    /// </summary>
+    public bool HeldFrameWasLinked => _heldWasLinked;
+
+    /// <summary>
+    /// Keeps a copy of everything chosen. Changes nothing on the page and runs no command.
+    /// </summary>
+    /// <returns>False when nothing is chosen, or when nothing chosen is of a kind that can be
+    /// copied at all.</returns>
+    public bool CopySelection()
     {
-        ParagraphStyleRef = paragraph.ParagraphStyleRef,
-        ListKind = paragraph.ListKind,
-        Runs = [.. paragraph.Runs.Select(run => new StoryRun
+        if (_selectedBlockId is null)
         {
-            Text = run.Text,
-            CharacterStyleRef = run.CharacterStyleRef,
-        })],
-    };
+            return false;
+        }
+
+        Document document = _session.Document;
+        var held = new List<HeldFrame>();
+        bool anyLinked = false;
+        string? fromPageId = null;
+
+        foreach (string id in SelectedBlockIds)
+        {
+            if (!document.TryFindBlock(id, out Page? page, out Block? block))
+            {
+                continue;
+            }
+
+            // Asked before copying rather than after: a kind the copier refuses must not take up a
+            // place in the clipboard that paste would then silently skip.
+            if (BlockCopier.Copy(block, "probe", "probe-story") is null)
+            {
+                continue;
+            }
+
+            IReadOnlyList<StoryParagraph> paragraphs =
+                block is TextBlock text && document.TryGetStory(text.StoryRef, out Story? story)
+                    ? [.. story.Paragraphs.Select(BlockCopier.CopyParagraph)]
+                    : [];
+
+            anyLinked |= block is TextBlock { LinkNext: not null };
+            fromPageId ??= page.Id;
+            held.Add(new HeldFrame(CloneForClipboard(block), paragraphs));
+        }
+
+        if (held.Count == 0)
+        {
+            return false;
+        }
+
+        _held = held;
+        _heldFromPageId = fromPageId;
+        _heldWasLinked = anyLinked;
+        StatusMessage = null;
+        Raise();
+        return true;
+    }
+
+    /// <summary>
+    /// Keeps a copy of everything chosen and then takes it off the page, in one undo step.
+    ///
+    /// <para><b>Being kept in place does not stop a cut.</b> <see cref="Block.Locked"/> is about
+    /// position and size — a locked block has always still been deletable — and a cut that refused
+    /// would be the only way of removing something that asked a different question from Delete.</para>
+    /// </summary>
+    public bool CutSelection() => CopySelection() && DeleteSelected();
+
+    /// <summary>
+    /// Puts everything held onto <paramref name="pageIndex"/>, in one undo step, and chooses what
+    /// it put down so the next keystroke moves it.
+    ///
+    /// <para><b>Onto a different page it keeps its exact position</b>, which is the whole point:
+    /// "the same box in the same place on page four" is the thing that could not be done before.
+    /// Only a paste onto the page it was copied from is offset, so that a paste-in-place is
+    /// visibly a copy rather than a page that appears not to have changed.</para>
+    /// </summary>
+    /// <returns>The ids put down; empty when nothing was held or the page does not exist.</returns>
+    public IReadOnlyList<string> PasteOntoPage(int pageIndex)
+    {
+        Document document = _session.Document;
+        if (_held is not { Count: > 0 } held
+            || pageIndex < 0 || pageIndex >= document.Pages.Count)
+        {
+            return [];
+        }
+
+        CancelDragIfAny();
+        Page page = document.Pages[pageIndex];
+        bool ontoItsOwnPage = string.Equals(page.Id, _heldFromPageId, StringComparison.Ordinal);
+
+        var taken = new HashSet<string>(StringComparer.Ordinal);
+        var children = new List<IDocumentCommand>();
+        var pasted = new List<string>();
+
+        foreach (HeldFrame frame in held)
+        {
+            RectPt rect = ontoItsOwnPage
+                ? OffsetOnThePage(document, page, frame.Prototype.FrameRect)
+                : ClampOntoThePage(document, page, frame.Prototype.FrameRect);
+
+            if (CopyOnto(document, frame.Prototype, page, rect, taken, children, frame.Paragraphs)
+                is { } id)
+            {
+                pasted.Add(id);
+            }
+        }
+
+        if (pasted.Count == 0)
+        {
+            return [];
+        }
+
+        _session.Execute(new CompositeCommand(
+            pasted.Count == 1 ? "Put the copy here" : "Put the copies here",
+            new ChangeScope(ChangeKind.PageStructure, PageId: page.Id, BlockId: pasted[0]),
+            children));
+
+        SelectAll(pasted);
+        return pasted;
+    }
+
+    /// <summary>
+    /// Takes everything chosen off this page and puts it on <paramref name="pageIndex"/>, keeping
+    /// its position, in one undo step.
+    ///
+    /// <para><b>This is not a copy.</b> Each block keeps its id, its writing and its links, because
+    /// the user moved a frame and not a story. A chain is a list of ids and has always crossed
+    /// pages — moving a page does not touch <c>linkNext</c> either, and pouring an article onward
+    /// creates linked frames on other pages as its ordinary business — so an article that ran on
+    /// still runs on afterwards.</para>
+    ///
+    /// <para>The rect is clamped onto the target paper in case that page's master is a different
+    /// size, and the blocks land on top of whatever is already there.</para>
+    /// </summary>
+    /// <returns>The ids moved; empty when nothing was chosen or the page does not exist.</returns>
+    public IReadOnlyList<string> MoveSelectionToPage(int pageIndex)
+    {
+        Document document = _session.Document;
+        if (_selectedBlockId is null
+            || pageIndex < 0 || pageIndex >= document.Pages.Count)
+        {
+            return [];
+        }
+
+        CancelDragIfAny();
+        Page target = document.Pages[pageIndex];
+        IReadOnlyList<string> ids = SelectedBlockIds;
+
+        var moving = new List<(Page From, Block Block)>();
+        foreach (string id in ids)
+        {
+            if (document.TryFindBlock(id, out Page? from, out Block? block)
+                && !string.Equals(from.Id, target.Id, StringComparison.Ordinal))
+            {
+                moving.Add((from, block));
+            }
+        }
+
+        if (moving.Count == 0)
+        {
+            return [];
+        }
+
+        // Removals first, then the additions, then the stacking. A composite reverts its children
+        // in REVERSE, so this order is what makes one Ctrl+Z put every block back on the page it
+        // came from at the index it held — and it works only because the very same Block instance
+        // is handed to Add, since AddBlockCommand.Revert removes by reference.
+        var children = new List<IDocumentCommand>();
+        foreach ((Page from, Block block) in moving)
+        {
+            children.Add(new RemoveBlockCommand(from.Id, block.Id));
+        }
+
+        int rung = 0;
+        foreach ((Page _, Block block) in moving)
+        {
+            block.FrameRect = ClampOntoThePage(document, target, block.FrameRect);
+            children.Add(new AddBlockCommand(target.Id, block));
+            children.Add(new SetZOrderCommand(block.Id, NextZOrder(target, rung++)));
+        }
+
+        _session.Execute(new CompositeCommand(
+            moving.Count == 1 ? "Move it to another page" : "Move them to another page",
+            new ChangeScope(ChangeKind.PageStructure, PageId: target.Id, BlockId: moving[0].Block.Id),
+            children));
+
+        return [.. moving.Select(m => m.Block.Id)];
+    }
+
+    /// <summary>
+    /// The same rectangle, put onto the paper of the page it is going to — which may not be the
+    /// same size as the paper it came from.
+    ///
+    /// <para><b>Size is trimmed before position is clamped, and only when it has to be.</b> Moving
+    /// something is not a request to resize it, so on same-sized paper — which is every page in
+    /// every newsletter this app makes today, since a document has one master — nothing here
+    /// changes anything at all. But a frame wider than its page cannot be clamped into view: there
+    /// is no X that keeps a 400pt box inside a 300pt sheet. Left alone it would hang off the edge
+    /// and print cut in half, and the alternative to trimming is a move the user cannot see the
+    /// result of.</para>
+    /// </summary>
+    private static RectPt ClampOntoThePage(Document document, Page page, RectPt rect)
+    {
+        PageMaster master = document.GetMaster(page.MasterRef);
+        float width = Math.Min(rect.Width, master.Size.Width);
+        float height = Math.Min(rect.Height, master.Size.Height);
+
+        return new RectPt(
+            Math.Clamp(rect.X, 0f, Math.Max(0f, master.Size.Width - width)),
+            Math.Clamp(rect.Y, 0f, Math.Max(0f, master.Size.Height - height)),
+            width,
+            height);
+    }
+
+    /// <summary>
+    /// A detached copy of a block for the clipboard, keeping its id and geometry — the id so paste
+    /// can tell a text block from the rest, the geometry so it can land in the same place.
+    /// </summary>
+    private static Block CloneForClipboard(Block block)
+    {
+        Block clone = BlockCopier.Copy(block, block.Id, block is TextBlock text ? text.StoryRef : null)!;
+        clone.FrameRect = block.FrameRect;
+        clone.ZOrder = block.ZOrder;
+        return clone;
+    }
 
     // ---- Borders, shading and a line across the page (PLAN.md §11 M79) -------------------------
 
@@ -1084,33 +1302,59 @@ public sealed class FrameEditorController
         return blockId;
     }
 
-    /// <summary>Deletes the selected frame, detaching it from any chain first and dropping the
-    /// story when nothing else shows it (docs/M5-spec.md §7).</summary>
+    /// <summary>Deletes everything chosen, detaching each frame from any chain first and dropping
+    /// stories nothing else shows (docs/M5-spec.md §7; whole-selection from M91).</summary>
     public bool DeleteSelected()
     {
-        if (_selectedBlockId is not { } blockId)
+        if (_selectedBlockId is null)
         {
             return false;
         }
 
         CancelDragIfAny();
         Document document = _session.Document;
+        IReadOnlyList<string> ids = SelectedBlockIds;
+        (Page page, _) = document.FindBlock(ids[0]);
+
+        var children = new List<IDocumentCommand>();
+        foreach (string id in ids)
+        {
+            children.AddRange(DeleteChildrenFor(document, id, ids));
+        }
+
+        _session.Execute(new CompositeCommand(
+            ids.Count == 1 ? "Delete frame" : "Delete what was chosen",
+            new ChangeScope(ChangeKind.PageStructure, PageId: page.Id, BlockId: ids[0]),
+            children));
+        Select(null);
+        return true;
+    }
+
+    /// <summary>
+    /// The primitives that take one block off the page: chain repair, the removal itself, and the
+    /// story when nothing else is showing it.
+    /// </summary>
+    /// <param name="alsoGoing">
+    /// Every id being removed in the same breath, this one included.
+    ///
+    /// <para><b>The chain must be healed against the document as it will be, not as it is.</b>
+    /// Deleting A and B out of A→B→C one at a time would leave A's predecessor pointing at B — a
+    /// frame that is about to stop existing — so the walk below steps over every id that is also
+    /// going. Nulling the predecessor instead would break the invariant the whole linking model
+    /// rests on, that a story has exactly one head: A→B→C with B deleted once left A and C both
+    /// pointing at nothing and both still referencing the same story, and the article was drawn
+    /// TWICE, from its first paragraph, in two places on the page.</para>
+    /// </param>
+    private static List<IDocumentCommand> DeleteChildrenFor(
+        Document document, string blockId, IReadOnlyList<string> alsoGoing)
+    {
         (Page page, Block block) = document.FindBlock(blockId);
         var children = new List<IDocumentCommand>();
 
-        // Deleting a frame out of the MIDDLE of a chain heals the chain across the gap: A→B→C
-        // becomes A→C, and the article keeps flowing.
-        //
-        // Nulling the predecessor unconditionally, as this did, broke the one invariant the whole
-        // linking model rests on — that a story has exactly one head. A→B→C with B deleted left A
-        // and C both pointing at nothing and both still referencing the same story, so the article
-        // was drawn TWICE, from its first paragraph, in two places on the page. It also silently
-        // disabled the story-cleanup guard below for that story ever afterwards, since two blocks
-        // genuinely did use it. Unlink() at the bottom of this file guards the same invariant from
-        // the other direction, by minting a new story for the frame it detaches.
-        string? healTo = block is TextBlock { LinkNext: { } continuation } ? continuation : null;
+        string? healTo = SurvivingContinuationOf(document, block, alsoGoing);
 
-        if (FindPredecessor(document, blockId) is { } predecessor)
+        if (FindPredecessor(document, blockId) is { } predecessor
+            && !alsoGoing.Contains(predecessor.Id, StringComparer.Ordinal))
         {
             children.Add(new SetLinkNextCommand(predecessor.Id, healTo));
         }
@@ -1122,17 +1366,40 @@ public sealed class FrameEditorController
 
         children.Add(new RemoveBlockCommand(page.Id, blockId));
 
-        if (block is TextBlock text && !AnyOtherBlockUsesStory(document, text.StoryRef, blockId))
+        if (block is TextBlock text && !AnyOtherBlockUsesStory(document, text.StoryRef, alsoGoing))
         {
             children.Add(new RemoveStoryCommand(text.StoryRef));
         }
 
-        _session.Execute(new CompositeCommand(
-            "Delete frame",
-            new ChangeScope(ChangeKind.PageStructure, PageId: page.Id, BlockId: blockId),
-            children));
-        Select(null);
-        return true;
+        return children;
+    }
+
+    /// <summary>
+    /// The first frame after <paramref name="block"/> that is staying, or null when the rest of the
+    /// chain is going too. Walks rather than taking <c>LinkNext</c> at face value, because the
+    /// continuation may itself be on the way out.
+    /// </summary>
+    private static string? SurvivingContinuationOf(
+        Document document, Block block, IReadOnlyList<string> alsoGoing)
+    {
+        string? next = block is TextBlock text ? text.LinkNext : null;
+
+        // Bounded by the number of blocks in the document: a chain cannot visit one twice without
+        // the model already being broken, and this must not hang if it ever is.
+        int guard = document.Pages.Sum(p => p.Blocks.Count) + 1;
+        while (next is not null && guard-- > 0)
+        {
+            if (!alsoGoing.Contains(next, StringComparer.Ordinal))
+            {
+                return next;
+            }
+
+            next = document.TryFindBlock(next, out _, out Block? following) && following is TextBlock link
+                ? link.LinkNext
+                : null;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -1340,7 +1607,7 @@ public sealed class FrameEditorController
         {
             string orphan = target.StoryRef;
             children.Add(new SetStoryRefCommand(targetBlockId, source.StoryRef));
-            if (!AnyOtherBlockUsesStory(document, orphan, targetBlockId))
+            if (!AnyOtherBlockUsesStory(document, orphan, [targetBlockId]))
             {
                 children.Add(new RemoveStoryCommand(orphan));
             }
@@ -1578,9 +1845,17 @@ public sealed class FrameEditorController
         document.Pages.SelectMany(p => p.Blocks).OfType<TextBlock>()
             .FirstOrDefault(b => string.Equals(b.LinkNext, blockId, StringComparison.Ordinal));
 
-    private static bool AnyOtherBlockUsesStory(Document document, string storyId, string exceptBlockId) =>
+    /// <summary>
+    /// Whether any block that is STAYING still shows this story. A story is dropped only when
+    /// nothing will be left to draw it — and "nothing" has to account for the whole batch, or
+    /// deleting two frames of one linked article would keep the story alive on the strength of a
+    /// frame that is going in the same undo step.
+    /// </summary>
+    private static bool AnyOtherBlockUsesStory(
+        Document document, string storyId, IReadOnlyList<string> exceptBlockIds) =>
         document.Pages.SelectMany(p => p.Blocks).OfType<TextBlock>()
-            .Any(b => b.Id != exceptBlockId && string.Equals(b.StoryRef, storyId, StringComparison.Ordinal));
+            .Any(b => !exceptBlockIds.Contains(b.Id, StringComparer.Ordinal)
+                && string.Equals(b.StoryRef, storyId, StringComparison.Ordinal));
 
     private static bool IsStoryEmpty(Document document, string storyId) =>
         document.Stories.FirstOrDefault(s => s.Id == storyId) is not { } story

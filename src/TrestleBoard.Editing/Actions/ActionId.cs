@@ -355,6 +355,19 @@ public static class ActionId
     /// </summary>
     public const string Duplicate = "item.duplicate";
 
+    /// <summary>
+    /// M91: takes the chosen things off this page and puts them on the next one, at the same spot,
+    /// and follows them there.
+    ///
+    /// <para>The canvas shows one page at a time, so there is no dragging something over a page
+    /// edge — and a long, precise drag is the gesture §6 exists to avoid for this audience anyway.
+    /// A command it is.</para>
+    /// </summary>
+    public const string MoveToNextPage = "item.moveToNextPage";
+
+    /// <summary>M91: the same, backwards.</summary>
+    public const string MoveToPreviousPage = "item.moveToPreviousPage";
+
     /// <summary>M81: the chosen thing stays where it is. Position and size only.</summary>
     public const string ToggleLocked = "item.lock";
 

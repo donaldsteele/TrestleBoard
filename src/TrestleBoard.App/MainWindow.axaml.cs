@@ -4361,19 +4361,45 @@ public partial class MainWindow : Window
             : $"Done again: {description.ToLowerInvariant()}.");
     }
 
+    /// <summary>
+    /// Ctrl+X. Inside a piece of writing that is the highlighted words; outside one it is the thing
+    /// itself, taken off the page and kept (M91).
+    /// </summary>
     internal async Task CutAsync()
     {
-        if (_editor is not null)
+        if (_editor is { IsActive: true })
         {
             await _editor.CutAsync();
+            return;
         }
+
+        if (_frames is null || !_frames.CutSelection())
+        {
+            Announce("There is nothing chosen to cut. Click something on the page first.");
+            return;
+        }
+
+        _source?.Invalidate(new ChangeScope(ChangeKind.PageStructure));
+        _rail.ForgetEveryThumbnail();
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+        Announce("Taken off the page and kept. Choose the page you want it on and press Ctrl+V, "
+            + "or press Ctrl+Z to put it back.");
     }
 
+    /// <summary>Ctrl+C — the highlighted words, or the chosen thing (M91).</summary>
     internal async Task CopyAsync()
     {
-        if (_editor is not null)
+        if (_editor is { IsActive: true })
         {
             await _editor.CopyAsync();
+            return;
+        }
+
+        if (!CopyChosenThings())
+        {
+            Announce("There is nothing chosen to copy. Click something on the page first, or click "
+                + "into some writing and drag across the words you want.");
         }
     }
 
@@ -4395,7 +4421,44 @@ public partial class MainWindow : Window
             return;
         }
 
+        // M91. What was taken off the page outranks whatever the system clipboard is holding: it is
+        // the more recent deliberate act, and the one the user is mid-way through. The cost is
+        // named rather than hidden — once something on the page has been copied, Ctrl+V puts THAT
+        // down for as long as this newsletter stays open, and a picture waiting in another program
+        // is reached through Insert ▸ A picture… instead. Closing the newsletter forgets it, so
+        // this can never outlive the file whose pictures it names.
+        if (_frames is { HasHeldFrames: true })
+        {
+            PasteHeldThings();
+            return;
+        }
+
         await PastePictureAsync();
+    }
+
+    /// <summary>M91: puts what was cut or copied onto the page being looked at.</summary>
+    private void PasteHeldThings()
+    {
+        if (_frames is null)
+        {
+            return;
+        }
+
+        IReadOnlyList<string> pasted = _frames.PasteOntoPage(_pageIndex);
+        if (pasted.Count == 0)
+        {
+            Announce("There is nothing to put down here.");
+            return;
+        }
+
+        _source?.Invalidate(new ChangeScope(ChangeKind.PageStructure));
+        _rail.ForgetEveryThumbnail();
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+
+        Announce(pasted.Count == 1
+            ? $"Put down on page {_pageIndex + 1}. Drag it where you want it, or press Ctrl+Z to undo."
+            : $"{pasted.Count} things put down on page {_pageIndex + 1}. Press Ctrl+Z to undo.");
     }
 
     internal void SelectAllText() => _editor?.SelectAll();
@@ -5128,6 +5191,78 @@ public partial class MainWindow : Window
             ? "There is now a copy just below it, holding the same writing. The copy does not "
               + "continue into the next frame — it is a page of its own."
             : "There is now a copy just below it. Drag it where you want it, or press Ctrl+Z to undo.");
+    }
+
+    /// <summary>
+    /// M91: takes what is chosen off this page and puts it on the next one, then goes there.
+    /// </summary>
+    internal bool MoveSelectionToNextPage() => MoveSelectionToPage(_pageIndex + 1);
+
+    /// <summary>M91: the same, backwards.</summary>
+    internal bool MoveSelectionToPreviousPage() => MoveSelectionToPage(_pageIndex - 1);
+
+    private bool MoveSelectionToPage(int target)
+    {
+        if (_frames is null || _source is null)
+        {
+            return false;
+        }
+
+        _editor?.End();
+        IReadOnlyList<string> moved = _frames.MoveSelectionToPage(target);
+        if (moved.Count == 0)
+        {
+            Announce("There is nothing chosen to move. Click something on the page first.");
+            return false;
+        }
+
+        _source.Invalidate(new ChangeScope(ChangeKind.PageStructure));
+        _rail.ForgetEveryThumbnail();
+
+        // Page FIRST, then choose. GoToPage clears the selection — deliberately, because a
+        // selection you cannot see is worse than none — so re-choosing has to come after the turn,
+        // and it must come at all: the thing the user just moved is the thing they are about to
+        // put somewhere, and hunting for it again on a new page is the work this command exists to
+        // save.
+        GoToPage(target);
+
+        // Read, not discarded: SelectAll drops ids that are not on the page it is looking at, so
+        // this is the difference between "it is there and ready to move" and "it is there, go and
+        // find it". Promising the first while delivering the second is the gate this answers.
+        bool stillChosen = _frames.SelectAll(moved);
+
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+
+        string where = moved.Count == 1
+            ? $"It is now on page {target + 1}"
+            : $"They are now on page {target + 1}";
+        string back = moved.Count == 1
+            ? "Press Ctrl+Z to put it back."
+            : "Press Ctrl+Z to put them back.";
+
+        Announce(stillChosen
+            ? $"{where}, still chosen, so you can drag it where you want it. {back}"
+            : $"{where}. {back}");
+        return true;
+    }
+
+    /// <summary>
+    /// M91: keeps a copy of whatever is chosen on the page.
+    /// </summary>
+    private bool CopyChosenThings()
+    {
+        if (_frames is null || !_frames.CopySelection())
+        {
+            return false;
+        }
+
+        RefreshActions();
+        Announce(_frames.HeldFrameWasLinked
+            ? "Copied. Choose the page you want it on and press Ctrl+V. The copy will not continue "
+              + "into the next frame — it holds the writing, on its own."
+            : "Copied. Choose the page you want it on and press Ctrl+V.");
+        return true;
     }
 
     /// <summary>M81: keeps the chosen thing where it is, or lets it move again.</summary>

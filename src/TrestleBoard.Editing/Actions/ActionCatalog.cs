@@ -230,6 +230,14 @@ public static class ActionCatalog
         new(ActionId.Duplicate, "Make another like this",
             "Puts a copy of the chosen thing on the page, just below it.",
             ActionGroup.Item, "Ctrl+D"),
+        new(ActionId.MoveToNextPage, "Move it to the next page",
+            "Takes what you have chosen off this page, puts it in the same spot on the page after, "
+            + "and shows you that page.",
+            ActionGroup.Item, "Ctrl+Shift+PageDown"),
+        new(ActionId.MoveToPreviousPage, "Move it to the page before",
+            "Takes what you have chosen off this page, puts it in the same spot on the page before, "
+            + "and shows you that page.",
+            ActionGroup.Item, "Ctrl+Shift+PageUp"),
         new(ActionId.ToggleLocked, "Keep it where it is",
             "Stops it being moved or resized by accident. You can still change what it says.",
             ActionGroup.Item),
@@ -716,13 +724,23 @@ public static class ActionCatalog
                 : ActionAvailability.Blocked(
                     "There is nothing to do again. This becomes possible after you undo something.",
                     ActionId.Undo),
-            ActionId.Cut or ActionId.Copy => !context.IsEditingText
-                ? ActionAvailability.NotApplicable(NeedsText)
-                : context.HasTextSelection
+            // M91: cut and copy stopped being only about words. Inside a piece of writing they
+            // take the highlighted words, exactly as they have since M4; outside one they take the
+            // thing itself, which is what makes putting it on another page possible at all. The
+            // refusal has to name both ways in, because from here there is no telling which one the
+            // user was reaching for.
+            ActionId.Cut or ActionId.Copy => context.IsEditingText
+                ? context.HasTextSelection
                     ? ActionAvailability.Available
                     : ActionAvailability.Blocked(
                         "No words are highlighted. Drag across some words first, or press Ctrl+A to take them all.",
-                        ActionId.SelectAll),
+                        ActionId.SelectAll)
+                : context.HasFrameSelection
+                    ? ActionAvailability.Available
+                    : ActionAvailability.Blocked(
+                        "Nothing is chosen. Click something on the page first, or click into some "
+                        + "writing and drag across the words you want.",
+                        ActionId.SelectAllFrames),
             // M18: paste stopped being only about words. Outside a piece of writing it puts a
             // picture from the clipboard on the page, so it needs a newsletter rather than a caret.
             // What is actually on the clipboard is the shell's to read — asking here would mean
@@ -931,6 +949,25 @@ public static class ActionCatalog
             ActionId.Duplicate or ActionId.ToggleLocked => context.HasFrameSelection
                 ? ActionAvailability.Available
                 : ActionAvailability.NotApplicable(ChooseSomething),
+
+            // M91. Both ends of the newsletter refuse for a reason the user can act on, and the
+            // last page offers to add one — the M11 remedy shape, so "there is nowhere to put it"
+            // comes with somewhere to put it.
+            ActionId.MoveToNextPage => !context.HasFrameSelection
+                ? ActionAvailability.NotApplicable(ChooseSomething)
+                : context.PageIndex >= context.PageCount - 1
+                    ? ActionAvailability.Blocked(
+                        "This is the last page, so there is no page after it to move this to. "
+                        + "Add another page first.",
+                        ActionId.AddPage)
+                    : ActionAvailability.Available,
+
+            ActionId.MoveToPreviousPage => !context.HasFrameSelection
+                ? ActionAvailability.NotApplicable(ChooseSomething)
+                : context.PageIndex <= 0
+                    ? ActionAvailability.Blocked(
+                        "This is the first page, so there is no page before it to move this to.")
+                    : ActionAvailability.Available,
 
             // M81: a picture of a page needs a page, and nothing else. NOT gated on the issue date
             // — a cover somebody wants to put on the lodge's page is a cover whether or not the

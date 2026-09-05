@@ -131,6 +131,13 @@ internal static class ActionIcons
         [ActionId.AddNextToSelection] = "an arrow, which is what every other navigation glyph is",
         [ActionId.AddPreviousToSelection] = "an arrow, which is what every other navigation glyph is",
 
+        // M91. An arrow again, and the Page group is already four arrows deep — next, previous,
+        // this page earlier, this page later. A fifth and sixth pointing the same two directions
+        // while meaning something else entirely would take discrimination AWAY from the four that
+        // are there, which is the opposite of what an icon is for.
+        [ActionId.MoveToNextPage] = "an arrow, and the page arrows already mean something else",
+        [ActionId.MoveToPreviousPage] = "an arrow, and the page arrows already mean something else",
+
         // M21. A magnifying glass is the one clipboard-era glyph this audience would recognise, and
         // it is already spoken for by zoom — where it means something else entirely.
         [ActionId.Find] = "a magnifying glass would collide with zoom, where it means something else",

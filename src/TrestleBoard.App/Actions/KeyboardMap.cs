@@ -51,15 +51,19 @@ internal static class KeyboardMap
         // ---- Edit ---------------------------------------------------------------------------
         new(Key.Z, Ctrl, ActionId.Undo),
         new(Key.Y, Ctrl, ActionId.Redo),
-        new(Key.X, Ctrl, ActionId.Cut, KeyScope.WhileTyping),
-        new(Key.C, Ctrl, ActionId.Copy, KeyScope.WhileTyping),
+        // M91: NOT WhileTyping any more, for exactly the reason the note below gives about paste.
+        // Cut and copy now mean two things — the highlighted words inside a story, the chosen thing
+        // outside one — and a row scoped to typing would have left the second half unreachable from
+        // the keyboard on the day it shipped. `NoGestureIsScopedNarrowerThanTheCommandItRuns` is the
+        // test that ties this row to the catalog's answer.
+        new(Key.X, Ctrl, ActionId.Cut),
+        new(Key.C, Ctrl, ActionId.Copy),
         // M28: NOT WhileTyping. M18 made paste mean two things — words into a story, or a picture
         // from the clipboard onto the page — and the catalog says so (`IsEditingText || HasDocument`),
         // and the Edit menu advertises Ctrl+V. Only this row still believed paste was about typing,
         // so the keyboard half of M18's feature was unreachable from the day it shipped: a user who
         // copied a photo, clicked a frame and pressed Ctrl+V got nothing at all, silently
-        // (review §14.2). Cut and copy stay WhileTyping, because the catalog genuinely does require
-        // a caret for those.
+        // (review §14.2). Cut and copy joined it at M91, when they stopped needing a caret too.
         new(Key.V, Ctrl, ActionId.Paste),
         new(Key.A, Ctrl, ActionId.SelectAll, KeyScope.WhileTyping),
 
@@ -103,6 +107,12 @@ internal static class KeyboardMap
         // M81. Ctrl+D is the gesture every publishing program uses for "make another like this",
         // and it was free. Scoped away from typing, where D belongs to the caret.
         new(Key.D, Ctrl, ActionId.Duplicate, KeyScope.WhileNotTyping),
+
+        // M91. Ctrl+Page Up/Down already turn the page; adding Shift reads as "and take this with
+        // me", which is what the command does. WhileNotTyping because Page Up and Page Down belong
+        // to the caret inside a story.
+        new(Key.PageDown, CtrlShift, ActionId.MoveToNextPage, KeyScope.WhileNotTyping),
+        new(Key.PageUp, CtrlShift, ActionId.MoveToPreviousPage, KeyScope.WhileNotTyping),
         new(Key.E, CtrlShift, ActionId.EditWidget),
         new(Key.G, CtrlShift, ActionId.EditWidgetList),
         new(Key.Y, CtrlShift, ActionId.FitToContents),

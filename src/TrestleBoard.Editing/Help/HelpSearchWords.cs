@@ -40,6 +40,16 @@ public static class HelpSearchWords
         [ActionId.Duplicate] = ["copy", "duplicate", "another one", "same again", "second one"],
         [ActionId.ToggleLocked] = ["lock", "keep it still", "stop it moving", "pin", "fix in place"],
 
+        // M91. Nobody searches for "move to page". They describe the mistake they have made.
+        [ActionId.MoveToNextPage] =
+            ["wrong page", "move it over", "put it on page 4", "shift it along", "belongs on another page"],
+        [ActionId.MoveToPreviousPage] = ["wrong page", "move it back", "page before", "one page back"],
+
+        // M91. Paste stopped being only about words, and "paste" is not what this audience says.
+        [ActionId.Paste] = ["put it down", "put it here", "the one I copied"],
+        [ActionId.Copy] = ["take a copy", "same one again"],
+        [ActionId.Cut] = ["take it off the page", "move it somewhere else"],
+
         // M82. What somebody types is the symptom, not the cure.
         [ActionId.GrowToFit] =
             ["too long", "does not fit", "runs over", "bigger box", "taller", "more room", "cut off"],

@@ -154,6 +154,10 @@ public static class ActionContextFactory
             Selection = selection,
             SelectedBlockId = blockId,
             SelectionCount = editing ? 0 : frames?.SelectionCount ?? 0,
+
+            // M91. Not gated on `editing`: what is held stays held while somebody types, and Paste
+            // asks the shell which of the two it means anyway.
+            HasHeldFrames = frames?.HasHeldFrames ?? false,
             IsEditingText = editing,
             HasTextSelection = editing && !editor!.Selection.IsEmpty,
             SelectionIsTextFrame = isTextFrame,

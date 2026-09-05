@@ -419,6 +419,18 @@
         <MenuItem Header="Move this page _later" Tag="page.moveLater"
                   Click="OnActionClicked" AutomationProperties.Name="Move this page later" />
         <Separator />
+        <!-- M91. In the Page menu rather than beside "Make another like this", because Arrange had
+             no access key left and because somebody hunting for this is thinking about pages. The
+             wording says WHAT CHOSEN so it can never be read as moving the page itself, which is
+             the item directly above. Both also reach the action panel and the right-click list on
+             their own, from ActionGroup.Item. -->
+        <MenuItem Header="Move what is chosen to the ne_xt page" Tag="item.moveToNextPage"
+                  InputGesture="Ctrl+Shift+PageDown"
+                  Click="OnActionClicked" AutomationProperties.Name="Move it to the next page" />
+        <MenuItem Header="Move what is chosen to the page be_fore" Tag="item.moveToPreviousPage"
+                  InputGesture="Ctrl+Shift+PageUp"
+                  Click="OnActionClicked" AutomationProperties.Name="Move it to the page before" />
+        <Separator />
         <!-- M78: every issue from the old tool had one. One wording, editable nowhere. -->
         <MenuItem Header="Show page num_bers at the bottom" Tag="page.footer"
                   Click="OnActionClicked"

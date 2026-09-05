@@ -4677,6 +4677,47 @@ Lossless was chosen over a high-quality JPEG on the record: the picture that exp
 with lettering in it, and sharp text over flat colour is where JPEG ringing shows. Files get bigger;
 that is M87's problem, not this one's.
 
+### M91 — Copy it, and put it on another page (M) — **delivered 2026-09-05, `docs/M91-spec.md`**
+
+Anything on a page was stuck there. `item.duplicate` always landed the copy on the SAME page, and no
+operation anywhere in `src/` relocated a block between pages at all. Cut and copy were words only.
+So "this notice belongs on page 4" meant deleting it and answering the whole widget wizard again.
+
+Ctrl+C/Ctrl+X now take the highlighted words inside a story and the chosen thing outside one; Ctrl+V
+puts it on the page being looked at; `item.moveToNextPage`/`item.moveToPreviousPage`
+(Ctrl+Shift+PageDown/PageUp) move what is chosen and follow it there. All of it acts on the whole
+selection in one undo step. **No new `IDocumentCommand` type, nothing touched Layout/Rendering/
+Export.Pdf, and no baseline moved.**
+
+Moving is a command rather than a drag because the canvas draws one page — there is no page edge to
+drag across, and a long precise drag is what §6 exists to avoid. Paste onto a DIFFERENT page keeps
+the exact position, which is the whole feature; only paste back onto its own page offsets.
+
+Three defects the design had to avoid, each with a test that fails without the fix: a batch of pastes
+minting one id (`NextId` scans a document the composite has not changed yet, and `TryFindBlock`
+returns the first match, so the wrong block would be edited from then on); chain healing computed one
+block at a time (cutting A and B out of A→B→C→D must join to D, the frame that is *staying*); and a
+clipboard holding live references (a cut would leave nothing to reference). Move keeps links
+untouched on the record — a chain is a list of ids and has always crossed pages — while a copy breaks
+them, and both directions are tested.
+
+> **Found on the way, and left open deliberately.** `DeleteSelected` only ever deleted one thing.
+> The app offers four ways to choose several objects and only align and distribute ever used the
+> selection. Delete was widened here because Cut needed it; **duplicate, lock, border, shade, wrap,
+> z-order, nudge and drag are still primary-only, and secondary selections are not even drawn as
+> chosen.** That is item A0 of the missing-functionality register and wants a milestone of its own.
+
+> **And a regression test that could not fail — twice.** The one guarding the old text path passed
+> against deliberately broken code, first because it asserted on the wrong frame (the click landed in
+> a higher block, so the story it checked was empty from the start), then because it was written as
+> `await Session.Dispatch(async () => …)` — the exact trap M39 documented and left a warning about
+> in `HeadlessSession.cs`, where the inner task is dropped and every assertion vanishes. Both were
+> found by mutation — putting the bug in and checking the test noticed — which is what found them
+> first. **M39's guard did its job:** `DispatchDisciplineTests` scans every file in the test project
+> for that exact pattern, and would have failed on the next full run regardless. The lesson is not
+> about the guard but about the gap before it: a brand-new test that passes tells you nothing until
+> you have watched it fail.
+
 ### Sizing & sequencing notes (M77–M87, added 2026-09-01)
 
 - **Order: M77 → M78 → M79 → M86 → M80 → M81 → M87 → M82 → M83 → M84 → M85.** Safety first and
