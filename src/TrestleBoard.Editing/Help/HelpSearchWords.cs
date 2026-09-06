@@ -103,6 +103,9 @@ public static class HelpSearchWords
             ["recolour the emblem", "square and compasses colour", "ink", "navy emblem",
              "make the drawing blue"],
 
+        [ActionId.PullItIn] =
+            ["indent", "quotation", "block quote", "set apart", "pull quote", "margins on a paragraph"],
+
         [ActionId.RecentNewsletters] =
             ["recent files", "reopen", "the one I had open", "last week's", "open again"],
 

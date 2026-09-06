@@ -4718,6 +4718,33 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M109 - Pull it in from both sides (M) - **delivered 2026-09-06, `docs/M109-spec.md`**
+
+`ParagraphStyleDef` carried exactly one indent - `FirstLineIndentPt`, which marks where a paragraph
+BEGINS. Nothing could set a paragraph APART from the ones around it (the announcement pulled in from
+both sides, the quotation from the Grand Master), and the engine had no left or right indent to
+honour if anything had asked. Unlike most of this audit's findings, this one was missing from EVERY
+layer. Both indents are now on the style and applied by narrowing the column BEFORE the photographs
+are subtracted, so a pulled-in paragraph still wraps round a picture.
+
+`text.pullItIn` offers **one step in**, two picas a side - what a printer would use. The engine takes
+arbitrary numbers; a pair of boxes to type points into is two questions asked to answer the one the
+committee is actually asking, which is "set this apart" (M107's reasoning). A toggle read off the
+caret, like bold.
+
+> **The part that needed real design: composition.** M96 minted alignment as `body~centred` with
+> `RoleOf` cutting at the first `~`. A second variant added naively would have broken it silently -
+> re-centring a pulled-in paragraph would have named a style with no indent in it. The two now share
+> ONE naming grammar, as `CharacterStyleResolver` owns weight, slant and underline together:
+> `body`, `body~in`, `body~centred`, `body~centred-in`, `body~right`, `body~right-in`. `-in` goes on
+> LAST, exactly as `-underline` does, so every combination still bases to `body`; left-and-pulled-in
+> needs its own separator (`body~in`, never `body-in`, which would read as a role of that name).
+> `AlignmentOf` and `IsPulledIn` read both facts back off the NAME, which is what lets either verb be
+> applied without consulting the definition it is about to replace.
+
+> **Indents that would leave nothing are ignored rather than obeyed.** Text that vanished because two
+> numbers met in the middle would be a newsletter losing a paragraph silently.
+
 ### M108 - Fit the width (S) - **delivered 2026-09-06, `docs/M108-spec.md`**
 
 Fit page is for seeing the SHAPE of a page; fit width is for READING it - the writing as large as it

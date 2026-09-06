@@ -187,6 +187,12 @@ public sealed class TextLayoutEngine
                     continue;
                 }
 
+                // M109: the paragraph's own left and right indents narrow the column before the
+                // photographs are subtracted from it. They apply to EVERY line — that is what makes
+                // them a different thing from the first-line indent, which FillLine adds on top of
+                // the left one for the first line alone.
+                FrameRect textColumn = NarrowedByIndents(column, para.Style);
+
                 // Find a band with usable segments, advancing past fully blocked bands.
                 float minSegWidth = _options.MinSegmentAvgCharMultiple
                     * GetMetrics(para.Words[wordIdx].PrimaryFontKey, para.Words[wordIdx].PrimarySizePt).AverageCharWidthPt;
@@ -199,7 +205,7 @@ public sealed class TextLayoutEngine
                         break;
                     }
 
-                    segments = ComputeSegments(column, frame.Exclusions, y, y + para.LineHeight, minSegWidth);
+                    segments = ComputeSegments(textColumn, frame.Exclusions, y, y + para.LineHeight, minSegWidth);
                     if (segments.Count > 0)
                     {
                         break;
@@ -481,6 +487,22 @@ public sealed class TextLayoutEngine
         }
 
         return words;
+    }
+
+    /// <summary>
+    /// The column a paragraph actually gets, once its own left and right indents are taken off
+    /// (M109).
+    ///
+    /// <para><b>Indents that would leave nothing are ignored rather than obeyed.</b> A paragraph
+    /// indented wider than the frame it is in must still lay out — text that vanished because two
+    /// numbers met in the middle would be a newsletter losing a paragraph silently, which is worse
+    /// than one that ignores a setting somebody can see is not working.</para>
+    /// </summary>
+    private static FrameRect NarrowedByIndents(FrameRect column, ParagraphStyle style)
+    {
+        float left = column.Left + Math.Max(0f, style.LeftIndentPt);
+        float right = column.Right - Math.Max(0f, style.RightIndentPt);
+        return right - left <= Epsilon ? column : column with { Left = left, Right = right };
     }
 
     // ---- Band segments (PLAN.md §3 exclusion → segment algorithm) --------------------------

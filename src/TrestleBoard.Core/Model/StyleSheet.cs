@@ -73,6 +73,29 @@ public sealed class ParagraphStyleDef
 
     public float FirstLineIndentPt { get; set; }
 
+    /// <summary>
+    /// How far in from the left edge of the frame EVERY line of the paragraph starts (M109).
+    ///
+    /// <para><b>Every line, which is what makes it a different thing from
+    /// <see cref="FirstLineIndentPt"/>.</b> The first-line indent marks where a paragraph begins;
+    /// this one sets a paragraph apart from the ones around it — the announcement pulled in from
+    /// both sides, the quotation from the Grand Master. The two add up on the first line, and that
+    /// is on purpose: an indented block whose own paragraphs are indented is a thing typography has
+    /// always allowed.</para>
+    ///
+    /// <para>Zero by default, so a newsletter written before this lays out exactly as it did.</para>
+    /// </summary>
+    public float LeftIndentPt { get; set; }
+
+    /// <summary>
+    /// How far in from the right edge of the frame every line of the paragraph stops (M109).
+    ///
+    /// <para>Its own property rather than half of a symmetric "inset", because a hanging quotation
+    /// pulled in on the left alone is as common as one pulled in on both sides, and a single number
+    /// could not say that.</para>
+    /// </summary>
+    public float RightIndentPt { get; set; }
+
     public TextAlignment Align { get; set; } = TextAlignment.Left;
 
     [JsonExtensionData]

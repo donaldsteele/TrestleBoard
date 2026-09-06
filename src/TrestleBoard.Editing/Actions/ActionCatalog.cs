@@ -237,6 +237,13 @@ public static class ActionCatalog
         new(ActionId.AlignTextRight, "Line it up on the right",
             "Ends every line of the chosen paragraphs at the right edge.",
             ActionGroup.Text, "Ctrl+R"),
+
+        // M109. A toggle rather than two boxes to type points into: what the committee wants is
+        // "set this apart", and a pair of measurements is two questions asked to answer that one.
+        new(ActionId.PullItIn, "Pull it in from both sides",
+            "Brings the chosen paragraphs in from the left and right, to set an announcement or a "
+            + "quotation apart from the writing around it. Choose it again to put it back.",
+            ActionGroup.Text),
         // M99. M86's third deliverable. Not "colour" alone: the app's own appearance has owned
         // that word in the search box since M16.
         new(ActionId.TextColour, "What colour the writing is…",
@@ -964,7 +971,8 @@ public static class ActionCatalog
                     ? ActionAvailability.Available
                     : ActionAvailability.NotApplicable(NeedsText),
 
-            ActionId.AlignTextLeft or ActionId.AlignTextCentre or ActionId.AlignTextRight =>
+            ActionId.AlignTextLeft or ActionId.AlignTextCentre or ActionId.AlignTextRight
+                or ActionId.PullItIn =>
                 context.IsEditingText
                     ? ActionAvailability.Available
                     : ActionAvailability.NotApplicable(NeedsText),

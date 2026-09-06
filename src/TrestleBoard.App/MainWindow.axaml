@@ -163,6 +163,10 @@
                     Click="OnActionClicked" AutomationProperties.Name="Line it up down the middle" />
           <MenuItem Header="On the _right" Tag="text.alignRight" InputGesture="Ctrl+R"
                     Click="OnActionClicked" AutomationProperties.Name="Line it up on the right" />
+          <Separator />
+          <MenuItem Header="_Pull it in from both sides" Tag="text.pullItIn"
+                    Click="OnActionClicked"
+                    AutomationProperties.Name="Pull it in from both sides" />
         </MenuItem>
         <!-- M101: everything that changes the appearance of writing, in one place. Bold, italic and the two list verbs stay outside it because they are pressed far more often than everything here put together. -->
         <MenuItem Header="_How the writing looks" AutomationProperties.Name="How the writing looks">

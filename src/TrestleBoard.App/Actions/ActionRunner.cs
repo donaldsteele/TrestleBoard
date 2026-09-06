@@ -97,6 +97,7 @@ internal sealed class ActionRunner
             [ActionId.AlignTextLeft] = Sync(() => window.AlignText(Core.Model.TextAlignment.Left)),
             [ActionId.AlignTextCentre] = Sync(() => window.AlignText(Core.Model.TextAlignment.Center)),
             [ActionId.AlignTextRight] = Sync(() => window.AlignText(Core.Model.TextAlignment.Right)),
+            [ActionId.PullItIn] = Sync(window.TogglePulledIn),
             [ActionId.DuplicatePage] = Sync(window.DuplicateThisPage),
             [ActionId.PageSetup] = Async(() => window.ChangeThePaperAsync()),
             [ActionId.TextColour] = Async(() => window.ChangeTextColourAsync()),

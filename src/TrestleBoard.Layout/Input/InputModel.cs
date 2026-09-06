@@ -47,7 +47,16 @@ public readonly record struct ParagraphStyle(
     float FirstLineIndentPt,
     TextAlign Align,
     CharacterStyle DefaultRun,
-    string MarkerText = "");
+    string MarkerText = "",
+
+    /// <summary>
+    /// M109: how far in from the frame's left edge EVERY line starts. Optional and last, so every
+    /// existing construction of this struct keeps compiling and keeps meaning what it did.
+    /// </summary>
+    float LeftIndentPt = 0f,
+
+    /// <summary>M109: how far in from the frame's right edge every line stops.</summary>
+    float RightIndentPt = 0f);
 
 public sealed record LayoutRun(string Text, CharacterStyle Style);
 

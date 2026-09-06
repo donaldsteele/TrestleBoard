@@ -5787,6 +5787,39 @@ public partial class MainWindow : Window
     }
 
     /// <summary>M96: lines the chosen paragraphs up left, centred or right.</summary>
+    /// <summary>
+    /// M109: pulls the chosen paragraphs in from both sides, or puts them back.
+    ///
+    /// <para>A toggle read off the paragraph the caret is in, like bold and italic, so there is one
+    /// command to find rather than two that are each wrong half the time.</para>
+    /// </summary>
+    internal bool TogglePulledIn()
+    {
+        if (_editor is not { IsActive: true } editor)
+        {
+            Announce("Click into some writing first, then choose to pull it in.");
+            return false;
+        }
+
+        bool wanted = !editor.IsPulledIn;
+        if (!editor.SetPulledIn(wanted))
+        {
+            Announce("It is already like that, so nothing has changed.");
+            return false;
+        }
+
+        // A paragraph style change relays the story it is in, and the frames after it in the chain.
+        _source?.Invalidate(new ChangeScope(ChangeKind.Text));
+        _rail.ForgetEveryThumbnail();
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+
+        Announce(wanted
+            ? "Pulled in from both sides. Press Ctrl+Z to undo."
+            : "Put back out to the edges. Press Ctrl+Z to undo.");
+        return true;
+    }
+
     internal bool AlignText(Core.Model.TextAlignment alignment)
     {
         if (_editor is not { IsActive: true } editor)

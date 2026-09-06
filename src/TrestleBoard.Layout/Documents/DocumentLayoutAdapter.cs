@@ -202,7 +202,9 @@ public static class DocumentLayoutAdapter
                     paraStyle.FirstLineIndentPt,
                     MapAlign(paraStyle.Align),
                     defaultRun,
-                    MarkerFor(story.Paragraphs, index)),
+                    MarkerFor(story.Paragraphs, index),
+                    paraStyle.LeftIndentPt,
+                    paraStyle.RightIndentPt),
                 runs));
         }
 

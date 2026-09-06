@@ -157,6 +157,9 @@ public static class ActionId
 
     public const string AlignTextRight = "text.alignRight";
 
+    /// <summary>M109: the chosen paragraphs pulled in from both sides, to set them apart.</summary>
+    public const string PullItIn = "text.pullItIn";
+
     /// <summary>
     /// M99: what colour the writing is. `CharacterStyleDef.ColorArgb` has been plumbed end to end
     /// since M1 — resolver, adapter, shaper, both renderers — and nothing could set it.

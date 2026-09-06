@@ -167,22 +167,54 @@ public static class StyleOverrides
 /// </summary>
 public static class ParagraphAlignmentNames
 {
-    /// <summary>The style name for a role lined up this way, or the role itself for left.</summary>
-    public static string NameFor(string roleName, TextAlignment alignment)
+    /// <summary>
+    /// M109: the suffix for a paragraph pulled in from both sides.
+    ///
+    /// <para><b>Appended LAST</b>, after the alignment word, so <c>body~centred-in</c> bases to
+    /// <c>body</c> through <see cref="RoleOf"/> unchanged and the two variants compose instead of
+    /// overwriting each other. This is the same reason
+    /// <c>CharacterStyleResolver.UnderlineSuffix</c> goes on after bold and italic.</para>
+    /// </summary>
+    public const string PulledInSuffix = "-in";
+
+    /// <summary>
+    /// How far in a pulled-in paragraph comes, on each side (M109).
+    ///
+    /// <para>One number, not a box to type one into. What the committee wants is "set this apart",
+    /// and a pair of measurements is two questions asked to answer that one — the reasoning M107
+    /// used about page numbering. Two picas is what a printer would use and what looks deliberate
+    /// rather than accidental at newsletter column widths.</para>
+    /// </summary>
+    public const float PulledInPt = 24f;
+
+    /// <summary>The style name for a role lined up this way, and pulled in or not.</summary>
+    public static string NameFor(string roleName, TextAlignment alignment, bool pulledIn = false)
     {
         ArgumentException.ThrowIfNullOrEmpty(roleName);
 
         string role = RoleOf(roleName);
-        return alignment switch
+        string name = alignment switch
         {
             TextAlignment.Left => role,
             TextAlignment.Center => $"{role}{StyleOverrides.Separator}centred",
             TextAlignment.Right => $"{role}{StyleOverrides.Separator}right",
             _ => throw new ArgumentOutOfRangeException(nameof(alignment)),
         };
+
+        if (!pulledIn)
+        {
+            return name;
+        }
+
+        // Left and pulled in has no alignment word to hang the suffix off, so it needs the
+        // separator itself: "body~in". Without this the name would be "body-in", which RoleOf
+        // would read as a role of its own.
+        return alignment == TextAlignment.Left
+            ? $"{role}{StyleOverrides.Separator}in"
+            : name + PulledInSuffix;
     }
 
-    /// <summary>The role a possibly-aligned paragraph style derives from.</summary>
+    /// <summary>The role a possibly-aligned, possibly-pulled-in paragraph style derives from.</summary>
     public static string RoleOf(string styleName)
     {
         ArgumentException.ThrowIfNullOrEmpty(styleName);
@@ -192,26 +224,67 @@ public static class ParagraphAlignmentNames
     }
 
     /// <summary>
-    /// A copy of <paramref name="role"/> lined up the other way, under its derived name. Everything
-    /// else — the character style it points at, its spacing, its indent — is carried across, so
-    /// centring a heading does not quietly change how much air is around it.
+    /// Which way a paragraph style lines its writing up, read from its name (M109).
+    ///
+    /// <para>From the NAME rather than from the definition, because the caller asking this is about
+    /// to mint a name and needs the two to agree. A style whose name says nothing is left, which is
+    /// what every role in the templates is.</para>
     /// </summary>
-    public static ParagraphStyleDef Derive(ParagraphStyleDef role, TextAlignment alignment)
+    public static TextAlignment AlignmentOf(string styleName)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(styleName);
+
+        string variant = VariantOf(styleName);
+        return variant.StartsWith("centred", StringComparison.Ordinal) ? TextAlignment.Center
+            : variant.StartsWith("right", StringComparison.Ordinal) ? TextAlignment.Right
+            : TextAlignment.Left;
+    }
+
+    /// <summary>Whether the name says the paragraph is pulled in from both sides (M109).</summary>
+    public static bool IsPulledIn(string styleName)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(styleName);
+
+        string variant = VariantOf(styleName);
+        return variant is "in" || variant.EndsWith(PulledInSuffix, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A copy of <paramref name="role"/> lined up the other way and pulled in or not, under its
+    /// derived name. Everything else — the character style it points at, its spacing, its
+    /// first-line indent — is carried across, so centring a heading does not quietly change how
+    /// much air is around it.
+    /// </summary>
+    public static ParagraphStyleDef Derive(
+        ParagraphStyleDef role, TextAlignment alignment, bool pulledIn = false)
     {
         ArgumentNullException.ThrowIfNull(role);
 
         return new ParagraphStyleDef
         {
-            Name = NameFor(role.Name, alignment),
+            Name = NameFor(role.Name, alignment, pulledIn),
             CharacterStyleRef = role.CharacterStyleRef,
             LineSpacing = role.LineSpacing,
             SpaceBeforePt = role.SpaceBeforePt,
             SpaceAfterPt = role.SpaceAfterPt,
             FirstLineIndentPt = role.FirstLineIndentPt,
+
+            // M109. The first-line indent above is kept as well as this, and the two add up on the
+            // first line — an indented block whose own paragraphs are indented is a thing typography
+            // has always allowed.
+            LeftIndentPt = pulledIn ? PulledInPt : role.LeftIndentPt,
+            RightIndentPt = pulledIn ? PulledInPt : role.RightIndentPt,
             Align = alignment,
             ExtraProperties = role.ExtraProperties is null
                 ? null
                 : new Dictionary<string, System.Text.Json.JsonElement>(role.ExtraProperties),
         };
+    }
+
+    /// <summary>Everything after the separator, or "" for a bare role.</summary>
+    private static string VariantOf(string styleName)
+    {
+        int cut = styleName.IndexOf(StyleOverrides.Separator, StringComparison.Ordinal);
+        return cut < 0 ? string.Empty : styleName[(cut + 1)..];
     }
 }

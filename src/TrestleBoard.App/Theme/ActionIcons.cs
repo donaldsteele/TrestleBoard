@@ -164,6 +164,7 @@ internal static class ActionIcons
         [ActionId.AlignTextLeft] = "three stacks of bars differing by two pixels at 20px",
         [ActionId.AlignTextCentre] = "three stacks of bars differing by two pixels at 20px",
         [ActionId.AlignTextRight] = "three stacks of bars differing by two pixels at 20px",
+        [ActionId.PullItIn] = "a narrowed stack of bars is the align glyphs again, two pixels apart",
 
         // M97. A rectangle with a dashed inset, which at 20px is a rectangle - and the Page group
         // is navigation arrows, where a static shape would read as a fifth direction.

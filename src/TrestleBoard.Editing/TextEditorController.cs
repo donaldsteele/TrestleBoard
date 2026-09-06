@@ -1085,7 +1085,12 @@ public sealed class TextEditorController
         {
             StoryParagraph paragraph = story.Paragraphs[p];
             string role = ParagraphAlignmentNames.RoleOf(paragraph.ParagraphStyleRef);
-            string wanted = ParagraphAlignmentNames.NameFor(role, alignment);
+
+            // M109: whatever else the paragraph is, it stays it. Re-aligning a paragraph that had
+            // been pulled in used to name a style with no indent in it, which would have un-pulled
+            // it silently — the reason the two variants share one naming grammar.
+            bool pulledIn = ParagraphAlignmentNames.IsPulledIn(paragraph.ParagraphStyleRef);
+            string wanted = ParagraphAlignmentNames.NameFor(role, alignment, pulledIn);
             if (string.Equals(wanted, paragraph.ParagraphStyleRef, StringComparison.Ordinal))
             {
                 continue;
@@ -1098,7 +1103,8 @@ public sealed class TextEditorController
                 children.Insert(
                     0,
                     new EnsureParagraphStyleCommand(
-                        ParagraphAlignmentNames.Derive(sheet.GetParagraphStyle(role), alignment)));
+                        ParagraphAlignmentNames.Derive(
+                            sheet.GetParagraphStyle(role), alignment, pulledIn)));
             }
 
             children.Add(new ApplyParagraphStyleCommand(story.Id, p, wanted));
@@ -1116,6 +1122,92 @@ public sealed class TextEditorController
                 TextAlignment.Right => "Line it up on the right",
                 _ => "Line it up on the left",
             },
+            new ChangeScope(ChangeKind.Text, StoryId: story.Id),
+            children));
+        RaiseChanged();
+        return true;
+    }
+
+    /// <summary>
+    /// Whether the paragraph the caret is in is pulled in from both sides (M109).
+    /// </summary>
+    public bool IsPulledIn
+    {
+        get
+        {
+            if (!IsActive)
+            {
+                return false;
+            }
+
+            Story story = CurrentStory();
+            int index = _selection.Caret.ParagraphIndex;
+            return index >= 0
+                && index < story.Paragraphs.Count
+                && ParagraphAlignmentNames.IsPulledIn(story.Paragraphs[index].ParagraphStyleRef);
+        }
+    }
+
+    /// <summary>
+    /// Pulls the chosen paragraphs in from both sides, or puts them back (M109).
+    ///
+    /// <para><b>Left and right indents were in the model and honoured by nothing.</b>
+    /// <c>ParagraphStyleDef</c> carried only a FIRST-LINE indent, which marks where a paragraph
+    /// begins; nothing could set a paragraph apart from the ones around it, which is what an
+    /// announcement or a quotation from the Grand Master wants.</para>
+    ///
+    /// <para><b>One step in, not a measurement.</b> What the committee wants is "set this apart",
+    /// and a pair of boxes to type points into is two questions asked to answer that one. The
+    /// engine takes arbitrary numbers; the command offers the one that looks deliberate.</para>
+    ///
+    /// <para>It rides on the same derived paragraph style alignment does, and the two compose, so
+    /// a centred pull-quote is expressible and neither verb undoes the other.</para>
+    /// </summary>
+    /// <returns>False when there is no caret, or the paragraphs are already that way.</returns>
+    public bool SetPulledIn(bool pulledIn)
+    {
+        if (!IsActive)
+        {
+            return false;
+        }
+
+        Story story = CurrentStory();
+        StyleSheet sheet = _session.Document.StyleSheet;
+        TextRange range = _selection.Range;
+
+        var children = new List<IDocumentCommand>();
+        var ensured = new HashSet<string>(StringComparer.Ordinal);
+
+        for (int p = range.Start.ParagraphIndex; p <= range.End.ParagraphIndex; p++)
+        {
+            StoryParagraph paragraph = story.Paragraphs[p];
+            string role = ParagraphAlignmentNames.RoleOf(paragraph.ParagraphStyleRef);
+            TextAlignment alignment = ParagraphAlignmentNames.AlignmentOf(paragraph.ParagraphStyleRef);
+            string wanted = ParagraphAlignmentNames.NameFor(role, alignment, pulledIn);
+            if (string.Equals(wanted, paragraph.ParagraphStyleRef, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (sheet.ParagraphStyles.TrueForAll(s => s.Name != wanted) && ensured.Add(wanted))
+            {
+                children.Insert(
+                    0,
+                    new EnsureParagraphStyleCommand(
+                        ParagraphAlignmentNames.Derive(
+                            sheet.GetParagraphStyle(role), alignment, pulledIn)));
+            }
+
+            children.Add(new ApplyParagraphStyleCommand(story.Id, p, wanted));
+        }
+
+        if (children.Count == 0)
+        {
+            return false;
+        }
+
+        _session.Execute(new CompositeCommand(
+            pulledIn ? "Pull it in from both sides" : "Put it back out to the edges",
             new ChangeScope(ChangeKind.Text, StoryId: story.Id),
             children));
         RaiseChanged();
