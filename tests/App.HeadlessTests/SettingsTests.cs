@@ -270,4 +270,59 @@ public sealed class SettingsTests
             dialog.Close();
         }, TestContext.Current.CancellationToken);
     }
+
+    /// <summary>
+    /// <b>A settings file whose remembered lists are the word <c>null</c> must not stop the app
+    /// opening a newsletter.</b>
+    ///
+    /// <para>The two remembered-path lists have never been nullable in this record, so nothing in
+    /// the app <i>means</i> to write <c>"recentNewsletters": null</c> — but a real settings file on
+    /// a real machine had exactly that, and System.Text.Json honours it: an explicit null overwrites
+    /// the <c>= []</c> the property was born with. Every opening funnels through
+    /// <c>DocumentPath</c>, which remembers the newsletter, which walks that list — so the whole
+    /// application answered "Value cannot be null. (Parameter 'source')" to File → Open, for every
+    /// file, for ever. And it was self-perpetuating: the null was loaded and then written straight
+    /// back out on the next save.</para>
+    ///
+    /// <para><see cref="AppSettings.Normalised"/> already exists to say that a hand-edited settings
+    /// file must not stop the app. This is that promise applied to the collections.</para>
+    /// </summary>
+    [Fact]
+    public void ARememberedListThatSaysNullIsReadAsAnEmptyList()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"trestleboard-settings-{Guid.NewGuid():N}.json");
+        try
+        {
+            File.WriteAllText(
+                path,
+                """
+                {
+                  "recentPictures": null,
+                  "recentNewsletters": null
+                }
+                """);
+
+            AppSettings loaded = AppSettings.Load(path);
+
+            Assert.Empty(loaded.RecentNewsletters);
+            Assert.Empty(loaded.RecentPictures);
+
+            // The operations the shell performs on every open and every picture insert.
+            Assert.Equal(
+                [@"C:\lodge\October.tboard"],
+                loaded.WithNewsletterOpened(@"C:\lodge\October.tboard").RecentNewsletters);
+            Assert.Equal(
+                [@"C:\lodge\front.jpg"],
+                loaded.WithPictureUsed(@"C:\lodge\front.jpg").RecentPictures);
+            Assert.Empty(loaded.WithoutNewsletter(@"C:\lodge\October.tboard").RecentNewsletters);
+
+            // And it is repaired on the way out, so the next run does not read the null again.
+            Assert.True(loaded.Save(path));
+            Assert.Contains("\"recentNewsletters\": []", File.ReadAllText(path), StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }

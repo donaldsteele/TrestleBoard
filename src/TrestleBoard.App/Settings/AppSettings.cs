@@ -145,7 +145,7 @@ public sealed record AppSettings
         }
 
         List<string> kept = [path];
-        kept.AddRange(RecentPictures
+        kept.AddRange((RecentPictures ?? [])
             .Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase))
             .Take(RecentPicturesKept - 1));
 
@@ -191,7 +191,7 @@ public sealed record AppSettings
         }
 
         List<string> kept = [path];
-        kept.AddRange(RecentNewsletters
+        kept.AddRange((RecentNewsletters ?? [])
             .Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase))
             .Take(RecentNewslettersKept - 1));
 
@@ -211,7 +211,7 @@ public sealed record AppSettings
             ? this
             : this with
             {
-                RecentNewsletters = RecentNewsletters
+                RecentNewsletters = (RecentNewsletters ?? [])
                     .Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase))
                     .ToList(),
             };
@@ -243,7 +243,20 @@ public sealed record AppSettings
     [JsonIgnore]
     public double UiScale => Math.Clamp(UiScalePercent, MinScalePercent, MaxScalePercent) / 100d;
 
-    /// <summary>Clamped rather than rejected: a settings file edited by hand should not stop the app.</summary>
+    /// <summary>
+    /// Clamped rather than rejected: a settings file edited by hand should not stop the app.
+    ///
+    /// <para><b>The two remembered lists are part of that promise.</b> Neither has ever been
+    /// nullable in this record, so <c>= []</c> reads like a guarantee — but it is only the value the
+    /// property is BORN with, and <c>"recentNewsletters": null</c> in the file overwrites it with
+    /// null just as <c>[]</c> would overwrite it with empty. A real settings file on a real machine
+    /// had exactly that, and because every opening funnels through the shell's <c>DocumentPath</c>,
+    /// which remembers the newsletter, which walks that list, the whole application answered "Value
+    /// cannot be null. (Parameter 'source')" to File → Open — for every newsletter, permanently.
+    /// It also perpetuated itself: the null was read in and written straight back out on the next
+    /// save. Coercing here mends both ends, since <see cref="Save"/> normalises on the way out too,
+    /// so one run of a mended build cleans the file for good.</para>
+    /// </summary>
     public AppSettings Normalised() => this with
     {
         UiScalePercent = Math.Clamp(UiScalePercent, MinScalePercent, MaxScalePercent),
@@ -251,6 +264,8 @@ public sealed record AppSettings
         SicknessContactOffice = string.IsNullOrWhiteSpace(SicknessContactOffice)
             ? PhraseLibrary.DefaultOffice
             : SicknessContactOffice.Trim(),
+        RecentPictures = RecentPictures ?? [],
+        RecentNewsletters = RecentNewsletters ?? [],
     };
 
     /// <summary>
