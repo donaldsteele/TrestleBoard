@@ -374,6 +374,8 @@
                   Click="OnActionClicked" AutomationProperties.Name="Actual size" />
         <MenuItem Header="_Fit page" Tag="view.fitPage" InputGesture="Ctrl+D1"
                   Click="OnActionClicked" AutomationProperties.Name="Fit page" />
+        <MenuItem Header="Fit the wid_th" Tag="view.fitWidth" InputGesture="Ctrl+D2"
+                  Click="OnActionClicked" AutomationProperties.Name="Fit the width" />
         <Separator />
         <MenuItem Header="Show what I can _do" Tag="view.toggleActionPanel"
                   Click="OnActionClicked" AutomationProperties.Name="Show or hide the panel of things you can do" />

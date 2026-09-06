@@ -33,6 +33,7 @@ internal static class ActionIcons
         [ActionId.ZoomOut] = "minus-circle",
         [ActionId.ZoomIn] = "plus-circle",
         [ActionId.FitPage] = "fit-page",
+        [ActionId.FitWidth] = "fit-width",
 
         // The Insert group, drawn with the same six glyphs the widgets themselves use — one
         // dictionary serving both, which is what closes M7's deferral rather than duplicating it.

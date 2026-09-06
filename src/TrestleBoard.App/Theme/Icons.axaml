@@ -46,6 +46,9 @@
 
   <!-- Two corner brackets: "make the whole thing fit inside the window". -->
   <StreamGeometry x:Key="TrestleBoard.Icon.fit-page">M3,3 L11,3 L11,6 L6,6 L6,11 L3,11 Z M21,21 L13,21 L13,18 L18,18 L18,13 L21,13 Z</StreamGeometry>
+  <!-- M108: arrows pointing outward to two vertical walls - the page pushed out sideways, which is
+       the difference from fit-page's two corners. -->
+  <StreamGeometry x:Key="TrestleBoard.Icon.fit-width">M2,4 L2,20 M22,4 L22,20 M6,12 L18,12 M6,12 L10,8 M6,12 L10,16 M18,12 L14,8 M18,12 L14,16</StreamGeometry>
 
   <!-- ==== The six widget keys ==== -->
   <!-- These keys are EXACTLY the six values IWidgetDefinition.IconKey returns. docs/M7-spec.md

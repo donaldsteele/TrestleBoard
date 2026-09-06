@@ -180,7 +180,27 @@ public partial class MainWindow : Window
     private string? _announcement;
 
     private int _pageIndex;
-    private bool _fitToWindow = true;
+
+    /// <summary>
+    /// M108: which of the two "keep it fitting" modes is on, if either.
+    ///
+    /// <para>It replaced a bool, and it is a mode rather than two bools because the two cannot both
+    /// be true and a pair that can express an impossible state is a pair somebody eventually puts
+    /// into it.</para>
+    /// </summary>
+    private enum FitMode
+    {
+        /// <summary>A size the user chose. Resizing the window does not change it.</summary>
+        None,
+
+        /// <summary>The whole page in the window (M2).</summary>
+        WholePage,
+
+        /// <summary>The page as wide as the window (M108).</summary>
+        FullWidth,
+    }
+
+    private FitMode _fit = FitMode.WholePage;
     private bool _exportedThisSession;
 
     /// <summary>
@@ -8800,13 +8820,38 @@ public partial class MainWindow : Window
 
     internal void FitPage()
     {
-        _fitToWindow = true;
+        _fit = FitMode.WholePage;
         ApplyFitZoom();
     }
 
+    /// <summary>
+    /// M108: the page as wide as the window, top cut off rather than shrunk.
+    ///
+    /// <para><b>This is the accessibility one</b> (PLAN.md §6). Fit page is what you use to see the
+    /// shape of a page; fit width is what you use to READ it, because the writing is as large as it
+    /// can be while a whole line still fits across — and for the audience this application is for,
+    /// that is the difference between editing a paragraph and squinting at it. It has been the
+    /// missing rung ever since the ladder was written: Ctrl+0 and Ctrl+1 have existed since M2 and
+    /// there was no way to say "as big as will fit sideways" at all.</para>
+    ///
+    /// <para>It keeps fitting as the window is resized, exactly as fit page does, which is what
+    /// makes it a MODE rather than a one-off magnification.</para>
+    /// </summary>
+    internal void FitWidth()
+    {
+        _fit = FitMode.FullWidth;
+        ApplyFitZoom();
+    }
+
+    /// <summary>Which fit is on, for the tests and for anything that wants to say so (M108).</summary>
+    internal bool FittingTheWidthForTest => _fit == FitMode.FullWidth;
+
+    /// <summary>How big the page is being shown, so a test can compare two fits (M108).</summary>
+    internal double CanvasZoomForTest => PageCanvas.Zoom;
+
     private void OnScrollerSizeChanged(object? sender, SizeChangedEventArgs e)
     {
-        if (_fitToWindow)
+        if (_fit != FitMode.None)
         {
             ApplyFitZoom();
         }
@@ -8946,7 +8991,9 @@ public partial class MainWindow : Window
         pages.Changed += (_, _) => RefreshActions();
         editor.RevealRequested += OnCaretReveal;
 
-        _fitToWindow = true;
+        // A newly opened newsletter is shown whole, whatever the last one was shown at: the first
+        // thing somebody wants from a file they have just opened is to see what is in it.
+        _fit = FitMode.WholePage;
         ApplyFitZoom();
         RefreshActions();
     }
@@ -9059,7 +9106,7 @@ public partial class MainWindow : Window
         // Selection is per page; carrying it to another page would make the panel act on something
         // the user cannot see.
         _frames?.ClearSelection();
-        if (_fitToWindow)
+        if (_fit != FitMode.None)
         {
             ApplyFitZoom();
         }
@@ -9257,7 +9304,13 @@ public partial class MainWindow : Window
 
     private void SetZoom(double zoom, bool fit)
     {
-        _fitToWindow = fit;
+        // A size chosen by hand ends whichever fit was on; a fit sets its own mode before calling
+        // in, so this must not overwrite FullWidth with WholePage.
+        if (!fit)
+        {
+            _fit = FitMode.None;
+        }
+
         PageCanvas.Zoom = zoom;
         ZoomLabel.Text = $"{Math.Round(zoom * 100)}%";
     }
@@ -9277,7 +9330,12 @@ public partial class MainWindow : Window
             return;
         }
 
-        double zoom = Math.Min(viewportW / size.Width, viewportH / size.Height);
+        // M108: the width alone when that is the mode. The scroll bar the taller page then needs is
+        // the point of it, not a cost of it — the page is meant to run off the bottom.
+        double zoom = _fit == FitMode.FullWidth
+            ? viewportW / size.Width
+            : Math.Min(viewportW / size.Width, viewportH / size.Height);
+
         SetZoom(Math.Clamp(zoom, 0.1, 4.0), fit: true);
     }
 

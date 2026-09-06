@@ -185,6 +185,10 @@ internal static class KeyboardMap
         new(Key.OemMinus, Ctrl, ActionId.ZoomOut),
         new(Key.D0, Ctrl, ActionId.ActualSize),
         new(Key.D1, Ctrl, ActionId.FitPage),
+
+        // M108. Next to Ctrl+1 because it is the same question asked a second way, and Ctrl+2 was
+        // free — the digits above 1 claim nothing in this application.
+        new(Key.D2, Ctrl, ActionId.FitWidth),
         new(Key.F6, KeyModifiers.None, ActionId.NextRegion),
         new(Key.F6, KeyModifiers.Shift, ActionId.PreviousRegion),
 
@@ -253,6 +257,7 @@ internal static class KeyboardMap
             Key.OemComma => ",",
             Key.D0 => "0",
             Key.D1 => "1",
+            Key.D2 => "2",
 
             // M103. Avalonia's Key.Enter IS Key.Return, and the enum reports the older name — so
             // this printed "Shift+Return" for a key every keyboard in the lodge calls Enter.

@@ -185,6 +185,7 @@ internal sealed class ActionRunner
             [ActionId.ZoomOut] = Sync(() => window.StepZoom(-1)),
             [ActionId.ActualSize] = Sync(window.ZoomToActualSize),
             [ActionId.FitPage] = Sync(window.FitPage),
+            [ActionId.FitWidth] = Sync(window.FitWidth),
             [ActionId.Settings] = Async(() => window.ShowSettingsAsync()),
             [ActionId.NextRegion] = Sync(() => window.CycleRegion(forward: true)),
             [ActionId.PreviousRegion] = Sync(() => window.CycleRegion(forward: false)),

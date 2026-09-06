@@ -4718,6 +4718,30 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M108 - Fit the width (S) - **delivered 2026-09-06, `docs/M108-spec.md`**
+
+Fit page is for seeing the SHAPE of a page; fit width is for READING it - the writing as large as it
+can be while a whole line still fits across, and the bottom of the page running off the screen. For
+the audience §6 is about that is the difference between editing a paragraph and squinting at one.
+The ladder has had Ctrl+0 and Ctrl+1 since M2 and could never say "as big as will fit sideways": on
+paper taller than it is wide, which is every sheet this app prints on, fit page is limited by the
+HEIGHT, so the one thing the ladder could not express was the one that makes the words bigger.
+
+`view.fitWidth`, Ctrl+2, beside Ctrl+1 because it is the same question asked a second way. **A mode,
+not a magnification** - it keeps fitting as the window is resized, and choosing a size by hand ends
+it, because otherwise the next resize would silently undo what the user had just chosen. The scroll
+bar is the point of it, not a cost of it.
+
+> **What the bool became.** `_fitToWindow` was a bool; two fits cannot both be on, and a pair of
+> bools that can express an impossible state is a pair somebody eventually puts into it. It is now a
+> three-valued `FitMode`, and `SetZoom(fit: true)` no longer SETS the mode - the two fits set their
+> own before calling in - it only clears it when `fit` is false.
+
+> **The invariant tests caught three things on the way in.** Ctrl+2 was advertised before
+> `KeyboardMap.Describe` could spell `Key.D2`; `fit-width` needed a glyph, because fit-page carries
+> one and one of a pair having an icon reads as the other being an afterthought; and "Fit the
+> _width" collided with "Sho_w where fonts were changed".
+
 ### M107 - Leaving the front page out of the numbering (S) - **delivered 2026-09-06, `docs/M107-spec.md`**
 
 The register listed "no page-numbering options": no format, no start-at, no restart, no

@@ -386,6 +386,9 @@ public static class ActionId
     public const string ZoomOut = "view.zoomOut";
     public const string ActualSize = "view.actualSize";
     public const string FitPage = "view.fitPage";
+
+    /// <summary>M108: the page as wide as the window, so the writing is as large as it can be.</summary>
+    public const string FitWidth = "view.fitWidth";
     public const string Settings = "view.settings";
     public const string NextRegion = "view.nextRegion";
     public const string PreviousRegion = "view.previousRegion";

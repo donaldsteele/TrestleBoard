@@ -497,6 +497,14 @@ public static class ActionCatalog
         new(ActionId.ZoomOut, "Zoom out", "Makes the page on screen smaller.", ActionGroup.View, "Ctrl+-"),
         new(ActionId.ActualSize, "Actual size", "Shows the page at its printed size.", ActionGroup.View, "Ctrl+0"),
         new(ActionId.FitPage, "Fit page", "Shows the whole page in the window.", ActionGroup.View, "Ctrl+1"),
+
+        // M108. The accessibility rung the ladder never had (PLAN.md §6). Fit page is for seeing
+        // the SHAPE of a page; this is for reading it, because the writing is as large as it can be
+        // while a whole line still fits across.
+        new(ActionId.FitWidth, "Fit the width",
+            "Makes the page as wide as the window, so the writing is as large as it can be. The "
+            + "bottom of the page runs off the screen; scroll down to see it.",
+            ActionGroup.View, "Ctrl+2"),
         // M28: F10 rather than a Ctrl chord. Nothing else in the app claims a bare function key
         // except F2 and F6, and the window that makes everything bigger is the one an elderly user
         // most needs to be able to find with one finger.
@@ -1317,7 +1325,8 @@ public static class ActionCatalog
                         "There is only one page, so there is nowhere else to go."),
 
             // ---- Looking at it --------------------------------------------------------------------
-            ActionId.ZoomIn or ActionId.ZoomOut or ActionId.ActualSize or ActionId.FitPage =>
+            ActionId.ZoomIn or ActionId.ZoomOut or ActionId.ActualSize or ActionId.FitPage
+                or ActionId.FitWidth =>
                 RequiresDocument(context),
 
             _ => throw new ArgumentOutOfRangeException(
