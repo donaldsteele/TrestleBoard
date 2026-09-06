@@ -309,6 +309,13 @@ public static class ActionCatalog
         new(ActionId.ShapeColours, "Change what colour the box is…",
             "Choose what the box or line is filled with, and whether it has an outline round it.",
             ActionGroup.Item),
+        // M104. An emblem has ONE colour, so this is "what colour the emblem is" rather than the
+        // box's pair of fill and outline. Separate from ShapeColours because the two answer
+        // different questions and a single command would have to ask which kind of thing you meant.
+        new(ActionId.EmblemColour, "Change what colour the emblem is…",
+            "Choose the colour the emblem is drawn in. It is black to start with, which is what "
+            + "prints best.",
+            ActionGroup.Item),
         new(ActionId.ToggleBorder, "Put a border round it",
             "Draws a thin line round the edge of the chosen box.", ActionGroup.Item),
         new(ActionId.ToggleShade, "Shade it",
@@ -1102,6 +1109,21 @@ public static class ActionCatalog
                         + "Put a border round it or Shade it.",
                         ActionId.ToggleShade)
                     : ActionAvailability.NotApplicable(ChooseSomething),
+
+            // M104. Only a drawing has an ink colour. A box refuses towards the command that DOES
+            // recolour a box, so the two never leave somebody guessing which one they wanted.
+            ActionId.EmblemColour => context.Selection == SelectionKind.Drawing
+                ? ActionAvailability.Available
+                : context.Selection == SelectionKind.Shape
+                    ? ActionAvailability.Blocked(
+                        "That is a box, not an emblem. Use Change what colour the box is instead.",
+                        ActionId.ShapeColours)
+                    : context.HasFrameSelection
+                        ? ActionAvailability.Blocked(
+                            "Only an emblem is drawn in one colour. Click an emblem first, or use "
+                            + "Insert to put one on the page.",
+                            ActionId.InsertEmblem)
+                        : ActionAvailability.NotApplicable(ChooseSomething),
 
             ActionId.Duplicate or ActionId.ToggleLocked => context.HasFrameSelection
                 ? ActionAvailability.Available

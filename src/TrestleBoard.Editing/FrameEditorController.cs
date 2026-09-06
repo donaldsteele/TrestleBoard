@@ -1503,6 +1503,39 @@ public sealed class FrameEditorController
         return blockId;
     }
 
+    /// <summary>Whether what is chosen is an emblem, whose one colour can be changed (M104).</summary>
+    public bool SelectionIsAnEmblem =>
+        _selectedBlockId is { } emblemId
+        && _session.Document.TryFindBlock(emblemId, out _, out Block? emblemBlock)
+        && emblemBlock is VectorBlock;
+
+    /// <summary>The colour the chosen emblem is drawn in now, so the window can show it chosen.</summary>
+    public uint? SelectionEmblemInk =>
+        _selectedBlockId is { } inkId
+        && _session.Document.TryFindBlock(inkId, out _, out Block? inkBlock)
+        && inkBlock is VectorBlock vectorForInk
+            ? vectorForInk.InkArgb
+            : null;
+
+    /// <summary>
+    /// Recolours the chosen emblem (M104). False when nothing is chosen, what is chosen is not a
+    /// drawing, or it is already that colour.
+    /// </summary>
+    public bool SetSelectionEmblemInk(uint inkArgb)
+    {
+        if (_selectedBlockId is not { } blockId
+            || !_session.Document.TryFindBlock(blockId, out _, out Block? block)
+            || block is not VectorBlock vector
+            || vector.InkArgb == inkArgb)
+        {
+            return false;
+        }
+
+        _session.Execute(new SetEmblemInkCommand(blockId, inkArgb));
+        Raise();
+        return true;
+    }
+
     /// <summary>Whether what is chosen is a box or a line, whose colours can be changed (M95).</summary>
     public bool SelectionIsAShape =>
         _selectedBlockId is { } id

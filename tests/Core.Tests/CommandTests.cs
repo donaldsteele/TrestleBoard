@@ -128,6 +128,29 @@ public sealed class CommandTests
 
         ["SetShapeLook"] = _ => new SetShapeLookCommand("rule-1", 0xFF8C2A2A, 2f, 0xFFFBF3E0),
 
+        // M104. The drawing is put on the page HERE rather than in the shared fixture: a document
+        // that contains one is schema 1.1.0, and VectorBlockFormatTests asserts that the version
+        // follows what is in the document. A fixture change would have quietly made that assertion
+        // about a different document.
+        ["SetEmblemInk"] = doc =>
+        {
+            if (!doc.Pages[0].Blocks.Any(b => b.Id == "drawing-1"))
+            {
+                doc.Pages[0].Blocks.Add(new VectorBlock
+                {
+                    Id = "drawing-1",
+                    FrameRect = new RectPt(54f, 420f, 96f, 96f),
+                    ViewBoxWidth = 100,
+                    ViewBoxHeight = 100,
+                    Parts = [new VectorPart { PathData = "M10,10 L90,90", StrokeWidth = 2 }],
+                    AltText = "A placeholder drawing.",
+                    ZOrder = 2,
+                });
+            }
+
+            return new SetEmblemInkCommand("drawing-1", PageLooks.LodgeInkArgb);
+        },
+
         ["SetParagraphSpacing.Spacing"] =
             _ => new SetParagraphSpacingCommand("body", 1.5f, null, 10f, null),
         ["SetParagraphSpacing.IndentOnly"] =
@@ -139,8 +162,12 @@ public sealed class CommandTests
     public void ApplyRevertIsIdentity(string key)
     {
         Document doc = Fixtures.BuildDocument();
-        string before = Fixtures.Snapshot(doc);
+
+        // The command is built BEFORE the baseline is taken. A factory may have to put the thing it
+        // acts on onto the page first (M104's drawing does), and that setup is not the change under
+        // test — snapshotting first would make the test demand that the setup be undone too.
         IDocumentCommand command = CommandsUnderTest[key](doc);
+        string before = Fixtures.Snapshot(doc);
 
         command.Apply(doc);
         string applied = Fixtures.Snapshot(doc);

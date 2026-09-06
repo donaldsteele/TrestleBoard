@@ -4718,6 +4718,26 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M104 - What colour the emblem is (S) - **delivered 2026-09-05, `docs/M104-spec.md`**
+
+`VectorBlock.InkArgb` has been on the block since M65, `BlockCopier` copies it, and
+`DocumentRenderSource` paints every part of the drawing with it - and the only thing that ever wrote
+it was the moment of insertion. An emblem put on the page in black stayed black for the life of the
+newsletter. The fifteenth instance of the category.
+
+`SetEmblemInkCommand` sits beside `SetShapeLookCommand` for the same reason that one exists: the
+colour lives ON THE BLOCK, so no derived-style machinery is needed. `item.emblemColour` offers the
+SAME seven colours as the writing - which colours print clearly on white paper does not depend on
+whether the ink is making a letter or a square and compasses - and Black is how you put it back.
+**One colour for the whole drawing**, because a `VectorBlock` has one ink and the renderer takes no
+other: an emblem is a line drawing meant to print in one colour on a page that is usually photocopied.
+
+> **What the invariant test made us change.** `EveryCommandTypeHasIdentityCoverage` needs a drawing
+> to recolour, and adding one to the SHARED fixture makes that document schema 1.1.0 - which
+> `VectorBlockFormatTests` asserts about. Three tests failed, which is the system working. The
+> drawing is added by the factory instead, and `ApplyRevertIsIdentity` now builds the command BEFORE
+> taking its baseline: a factory's setup is not the change under test.
+
 ### M103 - A new line without a new paragraph, and copying how writing looks (S) - **delivered 2026-09-05, `docs/M103-spec.md`**
 
 **The soft break was already built.** `LineBreakAnalyzer` has listed U+2028 among its mandatory

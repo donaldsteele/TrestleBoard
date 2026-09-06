@@ -298,6 +298,9 @@
         <MenuItem Header="Change wha_t colour the box is…" Tag="item.shapeColours"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Change what colour the box is" />
+        <MenuItem Header="Chang_e what colour the emblem is…" Tag="item.emblemColour"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Change what colour the emblem is" />
         <Separator />
         <MenuItem Header="Move what is chosen to the ne_xt page" Tag="item.moveToNextPage"
                   InputGesture="Ctrl+Shift+PageDown"

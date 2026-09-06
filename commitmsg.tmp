@@ -1,33 +1,36 @@
-feat(text): a new line without a new paragraph, and copying how writing looks (M103)
+feat(emblem): what colour the emblem is (M104)
 
-The soft break was already built. LineBreakAnalyzer has listed U+2028 among its
-mandatory breaks since M1, TextLayoutEngine obeys them, and the editor's
-sanitiser lets it through because it is not a control character. Every part
-worked and no key put one in - the fourteenth instance of the audit's category
-and the cheapest of them: a command, a keyboard row and a menu item.
+VectorBlock.InkArgb has been on the block since M65, BlockCopier copies it, and
+DocumentRenderSource paints every part of the drawing with it - and the only
+thing that ever wrote it was the moment of insertion. An emblem put on the page
+in black stayed black for the life of the newsletter. The fifteenth instance of
+the category the audit named.
 
-text.lineBreak (Shift+Enter) is for an address, a list of names, a heading that
-runs to two lines - where Enter starts a new paragraph and takes the paragraph
-gap and first-line indent with it, so the committee has been living with
-headings that are two paragraphs pretending to be one.
+SetEmblemInkCommand sits beside SetShapeLookCommand for the same reason that one
+exists: the colour lives on the block, so no derived-style machinery is needed
+and this is the half that costs nothing. item.emblemColour offers the same seven
+colours as the writing, because which colours print clearly on white paper does
+not depend on whether the ink is making a letter or a square and compasses, and
+Black is how you put it back.
 
-text.pickUpLook and text.putLookDown are the format painter, named for the job
-rather than the tool. They carry a style name, not a bundle of attributes:
-everything about how a run looks is already a named style applied by reference,
-so the name carries font, size, colour, bold, italic and underline together and
-putting it down is one command. The look is not forgotten after one use,
-because making six headings match is six uses.
+One colour for the whole drawing, not one per part. That is not a simplification
+made here: a VectorBlock has a single ink and the renderer takes no other, since
+a trestle board emblem is a line drawing meant to print in one colour on a page
+that is usually photocopied.
 
-A wording bug the gesture exposed: Avalonia's Key.Enter is Key.Return and the
-enum reports the older name, so the app would have advertised "Shift+Return"
-for a key every keyboard in the lodge calls Enter.
+A box refuses towards the command that recolours a box; anything else refuses
+towards Insert an emblem. The two answer different questions and nobody should
+be left guessing which they wanted.
 
-The performance test gets its third and final version. Its reasoning was always
-right - a wall-clock assertion on a contended machine measures the neighbours -
-and its detection was wrong twice, first keying on CI, then counting sibling
-test processes. It has stopped guessing: gross regressions by default, and
-TRESTLEBOARD_PERF=1 asks for the real 16ms budget on an idle machine. The
-precise gate was always the one that counts layout passes.
+EveryCommandTypeHasIdentityCoverage needed a drawing to recolour, and putting one
+in the shared fixture makes that document schema 1.1.0 - which
+VectorBlockFormatTests asserts about. Three tests failed, which is the system
+working. The drawing is added by the factory instead, and ApplyRevertIsIdentity
+now builds the command before taking its baseline: a factory's setup is not the
+change under test.
+
+Mutation-checked: with Apply no longer writing the ink, two of the seven new
+tests fail.
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XTDVfQjJ5T8k3DtiZ6MqWD

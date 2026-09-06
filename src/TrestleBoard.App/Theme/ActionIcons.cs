@@ -153,6 +153,7 @@ internal static class ActionIcons
         // at all, and one lone glyph there would read as importance rather than as a category.
         [ActionId.AddBox] = "a rectangle, which is the shape everything on the canvas already is",
         [ActionId.ShapeColours] = "the Item group carries no icons; one alone would read as rank",
+        [ActionId.EmblemColour] = "the Item group carries no icons; one alone would read as rank",
 
         // M96. Three stacks of bars differing only in which end is ragged - the one family of
         // glyph where the difference IS the meaning, and at 20px the difference is two pixels.

@@ -99,6 +99,10 @@ public static class HelpSearchWords
         [ActionId.ShapeColours] =
             ["recolour the box", "fill", "outline", "change the box", "shade the panel"],
 
+        [ActionId.EmblemColour] =
+            ["recolour the emblem", "square and compasses colour", "ink", "navy emblem",
+             "make the drawing blue"],
+
         [ActionId.ToggleLocked] = ["lock", "keep it still", "stop it moving", "pin", "fix in place"],
 
         // M91. Nobody searches for "move to page". They describe the mistake they have made.

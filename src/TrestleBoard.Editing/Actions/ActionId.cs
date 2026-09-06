@@ -449,6 +449,9 @@ public static class ActionId
     /// <summary>M95: what colour a drawn box or line is.</summary>
     public const string ShapeColours = "item.shapeColours";
 
+    /// <summary>M104: what colour an emblem is drawn in.</summary>
+    public const string EmblemColour = "item.emblemColour";
+
     public const string ToggleBorder = "item.border";
 
     /// <summary>M79: a pale tint behind the chosen box, to mark a notice.</summary>

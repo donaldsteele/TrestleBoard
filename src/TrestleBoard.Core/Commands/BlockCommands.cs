@@ -513,3 +513,63 @@ public sealed class SetShapeLookCommand(
         document.FindBlock(BlockId).Block as ShapeBlock
             ?? throw new InvalidOperationException($"Not a box or a line: {BlockId}");
 }
+
+/// <summary>
+/// What colour an emblem is drawn in (PLAN.md §11 M104).
+///
+/// <para><b>The last of the "written once and never changeable" fields.</b>
+/// <see cref="VectorBlock.InkArgb"/> has been on the block since M65, is copied by
+/// <c>BlockCopier</c>, and is what <c>DocumentRenderSource</c> paints every part with — and the
+/// only thing that ever set it was the moment of insertion. An emblem put on the page in black
+/// stayed black for the life of the newsletter.</para>
+///
+/// <para><b>One colour for the whole drawing, not one per part.</b> That is not a simplification
+/// made here: a <see cref="VectorBlock"/> has a single ink and the renderer takes no other colour,
+/// because a trestle board emblem is a line drawing meant to print in one colour on a page that is
+/// usually black and white. Per-part colour would be a different feature and a different model.</para>
+/// </summary>
+public sealed class SetEmblemInkCommand(string blockId, uint inkArgb) : IDocumentCommand
+{
+    private uint? _before;
+
+    public string BlockId { get; } = blockId;
+
+    public uint InkArgb { get; } = inkArgb;
+
+    public string Description => "Change what colour the emblem is";
+
+    /// <summary>Content, not geometry: the drawing occupies exactly the same space either way.</summary>
+    public ChangeScope Scope => new(ChangeKind.BlockContent, BlockId: BlockId);
+
+    public void Apply(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        VectorBlock vector = Find(document);
+        _before = vector.InkArgb;
+        vector.InkArgb = InkArgb;
+    }
+
+    public void Revert(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        if (_before is not { } was)
+        {
+            throw new InvalidOperationException("Revert before Apply.");
+        }
+
+        Find(document).InkArgb = was;
+        _before = null;
+    }
+
+    /// <summary>
+    /// No merging. Two recolourings of one emblem are two decisions somebody made, and folding them
+    /// together would mean one Ctrl+Z jumping past a colour the user chose and looked at.
+    /// </summary>
+    public bool TryMerge(IDocumentCommand newer) => false;
+
+    private VectorBlock Find(Document document) =>
+        document.FindBlock(BlockId).Block as VectorBlock
+            ?? throw new InvalidOperationException($"Not a drawing: {BlockId}");
+}

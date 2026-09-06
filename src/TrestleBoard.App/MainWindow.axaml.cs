@@ -5675,6 +5675,45 @@ public partial class MainWindow : Window
         return true;
     }
 
+    /// <summary>
+    /// M104: recolours the emblem already on the page.
+    ///
+    /// <para>It reuses the writing palette, because the answer to "which colours print clearly on
+    /// white paper" does not change with what is being printed — and a second, different list of
+    /// colours would be a second thing to learn.</para>
+    /// </summary>
+    internal async Task<bool> ChangeEmblemColourAsync()
+    {
+        if (_frames is not { SelectionIsAnEmblem: true } frames
+            || frames.SelectionEmblemInk is not { } ink)
+        {
+            Announce("A colour can only be chosen for an emblem. Click one first.");
+            return false;
+        }
+
+        _editor?.End();
+        var dialog = new EmblemColourDialog(ink);
+        await dialog.ShowDialog(this);
+
+        if (!dialog.Confirmed)
+        {
+            return false;
+        }
+
+        if (!frames.SetSelectionEmblemInk(dialog.Chosen))
+        {
+            Announce("It is already that colour, so nothing has changed.");
+            return false;
+        }
+
+        _source?.Invalidate(new ChangeScope(ChangeKind.BlockContent));
+        _rail.ForgetEveryThumbnail();
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+        Announce("The emblem is that colour now. Press Ctrl+Z to undo.");
+        return true;
+    }
+
     /// <summary>M96: lines the chosen paragraphs up left, centred or right.</summary>
     internal bool AlignText(Core.Model.TextAlignment alignment)
     {
