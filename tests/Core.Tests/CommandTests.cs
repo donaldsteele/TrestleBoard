@@ -132,6 +132,9 @@ public sealed class CommandTests
         // that contains one is schema 1.1.0, and VectorBlockFormatTests asserts that the version
         // follows what is in the document. A fixture change would have quietly made that assertion
         // about a different document.
+        // M107. True, because the fixture's masters default to false and Apply must change something.
+        ["HideFooterOnFirstPage"] = _ => new HideFooterOnFirstPageCommand(true),
+
         ["SetEmblemInk"] = doc =>
         {
             if (!doc.Pages[0].Blocks.Any(b => b.Id == "drawing-1"))

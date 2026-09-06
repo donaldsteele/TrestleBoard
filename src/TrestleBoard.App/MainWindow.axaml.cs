@@ -5268,6 +5268,39 @@ public partial class MainWindow : Window
             : "Every page now says the lodge, the month and which page it is, along the bottom.");
     }
 
+    /// <summary>
+    /// M107: whether the front page is left out of the line along the bottom.
+    ///
+    /// <para>The cover already says the lodge and the month in letters an inch high, and no printed
+    /// newsletter the committee has produced numbered its own front page. The other pages keep the
+    /// numbers they had: page 2 is still "page 2 of 6", because the cover is still a sheet in the
+    /// reader's hand and a footer that disagreed with what they can count would be worse than
+    /// none.</para>
+    /// </summary>
+    internal void ToggleFooterOnFrontPage()
+    {
+        if (_session is null || _package is null || _session.Document.PageMasters.Count == 0)
+        {
+            return;
+        }
+
+        bool hiding = _session.Document.PageMasters[0].HideFooterOnFirstPage;
+
+        _session.Execute(new HideFooterOnFirstPageCommand(!hiding));
+        _source?.Invalidate(new ChangeScope(ChangeKind.PageStructure));
+        PageCanvas.InvalidateVisual();
+        _rail.ForgetEveryThumbnail();
+        RefreshActions();
+
+        Announce(hiding
+            ? "The front page is numbered again, along with the rest."
+            : "The front page is left out. The others keep their numbers — page 2 still says page 2.");
+    }
+
+    /// <summary>Whether the front page is left out, for the tests and the menu tick (M107).</summary>
+    internal bool FrontPageLeftOutOfFooter =>
+        _session?.Document.PageMasters is { Count: > 0 } masters && masters[0].HideFooterOnFirstPage;
+
     /// <summary>Whether the footer is on, for the tests and for anything that wants to say so.</summary>
     internal bool PageFooterShowing =>
         _session?.Document.PageMasters is { Count: > 0 } masters && masters[0].ShowFooter;

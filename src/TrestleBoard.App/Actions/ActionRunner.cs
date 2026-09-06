@@ -178,6 +178,7 @@ internal sealed class ActionRunner
             // "nothing happened", and saying otherwise would be the app claiming work it did not do.
             [ActionId.GoToPage] = source => Task.FromResult(window.GoToPageFrom(source)),
             [ActionId.ShowPageFooter] = Sync(window.TogglePageFooter),
+            [ActionId.FooterNotOnFrontPage] = Sync(window.ToggleFooterOnFrontPage),
 
             // ---- Looking at it ---------------------------------------------------------------------
             [ActionId.ZoomIn] = Sync(() => window.StepZoom(+1)),

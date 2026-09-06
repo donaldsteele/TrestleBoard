@@ -427,6 +427,9 @@
         <MenuItem Header="Show page num_bers at the bottom" Tag="page.footer"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Show page numbers at the bottom" />
+        <MenuItem Header="Leave the _front page out of the numbering" Tag="page.footerNotOnFront"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Leave the front page out of the numbering" />
       </MenuItem>
       <MenuItem Header="Peop_le" AutomationProperties.Name="People menu">
         <MenuItem Header="_People…" Tag="people.show" InputGesture="Ctrl+Shift+R"

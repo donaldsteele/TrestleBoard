@@ -38,6 +38,27 @@ public sealed class PageMaster
     /// </summary>
     public bool ShowFooter { get; set; }
 
+    /// <summary>
+    /// Whether the front page is left out of the line along the bottom (PLAN.md §11 M107).
+    ///
+    /// <para><b>The cover is a cover.</b> "Indian Land Lodge 414 · September 2026 · page 1 of 6"
+    /// printed under a cover heading that already says the lodge and the month says all three facts
+    /// twice, in a place the eye reads first — and no printed newsletter the committee has ever
+    /// produced numbered its own front page.</para>
+    ///
+    /// <para><b>Phrased as HIDE, defaulting to false, so that a file without the property opens
+    /// looking exactly as it did yesterday</b> — the same additive rule
+    /// <see cref="ShowFooter"/> follows, and the reason this is not "FooterOnFirstPage" defaulting
+    /// to true: a missing property must mean "carry on as before", and with the positive phrasing
+    /// it would mean "stop printing the number on page 1" for every newsletter already written.</para>
+    ///
+    /// <para><b>It says nothing about the count.</b> Page 2 is still "page 2 of 6" — the cover is
+    /// still a page of the newsletter, and a reader holding sheet 2 of 6 needs the number they can
+    /// actually count to. Renumbering so the cover is page 0 would make the footer disagree with
+    /// the sheets in the reader's hand.</para>
+    /// </summary>
+    public bool HideFooterOnFirstPage { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtraProperties { get; set; }
 }

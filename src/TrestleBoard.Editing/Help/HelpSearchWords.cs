@@ -142,6 +142,10 @@ public static class HelpSearchWords
         [ActionId.ToggleShade] = ["shade", "shading", "background", "grey box", "highlight", "tint"],
 
         // M78. "Footer" is a word from another program. What people ask for is the number.
+        [ActionId.FooterNotOnFrontPage] =
+            ["no number on the cover", "skip the first page", "page numbering", "start at page 2",
+             "front page"],
+
         [ActionId.ShowPageFooter] =
             ["page number", "numbering", "footer", "bottom of the page", "which page", "page 3 of 6"],
 

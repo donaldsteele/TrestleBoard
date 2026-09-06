@@ -467,6 +467,14 @@ public static class ActionCatalog
             "Puts the lodge, the month and “page 3 of 6” along the bottom of every page.",
             ActionGroup.Page),
 
+        // M107. A toggle rather than a page-numbering dialog: the cover is the only page anybody
+        // has ever wanted left out, and a window of numbering options would be four questions
+        // asked to answer one.
+        new(ActionId.FooterNotOnFrontPage, "Leave the front page out of the numbering",
+            "Keeps the line off the cover, which already says the lodge and the month. The other "
+            + "pages keep their own numbers — page 2 is still “page 2 of 6”.",
+            ActionGroup.Page),
+
         // M76 (g). The command the page rail is made of: one press, any page, instead of pressing
         // "Next page" three times to reach page four. No shortcut — the target is a page number and
         // a chord cannot carry one; the rail's own arrow keys are the keyboard path, and the menu
@@ -971,6 +979,18 @@ public static class ActionCatalog
             // own is still the fact a reader is most likely to be looking for. Refusing until the
             // date is filled in would be refusing a page number because of a month.
             ActionId.ShowPageFooter => RequiresDocument(context),
+
+            // M107. Needs the footer to be on, because a decision about where the line does not go
+            // is meaningless when the line is nowhere. The refusal offers the toggle that turns it
+            // on, rather than leaving somebody to work out which of the two they wanted.
+            ActionId.FooterNotOnFrontPage => !context.HasDocument
+                ? ActionAvailability.Blocked(NoNewsletter, ActionId.NewFromTemplate)
+                : context.PageFooterShowing
+                    ? ActionAvailability.Available
+                    : ActionAvailability.Blocked(
+                        "The line along the bottom is turned off altogether at the moment, so "
+                        + "there is nothing to keep off the front page.",
+                        ActionId.ShowPageFooter),
 
             // M50. Same rule as SelectAllFrames: there has to be something on the page. It is
             // deliberately NOT gated on there already being a selection — with nothing chosen,

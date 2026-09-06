@@ -208,6 +208,54 @@ public sealed class ShowPageFooterCommand(bool show) : IDocumentCommand
     public bool TryMerge(IDocumentCommand newer) => false;
 }
 
+/// <summary>
+/// Whether the front page is left out of the footer (PLAN.md §11 M107).
+///
+/// <para>Every master at once, like <see cref="ShowPageFooterCommand"/>, and for the same reason:
+/// the footer is one decision about the whole newsletter, and a per-master answer would be a
+/// setting whose effect depends on which master a page happens to use — which is not a thing this
+/// audience can see or reason about.</para>
+/// </summary>
+public sealed class HideFooterOnFirstPageCommand(bool hide) : IDocumentCommand
+{
+    private Dictionary<string, bool>? _old;
+
+    public bool Hide { get; } = hide;
+
+    public string Description =>
+        Hide ? "Leave the front page out" : "Number the front page too";
+
+    public ChangeScope Scope => new(ChangeKind.PageStructure);
+
+    public void Apply(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        // Re-captured on every Apply, so redo is as correct as undo (see IDocumentCommand).
+        _old = document.PageMasters.ToDictionary(
+            m => m.Id, m => m.HideFooterOnFirstPage, StringComparer.Ordinal);
+        foreach (PageMaster master in document.PageMasters)
+        {
+            master.HideFooterOnFirstPage = Hide;
+        }
+    }
+
+    public void Revert(Document document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        Dictionary<string, bool> old = _old ?? throw new InvalidOperationException("Revert before Apply.");
+        foreach (PageMaster master in document.PageMasters)
+        {
+            if (old.TryGetValue(master.Id, out bool was))
+            {
+                master.HideFooterOnFirstPage = was;
+            }
+        }
+    }
+
+    public bool TryMerge(IDocumentCommand newer) => false;
+}
+
 public sealed class SetMetadataCommand(DocumentMetadata newMetadata) : IDocumentCommand
 {
     private DocumentMetadata? _old;

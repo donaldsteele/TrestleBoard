@@ -378,6 +378,9 @@ public static class ActionId
 
     public const string ShowPageFooter = "page.footer";
 
+    /// <summary>M107: whether the front page is left out of the line along the bottom.</summary>
+    public const string FooterNotOnFrontPage = "page.footerNotOnFront";
+
     // ---- Looking at it ------------------------------------------------------------------------
     public const string ZoomIn = "view.zoomIn";
     public const string ZoomOut = "view.zoomOut";

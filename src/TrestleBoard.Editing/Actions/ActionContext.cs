@@ -125,6 +125,14 @@ public sealed record ActionContext
     /// </summary>
     public bool HasCoverHeading { get; init; }
 
+    /// <summary>
+    /// M107: whether the line along the bottom of each page is turned on at all.
+    ///
+    /// <para>Read off the first master rather than kept as a second copy — two things that can
+    /// disagree eventually will, and here the disagreement prints the wrong page (the M55 rule).</para>
+    /// </summary>
+    public bool PageFooterShowing { get; init; }
+
     /// <summary>Somewhere in the newsletter, text does not fit its frame.</summary>
     public bool HasOversetText { get; init; }
 

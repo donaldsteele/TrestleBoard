@@ -140,6 +140,8 @@ public static class ActionContextFactory
             // month" is still the honest phrase.
             IssueMonth = session?.Document.Metadata.IssueMonth ?? 0,
             HasCoverHeading = session is not null && HasACoverHeading(session.Document),
+            PageFooterShowing = session?.Document.PageMasters is { Count: > 0 } masters
+                && masters[0].ShowFooter,
             HasOversetText = source is { IsOverset: true },
             SelectionOversetWords = blockId is not null && source is not null
                 ? source.GetOversetWordCount(blockId)

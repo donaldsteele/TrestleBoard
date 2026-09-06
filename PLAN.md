@@ -4718,6 +4718,31 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M107 - Leaving the front page out of the numbering (S) - **delivered 2026-09-06, `docs/M107-spec.md`**
+
+The register listed "no page-numbering options": no format, no start-at, no restart, no
+suppress-on-first-page. Four of those five are questions nobody on this committee has asked. The
+fifth is the one every printed newsletter answers by convention - **the cover is a cover**, and
+"Indian Land Lodge 414 · September 2026 · page 1 of 6" under a cover heading that already says the
+lodge and the month says all three facts twice, in the place the eye reads first. So a toggle, not a
+window: a numbering dialog would be four questions asked to answer one.
+
+**Phrased as `HideFooterOnFirstPage`, defaulting to false** - the additive rule `ShowFooter` follows.
+With the positive phrasing a missing property would mean "stop numbering page 1" for every newsletter
+already written. **It says nothing about the count**: page 2 is still "page 2 of 6", because the
+cover is still a sheet in the reader's hand and a footer disagreeing with what they can count would
+be worse than none. Every master at once, like `ShowPageFooterCommand` beside it.
+
+> **The refusal.** With the line off altogether the question is meaningless, so it is blocked and
+> offers `page.footer` - the toggle that turns it on - rather than leaving somebody to work out which
+> of the two they wanted. `ActionContext.PageFooterShowing` is read off the first master, never kept
+> as a second copy: two things that can disagree eventually will, and here the disagreement prints
+> the wrong page (the M55 rule).
+
+> **The load-bearing test renders page 0 AND page 1.** A rule that took the footer off every page
+> would pass a test that only looked at the cover, and would be the feature the committee already
+> has under a different name.
+
 ### M106 - The newsletters you had open (S) - **delivered 2026-09-05, `docs/M106-spec.md`**
 
 M76 (h)'s recent list scans `OldIssuesFolder` by last write time, and answers a different question:

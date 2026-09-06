@@ -184,6 +184,73 @@ public sealed class LinkAndFooterTests
     }
 
     /// <summary>
+    /// M107: the front page loses the line and every other page keeps it.
+    ///
+    /// <para><b>Both halves matter.</b> A rule that took the footer off page 1 and off page 2 as
+    /// well would pass a test that only looked at page 1, and it would be the same feature the
+    /// committee already has under a different name.</para>
+    /// </summary>
+    [Fact]
+    public void LeavingTheFrontPageOutTakesTheLineOffPageOneAndOffNoOtherPage()
+    {
+        using DocumentRenderSource source = CreateSourceWithLinks();
+        foreach (PageMaster master in MasterlessDocument(source).PageMasters)
+        {
+            master.ShowFooter = true;
+        }
+
+        source.Invalidate(new ChangeScope(ChangeKind.PageStructure));
+        byte[] coverWithIt = RenderPng(source, 0);
+        byte[] insideWithIt = RenderPng(source, 1);
+
+        foreach (PageMaster master in MasterlessDocument(source).PageMasters)
+        {
+            master.HideFooterOnFirstPage = true;
+        }
+
+        source.Invalidate(new ChangeScope(ChangeKind.PageStructure));
+
+        Assert.NotEqual(coverWithIt, RenderPng(source, 0));
+        Assert.Equal(insideWithIt, RenderPng(source, 1));
+    }
+
+    /// <summary>
+    /// <b>The count does not change.</b> Page 2 is still "page 2 of 6": the cover is still a sheet
+    /// in the reader's hand, and a footer that disagreed with what they can count would be worse
+    /// than no footer. This is the assertion that stops "leave it out" turning into "renumber".
+    /// </summary>
+    [Fact]
+    public void LeavingTheFrontPageOutDoesNotRenumberAnything()
+    {
+        using DocumentRenderSource source = CreateSourceWithLinks();
+        Document document = MasterlessDocument(source);
+        foreach (PageMaster master in document.PageMasters)
+        {
+            master.ShowFooter = true;
+            master.HideFooterOnFirstPage = true;
+        }
+
+        source.Invalidate(new ChangeScope(ChangeKind.PageStructure));
+
+        // The words the second page gets are composed from its own one-based index and the whole
+        // count, neither of which this milestone touches.
+        Assert.Contains(
+            $"page 2 of {document.Pages.Count}",
+            PageFooterRenderer.Compose(null, null, 2, document.Pages.Count),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A newsletter written before M107 has no such property and must open looking exactly as it
+    /// did yesterday — which is why the field is phrased as HIDE and defaults to false.
+    /// </summary>
+    [Fact]
+    public void ANewsletterWrittenBeforeThisIsUnchanged()
+    {
+        Assert.False(new PageMaster { Id = "m" }.HideFooterOnFirstPage);
+    }
+
+    /// <summary>
     /// M47 draws the margin and tells the user it is the edge to keep inside. The app's own
     /// furniture must not be the one thing that breaks the app's own rule.
     /// </summary>

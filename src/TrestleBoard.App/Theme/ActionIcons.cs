@@ -311,6 +311,7 @@ internal static class ActionIcons
         // M78. A toggle in a menu, decided once when the newsletter is set up and then left
         // alone — the same reasoning as the other three view toggles, none of which carries one.
         [ActionId.ShowPageFooter] = "a menu toggle set once, not a button hunted for",
+        [ActionId.FooterNotOnFrontPage] = "a menu toggle set once, not a button hunted for",
 
         // M77. Reached from a menu, at a moment when the user is being TOLD where it is rather
         // than looking for it — the crash card offers the same thing, and nobody hunts the Help

@@ -992,7 +992,10 @@ public sealed class DocumentRenderSource : IDisposable
         // Drawn here rather than placed as a block, so it is on the page for the reader and not on
         // the page for the canvas: it cannot be selected, moved or deleted, and there is no frame
         // to explain.
-        if (master.ShowFooter)
+        // M107: and not on the front page, when the committee has asked for that. The cover
+        // already says the lodge and the month in letters an inch high; saying them again in grey
+        // 9pt underneath is the app talking over its own user.
+        if (master.ShowFooter && !(pageIndex == 0 && master.HideFooterOnFirstPage))
         {
             PageFooterRenderer.Draw(
                 canvas,
