@@ -158,6 +158,7 @@ public static class ActionContextFactory
             // M91. Not gated on `editing`: what is held stays held while somebody types, and Paste
             // asks the shell which of the two it means anyway.
             HasHeldFrames = frames?.HasHeldFrames ?? false,
+            HasPickedUpALook = editor?.HasPickedUpALook ?? false,
             IsEditingText = editing,
             HasTextSelection = editing && !editor!.Selection.IsEmpty,
             SelectionIsTextFrame = isTextFrame,

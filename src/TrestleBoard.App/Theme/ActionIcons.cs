@@ -176,6 +176,16 @@ internal static class ActionIcons
         // is pick one of the seven to be the icon - that colour would read as the current one.
         [ActionId.TextColour] = "any coloured glyph would read as the colour currently chosen",
 
+        // M103. The return-arrow glyph is what Enter already means to everybody, and this command
+        // exists precisely to be the OTHER thing Enter could have done.
+        // M103. A paintbrush is the convention and it is a picture of a tool this audience does
+        // not know they are holding; the two commands are also a pair, and one glyph for two
+        // commands says they are the same command.
+        [ActionId.PickUpLook] = "a paintbrush names a tool, not the job it does",
+        [ActionId.PutLookDown] = "a paintbrush names a tool, not the job it does",
+
+        [ActionId.LineBreak] = "a return arrow, which is what plain Enter already means",
+
         [ActionId.ChangeCase] = "a letterform, which every glyph in the Text group already is",
         [ActionId.WordCount] = "a numeral, which reads as a step in a numbered list",
         [ActionId.InsertSymbol] = "Omega, a convention this audience has never met",

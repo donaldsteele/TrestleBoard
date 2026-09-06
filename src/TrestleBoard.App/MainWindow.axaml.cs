@@ -5810,6 +5810,53 @@ public partial class MainWindow : Window
         return true;
     }
 
+    /// <summary>M103: remember how the writing at the cursor looks.</summary>
+    internal bool PickUpTheLook()
+    {
+        if (_editor?.PickUpTheLook() != true)
+        {
+            Announce("Click into the writing you want to copy the look of first.");
+            return false;
+        }
+
+        RefreshActions();
+        Announce("Copied. Now highlight the words you want to look the same and choose "
+            + "“Make it look the same”.");
+        return true;
+    }
+
+    /// <summary>M103: make the highlighted writing look like what was copied.</summary>
+    internal bool PutTheLookDown()
+    {
+        if (_editor?.PutTheLookDown() != true)
+        {
+            Announce("Nothing changed. Highlight some words first, or copy a look to put on them.");
+            return false;
+        }
+
+        _source?.Invalidate(new ChangeScope(ChangeKind.Text));
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+        Announce("They match now. Press Ctrl+Z to undo, or highlight more words to do it again.");
+        return true;
+    }
+
+    /// <summary>M103: the next line without a new paragraph.</summary>
+    internal bool InsertLineBreak()
+    {
+        if (_editor is not { IsActive: true } editor)
+        {
+            Announce("Click into some writing first.");
+            return false;
+        }
+
+        editor.InsertLineBreak();
+        _source?.Invalidate(new ChangeScope(ChangeKind.Text));
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+        return true;
+    }
+
     /// <summary>M98: capitals, small letters, or one capital per word.</summary>
     internal async Task<bool> ChangeCaseAsync()
     {

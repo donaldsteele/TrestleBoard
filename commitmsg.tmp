@@ -1,0 +1,33 @@
+feat(text): a new line without a new paragraph, and copying how writing looks (M103)
+
+The soft break was already built. LineBreakAnalyzer has listed U+2028 among its
+mandatory breaks since M1, TextLayoutEngine obeys them, and the editor's
+sanitiser lets it through because it is not a control character. Every part
+worked and no key put one in - the fourteenth instance of the audit's category
+and the cheapest of them: a command, a keyboard row and a menu item.
+
+text.lineBreak (Shift+Enter) is for an address, a list of names, a heading that
+runs to two lines - where Enter starts a new paragraph and takes the paragraph
+gap and first-line indent with it, so the committee has been living with
+headings that are two paragraphs pretending to be one.
+
+text.pickUpLook and text.putLookDown are the format painter, named for the job
+rather than the tool. They carry a style name, not a bundle of attributes:
+everything about how a run looks is already a named style applied by reference,
+so the name carries font, size, colour, bold, italic and underline together and
+putting it down is one command. The look is not forgotten after one use,
+because making six headings match is six uses.
+
+A wording bug the gesture exposed: Avalonia's Key.Enter is Key.Return and the
+enum reports the older name, so the app would have advertised "Shift+Return"
+for a key every keyboard in the lodge calls Enter.
+
+The performance test gets its third and final version. Its reasoning was always
+right - a wall-clock assertion on a contended machine measures the neighbours -
+and its detection was wrong twice, first keying on CI, then counting sibling
+test processes. It has stopped guessing: gross regressions by default, and
+TRESTLEBOARD_PERF=1 asks for the real 16ms budget on an idle machine. The
+precise gate was always the one that counts layout passes.
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01XTDVfQjJ5T8k3DtiZ6MqWD

@@ -62,6 +62,15 @@ public static class HelpSearchWords
         [ActionId.TextColour] =
             ["colour the writing", "red text", "coloured heading", "ink", "make it blue"],
 
+        // M103. The trade word is "format painter" and this audience has never met it.
+        [ActionId.PickUpLook] = ["copy the look", "format painter", "same font as", "match"],
+        [ActionId.PutLookDown] = ["paste the look", "make it match", "same as the other one"],
+
+        // M103. Nobody says "line break"; they describe the gap they do not want.
+        [ActionId.LineBreak] =
+            ["new line", "line break", "next line", "without a gap", "address on two lines",
+             "shift enter"],
+
         // M98. Somebody describes the state of the words, not the name of the command.
         [ActionId.ChangeCase] =
             ["capitals", "caps", "shouting", "all in capitals", "lower case", "upper case",

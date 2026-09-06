@@ -4718,6 +4718,31 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M103 - A new line without a new paragraph, and copying how writing looks (S) - **delivered 2026-09-05, `docs/M103-spec.md`**
+
+**The soft break was already built.** `LineBreakAnalyzer` has listed U+2028 among its mandatory
+breaks since M1, `TextLayoutEngine` obeys them, and the sanitiser lets it through because it is not
+a control character. Every part worked and no key put one in - the fourteenth instance of the audit's
+category and the cheapest of them: a command, a keyboard row, a menu item. `text.lineBreak`,
+Shift+Enter, for an address or a heading on two lines, where Enter takes the paragraph gap and the
+first-line indent with it.
+
+`text.pickUpLook` / `text.putLookDown` - the format painter, named for the job rather than the tool.
+**It carries a style NAME, not a bundle of attributes**, so font, size, colour, bold, italic and
+underline travel together and putting it down is one command. The look is NOT forgotten after one
+use: making six headings match is six uses, and a painter that empties itself is the behaviour people
+complain about elsewhere.
+
+> **A wording bug the gesture exposed.** Avalonia's `Key.Enter` IS `Key.Return` and the enum reports
+> the older name, so the app would have advertised "Shift+Return" for a key every keyboard calls
+> Enter. `EveryShortcutTheCatalogAdvertisesIsInTheTable` caught it.
+
+> **The performance test, third and final version.** Its reasoning was always right - a wall-clock
+> assertion on a contended machine measures the neighbours - and its DETECTION was wrong twice, first
+> keying on `CI`, then counting sibling processes. It has stopped guessing: gross regressions by
+> default, `TRESTLEBOARD_PERF=1` for the real 16ms budget on an idle machine. The precise gate was
+> always `OnlyThePagesStoriesRelayoutDuringADrag`, which counts layout passes.
+
 ### M102 - Underline (S/M) - **delivered 2026-09-05, `docs/M102-spec.md`**
 
 **The last of M86's three, so M86 is COMPLETE**: alignment shipped as M96, colour as M99, underline

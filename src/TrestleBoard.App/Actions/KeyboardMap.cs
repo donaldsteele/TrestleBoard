@@ -88,6 +88,11 @@ internal static class KeyboardMap
         // "put the writing back" is Ctrl+Shift+U, which is birthdays, and neither collides.
         new(Key.U, Ctrl, ActionId.Underline, KeyScope.WhileTyping),
 
+        // M103. Shift+Enter is the gesture every editor uses for a line that is not a new
+        // paragraph. WhileTyping, because a bare Enter outside a story means something else and
+        // this must never reach the canvas's own Enter handling.
+        new(Key.Enter, KeyModifiers.Shift, ActionId.LineBreak, KeyScope.WhileTyping),
+
         // ---- Fonts and sizes (M14) ------------------------------------------------------------
         // Ctrl+Shift+T would have been the mnemonic choice, but M11 already gave it to "add a text
         // frame" and a promise the app cannot keep is worse than an unmemorable one.
@@ -248,6 +253,12 @@ internal static class KeyboardMap
             Key.OemComma => ",",
             Key.D0 => "0",
             Key.D1 => "1",
+
+            // M103. Avalonia's Key.Enter IS Key.Return, and the enum reports the older name — so
+            // this printed "Shift+Return" for a key every keyboard in the lodge calls Enter.
+            // Caught by EveryShortcutTheCatalogAdvertisesIsInTheTable, which is the test that
+            // exists to stop the app promising a gesture in words nobody would recognise.
+            Key.Return => "Enter",
             _ => shortcut.Key.ToString(),
         };
     }

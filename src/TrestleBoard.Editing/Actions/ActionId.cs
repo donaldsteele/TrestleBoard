@@ -157,6 +157,18 @@ public static class ActionId
     /// </summary>
     public const string TextColour = "text.colour";
 
+    /// <summary>
+    /// M103: end this line without ending the paragraph. U+2028 has been a mandatory break in the
+    /// layout engine since M1 and nothing could put one in.
+    /// </summary>
+    public const string LineBreak = "text.lineBreak";
+
+    /// <summary>M103: remember how this writing looks.</summary>
+    public const string PickUpLook = "text.pickUpLook";
+
+    /// <summary>M103: make the highlighted writing look like what was picked up.</summary>
+    public const string PutLookDown = "text.putLookDown";
+
     /// <summary>M98: capitals, small letters, or one capital per word.</summary>
     public const string ChangeCase = "text.changeCase";
 

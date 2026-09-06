@@ -774,6 +774,108 @@ public sealed class TextEditorController
         activeDescription: "Take the line off",
         inactiveDescription: "Put a line under it");
 
+    /// <summary>
+    /// The character that ends a line without ending the paragraph — U+2028 LINE SEPARATOR.
+    ///
+    /// <para><b>The layout engine has honoured it since M1.</b> <c>LineBreakAnalyzer</c> lists it
+    /// among the mandatory breaks and <c>TextLayoutEngine</c> obeys them; it is not a control
+    /// character, so the editor's own sanitiser has always let it through. Every piece of this
+    /// worked and no key put one in.</para>
+    /// </summary>
+    public const string LineSeparator = "\u2028";
+
+    // ---- Copying the look of some writing (PLAN.md §11 M103) -----------------------------------
+
+    /// <summary>
+    /// The look picked up from some writing, waiting to be put on some other writing.
+    ///
+    /// <para><b>A style NAME, not a bundle of attributes.</b> Everything about how a run looks is
+    /// already a named style applied by reference — that is the locked constraint (§1, M14) — so
+    /// carrying the name carries the font, the size, the colour, the bold, the italic and the
+    /// underline together, and putting it down is one <c>ApplyCharacterStyleCommand</c>. Copying
+    /// attributes instead would mean re-deriving a style at the far end and inventing a second way
+    /// for two runs to look the same.</para>
+    /// </summary>
+    private string? _pickedUpLook;
+
+    /// <summary>True when a look has been picked up and can be put down somewhere.</summary>
+    public bool HasPickedUpALook => _pickedUpLook is not null;
+
+    /// <summary>
+    /// Remembers how the writing at the caret looks, so it can be put on other writing (M103).
+    /// </summary>
+    /// <returns>False when there is no caret to pick a look up from.</returns>
+    public bool PickUpTheLook()
+    {
+        if (!IsActive || CurrentCharacterStyleRef is not { } reference)
+        {
+            return false;
+        }
+
+        _pickedUpLook = reference;
+        RaiseChanged();
+        return true;
+    }
+
+    /// <summary>
+    /// Puts the picked-up look on the highlighted words (M103).
+    ///
+    /// <para><b>It is not forgotten afterwards.</b> Somebody making six headings match does it six
+    /// times, and a painter that emptied itself after one use would make them pick the look up
+    /// again between each — which is the behaviour people complain about in other programs.</para>
+    /// </summary>
+    /// <returns>False when nothing is picked up, nothing is highlighted, or it already looks that way.</returns>
+    public bool PutTheLookDown()
+    {
+        if (!IsActive || _pickedUpLook is not { } look || _selection.IsEmpty)
+        {
+            return false;
+        }
+
+        Story story = CurrentStory();
+        List<(int Paragraph, int Offset, int Length, string EffectiveRef)> spans =
+            EnumerateStyleSpans(_selection.Range);
+
+        var children = new List<IDocumentCommand>();
+        foreach ((int paragraph, int offset, int length, string effectiveRef) in spans)
+        {
+            if (string.Equals(effectiveRef, look, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            // Landing back on the paragraph's own default becomes a null ref, so the run merges
+            // with its neighbours — the canonical form counts refs, not resolved styles.
+            string? applied = string.Equals(look, ParagraphDefaultRef(paragraph), StringComparison.Ordinal)
+                ? null
+                : look;
+
+            children.Add(new ApplyCharacterStyleCommand(story.Id, paragraph, offset, length, applied));
+        }
+
+        if (children.Count == 0)
+        {
+            return false;
+        }
+
+        _session.Execute(new CompositeCommand(
+            "Make it look the same",
+            new ChangeScope(ChangeKind.Text, StoryId: story.Id),
+            children));
+        RaiseChanged();
+        return true;
+    }
+
+    /// <summary>
+    /// Breaks the line without starting a new paragraph (PLAN.md §11 M103).
+    ///
+    /// <para>What it is for: an address, a list of names, the second line of a heading — text that
+    /// belongs to one paragraph and has to sit on two lines. Pressing Enter there starts a new
+    /// paragraph, which takes the paragraph gap and the first-line indent with it, and the committee
+    /// has been living with headings that are two paragraphs pretending to be one.</para>
+    /// </summary>
+    public void InsertLineBreak() => InsertText(LineSeparator);
+
     // ---- Everyday verbs (PLAN.md §11 M98) -----------------------------------------------------
 
     /// <summary>How a run of words should be re-cased.</summary>

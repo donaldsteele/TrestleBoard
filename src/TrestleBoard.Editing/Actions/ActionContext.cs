@@ -331,6 +331,9 @@ public sealed record ActionContext
     /// </summary>
     public bool HasHeldFrames { get; init; }
 
+    /// <summary>M103: a look has been copied and is waiting to be put on some writing.</summary>
+    public bool HasPickedUpALook { get; init; }
+
     /// <summary>True when a block of some kind is selected as an object.</summary>
     public bool HasFrameSelection =>
         Selection is SelectionKind.TextFrame or SelectionKind.Photo

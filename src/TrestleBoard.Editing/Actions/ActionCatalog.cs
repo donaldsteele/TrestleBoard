@@ -230,6 +230,21 @@ public static class ActionCatalog
         new(ActionId.TextColour, "What colour the writing is…",
             "Puts the highlighted words in another colour. Every colour offered prints clearly.",
             ActionGroup.Text),
+        // M103. "Format painter" is what other programs call it and it means nothing here. What
+        // somebody is doing is copying how one bit of writing looks onto another.
+        new(ActionId.PickUpLook, "Copy how this looks",
+            "Remembers the font, size, colour and emphasis of the writing the cursor is in.",
+            ActionGroup.Text),
+        new(ActionId.PutLookDown, "Make it look the same",
+            "Puts the look you copied onto the highlighted words. You can do it as many times as "
+            + "you like.",
+            ActionGroup.Text),
+        // M103. "Line break" is the trade word. What somebody wants is the next line without a
+        // new paragraph, and the title says that.
+        new(ActionId.LineBreak, "Start a new line, same paragraph",
+            "Moves what follows onto the next line without leaving a gap, for an address or a "
+            + "heading that runs to two lines.",
+            ActionGroup.Text, "Shift+Enter"),
         // M98. Three everyday verbs every word processor has and this had none of.
         new(ActionId.ChangeCase, "Change capitals…",
             "Turns the highlighted words into capitals, into small letters, or one capital per word.",
@@ -878,7 +893,23 @@ public static class ActionCatalog
 
             // Counting needs only a caret: the question is about the whole piece of writing, and a
             // highlight only adds a second number to the answer.
-            ActionId.WordCount or ActionId.InsertSymbol =>
+            // M103. Picking a look up needs only a caret; putting it down needs a highlight AND
+            // something picked up, and each refusal says which is missing rather than one sentence
+            // covering both.
+            ActionId.PutLookDown => !context.IsEditingText
+                ? ActionAvailability.NotApplicable(NeedsText)
+                : !context.HasPickedUpALook
+                    ? ActionAvailability.Blocked(
+                        "Nothing has been copied yet. Click into writing that looks the way you "
+                        + "want and choose Copy how this looks first.",
+                        ActionId.PickUpLook)
+                    : context.HasTextSelection
+                        ? ActionAvailability.Available
+                        : ActionAvailability.Blocked(
+                            "No words are highlighted. Drag across the words you want to change.",
+                            ActionId.SelectAll),
+
+            ActionId.PickUpLook or ActionId.WordCount or ActionId.InsertSymbol or ActionId.LineBreak =>
                 context.IsEditingText
                     ? ActionAvailability.Available
                     : ActionAvailability.NotApplicable(NeedsText),

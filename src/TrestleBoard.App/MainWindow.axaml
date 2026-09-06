@@ -170,6 +170,13 @@
           <MenuItem Header="How sp_aced out the writing is…" Tag="text.writingLook"
                     Click="OnActionClicked"
                     AutomationProperties.Name="How spaced out the writing is" />
+          <MenuItem Header="Cop_y how this looks" Tag="text.pickUpLook"
+                    Click="OnActionClicked" AutomationProperties.Name="Copy how this looks" />
+          <MenuItem Header="Make it _look the same" Tag="text.putLookDown"
+                    Click="OnActionClicked" AutomationProperties.Name="Make it look the same" />
+          <MenuItem Header="Start a _new line, same paragraph" Tag="text.lineBreak"
+                    InputGesture="Shift+Enter" Click="OnActionClicked"
+                    AutomationProperties.Name="Start a new line, same paragraph" />
           <MenuItem Header="_Change capitals…" Tag="text.changeCase"
                     Click="OnActionClicked" AutomationProperties.Name="Change capitals" />
           <Separator />
