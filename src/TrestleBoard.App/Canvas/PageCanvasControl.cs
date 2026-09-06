@@ -392,12 +392,44 @@ public sealed class PageCanvasControl : Control
             }
         }
 
+        // The page itself is snapshotted here too, for the same reason the caret and the selection
+        // are: everything the draw operation carries must be finished with the render source before
+        // it leaves this method. See RecordPage.
+        Core.Model.SizePt pageSize = _source.GetPageSize(currentPage);
+        SKPicture page = RecordPage(_source, currentPage, pageSize);
+
         context.Custom(new PageDrawOperation(
-            new Rect(Bounds.Size), _source, PageIndex, Zoom, PagePaddingPx, selection, caret,
+            new Rect(Bounds.Size), page, pageSize, Zoom, PagePaddingPx, selection, caret,
             frameOverlay, pageFrames, fontOverrides, BackdropColour(), SheetShadowFor(),
             OverlayColours(), OverlayLabelFace));
 
         DrawAdornments(context);
+    }
+
+    /// <summary>
+    /// Records one page into a replayable Skia picture, on the UI thread.
+    ///
+    /// <para><b>Why the draw operation is no longer handed the render source.</b> It used to be, and
+    /// it called <c>GetPageSize</c> and <c>RenderPage</c> on the COMPOSITOR thread — both of which
+    /// lay out lazily and both of which write to the source's caches. Meanwhile the UI thread was
+    /// writing to the very same dictionaries: a drag calls <c>RefreshActions</c> on every pointer
+    /// move, which builds the action context, which lays out. Two threads inserting into one
+    /// <c>Dictionary</c> corrupts it, and the exception surfaces later, on whichever thread next
+    /// touches it — which is how a pointer-move during a drag died with "Operations that change
+    /// non-concurrent collections must have exclusive access".</para>
+    ///
+    /// <para>Recording costs what rendering cost; it is the same walk over the same page, into a
+    /// display list instead of onto a surface. What changes is WHO does it, and a picture is
+    /// self-contained: it holds its own references to the images and typefaces it draws, so it can
+    /// be replayed after the source it came from has been disposed — which is the other half of what
+    /// the operation's catch block was there to survive.</para>
+    /// </summary>
+    private static SKPicture RecordPage(DocumentRenderSource source, int pageIndex, Core.Model.SizePt size)
+    {
+        using var recorder = new SKPictureRecorder();
+        SKCanvas canvas = recorder.BeginRecording(SKRect.Create(size.Width, size.Height));
+        source.RenderPage(canvas, pageIndex);
+        return recorder.EndRecording();
     }
 
     // ---- Editor adornments (PLAN.md §11 M17) --------------------------------------------------
@@ -1517,8 +1549,8 @@ public sealed class PageCanvasControl : Control
 
     private sealed class PageDrawOperation(
         Rect bounds,
-        DocumentRenderSource source,
-        int pageIndex,
+        SKPicture page,
+        Core.Model.SizePt pageSize,
         double zoom,
         double padding,
         IReadOnlyList<SelectionRect> selection,
@@ -1537,9 +1569,9 @@ public sealed class PageCanvasControl : Control
 
         public bool Equals(ICustomDrawOperation? other) => false;
 
-        public void Dispose()
-        {
-        }
+        /// <summary>The picture is this operation's own; the compositor disposes the operation when
+        /// the frame it belongs to is done with.</summary>
+        public void Dispose() => page.Dispose();
 
         public void Render(ImmediateDrawingContext context)
         {
@@ -1554,13 +1586,12 @@ public sealed class PageCanvasControl : Control
             int save = canvas.Save();
             try
             {
-                Core.Model.SizePt size = source.GetPageSize(pageIndex);
-                float pageW = (float)(size.Width * zoom);
-                float pageH = (float)(size.Height * zoom);
+                float pageW = (float)(pageSize.Width * zoom);
+                float pageH = (float)(pageSize.Height * zoom);
 
                 // Themed backdrop; the white sheet with a soft edge sits centered inside it.
                 canvas.DrawColor(backdrop);
-                var page = SKRect.Create((float)padding, (float)padding, pageW, pageH);
+                var sheet = SKRect.Create((float)padding, (float)padding, pageW, pageH);
 
                 // The sheet's shadow, from Elevation.Sheet (M76). Null in High Contrast, where the
                 // palette sets the token to none on purpose — so this branch is also how "no
@@ -1571,7 +1602,7 @@ public sealed class PageCanvasControl : Control
                 // so it must not grow with the zoom the way the page's own ink does.
                 if (sheetShadow is { } sh)
                 {
-                    SKRect box = page;
+                    SKRect box = sheet;
                     box.Inflate(sh.Spread, sh.Spread);
                     box.Offset(sh.OffsetX, sh.OffsetY);
 
@@ -1591,10 +1622,10 @@ public sealed class PageCanvasControl : Control
                     canvas.DrawRect(box, shadow);
                 }
 
-                canvas.ClipRect(page);
-                canvas.Translate(page.Left, page.Top);
+                canvas.ClipRect(sheet);
+                canvas.Translate(sheet.Left, sheet.Top);
                 canvas.Scale((float)zoom);
-                source.RenderPage(canvas, pageIndex);
+                canvas.DrawPicture(page);
 
                 // Editor overlay: selection beneath the caret, both zoomed with the page.
                 if (selection.Count > 0)

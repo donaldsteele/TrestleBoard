@@ -20,7 +20,7 @@ internal static class Site
     /// offline copy, a blocked corporate network — and it still reaches a real page, because the
     /// releases URL without a version always shows the newest one.</para>
     /// </summary>
-    internal const string FallbackVersion = "1.10.0";
+    internal const string FallbackVersion = "1.10.1";
 
     internal const string Repository = "https://github.com/donaldsteele/TrestleBoard";
 
