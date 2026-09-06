@@ -103,6 +103,10 @@ public static class HelpSearchWords
             ["recolour the emblem", "square and compasses colour", "ink", "navy emblem",
              "make the drawing blue"],
 
+        [ActionId.AboutThisNewsletter] =
+            ["lodge name", "document properties", "what it is called", "when the lodge meets",
+             "meeting night", "author"],
+
         [ActionId.ToggleLocked] = ["lock", "keep it still", "stop it moving", "pin", "fix in place"],
 
         // M91. Nobody searches for "move to page". They describe the mistake they have made.

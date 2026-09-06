@@ -149,6 +149,12 @@ public static class ActionCatalog
         new(ActionId.SetIssueDate, "Which issue is this?…",
             "Asks which month and year this newsletter is for, on the cover heading.",
             ActionGroup.Newsletter, PrimaryRank: 3),
+        // M105. NOT "Document properties…": that names a filing cabinet drawer, and every field
+        // behind it is a plain question about the lodge. The title says what you will be asked.
+        new(ActionId.AboutThisNewsletter, "What this newsletter is called…",
+            "The lodge's name, what this newsletter is called, and when the lodge meets — the "
+            + "facts that go in the footer, the email and the PDF.",
+            ActionGroup.Newsletter),
         new(ActionId.SendIt, "Now send it…",
             "Opens your email with the brethren who get it by email already filled in.",
             ActionGroup.Newsletter),
@@ -735,6 +741,14 @@ public static class ActionCatalog
                     "There is no newsletter open to carry forward. Open last month's newsletter first.",
                     ActionId.Open)
                 : RequiresIssueDate(context, "next month is worked out from it"),
+
+            // M105. Needs a newsletter and nothing else. Deliberately NOT gated on a cover
+            // heading the way SetIssueDate is: these three facts belong to the newsletter, and a
+            // newsletter with no cover heading still puts the lodge's name in every footer, in the
+            // email subject and in the PDF's Author — which is exactly the case that had no route.
+            ActionId.AboutThisNewsletter => context.HasDocument
+                ? ActionAvailability.Available
+                : ActionAvailability.Blocked(NoNewsletter, ActionId.NewFromTemplate),
 
             // M75 (a). Available whenever there is a cover heading to ask it on — including after
             // it has been answered, because the ask is also the correction. A wrong month typed

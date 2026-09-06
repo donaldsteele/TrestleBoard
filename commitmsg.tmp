@@ -1,36 +1,32 @@
-feat(emblem): what colour the emblem is (M104)
+feat(newsletter): what this newsletter is called (M105)
 
-VectorBlock.InkArgb has been on the block since M65, BlockCopier copies it, and
-DocumentRenderSource paints every part of the drawing with it - and the only
-thing that ever wrote it was the moment of insertion. An emblem put on the page
-in black stayed black for the life of the newsletter. The fifteenth instance of
-the category the audit named.
+Three fields on DocumentMetadata are read in earnest. LodgeName prints in the
+line along the bottom of every page, goes out as the PDF's Author and is half
+the email subject. Title is what the app suggests as the file name. MeetingRule
+is what CarryForward.RecomputeMeetingDates parses when somebody starts next
+month from this month.
 
-SetEmblemInkCommand sits beside SetShapeLookCommand for the same reason that one
-exists: the colour lives on the block, so no derived-style machinery is needed
-and this is the half that costs nothing. item.emblemColour offers the same seven
-colours as the writing, because which colours print clearly on white paper does
-not depend on whether the ink is making a letter or a square and compasses, and
-Black is how you put it back.
+The only thing that ever wrote any of them was the cover heading's wizard. M75
+found all three write-back holes and fixed them in that one route - so a
+newsletter with no cover heading on it still could not say which lodge it
+belonged to, because newsletter.issueDate is correctly refused there and the
+refusal took the other three facts with it.
 
-One colour for the whole drawing, not one per part. That is not a simplification
-made here: a VectorBlock has a single ink and the renderer takes no other, since
-a trestle board emblem is a line drawing meant to print in one colour on a page
-that is usually photocopied.
+newsletter.about is available on any open newsletter, cover heading or not,
+which is the whole point: these facts belong to the newsletter, not to a widget
+on page 1. It is not called "Document properties" - that names a filing cabinet
+drawer, and every field behind it is a plain question about the lodge. Each
+field says where it shows up, because a form whose fields do nothing visible is
+a form people leave blank, and all three of these have been silently blank on
+real newsletters.
 
-A box refuses towards the command that recolours a box; anything else refuses
-towards Insert an emblem. The two answer different questions and nobody should
-be left guessing which they wanted.
+The issue date is shown and not asked. It is answered on the cover heading and
+mirrored on the banner, so a second field here would be a second source of truth
+for one fact - the exact shape of the defect M75 exists about. When nobody has
+said which issue it is, the window says that, rather than printing January 2000.
 
-EveryCommandTypeHasIdentityCoverage needed a drawing to recolour, and putting one
-in the shared fixture makes that document schema 1.1.0 - which
-VectorBlockFormatTests asserts about. Three tests failed, which is the system
-working. The drawing is added by the factory instead, and ApplyRevertIsIdentity
-now builds the command before taking its baseline: a factory's setup is not the
-change under test.
-
-Mutation-checked: with Apply no longer writing the ink, two of the seven new
-tests fail.
+Mutation-checked: gating availability on a cover heading, the very thing this
+milestone exists to stop, fails the test that says so.
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01XTDVfQjJ5T8k3DtiZ6MqWD

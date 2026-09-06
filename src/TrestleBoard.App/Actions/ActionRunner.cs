@@ -55,6 +55,7 @@ internal sealed class ActionRunner
             [ActionId.SaveAsTemplate] = Async(() => window.SaveAsTemplateAsync()),
             [ActionId.ManageTemplates] = Async(() => window.ShowMyTemplatesAsync()),
             [ActionId.SetIssueDate] = Async(() => window.AskWhichIssueThisIsAsync()),
+            [ActionId.AboutThisNewsletter] = Async(() => window.EditWhatThisNewsletterIsCalledAsync()),
             [ActionId.Exit] = Sync(window.Close),
 
             // ---- Edit -----------------------------------------------------------------------------

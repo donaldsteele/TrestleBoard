@@ -119,6 +119,7 @@ internal static class ActionIcons
         // and a year, and the issue has no day. The picture would promise the control the design
         // rejected.
         [ActionId.SetIssueDate] = "a calendar glyph promises the date picker this deliberately is not",
+        [ActionId.AboutThisNewsletter] = "three plain questions; no glyph says which three",
 
         // M39. A clock-with-arrow would be the obvious choice and is exactly wrong: it is the
         // undo glyph in every other program, and this is not undo — it replaces what is on screen.

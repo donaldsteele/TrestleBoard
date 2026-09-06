@@ -8145,6 +8145,64 @@ public partial class MainWindow : Window
     /// opens, because a second place to set the date is a second place to forget.</para>
     /// </summary>
     /// <returns>False when the user backed out, per M74's contract.</returns>
+    /// <summary>
+    /// M105: the lodge's name, what this newsletter is called, and when the lodge meets.
+    ///
+    /// <para><b>Three facts with no route in.</b> All three live in
+    /// <see cref="Core.Model.DocumentMetadata"/> and are read in earnest — the lodge name prints in
+    /// every page footer, goes out as the PDF's Author and is half the email subject; the title
+    /// names the exported file; the meeting rule is what <c>CarryForward.RecomputeMeetingDates</c>
+    /// parses when somebody starts next month from this month. And the only thing that ever wrote
+    /// any of them was the cover heading's wizard, so a newsletter without a cover heading could
+    /// not say which lodge it belonged to at all.</para>
+    ///
+    /// <para><b>Not the issue date.</b> That is asked on the cover heading and mirrored on the
+    /// banner, so a second writer here would be a second source of truth for one fact. The window
+    /// shows which issue it is and says where to change it.</para>
+    /// </summary>
+    internal async Task<bool> EditWhatThisNewsletterIsCalledAsync()
+    {
+        if (_session is null || _package is null)
+        {
+            return false;
+        }
+
+        _editor?.End();
+
+        Core.Model.DocumentMetadata current = _session.Document.Metadata;
+        var dialog = new AboutThisNewsletterDialog(current);
+        await dialog.ShowDialog(this);
+
+        if (!dialog.Confirmed)
+        {
+            return false;
+        }
+
+        Core.Model.DocumentMetadata updated = current.Clone();
+        updated.LodgeName = dialog.LodgeName;
+        updated.Title = dialog.NewsletterTitle;
+        updated.MeetingRule = dialog.MeetingRule;
+
+        if (updated.LodgeName == current.LodgeName
+            && updated.Title == current.Title
+            && updated.MeetingRule == current.MeetingRule)
+        {
+            Announce("Nothing was different, so nothing has changed.");
+            return false;
+        }
+
+        _session.Execute(new Core.Commands.SetMetadataCommand(updated));
+
+        // The footer carries the lodge's name on every page, so this is a page-structure change
+        // rather than one block's content — the thumbnails in the rail say it too.
+        _source?.Invalidate(new ChangeScope(ChangeKind.PageStructure));
+        _rail.ForgetEveryThumbnail();
+        PageCanvas.InvalidateVisual();
+        RefreshActions();
+        Announce("Saved. It shows in the line along the bottom of every page. Press Ctrl+Z to undo.");
+        return true;
+    }
+
     internal async Task<bool> AskWhichIssueThisIsAsync()
     {
         if (CoverHeading() is not { } cover)

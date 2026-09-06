@@ -31,6 +31,9 @@
         <MenuItem Header="Whi_ch issue is this?…" Tag="newsletter.issueDate"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Say which month and year this newsletter is for" />
+        <MenuItem Header="What this newsletter is c_alled…" Tag="newsletter.about"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="What this newsletter is called" />
         <Separator />
         <MenuItem x:Name="SaveMenuItem" Header="S_ave this newsletter" Tag="newsletter.save"
                   InputGesture="Ctrl+S" Click="OnActionClicked"

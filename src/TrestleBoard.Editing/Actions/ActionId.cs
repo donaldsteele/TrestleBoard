@@ -101,6 +101,9 @@ public static class ActionId
     /// point a <c>RemedyId</c> at, and the user can find again when they answer it wrongly.</para>
     /// </summary>
     public const string SetIssueDate = "newsletter.issueDate";
+
+    /// <summary>M105: the lodge's name, what this newsletter is called, and when the lodge meets.</summary>
+    public const string AboutThisNewsletter = "newsletter.about";
     public const string Exit = "newsletter.exit";
 
     // ---- Edit ---------------------------------------------------------------------------------

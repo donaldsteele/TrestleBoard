@@ -4718,6 +4718,25 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M105 - What this newsletter is called (S) - **delivered 2026-09-05, `docs/M105-spec.md`**
+
+Three fields on `DocumentMetadata` are read in earnest - `LodgeName` prints in the footer of every
+page, is the PDF's Author and half the email subject; `Title` names the exported file; `MeetingRule`
+is what `CarryForward.RecomputeMeetingDates` parses. And the only thing that ever wrote any of them
+was the cover heading's wizard. M75 found the three write-back holes and fixed them IN THAT ONE
+ROUTE; a newsletter with no cover heading still could not say which lodge it belonged to, because
+`newsletter.issueDate` is correctly refused there and the refusal took the other three facts with it.
+
+`newsletter.about` - "What this newsletter is called…" - is available on any open newsletter, cover
+heading or not, which is the whole point. **Not "Document properties…"**: that names a filing cabinet
+drawer, and every field behind it is a plain question about the lodge. Each field says where it shows
+up, because a form whose fields do nothing visible is a form people leave blank.
+
+> **The issue date is shown and not asked.** It is answered on the cover heading and mirrored on the
+> banner, so a second field here would be a second source of truth for one fact - the exact shape of
+> the defect M75 exists about. When nobody has said which issue it is, the window says THAT, rather
+> than printing "January 2000".
+
 ### M104 - What colour the emblem is (S) - **delivered 2026-09-05, `docs/M104-spec.md`**
 
 `VectorBlock.InkArgb` has been on the block since M65, `BlockCopier` copies it, and
