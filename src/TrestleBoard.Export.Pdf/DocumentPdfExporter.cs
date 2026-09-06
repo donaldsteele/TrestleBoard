@@ -9,16 +9,65 @@ namespace TrestleBoard.Export.Pdf;
 /// </summary>
 public static class DocumentPdfExporter
 {
+    /// <summary>
+    /// M87: how big a PDF has to be before the app says so, in bytes.
+    ///
+    /// <para><b>8 MB, argued against the mailboxes this newsletter actually meets.</b> Gmail
+    /// refuses attachments over 25 MB and Outlook.com over 20, but a great many lodge members are
+    /// on an employer's or a small provider's server, where 10 MB is the common limit and some sit
+    /// at 5. Warning at 8 catches the file that will bounce for a third of the lodge while staying
+    /// quiet about the ordinary four-page issue, which is well under a megabyte.</para>
+    ///
+    /// <para><b>Changing this number means changing the sentence beside it.</b>
+    /// <c>TheThresholdAndItsExplanationAgree</c> fails if one moves without the other, because the
+    /// card tells the user a specific size and a threshold that disagrees with its own explanation
+    /// is worse than no warning.</para>
+    /// </summary>
+    public const long BigPdfThresholdBytes = 8L * 1024 * 1024;
+
+    /// <summary>M87: the resolution pictures are rastered at in the email copy.</summary>
+    public const int EmailRasterDpi = 150;
+
+    /// <summary>M87: the JPEG quality the email copy re-encodes pictures at.</summary>
+    public const int EmailJpegQuality = 82;
+
+    /// <summary>
+    /// M87: what the app says about a PDF too big to email, and it names the actual size. A warning
+    /// that says "large" tells somebody nothing they can act on.
+    /// </summary>
+    public static string TooBigSentence(long bytes) =>
+        $"This PDF is {Megabytes(bytes)}, which some email services will refuse.";
+
+    /// <summary>Whole megabytes above ten, one decimal below — "14 MB", "8.4 MB".</summary>
+    public static string Megabytes(long bytes)
+    {
+        double mb = bytes / (1024d * 1024d);
+        return mb >= 10d
+            ? $"{mb:0} MB"
+            : $"{mb:0.#} MB";
+    }
+
     /// <param name="watermark">
     /// M53: text for the diagonal across every page, or null for the real thing. A draft copy and
     /// the final copy are otherwise the same bytes from the same renderer, which is the point —
     /// what the Master reviews is what goes out, minus a word that says it is not.
     /// </param>
+    /// <param name="forEmail">
+    /// M87: the smaller copy. Pictures are rastered at 150 dpi instead of 300 and re-encoded as
+    /// JPEG; text, rules and emblems are untouched, because they are vectors and cost nothing.
+    ///
+    /// <para><b>A second export of the same document, never a post-process of the first.</b> Going
+    /// back over a finished PDF to shrink its images means decoding what Skia wrote and writing it
+    /// again — a second generation of loss on top of the first, over a file the committee may well
+    /// print. Rendering again from the same <see cref="DocumentRenderSource"/> costs a second pass
+    /// and gives one generation, from the originals.</para>
+    /// </param>
     public static void Export(
         Stream output,
         DocumentRenderSource source,
         PdfMetadata metadata,
-        string? watermark = null)
+        string? watermark = null,
+        bool forEmail = false)
     {
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(source);
@@ -41,7 +90,21 @@ public static class DocumentPdfExporter
         skMetadata.Subject = metadata.Subject;
         skMetadata.Creator = metadata.Creator;
         skMetadata.Producer = metadata.Producer;
-        skMetadata.RasterDpi = 300;
+
+        // M87. 300 dpi and "do not re-encode" is the full-quality copy and stays the default: it is
+        // what "Print it" hands to the printer. The email copy halves the raster resolution and
+        // accepts JPEG at 82 — high enough that a photograph on a screen is hard to fault, low
+        // enough to be the difference between a mail server taking the newsletter and refusing it.
+        //
+        // 82 rather than 90: measured on the six-picture fixture, 90 saves about a third and 82
+        // about half, and the visible difference between them on a lodge photograph is nil. It is
+        // not lower still because M90 is the milestone that exists to say what quality-zero does to
+        // a banner with lettering in it.
+        skMetadata.RasterDpi = forEmail ? EmailRasterDpi : 300;
+        if (forEmail)
+        {
+            skMetadata.EncodingQuality = EmailJpegQuality;
+        }
 
         using var stream = new SKManagedWStream(output);
         using SKDocument document = SKDocument.CreatePdf(stream, skMetadata)

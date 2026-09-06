@@ -4471,7 +4471,7 @@ The `ColorPicker` is a new package reference: `Directory.Packages.props` gains i
 colour dialog before it is called done, because a colour picker is the first control in the app
 whose meaning is not in words.
 
-### M87 — Small enough to email (M)
+### M87 — Small enough to email (M) — **delivered 2026-09-05, `docs/M87-spec.md`**
 
 **Goal.** The exporter rasters pictures at 300 dpi and re-encodes nothing: a six-page issue with
 a photo on every page can be too big for a member's inbox, and the app has no idea. M56's send

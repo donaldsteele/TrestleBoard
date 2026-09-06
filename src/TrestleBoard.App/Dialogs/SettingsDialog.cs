@@ -22,6 +22,7 @@ public sealed class SettingsDialog : Window
     private readonly Slider _scale;
     private readonly TextBlock _scaleLabel;
     private readonly TextBox _sicknessOffice;
+    private readonly CheckBox _alwaysEmailCopy;
     private readonly TextBlock _preview;
 
     private static readonly (ThemeChoice Choice, string Label)[] Themes =
@@ -114,6 +115,19 @@ public sealed class SettingsDialog : Window
         };
         _theme.SelectionChanged += (_, _) => UpdatePreview();
         _sicknessOffice.TextChanged += (_, _) => UpdatePreview();
+
+        // M87. Off unless the lodge has learned it always needs the smaller copy: the offer only
+        // appears when a PDF is actually big enough for a mail server to refuse it, so a committee
+        // whose issue is under a megabyte never meets the question and never needs this switch.
+        _alwaysEmailCopy = new CheckBox
+        {
+            Content = "Always make the email-sized PDF as well",
+            FontSize = 17,
+            MinHeight = 44,
+            IsChecked = current.AlwaysMakeEmailCopy,
+        };
+        Avalonia.Automation.AutomationProperties.SetName(
+            _alwaysEmailCopy, "Always make the email-sized PDF as well");
         UpdatePreview();
 
         var save = new Button
@@ -188,6 +202,25 @@ public sealed class SettingsDialog : Window
                     MaxWidth = 540,
                 },
                 _preview,
+                new TextBlock
+                {
+                    Text = "Sending the newsletter",
+                    FontSize = 20,
+                    FontWeight = FontWeight.Bold,
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 540,
+                },
+                _alwaysEmailCopy,
+                new TextBlock
+                {
+                    Text = "A newsletter with a lot of photographs can be too big for some email "
+                        + "services. TrestleBoard normally offers a smaller copy only when that "
+                        + "happens; tick this to have one made every time. The full-quality PDF is "
+                        + "always kept, and it is the one that gets printed.",
+                    FontSize = 16,
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 540,
+                },
                 new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
@@ -211,6 +244,7 @@ public sealed class SettingsDialog : Window
         Theme = Themes[Math.Max(0, _theme.SelectedIndex)].Choice,
         UiScalePercent = (int)_scale.Value,
         SicknessContactOffice = OfficeAsTyped,
+        AlwaysMakeEmailCopy = _alwaysEmailCopy.IsChecked == true,
     }).Normalised();
 
     /// <summary>Empty means "the default", which <see cref="AppSettings.Normalised"/> puts back.</summary>

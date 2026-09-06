@@ -66,6 +66,16 @@ public sealed record AppSettings
     public bool ShowSpelling { get; init; } = true;
 
     /// <summary>
+    /// M87: make the email-sized PDF every time, without asking.
+    ///
+    /// <para><b>Off by default, because two files is one more thing to explain.</b> A committee
+    /// whose four-page issue is under a megabyte should never meet the question at all — the offer
+    /// only appears when the PDF is actually big enough for a mail server to refuse it. This is for
+    /// the lodge that has learned it always needs the smaller one.</para>
+    /// </summary>
+    public bool AlwaysMakeEmailCopy { get; init; }
+
+    /// <summary>
     /// Where the committee keeps its old newsletters (M59), or null until they have been asked.
     ///
     /// <para>Asked once and remembered, because "where do you keep them?" is a question worth

@@ -1334,7 +1334,16 @@ public partial class MainWindow : Window
             // The file is complete and renamed into place before anything is offered: handing a
             // half-written file to a printer would be a worse bug than not offering to print at all.
             LastExportedPdf = path;
+            LastEmailPdf = null;
             RefreshActions();
+
+            // M87: weigh it. A draft copy is never emailed, so it is never weighed — the card
+            // after a draft is about reviewing, and a second question there is noise.
+            if (!draft)
+            {
+                await OfferTheEmailCopyAsync(path, meta);
+            }
+
             await OfferToPrintAsync(draft);
             return true;
         }
@@ -1369,6 +1378,121 @@ public partial class MainWindow : Window
 
     /// <summary>Set by tests in place of the card, which cannot be answered headlessly.</summary>
     internal bool? PrintAnswerForTest { get; set; }
+
+    /// <summary>Set by tests in place of the "make a smaller one" card (M87).</summary>
+    internal bool? EmailCopyAnswerForTest { get; set; }
+
+    /// <summary>
+    /// M87: the smaller copy this session last wrote, or null. M56's send card names THIS when it
+    /// exists, and "Print it" keeps handing the full-quality one to the printer.
+    /// </summary>
+    internal string? LastEmailPdf { get; private set; }
+
+    /// <summary>
+    /// M87: weighs the finished PDF and, when it is big enough that a mail server may refuse it,
+    /// offers a second copy with smaller pictures.
+    ///
+    /// <para><b>Offered rather than done</b> — unless the user has asked for it always, in
+    /// Settings. Two files is one more thing to explain, and the committee that emails a four-page
+    /// issue under a megabyte should never meet this question at all.</para>
+    /// </summary>
+    private async Task OfferTheEmailCopyAsync(string path, Core.Model.DocumentMetadata meta)
+    {
+        long size;
+        try
+        {
+            size = new FileInfo(path).Length;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Not being able to weigh the file is not a reason to fail an export that succeeded.
+            return;
+        }
+
+        bool always = Settings.AppSettings.Load().AlwaysMakeEmailCopy;
+        if (!always && size < DocumentPdfExporter.BigPdfThresholdBytes)
+        {
+            return;
+        }
+
+        bool wanted = always
+            || (EmailCopyAnswerForTest
+                ?? (SuppressStartupForTest ? false : await AskAboutTheEmailCopyAsync(size)));
+
+        if (!wanted)
+        {
+            return;
+        }
+
+        string emailPath = EmailCopyPathFor(path);
+        try
+        {
+            AtomicFileWrite.Write(emailPath, stream => DocumentPdfExporter.Export(
+                stream,
+                _source!,
+                new PdfMetadata(
+                    Integration.IssueNaming.Title(meta),
+                    meta.LodgeName,
+                    Integration.IssueNaming.PdfSubject(meta)),
+                watermark: null,
+                forEmail: true));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            await ShowErrorAsync(
+                "Could not make the smaller copy",
+                "The full-quality PDF is saved and untouched. The smaller one could not be written "
+                + $"— make sure it is not open in another program and try again. ({ex.Message})");
+            return;
+        }
+
+        long emailSize = new FileInfo(emailPath).Length;
+
+        // M87: a "smaller" copy that is not smaller is not kept.
+        //
+        // JPEG is not smaller than lossless for every picture — M90 records the same fact from the
+        // other side, where a flat fixture encoded losslessly beat the JPEG that was destroying it.
+        // A newsletter of charts, scanned line art or a plain cover banner can come out LARGER at
+        // 150 dpi JPEG than at 300 dpi lossless, and the app has no business leaving a second file
+        // on the disk that is worse in both directions and calling it the one to email.
+        if (emailSize >= size)
+        {
+            try
+            {
+                File.Delete(emailPath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Leaving it is better than failing an export that worked; it is simply not used.
+            }
+
+            Announce(
+                "The pictures in this newsletter are already about as small as they go, so a "
+                + "smaller copy would not have been any smaller. The PDF you have is the one to send.");
+            return;
+        }
+
+        LastEmailPdf = emailPath;
+        RefreshActions();
+
+        Announce(
+            $"A smaller copy is saved beside it, {DocumentPdfExporter.Megabytes(emailSize)} instead "
+            + $"of {DocumentPdfExporter.Megabytes(size)}. “Now send it” will use the smaller one.");
+    }
+
+    /// <summary>
+    /// "September 2026 (for email).pdf" beside "September 2026.pdf" — the name says which it is,
+    /// because both will sit in the same folder and be looked at months later.
+    /// </summary>
+    internal static string EmailCopyPathFor(string path)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(path);
+
+        string directory = Path.GetDirectoryName(path) ?? string.Empty;
+        string name = Path.GetFileNameWithoutExtension(path);
+        return Path.Combine(directory, $"{name} (for email){Path.GetExtension(path)}");
+    }
+
 
     /// <summary>
     /// Offers to print, once, straight after a successful export. The workflow used to end with a
@@ -1503,6 +1627,97 @@ public partial class MainWindow : Window
             dialog, draft ? "The draft copy is made" : "The PDF is made");
         await dialog.ShowDialog(this);
         return print;
+    }
+
+    /// <summary>
+    /// M87: the card that says a PDF is too big to email and offers a smaller one.
+    ///
+    /// <para><b>It names the size and it names the trade.</b> "Large" tells somebody nothing they
+    /// can act on, and a smaller file that silently looks worse when printed is a trap — so the
+    /// card says the number, and says in words what the smaller copy costs.</para>
+    /// </summary>
+    private async Task<bool> AskAboutTheEmailCopyAsync(long bytes)
+    {
+        bool make = false;
+        var dialog = new Window
+        {
+            Title = "This PDF may be too big to email",
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+        };
+
+        var makeIt = new Button
+        {
+            Content = "Make a smaller one for email",
+            FontSize = 18,
+            MinHeight = 44,
+            MinWidth = 280,
+            IsDefault = true,
+        };
+        makeIt.Action();
+
+        var later = new Button
+        {
+            Content = "No, this one is fine",
+            FontSize = 18,
+            MinHeight = 44,
+            MinWidth = 280,
+            IsCancel = true,
+        };
+        later.Action();
+
+        makeIt.Click += (_, _) => { make = true; dialog.Close(); };
+        later.Click += (_, _) => dialog.Close();
+        Avalonia.Automation.AutomationProperties.SetName(makeIt, "Make a smaller one for email");
+        Avalonia.Automation.AutomationProperties.SetName(later, "No, this one is fine");
+
+        dialog.Content = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(24),
+            Spacing = 16,
+            Children =
+            {
+                new Avalonia.Controls.TextBlock
+                {
+                    Text = DocumentPdfExporter.TooBigSentence(bytes),
+                    FontSize = 20,
+                    FontWeight = Avalonia.Media.FontWeight.Bold,
+                    MaxWidth = 520,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                new Avalonia.Controls.TextBlock
+                {
+                    Text = "TrestleBoard can save a second copy beside it with smaller pictures, "
+                        + "and use that one when you send the newsletter. The full-quality copy is "
+                        + "kept, and it is the one that gets printed.",
+                    FontSize = 18,
+                    MaxWidth = 520,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                },
+                new Avalonia.Controls.TextBlock
+                {
+                    // The trade, said plainly. Somebody who prints the emailed copy must not be
+                    // surprised by it, and "optimised" would tell them nothing.
+                    Text = "Pictures will look a little softer on a screen, and noticeably softer "
+                        + "if that copy is printed.",
+                    FontSize = 17,
+                    MaxWidth = 520,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                }.Token(Avalonia.Controls.TextBlock.ForegroundProperty, TrestleBoard.App.Theme.Tokens.ChromeMuted),
+                new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Vertical,
+                    Spacing = 12,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                    Children = { makeIt, later },
+                },
+            },
+        };
+
+        Avalonia.Automation.AutomationProperties.SetName(dialog, "This PDF may be too big to email");
+        await dialog.ShowDialog(this);
+        return make;
     }
 
     // ---- Look it over with me (PLAN.md §11 M51) -----------------------------------------------
@@ -3161,7 +3376,11 @@ public partial class MainWindow : Window
         }
 
         string subject = MailHandoff.Subject(meta.LodgeName, meta.Title, meta.IssueYear, meta.IssueMonth);
-        string fileName = LastExportedPdf is { } path ? Path.GetFileName(path) : "the PDF";
+        // M87: the SMALLER copy when there is one. The whole point of making it is that it is the
+        // one that goes out, and a send card naming the file that will bounce would waste it.
+        string fileName = (LastEmailPdf ?? LastExportedPdf) is { } path
+            ? Path.GetFileName(path)
+            : "the PDF";
         string? uri = MailHandoff.BuildUri(addresses, subject, MailHandoff.Body(fileName));
 
         if (uri is not null && PrintService.Open(uri))
