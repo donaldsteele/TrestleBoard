@@ -103,6 +103,9 @@ public static class HelpSearchWords
             ["recolour the emblem", "square and compasses colour", "ink", "navy emblem",
              "make the drawing blue"],
 
+        [ActionId.RecentNewsletters] =
+            ["recent files", "reopen", "the one I had open", "last week's", "open again"],
+
         [ActionId.AboutThisNewsletter] =
             ["lodge name", "document properties", "what it is called", "when the lodge meets",
              "meeting night", "author"],

@@ -155,6 +155,12 @@ public static class ActionCatalog
             "The lodge's name, what this newsletter is called, and when the lodge meets — the "
             + "facts that go in the footer, the email and the PDF.",
             ActionGroup.Newsletter),
+        // M106. "Newsletters you had open" and not "Recent files": a file is a thing the computer
+        // has and a newsletter is a thing the committee made, and this audience has been told which
+        // of those they are looking at everywhere else in the app.
+        new(ActionId.RecentNewsletters, "Newsletters you had open…",
+            "Opens one of the newsletters you have had open before, without going looking for it.",
+            ActionGroup.Newsletter),
         new(ActionId.SendIt, "Now send it…",
             "Opens your email with the brethren who get it by email already filled in.",
             ActionGroup.Newsletter),
@@ -741,6 +747,13 @@ public static class ActionCatalog
                     "There is no newsletter open to carry forward. Open last month's newsletter first.",
                     ActionId.Open)
                 : RequiresIssueDate(context, "next month is worked out from it"),
+
+            // M106. Always available, even with nothing open — that is when it is most wanted, and
+            // it is the only command in the group whose whole purpose survives an empty window.
+            // An empty list is answered by the window itself, which says so and offers the file
+            // dialog: refusing here would mean the first-ever run greys out a menu item whose
+            // reason ("you have not opened anything yet") is not a problem to be fixed.
+            ActionId.RecentNewsletters => ActionAvailability.Available,
 
             // M105. Needs a newsletter and nothing else. Deliberately NOT gated on a cover
             // heading the way SetIssueDate is: these three facts belong to the newsletter, and a

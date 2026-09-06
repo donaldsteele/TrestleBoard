@@ -31,6 +31,9 @@
         <MenuItem Header="Whi_ch issue is this?…" Tag="newsletter.issueDate"
                   Click="OnActionClicked"
                   AutomationProperties.Name="Say which month and year this newsletter is for" />
+        <MenuItem Header="Newsletters yo_u had open…" Tag="newsletter.recent"
+                  Click="OnActionClicked"
+                  AutomationProperties.Name="Newsletters you had open" />
         <MenuItem Header="What this newsletter is c_alled…" Tag="newsletter.about"
                   Click="OnActionClicked"
                   AutomationProperties.Name="What this newsletter is called" />

@@ -153,6 +153,70 @@ public sealed record AppSettings
     }
 
     /// <summary>
+    /// The newsletters this person actually opened, most recent first (M106).
+    ///
+    /// <para><b>Why this exists beside <c>OldIssuesFolder</c>.</b> M76 (h) offered a recent list
+    /// built by scanning the old-issues folder by last-write time, and said so on the record: no
+    /// second store, and "last saved" is the fact we have. That list answers a different question.
+    /// It is empty until somebody has nominated a folder, it cannot see a newsletter kept anywhere
+    /// else, and it orders by when a file was WRITTEN — so a file touched by a backup tool climbs
+    /// it, and a newsletter opened and read climbs nothing. <b>This one records opening</b>, which
+    /// is the question "what was I working on" actually asks.</para>
+    ///
+    /// <para><b>Both are shown, and neither is thrown away.</b> The start screen keeps the folder
+    /// scan, which is how a committee finds an issue from three years ago; this is what the File
+    /// menu offers, which is how somebody gets back to what they had open on Tuesday.</para>
+    ///
+    /// <para>These are the user's own file paths and therefore §0 material, on exactly the terms
+    /// <see cref="RecentPictures"/> is: shown by file name, never in full, and never in a problem
+    /// report.</para>
+    /// </summary>
+    public IReadOnlyList<string> RecentNewsletters { get; init; } = [];
+
+    /// <summary>How many are remembered. Eight is more than a committee has ever wanted at once.</summary>
+    public const int RecentNewslettersKept = 8;
+
+    /// <summary>
+    /// This list with <paramref name="path"/> at the front, no duplicates, capped.
+    ///
+    /// <para>A pure function on the record, so the rule — most recent first, each path once,
+    /// case-insensitively on the platforms where that is what a path means — is testable without a
+    /// window and without a disk.</para>
+    /// </summary>
+    public AppSettings WithNewsletterOpened(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return this;
+        }
+
+        List<string> kept = [path];
+        kept.AddRange(RecentNewsletters
+            .Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase))
+            .Take(RecentNewslettersKept - 1));
+
+        return this with { RecentNewsletters = kept };
+    }
+
+    /// <summary>
+    /// This list with <paramref name="path"/> taken out of it.
+    ///
+    /// <para>For a file that is no longer there. It is dropped when it is offered and found
+    /// missing, rather than at load: a newsletter on a memory stick that is not plugged in today is
+    /// not a newsletter that has stopped existing, and forgetting it on that basis would be the
+    /// list quietly deciding something the user did not.</para>
+    /// </summary>
+    public AppSettings WithoutNewsletter(string? path) =>
+        string.IsNullOrWhiteSpace(path)
+            ? this
+            : this with
+            {
+                RecentNewsletters = RecentNewsletters
+                    .Where(p => !string.Equals(p, path, StringComparison.OrdinalIgnoreCase))
+                    .ToList(),
+            };
+
+    /// <summary>
     /// Where the window was when it last closed (M77), or null until it has closed once.
     ///
     /// <para>Four nullable fields rather than one rectangle, because a settings file that has been

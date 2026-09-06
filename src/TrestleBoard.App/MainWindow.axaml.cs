@@ -133,6 +133,10 @@ public partial class MainWindow : Window
     /// <para>A property rather than a field because M39 hung a second fact off it — whether the
     /// rotating <c>.bak</c> ring beside it holds anything — and there are seven places that set the
     /// path. Six of them would have been right and one would have been forgotten.</para>
+    ///
+    /// <para>M106 hung a third fact off it for the same reason: this is the one funnel every
+    /// opening and every Save As goes through, so the list of newsletters the person had open is
+    /// kept here and cannot be forgotten by the eighth call site.</para>
     /// </summary>
     private string? DocumentPath
     {
@@ -142,7 +146,22 @@ public partial class MainWindow : Window
             _documentPathValue = value;
             _documentHasEarlierVersions =
                 value is { } path && FileRecoveryStore.FindBackups(path).Count > 0;
+
+            if (value is { } opened)
+            {
+                RememberNewsletterOpened(opened);
+            }
         }
+    }
+
+    /// <summary>
+    /// Puts a newsletter at the front of the remembered list (M106). Best-effort, like every
+    /// preference: a list that could not be written is a nuisance next week, not a failure now.
+    /// </summary>
+    private void RememberNewsletterOpened(string path)
+    {
+        _settings = _settings.WithNewsletterOpened(path);
+        _settings.Save();
     }
     private UpdateCoordinator? _updates;
 
@@ -8145,6 +8164,56 @@ public partial class MainWindow : Window
     /// opens, because a second place to set the date is a second place to forget.</para>
     /// </summary>
     /// <returns>False when the user backed out, per M74's contract.</returns>
+    /// <summary>
+    /// M106: opens one of the newsletters this person actually had open.
+    ///
+    /// <para><b>A path that no longer leads anywhere is dropped and said out loud</b>, and only
+    /// then. A newsletter on a memory stick that is not plugged in today has not stopped existing,
+    /// so the list is not swept at load — it is corrected at the moment somebody asks for a file
+    /// that is really gone, which is the only moment we actually know.</para>
+    /// </summary>
+    internal async Task<bool> OpenOneYouHadOpenAsync()
+    {
+        var dialog = new RecentNewslettersDialog(_settings.RecentNewsletters);
+        if (RecentNewsletterAnswerForTest is { } canned)
+        {
+            dialog.ChooseForTest(canned.Choice, canned.Path);
+        }
+        else
+        {
+            await dialog.ShowDialog(this);
+        }
+
+        switch (dialog.Choice)
+        {
+            case RecentNewsletterChoice.BrowseForOne:
+                await OpenNewsletterAsync();
+                return true;
+
+            case RecentNewsletterChoice.OpenThisOne when dialog.ChosenPath is { } path:
+                if (!File.Exists(path))
+                {
+                    _settings = _settings.WithoutNewsletter(path);
+                    _settings.Save();
+                    RefreshActions();
+                    Announce(
+                        $"“{Path.GetFileNameWithoutExtension(path)}” is not where it was. It has "
+                        + "been taken off the list. If it is on a memory stick, plug it in and use "
+                        + "Open a newsletter.");
+                    return false;
+                }
+
+                await OpenDocumentFromPathAsync(path);
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>Stands in for the window, which cannot be answered headlessly (M106).</summary>
+    internal (RecentNewsletterChoice Choice, string? Path)? RecentNewsletterAnswerForTest { get; set; }
+
     /// <summary>
     /// M105: the lodge's name, what this newsletter is called, and when the lodge meets.
     ///

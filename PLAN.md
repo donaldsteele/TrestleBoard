@@ -4718,6 +4718,28 @@ them, and both directions are tested.
 > about the guard but about the gap before it: a brand-new test that passes tells you nothing until
 > you have watched it fail.
 
+### M106 - The newsletters you had open (S) - **delivered 2026-09-05, `docs/M106-spec.md`**
+
+M76 (h)'s recent list scans `OldIssuesFolder` by last write time, and answers a different question:
+it is empty until somebody nominates a folder, it cannot see a newsletter kept anywhere else, a file
+touched by a backup tool climbs it while a newsletter opened and read climbs nothing - and it is on
+the START SCREEN only, so once you are in the app the way back to Tuesday's work is the file dialog.
+
+`AppSettings.RecentNewsletters` records OPENING - eight, most recent first, each path once
+case-insensitively - as a pure function on the record beside `WithPictureUsed`. **Recorded in the
+`DocumentPath` setter**, which is a property for exactly this reason: M39 hung a second fact off it
+because seven places set the path and six of them would have been right. `newsletter.recent` puts it
+in the File menu. **Both lists are kept**: the folder scan is how a committee finds an issue from
+three years ago, this is how somebody gets back to last Tuesday.
+
+> **Available with nothing open**, which is when it is most wanted - the only command in its group
+> whose purpose survives an empty window. An empty list is answered BY THE WINDOW, not by a greyed
+> item whose reason is "you have not opened anything yet", which tells a new user off for being new.
+
+> **A dead path is dropped only when somebody asks for it.** A newsletter on a memory stick that is
+> not plugged in today has not stopped existing, and sweeping the list at load would be the list
+> quietly deciding something the user did not.
+
 ### M105 - What this newsletter is called (S) - **delivered 2026-09-05, `docs/M105-spec.md`**
 
 Three fields on `DocumentMetadata` are read in earnest - `LodgeName` prints in the footer of every

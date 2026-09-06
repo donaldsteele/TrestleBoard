@@ -120,6 +120,7 @@ internal static class ActionIcons
         // rejected.
         [ActionId.SetIssueDate] = "a calendar glyph promises the date picker this deliberately is not",
         [ActionId.AboutThisNewsletter] = "three plain questions; no glyph says which three",
+        [ActionId.RecentNewsletters] = "a clock face means time, not the newsletters you had open",
 
         // M39. A clock-with-arrow would be the obvious choice and is exactly wrong: it is the
         // undo glyph in every other program, and this is not undo — it replaces what is on screen.

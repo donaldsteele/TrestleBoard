@@ -61,3 +61,8 @@ site/_site/
 # `tmp/` is a hand-scratch area — neither is an answer this repo owes anyone.
 .detangle/
 tmp/
+
+# Scratch files a commit message or a patch was staged through. Three of these were committed by
+# accident in M103-M105 because `git add -A` ran while one was still on disk; the pattern is here
+# so the next one cannot be.
+*.tmp

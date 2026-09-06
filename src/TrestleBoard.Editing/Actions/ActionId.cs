@@ -104,6 +104,9 @@ public static class ActionId
 
     /// <summary>M105: the lodge's name, what this newsletter is called, and when the lodge meets.</summary>
     public const string AboutThisNewsletter = "newsletter.about";
+
+    /// <summary>M106: the newsletters this person actually had open, most recent first.</summary>
+    public const string RecentNewsletters = "newsletter.recent";
     public const string Exit = "newsletter.exit";
 
     // ---- Edit ---------------------------------------------------------------------------------
